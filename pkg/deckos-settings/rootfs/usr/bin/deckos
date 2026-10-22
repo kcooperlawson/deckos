@@ -90,6 +90,7 @@ level_cmdline() {
 
 display_level() {
   local LEVEL=1
+  # shellcheck source=/dev/null
   [[ -r $DISPLAY_CONF ]] && . "$DISPLAY_CONF"
   echo "${LEVEL:-1}"
 }
@@ -144,7 +145,6 @@ display_status() {
     warn "no AMD GPU detected"
   fi
   section "Monitors"
-  local line
   while IFS=$'\t' read -r conn name; do
     [[ -n $conn ]] && say "  $conn  ${C_SUB}${name:-unknown}${C_0}"
   done < <(monitors)
@@ -235,9 +235,9 @@ drives_fstab() {
     case $1 in --uid) uid=$2; shift 2 ;; --gid) gid=$2; shift 2 ;; *) shift ;; esac
   done
   local base="uid=$uid,gid=$gid,umask=022,windows_names,prealloc,noatime,nofail,x-systemd.device-timeout=5s,x-gvfs-show"
-  local used="" path uuid label pt size tran name opts
+  local used="" path uuid label _parttype size tran name opts
   echo "$FSTAB_BEGIN"
-  while IFS=$'\t' read -r path uuid label pt size tran; do
+  while IFS=$'\t' read -r path uuid label _parttype size tran; do
     name=$(mount_name "$path" "$label" "$uuid")
     while [[ " $used " == *" $name "* ]]; do name="$name-${uuid:0:4}"; done
     used+=" $name"
@@ -268,7 +268,6 @@ drives_rescan() {
 
 drives_list() {
   section "Drives"
-  local line
   awk -v b="$FSTAB_BEGIN" -v e="$FSTAB_END" '$0==b{f=1;next} $0==e{f=0} f && /^UUID=/ {print $2}' /etc/fstab |
   while read -r mp; do
     if findmnt -n "$mp" >/dev/null 2>&1; then
