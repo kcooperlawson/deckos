@@ -1,0 +1,40 @@
+// DeckOS boot splash: the wordmark, with the gear "O" turning while the system boots.
+// Gear centre inside the wordmark comes from assets/generate.py: (470, 70) in a 642-wide viewBox.
+
+Window.SetBackgroundTopColor(0.059, 0.067, 0.082);
+Window.SetBackgroundBottomColor(0.039, 0.047, 0.063);
+
+word.image = Image("wordmark-nogear.png");
+gear.image = Image("gear.png");
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+scale = word.image.GetWidth() / 642;
+
+word.x = screen_w / 2 - word.image.GetWidth() / 2;
+word.y = screen_h / 2 - word.image.GetHeight() / 2;
+word.sprite = Sprite(word.image);
+word.sprite.SetPosition(word.x, word.y, 1);
+
+gear.cx = word.x + 470 * scale;
+gear.cy = word.y + 70 * scale;
+gear.sprite = Sprite(gear.image);
+gear.sprite.SetZ(2);
+
+angle = 0;
+fun refresh_callback() {
+    angle = angle + 0.045;
+    rotated = gear.image.Rotate(angle);
+    gear.sprite.SetImage(rotated);
+    gear.sprite.SetPosition(gear.cx - rotated.GetWidth() / 2, gear.cy - rotated.GetHeight() / 2, 2);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+// Status text (e.g. fsck or update messages) under the wordmark.
+msg.sprite = Sprite();
+fun message_callback(text) {
+    msg.image = Image.Text(text, 0.55, 0.58, 0.65, 1, "Inter 12");
+    msg.sprite.SetImage(msg.image);
+    msg.sprite.SetPosition(screen_w / 2 - msg.image.GetWidth() / 2, word.y + word.image.GetHeight() + 40, 3);
+}
+Plymouth.SetMessageFunction(message_callback);

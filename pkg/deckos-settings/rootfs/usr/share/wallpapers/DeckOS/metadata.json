@@ -1,0 +1,8 @@
+{
+    "KPlugin": {
+        "Authors": [{ "Name": "Decko clan" }],
+        "Id": "DeckOS",
+        "License": "MIT",
+        "Name": "DeckOS"
+    }
+}

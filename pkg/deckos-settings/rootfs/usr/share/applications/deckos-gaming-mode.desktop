@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Gaming Mode
+GenericName=Switch to Steam Gaming Mode
+Comment=Log out of the desktop and into Steam Big Picture (gamescope)
+Exec=deckos session gaming --ask
+Icon=steam
+Type=Application
+Categories=Game;
+Keywords=steam;big picture;gamescope;console;deck;

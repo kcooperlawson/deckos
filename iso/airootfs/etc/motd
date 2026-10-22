@@ -1,0 +1,7 @@
+
+  D E C K * S   //  DECKO CLAN SYSTEMS  //  LIVE USB
+
+  Install:       deckos-install
+  Wi-Fi:         iwctl station wlan0 connect "NETWORK"
+  Install log:   /var/log/deckos-install.log
+

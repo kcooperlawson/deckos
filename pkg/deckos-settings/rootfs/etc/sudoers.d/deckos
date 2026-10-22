@@ -1,0 +1,3 @@
+# DeckOS: switching between Gaming Mode and Desktop must not prompt for a password
+# (there is no keyboard prompt inside Steam). The helper only accepts gaming|desktop|--clear.
+%wheel ALL=(root) NOPASSWD: /usr/lib/deckos/session-switch

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=DeckOS Gaming Mode
+Comment=Steam Big Picture in gamescope, console style
+Exec=/usr/lib/deckos/gaming-session
+Type=Application
+DesktopNames=gamescope

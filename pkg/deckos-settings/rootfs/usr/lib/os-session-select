@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Steam's "Switch to Desktop" calls steamos-session-select, which hands off to this hook.
+# Arm the desktop autologin first (SDDM restarts a few seconds later), then let Steam exit cleanly.
+sudo -n /usr/lib/deckos/session-switch desktop --delay 5 || true
+steam -shutdown 2>/dev/null || true

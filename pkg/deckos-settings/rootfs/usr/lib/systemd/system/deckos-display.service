@@ -1,0 +1,12 @@
+[Unit]
+Description=DeckOS display fix (GPU clock part of the blackout ladder)
+After=systemd-modules-load.service
+ConditionPathExists=/etc/deckos/display.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/deckos display apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

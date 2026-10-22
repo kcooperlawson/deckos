@@ -1,0 +1,16 @@
+# AI + dev + modding. ROCm supports the RX 9070 XT (gfx1201) for local models.
+ollama-rocm
+rocm-hip-runtime
+rocm-opencl-runtime
+rocminfo
+rocm-smi-lib
+python-pip
+uv
+nodejs
+npm
+docker
+docker-compose
+docker-buildx
+github-cli
+dotnet-sdk
+jdk-openjdk

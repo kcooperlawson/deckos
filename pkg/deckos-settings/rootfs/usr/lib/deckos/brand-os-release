@@ -1,0 +1,17 @@
+#!/bin/sh
+# /etc/os-release takes precedence over /usr/lib/os-release (owned by the filesystem package),
+# so DeckOS brands the system without fighting pacman. Re-run by a hook after filesystem updates.
+rm -f /etc/os-release
+cat > /etc/os-release <<'EOF'
+NAME="DeckOS"
+PRETTY_NAME="DeckOS"
+ID=deckos
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;76;141;255"
+HOME_URL="https://archlinux.org/"
+DOCUMENTATION_URL="https://wiki.archlinux.org/"
+SUPPORT_URL="https://bbs.archlinux.org/"
+BUG_REPORT_URL="https://gitlab.archlinux.org/groups/archlinux/-/issues"
+LOGO=deckos
+EOF

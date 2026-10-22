@@ -1,0 +1,7 @@
+out/
+*.iso
+__pycache__/
+assets/preview.html
+pkg/deckos-settings/pkg/
+pkg/deckos-settings/src/
+pkg/deckos-settings/*.pkg.tar.zst

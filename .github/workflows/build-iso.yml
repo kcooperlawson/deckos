@@ -1,0 +1,65 @@
+name: Build DeckOS ISO
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning -s bash build.sh installer/deckos-install \
+            pkg/deckos-settings/rootfs/usr/bin/deckos \
+            pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
+            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-session \
+            pkg/deckos-settings/rootfs/usr/lib/os-session-select
+          shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
+            pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
+      - name: python
+        run: python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py assets/generate.py
+
+  package:
+    # Proves the DeckOS package (theme, fonts, splash, tools) builds on Arch.
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - run: pacman -Syu --noconfirm --needed base-devel git
+      - uses: actions/checkout@v4
+      - name: makepkg deckos-settings
+        run: |
+          useradd -m builder
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          cp -r pkg /home/builder/pkg && chown -R builder: /home/builder/pkg
+          su builder -c 'cd ~/pkg/deckos-settings && makepkg -s --noconfirm'
+          pacman -Qlp /home/builder/pkg/deckos-settings/*.pkg.tar.zst | grep -E 'png|pf2'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deckos-settings-pkg
+          path: /home/builder/pkg/deckos-settings/*.pkg.tar.zst
+
+  iso:
+    needs: [lint, package]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    steps:
+      - run: pacman -Syu --noconfirm --needed archiso git
+      - uses: actions/checkout@v4
+      - run: bash build.sh
+        env:
+          WORK: /tmp/deckos-build
+          OUT: ${{ github.workspace }}/out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deckos-iso
+          path: out/*.iso
+          compression-level: 0
+          retention-days: 14

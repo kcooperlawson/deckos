@@ -1,0 +1,4 @@
+[KSplash]
+# The boot splash already showed the gear; skip the second splash for a faster login.
+Engine=none
+Theme=None

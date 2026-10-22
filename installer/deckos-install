@@ -1,0 +1,369 @@
+#!/usr/bin/env bash
+# deckos-install — installs DeckOS from the live USB onto one partition, next to Windows.
+#
+# Formats ONLY the partition you pick. The EFI partition is reused (never formatted) and
+# every other drive is left exactly as it is; NTFS drives get mounted, not converted.
+set -Eeuo pipefail
+
+SRC=${DECKOS_SRC:-/opt/deckos}
+export LOG=/var/log/deckos-install.log
+MNT=/mnt
+ESP_GUID=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+MSR_GUID=e3c9e316-0b5c-4db8-817d-f92df00215ae
+RECOVERY_GUID=de94bba4-06d1-4d40-a16a-bfd50179d6ac
+LINUX_FS_GUID=0fc63daf-8483-4772-8e79-3d69d8477de4
+BTRFS_OPTS=noatime,compress=zstd:1
+# Defaults detected from the Windows install this was built for.
+DEFAULT_TZ=America/New_York
+DEFAULT_LOCALE=en_US.UTF-8
+DEFAULT_KEYMAP=us
+CMDLINE="quiet splash loglevel=3 nowatchdog zswap.enabled=0 amdgpu.dcdebugmask=0x20000"
+
+export GUM_CHOOSE_CURSOR_FOREGROUND="#4C8DFF" GUM_CHOOSE_SELECTED_FOREGROUND="#4C8DFF"
+export GUM_CHOOSE_HEADER_FOREGROUND="#8C94A6" GUM_INPUT_CURSOR_FOREGROUND="#4C8DFF"
+export GUM_INPUT_PROMPT_FOREGROUND="#4C8DFF" GUM_CONFIRM_SELECTED_BACKGROUND="#4C8DFF"
+export GUM_SPIN_SPINNER_FOREGROUND="#4C8DFF" GUM_FILTER_INDICATOR_FOREGROUND="#4C8DFF"
+export GUM_FILTER_MATCH_FOREGROUND="#4C8DFF"
+
+FAILED=()
+
+# ------------------------------------------------------------------ helpers
+
+style()   { gum style "$@"; }
+section() { echo; style --foreground "#4C8DFF" --bold "// $*"; }
+note()    { style --foreground "#8C94A6" "  $*"; }
+good()    { style --foreground "#3DD68C" "  ✔ $*"; }
+warn()    { style --foreground "#F5B84B" "  ! $*"; }
+die() {
+  style --foreground "#FF6B6B" --bold "  ✖ $*"
+  [[ -s $LOG ]] && { echo; note "Last lines of $LOG:"; tail -n 25 "$LOG"; }
+  exit 1
+}
+trap 'die "Something failed on line $LINENO. Nothing outside the chosen partition was changed."' ERR
+
+# spin "Title" cmd args... — runs quietly into the log with a spinner.
+spin() {
+  local title=$1; shift
+  echo "### $title :: $*" >> "$LOG"
+  gum spin --spinner minidot --title " $title" -- bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
+    || die "$title failed"
+  good "$title"
+}
+inchroot() { arch-chroot "$MNT" "$@"; }
+
+list_pkgs() { grep -vE '^\s*(#|$)' "$SRC/installer/packages/$1.txt" | awk '{print $1}'; }
+
+# Installs a package list in one transaction; if that fails, one by one, collecting failures.
+install_group() {
+  local name=$1 pkgs
+  mapfile -t pkgs < <(list_pkgs "$name")
+  echo "### pacman $name: ${pkgs[*]}" >> "$LOG"
+  if gum spin --spinner minidot --title " Installing $name (${#pkgs[@]} packages) — this can take a while" -- \
+       bash -c 'arch-chroot "$0" pacman -S --needed --noconfirm "${@}" >>"$LOG" 2>&1' "$MNT" "${pkgs[@]}"; then
+    good "$name packages"
+    return
+  fi
+  warn "$name: retrying package by package"
+  local p
+  for p in "${pkgs[@]}"; do
+    inchroot pacman -S --needed --noconfirm "$p" >>"$LOG" 2>&1 || FAILED+=("$p")
+  done
+  good "$name packages (with retries)"
+}
+
+set_grub() {  # set_grub KEY VALUE — set or append in /etc/default/grub
+  local f=$MNT/etc/default/grub
+  if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
+}
+
+banner() {
+  clear
+  style --foreground "#E8EAF0" --bold --border double --border-foreground "#262B36" --padding "1 4" --margin "1 2" \
+    "D E C K ⚙ S" "" "$(style --foreground '#8C94A6' 'DECKO CLAN SYSTEMS  //  INSTALLER')"
+}
+
+# ------------------------------------------------------------------ checks
+
+banner
+: > "$LOG"
+[[ $EUID -eq 0 ]] || die "Run as root (you are root by default on the live USB)."
+[[ -d /sys/firmware/efi/efivars ]] || die "The USB was booted in legacy mode. Reboot and pick the UEFI entry for the USB."
+[[ -d $SRC/pkg/deckos-settings ]] || die "DeckOS files not found in $SRC."
+
+section "Pre-flight"
+if ping -c1 -W5 archlinux.org >/dev/null 2>&1; then good "internet"; else
+  die "No internet. Plug in Ethernet, or connect Wi-Fi with: iwctl station wlan0 connect \"NETWORK\""
+fi
+grep -qw avx512f /proc/cpuinfo && good "Zen 4 CPU (znver4-optimised packages)" || warn "CPU lacks AVX-512 — CachyOS will pick a compatible repo"
+sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ' || true)
+if [[ $sb == 1 ]]; then warn "Secure Boot is ON — turn it off in the BIOS (Security › Secure Boot) before rebooting into DeckOS"
+else good "Secure Boot off"; fi
+timedatectl set-ntp true >/dev/null 2>&1 || true
+
+# ------------------------------------------------------------------ target partition
+
+section "Where should DeckOS go?"
+note "Only the partition you pick is erased. Windows, its EFI partition and your other drives stay untouched."
+
+live_disk=""
+if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
+
+mapfile -t rows < <(lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL | jq -r \
+  --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" '
+  .blockdevices[] | . as $d
+  | select($d.name != $live)
+  | select(([$d.children[]?.label] | index("Ventoy")) | not)
+  | ($d.children // [])[] | select(.type == "part")
+  | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
+  | [.path, ((.size / 1e9) | floor | tostring) + " GB", (.fstype // "empty"), (.label // "-"), ($d.model // "?")]
+  | @tsv')
+[[ ${#rows[@]} -gt 0 ]] || die "No suitable partitions found."
+
+choices=() default=""
+for r in "${rows[@]}"; do
+  IFS=$'\t' read -r p s f l m <<<"$r"
+  line=$(printf '%-16s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
+  choices+=("$line")
+  # The empty 232 GB "NVME" partition on the Samsung 970 EVO Plus.
+  [[ -z $default && $m == *"970 EVO"* && $l == NVME ]] && default=$line
+done
+choose_args=(--header "  Partition         Size     FS     Label      Disk")
+[[ -n $default ]] && choose_args+=(--selected "$default")
+pick=$(gum choose "${choose_args[@]}" "${choices[@]}")
+TARGET=${pick%% *}
+[[ -b $TARGET ]] || die "No partition selected."
+
+# Refuse Windows; show anything that would be lost.
+probe=$(mktemp -d)
+if mount -o ro "$TARGET" "$probe" 2>/dev/null; then
+  [[ -d $probe/Windows/System32 ]] && { umount "$probe"; die "$TARGET contains Windows. Pick a different partition."; }
+  mapfile -t contents < <(find "$probe" -mindepth 1 -maxdepth 1 ! -name 'System Volume Information' ! -name '$RECYCLE.BIN' -printf '%f\n' | head -n 15)
+  used=$(df -h --output=used "$probe" | tail -1 | tr -d ' ')
+  umount "$probe"
+  if [[ ${#contents[@]} -gt 0 ]]; then
+    warn "$TARGET is NOT empty ($used used). These will be destroyed:"
+    printf '      %s\n' "${contents[@]}"
+  else
+    good "$TARGET is empty"
+  fi
+fi
+rmdir "$probe"
+
+TARGET_DISK=/dev/$(lsblk -no PKNAME "$TARGET")
+TARGET_PARTNO=$(cat "/sys/class/block/$(basename "$TARGET")/partition")
+
+# ------------------------------------------------------------------ EFI partition
+
+mapfile -t esps < <(lsblk -rpno PATH,PARTTYPE,PKNAME | awk -v g="$ESP_GUID" '$2==g {print $1" "$3}')
+[[ ${#esps[@]} -gt 0 ]] || die "No EFI system partition found. (Windows normally has one.)"
+ESP=""
+for e in "${esps[@]}"; do [[ /dev/${e#* } == "$TARGET_DISK" || ${e#* } == "$TARGET_DISK" ]] && ESP=${e%% *}; done
+if [[ -z $ESP ]]; then
+  ESP=$(printf '%s\n' "${esps[@]%% *}" | gum choose --header "  Which EFI partition should hold the boot menu?")
+fi
+espprobe=$(mktemp -d)
+mount -o ro "$ESP" "$espprobe"
+[[ -d $espprobe/EFI/Microsoft ]] && WIN_BOOT=yes || WIN_BOOT=no
+esp_free=$(df -BM --output=avail "$espprobe" | tail -1 | tr -dc '0-9')
+umount "$espprobe"; rmdir "$espprobe"
+[[ $esp_free -ge 20 ]] || die "EFI partition $ESP has only ${esp_free} MB free (need 20 MB)."
+good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' — Windows Boot Manager found')"
+
+# ------------------------------------------------------------------ you
+
+section "You"
+HOSTNAME_=$(gum input --prompt "Computer name › " --value "deckos")
+while :; do
+  USERNAME_=$(gum input --prompt "Username › " --placeholder "lowercase, e.g. keagan")
+  [[ $USERNAME_ =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
+  warn "lowercase letters, digits, - and _ only"
+done
+while :; do
+  PASS1=$(gum input --password --prompt "Password › ")
+  PASS2=$(gum input --password --prompt "Again › ")
+  [[ -n $PASS1 && $PASS1 == "$PASS2" ]] && break
+  warn "passwords empty or different — try again"
+done
+TZ_=$DEFAULT_TZ
+gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
+
+# ------------------------------------------------------------------ confirm
+
+section "Ready"
+style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0 2" \
+  "ERASE      $(style --foreground '#FF6B6B' --bold "$TARGET") → btrfs (snapshots on)" \
+  "Boot menu  $ESP (kept; DeckOS + Windows)" \
+  "Keep       every other partition and drive" \
+  "User       $USERNAME_ @ $HOSTNAME_   ·   $TZ_" \
+  "Software   CachyOS znver4 kernel, KDE Plasma, Steam + Gaming Mode," \
+  "           ROCm + Ollama, Claude Code, VS Code, Docker, .NET"
+echo
+confirm=$(gum input --prompt "Type ERASE to install › " --placeholder "ERASE")
+[[ $confirm == ERASE ]] || die "Cancelled — nothing was changed."
+
+# ------------------------------------------------------------------ disk
+
+section "Preparing $TARGET"
+umount -R "$MNT" 2>/dev/null || true
+spin "Wiping $TARGET" wipefs -af "$TARGET"
+# Mark it as a Linux partition so Windows stops offering to "format" it.
+spin "Setting partition type" sfdisk --part-type "$TARGET_DISK" "$TARGET_PARTNO" "$LINUX_FS_GUID"
+spin "Creating btrfs" mkfs.btrfs -f -L DeckOS "$TARGET"
+mount "$TARGET" "$MNT"
+for sv in @ @home @snapshots @log @pkg; do btrfs -q subvolume create "$MNT/$sv"; done
+umount "$MNT"
+mount -o "$BTRFS_OPTS,subvol=@" "$TARGET" "$MNT"
+mkdir -p "$MNT"/{home,.snapshots,var/log,var/cache/pacman/pkg,boot/efi}
+mount -o "$BTRFS_OPTS,subvol=@home" "$TARGET" "$MNT/home"
+mount -o "$BTRFS_OPTS,subvol=@snapshots" "$TARGET" "$MNT/.snapshots"
+mount -o "$BTRFS_OPTS,subvol=@log" "$TARGET" "$MNT/var/log"
+mount -o "$BTRFS_OPTS,subvol=@pkg" "$TARGET" "$MNT/var/cache/pacman/pkg"
+mount "$ESP" "$MNT/boot/efi"
+good "btrfs subvolumes: @ @home @snapshots @log @pkg"
+
+# ------------------------------------------------------------------ base system
+
+section "Base system"
+spin "Ranking mirrors" reflector --country US --latest 15 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+spin "Installing Arch base" pacstrap -K "$MNT" base base-devel linux-firmware amd-ucode btrfs-progs \
+  gawk git sudo nano networkmanager grub efibootmgr os-prober curl jq
+genfstab -U "$MNT" | sed -E 's/,subvolid=[0-9]+//; s/subvolid=[0-9]+,//' > "$MNT/etc/fstab"
+
+ln -sf "/usr/share/zoneinfo/$TZ_" "$MNT/etc/localtime"
+# Windows keeps the hardware clock in local time; match it so the clock is right in both.
+inchroot hwclock --systohc --localtime >>"$LOG" 2>&1 || true
+sed -i "s/^#\($DEFAULT_LOCALE\)/\1/" "$MNT/etc/locale.gen"
+inchroot locale-gen >>"$LOG" 2>&1
+echo "LANG=$DEFAULT_LOCALE" > "$MNT/etc/locale.conf"
+echo "KEYMAP=$DEFAULT_KEYMAP" > "$MNT/etc/vconsole.conf"
+echo "$HOSTNAME_" > "$MNT/etc/hostname"
+printf '127.0.0.1 localhost\n::1 localhost\n127.0.1.1 %s.localdomain %s\n' "$HOSTNAME_" "$HOSTNAME_" > "$MNT/etc/hosts"
+sed -i '/^#\[multilib\]/{N;s/#//g}' "$MNT/etc/pacman.conf"
+sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 10/; s/^#Color/Color/' "$MNT/etc/pacman.conf"
+good "locale, time, hostname, multilib"
+
+section "CachyOS optimised repos (Zen 4)"
+mkdir -p "$MNT/root/cachyos-repo"
+spin "Downloading CachyOS repo setup" curl -fsSL https://mirror.cachyos.org/cachyos-repo.tar.xz -o "$MNT/root/cachyos-repo/repo.tar.xz"
+tar -xf "$MNT/root/cachyos-repo/repo.tar.xz" -C "$MNT/root/cachyos-repo"
+spin "Adding CachyOS repos" arch-chroot "$MNT" bash -c 'cd /root/cachyos-repo/cachyos-repo && yes | ./cachyos-repo.sh'
+rm -rf "$MNT/root/cachyos-repo"
+grep -q '^\[cachyos-znver4\]' "$MNT/etc/pacman.conf" && good "znver4 repos enabled" || warn "znver4 repos not detected; using CachyOS generic repos"
+
+# ------------------------------------------------------------------ software
+
+section "Software"
+install_group base
+install_group desktop
+install_group gaming
+install_group ai
+
+section "Your account"
+groups=wheel
+for g in video render input audio docker gamemode lp; do
+  inchroot getent group "$g" >/dev/null && groups+=",$g"
+done
+inchroot useradd -m -G "$groups" -s /bin/bash "$USERNAME_"
+printf '%s:%s\n' "$USERNAME_" "$PASS1" | inchroot chpasswd
+inchroot passwd -l root >>"$LOG" 2>&1
+unset PASS1 PASS2
+echo '%wheel ALL=(ALL:ALL) ALL' > "$MNT/etc/sudoers.d/10-wheel"
+chmod 440 "$MNT/etc/sudoers.d/10-wheel"
+good "$USERNAME_ (groups: $groups) — root login disabled, use sudo"
+
+# Temporary passwordless sudo so makepkg/paru can install as the new user. Removed below.
+echo "$USERNAME_ ALL=(ALL) NOPASSWD: ALL" > "$MNT/etc/sudoers.d/00-deckos-install"
+chmod 440 "$MNT/etc/sudoers.d/00-deckos-install"
+
+section "DeckOS layer"
+build=/home/$USERNAME_/.cache/deckos
+mkdir -p "$MNT$build"
+cp -a "$SRC/pkg" "$MNT$build/"
+inchroot chown -R "$USERNAME_:$USERNAME_" "/home/$USERNAME_/.cache"
+spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
+  bash -c "cd $build/pkg/deckos-settings && makepkg -si --noconfirm"
+
+section "AUR"
+mapfile -t aur < <(list_pkgs aur)
+for p in "${aur[@]}"; do
+  if gum spin --spinner minidot --title " Building $p" -- bash -c \
+       'arch-chroot "$0" sudo -u "$1" -H paru -S --needed --noconfirm --skipreview "$2" >>"$LOG" 2>&1' "$MNT" "$USERNAME_" "$p"; then
+    good "$p"
+  else
+    warn "$p failed (see log)"; FAILED+=("$p")
+  fi
+done
+
+if gum spin --spinner minidot --title " Installing Claude Code" -- bash -c \
+     'arch-chroot "$0" sudo -u "$1" -H bash -c "curl -fsSL https://claude.ai/install.sh | bash" >>"$LOG" 2>&1' "$MNT" "$USERNAME_"; then
+  good "Claude Code (run: claude)"
+else
+  warn "Claude Code install failed — DeckOS Hub has a button to retry"; FAILED+=("claude-code")
+fi
+rm -f "$MNT/etc/sudoers.d/00-deckos-install"
+
+# ------------------------------------------------------------------ drives
+
+section "Your drives (kept as NTFS)"
+uid=$(inchroot id -u "$USERNAME_"); gid=$(inchroot id -g "$USERNAME_")
+block=$(bash "$SRC/pkg/deckos-settings/rootfs/usr/bin/deckos" drives fstab --uid "$uid" --gid "$gid")
+printf '\n%s\n' "$block" >> "$MNT/etc/fstab"
+grep -oP '(?<=  /mnt/)\S+' <<<"$block" | while read -r m; do mkdir -p "$MNT/mnt/$m"; good "/mnt/$m"; done
+
+# ------------------------------------------------------------------ boot
+
+section "Boot"
+sed -i -E 's/^MODULES=.*/MODULES=(amdgpu)/' "$MNT/etc/mkinitcpio.conf"
+sed -i -E 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block filesystems grub-btrfs-overlayfs)/' "$MNT/etc/mkinitcpio.conf"
+inchroot plymouth-set-default-theme deckos >>"$LOG" 2>&1 || warn "plymouth theme not set"
+spin "Building initramfs" arch-chroot "$MNT" mkinitcpio -P
+
+set_grub GRUB_DISTRIBUTOR '"DeckOS"'
+set_grub GRUB_TIMEOUT 5
+set_grub GRUB_CMDLINE_LINUX_DEFAULT "\"$CMDLINE\""
+set_grub GRUB_DISABLE_OS_PROBER false
+set_grub GRUB_THEME '"/usr/share/grub/themes/deckos/theme.txt"'
+set_grub GRUB_GFXMODE 1920x1080,auto
+mkdir -p "$MNT/etc/deckos" && printf '# Managed by deckos display set\nLEVEL=1\n' > "$MNT/etc/deckos/display.conf"
+
+# snapper wants to create /.snapshots itself; swap it for our @snapshots subvolume after.
+umount "$MNT/.snapshots"; rmdir "$MNT/.snapshots"
+spin "Configuring snapshots" arch-chroot "$MNT" snapper --no-dbus -c root create-config /
+btrfs -q subvolume delete "$MNT/.snapshots"
+mkdir "$MNT/.snapshots"
+mount -o "$BTRFS_OPTS,subvol=@snapshots" "$TARGET" "$MNT/.snapshots"
+chmod 750 "$MNT/.snapshots"
+sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBER_LIMIT="12"/; s/^NUMBER_LIMIT_IMPORTANT=.*/NUMBER_LIMIT_IMPORTANT="6"/; s/^ALLOW_GROUPS=.*/ALLOW_GROUPS="wheel"/' \
+  "$MNT/etc/snapper/configs/root"
+
+spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes
+spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
+spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
+grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet — run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
+
+section "Services"
+for s in NetworkManager bluetooth sddm power-profiles-daemon fstrim.timer grub-btrfsd snapper-cleanup.timer \
+         docker.socket ollama deckos-display lactd ananicy-cpp systemd-timesyncd; do
+  inchroot systemctl enable "$s" >>"$LOG" 2>&1 || warn "could not enable $s"
+done
+good "services enabled"
+
+# ------------------------------------------------------------------ done
+
+cp "$LOG" "$MNT/var/log/deckos-install.log"
+sync
+umount -R "$MNT"
+trap - ERR
+
+section "DeckOS is installed"
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  warn "These didn't install (DeckOS still works; retry later with paru -S): ${FAILED[*]}"
+fi
+style --margin "1 2" --foreground "#8C94A6" \
+  "Before you boot DeckOS:" \
+  "  1. BIOS: Secure Boot off. DeckOS is now first in the boot order (Windows is in its menu)." \
+  "  2. Windows: run 'powercfg /h off' as admin once, or your NTFS drives mount read-only." \
+  "After first login:" \
+  "  • DeckOS Hub (bottom panel) — display fix level, Gaming Mode, drives." \
+  "  • If the Samsung still blinks: Hub › Display › 'Watch for blackouts', then step up a level."
+gum confirm "Reboot now?" && reboot

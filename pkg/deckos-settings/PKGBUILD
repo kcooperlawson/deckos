@@ -1,0 +1,80 @@
+# Maintainer: Decko clan
+# Local package: everything it installs lives next to this file (rootfs/, kdeglobals.base).
+pkgname=deckos-settings
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="DeckOS branding, theme, hardware fixes and the deckos tool"
+arch=(any)
+license=(MIT)
+depends=(bash python pyside6 qt6-svg jq util-linux sudo polkit kdialog konsole
+         grub plymouth snapper btrfs-progs ntfs-3g
+         papirus-icon-theme inter-font ttf-jetbrains-mono-nerd)
+makedepends=(librsvg grub fontconfig ttf-jetbrains-mono-nerd)
+optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
+            'lact: GPU clock/fan control GUI')
+backup=(etc/deckos/display.conf
+        etc/deckos/gaming.conf
+        etc/udisks2/mount_options.conf
+        etc/systemd/zram-generator.conf)
+install=deckos-settings.install
+
+_px() {  # _px WIDTHxHEIGHT COLOR OUT — solid-colour PNG for GRUB 9-slice pieces
+  local w=${1%x*} h=${1#*x} tmp
+  tmp=$(mktemp --suffix=.svg)
+  printf '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s"><rect width="100%%" height="100%%" fill="%s"/></svg>' "$w" "$h" "$2" > "$tmp"
+  rsvg-convert "$tmp" -o "$3"
+  rm -f "$tmp"
+}
+
+package() {
+  local src=$startdir
+  cp -a "$src/rootfs/." "$pkgdir/"
+  find "$pkgdir" -type d -exec chmod 755 {} +
+  find "$pkgdir" -type f -exec chmod 644 {} +
+  chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub \
+            "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,brand-os-release} \
+            "$pkgdir"/usr/lib/os-session-select
+  chmod 750 "$pkgdir/etc/sudoers.d"
+  chmod 440 "$pkgdir/etc/sudoers.d/deckos"
+
+  local b=$pkgdir/usr/share/deckos/branding
+
+  # Wallpapers (desktop + login screen).
+  local wp=$pkgdir/usr/share/wallpapers/DeckOS/contents/images
+  install -d "$wp"
+  for size in 3840x2160 2560x1440 1920x1080; do
+    rsvg-convert -w "${size%x*}" -h "${size#*x}" "$b/wallpaper.svg" -o "$wp/$size.png"
+  done
+  rsvg-convert -w 960 -h 540 "$b/wallpaper.svg" -o "$pkgdir/usr/share/wallpapers/DeckOS/contents/screenshot.png"
+  rsvg-convert -w 1920 -h 1080 "$b/wallpaper.svg" -o "$b/wallpaper-1920.png"
+
+  # App icon (Kickoff button, Hub, os-release LOGO).
+  install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos.svg"
+  install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
+
+  # Boot splash: wordmark without the O + the gear, same scale, gear spun by the script.
+  local ply=$pkgdir/usr/share/plymouth/themes/deckos
+  rsvg-convert -z 0.75 "$b/wordmark-nogear.svg" -o "$ply/wordmark-nogear.png"
+  rsvg-convert -z 0.75 "$b/gear.svg" -o "$ply/gear.png"
+
+  # GRUB theme: background, highlight bar, fonts.
+  local gt=$pkgdir/usr/share/grub/themes/deckos
+  rsvg-convert -w 1920 -h 1080 "$b/grub-background.svg" -o "$gt/background.png"
+  for piece in nw n ne e se s sw c; do _px 1x1 '#1B2333' "$gt/select_$piece.png"; done
+  _px 4x1 '#4C8DFF' "$gt/select_w.png"
+  local regular bold
+  regular=$(fc-match -f '%{file}' 'JetBrainsMono Nerd Font:style=Regular')
+  bold=$(fc-match -f '%{file}' 'JetBrainsMono Nerd Font:style=Bold')
+  for s in 16 22; do
+    grub-mkfont -n "DeckOS Mono" -s "$s" -o "$gt/deckos-mono-regular-$s.pf2" "$regular"
+  done
+  grub-mkfont -n "DeckOS Mono" -s 22 -o "$gt/deckos-mono-bold-22.pf2" "$bold"
+
+  # System-wide KDE defaults = base settings + the DeckOS color groups.
+  {
+    cat "$src/kdeglobals.base"
+    echo
+    grep -v '^Name=' "$src/rootfs/usr/share/color-schemes/DeckOS.colors"
+  } > "$pkgdir/etc/xdg/kdeglobals"
+  chmod 644 "$pkgdir/etc/xdg/kdeglobals"
+}

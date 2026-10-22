@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [{ "Name": "Decko clan" }],
+        "Category": "",
+        "Description": "DeckOS: slate, steel and a blue gear",
+        "Id": "org.deckos.desktop",
+        "License": "MIT",
+        "Name": "DeckOS",
+        "Version": "0.1"
+    },
+    "X-Plasma-APIVersion": "2"
+}

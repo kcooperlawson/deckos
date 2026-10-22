@@ -1,0 +1,5 @@
+# Built from the AUR with paru during install.
+gamescope-session-steam-git
+visual-studio-code-bin
+jetbrains-toolbox
+r2modman-bin

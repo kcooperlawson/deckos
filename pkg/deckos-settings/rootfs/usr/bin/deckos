@@ -1,0 +1,422 @@
+#!/usr/bin/env bash
+# deckos — DeckOS system tool: display flicker fixes, NTFS drives, session switching, updates.
+set -euo pipefail
+
+VERSION=0.1.0
+CONF_DIR=/etc/deckos
+DISPLAY_CONF=$CONF_DIR/display.conf
+GRUB_DEFAULT=/etc/default/grub
+FSTAB_BEGIN="# >>> DeckOS drives (managed by 'deckos drives rescan') >>>"
+FSTAB_END="# <<< DeckOS drives <<<"
+# RX 9070 / 9070 XT (Navi 48). Anything else falls back to the boot VGA AMD card.
+DGPU_IDS="0x7550"
+
+if [[ -t 1 ]]; then
+  C_ACC=$'\e[38;2;76;141;255m' C_OK=$'\e[38;2;61;214;140m' C_WARN=$'\e[38;2;245;184;75m'
+  C_ERR=$'\e[38;2;255;107;107m' C_SUB=$'\e[38;2;140;148;166m' C_B=$'\e[1m' C_0=$'\e[0m'
+else
+  C_ACC='' C_OK='' C_WARN='' C_ERR='' C_SUB='' C_B='' C_0=''
+fi
+say()  { printf '%s\n' "$*"; }
+section() { printf '\n%s%s// %s%s\n' "$C_ACC" "$C_B" "$*" "$C_0"; }
+ok()   { printf '  %s✔%s %s\n' "$C_OK" "$C_0" "$*"; }
+warn() { printf '  %s!%s %s\n' "$C_WARN" "$C_0" "$*"; }
+err()  { printf '%serror:%s %s\n' "$C_ERR" "$C_0" "$*" >&2; }
+sub()  { printf '  %s%s%s\n' "$C_SUB" "$*" "$C_0"; }
+need_root() { [[ $EUID -eq 0 ]] || { err "this needs root: sudo deckos $*"; exit 1; }; }
+
+# ---------------------------------------------------------------- GPU helpers
+
+# Prints the /sys/class/drm/cardN path of the gaming GPU.
+dgpu_card() {
+  local c fallback=""
+  for c in /sys/class/drm/card[0-9]*; do
+    [[ $c =~ card[0-9]+$ ]] || continue
+    [[ $(cat "$c/device/vendor" 2>/dev/null) == 0x1002 ]] || continue
+    local dev; dev=$(cat "$c/device/device" 2>/dev/null)
+    [[ " $DGPU_IDS " == *" $dev "* ]] && { echo "$c"; return 0; }
+    [[ $(cat "$c/device/boot_vga" 2>/dev/null) == 1 ]] && fallback=$c
+  done
+  [[ -n $fallback ]] && { echo "$fallback"; return 0; }
+  return 1
+}
+
+# Monitor name from an EDID blob (descriptor tag 0xFC).
+edid_name() {
+  python3 - "$1" <<'PY' 2>/dev/null
+import sys
+e = open(sys.argv[1], "rb").read()
+for off in (54, 72, 90, 108):
+    b = e[off:off + 18]
+    if len(b) == 18 and b[:3] == b"\0\0\0" and b[3] == 0xFC:
+        print(b[5:].split(b"\n")[0].decode("ascii", "replace").strip()); break
+PY
+}
+
+# "CONNECTOR<TAB>MONITOR" for every connected output on the gaming GPU.
+monitors() {
+  local card; card=$(dgpu_card) || return 0
+  local base; base=$(basename "$card")
+  local o
+  for o in /sys/class/drm/"$base"-*; do
+    [[ $(cat "$o/status" 2>/dev/null) == connected ]] || continue
+    printf '%s\t%s\n' "${o##*/$base-}" "$(edid_name "$o/edid")"
+  done
+}
+
+# ------------------------------------------------------------- display ladder
+#
+# The G70B blacks out for a second or two when the 9070 XT changes its memory clock
+# while driving a high-bandwidth 4K144 signal plus a second screen. Each level removes
+# another source of those clock/power-state changes, at the cost of some idle power.
+
+LEVEL_DESC=(
+  "0  stock          — AMD defaults, no workarounds"
+  "1  no-FAMS        — disable SubVP + firmware-assisted memory-clock switching (default)"
+  "2  pinned-mclk    — level 1 + lock VRAM clock to max at boot (~+15–30 W idle)"
+  "3  no-mclk-switch — level 2 + no multi-monitor clock switching, no PSR/Panel Replay"
+  "4  locked-high    — level 3 + force every GPU clock high (max idle power, last resort)"
+)
+# amdgpu.dcdebugmask bits (drivers/gpu/drm/amd/include/amd_shared.h):
+#   0x10 DC_DISABLE_PSR, 0x400 DC_DISABLE_REPLAY, 0x20000 DC_DISABLE_SUBVP_FAMS
+level_cmdline() {
+  case $1 in
+    0) echo "" ;;
+    1|2) echo "amdgpu.dcdebugmask=0x20000" ;;
+    # dcfeaturemask defaults to 0x2 (DC_MULTI_MON_PP_MCLK_SWITCH_MASK); 0x0 turns it off.
+    3|4) echo "amdgpu.dcdebugmask=0x20410 amdgpu.dcfeaturemask=0x0" ;;
+  esac
+}
+
+display_level() {
+  local LEVEL=1
+  [[ -r $DISPLAY_CONF ]] && . "$DISPLAY_CONF"
+  echo "${LEVEL:-1}"
+}
+
+grub_set_amdgpu_args() {
+  local args=$1
+  [[ -f $GRUB_DEFAULT ]] || { err "$GRUB_DEFAULT not found"; return 1; }
+  local cur; cur=$(sed -n 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/\1/p' "$GRUB_DEFAULT")
+  local kept=() tok
+  for tok in $cur; do
+    [[ $tok == amdgpu.dcdebugmask=* || $tok == amdgpu.dcfeaturemask=* ]] || kept+=("$tok")
+  done
+  local new="${kept[*]} $args"; new=${new% }
+  sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"${new}\"|" "$GRUB_DEFAULT"
+  grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
+}
+
+# Runtime part of the ladder (sysfs); run at boot by deckos-display.service.
+display_apply() {
+  need_root display apply
+  local level card; level=$(display_level)
+  card=$(dgpu_card) || { warn "no AMD GPU found"; return 0; }
+  local dev=$card/device
+  case $level in
+    0|1)
+      echo auto > "$dev/power_dpm_force_performance_level" ;;
+    2|3)
+      echo manual > "$dev/power_dpm_force_performance_level"
+      local top; top=$(tail -n1 "$dev/pp_dpm_mclk" | cut -d: -f1)
+      echo "$top" > "$dev/pp_dpm_mclk"
+      say "VRAM clock pinned to state $top on $(basename "$card")" ;;
+    4)
+      echo high > "$dev/power_dpm_force_performance_level" ;;
+  esac
+}
+
+display_status() {
+  section "Display"
+  local level; level=$(display_level)
+  say "  Fix level: ${C_B}${level}${C_0}   ${C_SUB}(sudo deckos display set 0-4)${C_0}"
+  sub "${LEVEL_DESC[$level]}"
+  local cmd; cmd=$(cat /proc/cmdline)
+  if [[ -n $(level_cmdline "$level") ]]; then
+    local t missing=0
+    for t in $(level_cmdline "$level"); do [[ " $cmd " == *" $t "* ]] || missing=1; done
+    [[ $missing == 0 ]] && ok "kernel flags active" || warn "kernel flags change pending — reboot"
+  fi
+  local card; if card=$(dgpu_card); then
+    ok "GPU: $(basename "$card") ($(cat "$card/device/device")) perf=$(cat "$card/device/power_dpm_force_performance_level")"
+    sub "VRAM clock now: $(grep '\*' "$card/device/pp_dpm_mclk" 2>/dev/null | tr -s ' ' || echo '?')"
+  else
+    warn "no AMD GPU detected"
+  fi
+  section "Monitors"
+  local line
+  while IFS=$'\t' read -r conn name; do
+    [[ -n $conn ]] && say "  $conn  ${C_SUB}${name:-unknown}${C_0}"
+  done < <(monitors)
+}
+
+# Logs kernel display events, hotplugs and VRAM clock changes side by side. Press Enter
+# the moment the screen blacks out to drop a marker; the log shows what happened around it.
+display_watch() {
+  local log=${HOME}/deckos-display-watch.log card
+  card=$(dgpu_card) || { err "no AMD GPU found"; exit 1; }
+  say "${C_B}Watching for blackouts.${C_0} Press ${C_B}Enter${C_0} the moment the screen goes black; Ctrl+C to stop."
+  say "${C_SUB}Log: $log${C_0}"
+  : > "$log"
+  (
+    journalctl -kf -n0 -o short-precise 2>/dev/null \
+      | grep --line-buffered -iE 'amdgpu|drm|hpd|link|flip|dmub|dp_' \
+      | sed -u 's/^/[kernel] /' &
+    udevadm monitor -k -s drm 2>/dev/null | sed -u -n 's/^KERNEL\[[^]]*\] *//p' | sed -u 's/^/[hotplug] /' &
+    last=""
+    while sleep 0.25; do
+      now=$(grep '\*' "$card/device/pp_dpm_mclk" 2>/dev/null | tr -s ' ')
+      [[ $now != "$last" ]] && echo "[vram-clock] $now" && last=$now
+    done &
+    wait
+  ) | while IFS= read -r l; do printf '%s %s\n' "$(date +%T.%3N)" "$l"; done | tee -a "$log" &
+  local bg=$!
+  trap 'kill $bg 2>/dev/null; pkill -P $bg 2>/dev/null; exit 0' INT TERM
+  while read -r _; do printf '%s ===== BLACKOUT MARKED =====\n' "$(date +%T.%3N)" | tee -a "$log"; done
+}
+
+display_set() {
+  need_root display set
+  local n=${1:-}
+  [[ $n =~ ^[0-4]$ ]] || { err "level must be 0-4"; printf '  %s\n' "${LEVEL_DESC[@]}"; exit 2; }
+  mkdir -p "$CONF_DIR"
+  printf '# Managed by deckos display set\nLEVEL=%s\n' "$n" > "$DISPLAY_CONF"
+  grub_set_amdgpu_args "$(level_cmdline "$n")"
+  display_apply || true
+  ok "display fix level $n saved"
+  sub "${LEVEL_DESC[$n]}"
+  warn "reboot to load the new kernel flags"
+}
+
+display_cmd() {
+  case ${1:-status} in
+    status) display_status ;;
+    set) shift; display_set "$@" ;;
+    apply) display_apply ;;
+    watch) display_watch ;;
+    levels) printf '  %s\n' "${LEVEL_DESC[@]}" ;;
+    monitors) monitors ;;
+    *) err "usage: deckos display [status|levels|set N|watch|monitors]"; exit 2 ;;
+  esac
+}
+
+# --------------------------------------------------------------------- drives
+#
+# Existing NTFS drives are mounted in place with the in-kernel ntfs3 driver — nothing is
+# reformatted. Internal drives mount at boot, USB drives mount when first opened.
+
+ntfs_partitions() {
+  # path<TAB>uuid<TAB>label<TAB>parttype<TAB>size<TAB>transport
+  lsblk -J -b -o PATH,FSTYPE,UUID,LABEL,PARTTYPE,SIZE,TRAN | jq -r '
+    .blockdevices[] | . as $d | (.children // [])[]
+    | select(.fstype == "ntfs" and .uuid != null)
+    | select((.parttype // "") != "de94bba4-06d1-4d40-a16a-bfd50179d6ac")
+    | select(.size > 4000000000)
+    | [.path, .uuid, (.label // ""), (.parttype // ""), (.size|tostring), ($d.tran // "")] | @tsv'
+}
+
+mount_name() {
+  local dev=$1 label=$2 uuid=$3 probe
+  if [[ -z $label && $EUID -eq 0 ]]; then
+    probe=$(mktemp -d)
+    if mount -t ntfs3 -o ro "$dev" "$probe" 2>/dev/null || mount -t ntfs-3g -o ro "$dev" "$probe" 2>/dev/null; then
+      [[ -d $probe/Windows/System32 ]] && label=Windows
+      umount "$probe"
+    fi
+    rmdir "$probe"
+  fi
+  label=${label//[^A-Za-z0-9_.-]/_}
+  echo "${label:-Disk-${uuid:0:4}}"
+}
+
+drives_fstab() {
+  local uid=1000 gid=1000
+  while [[ $# -gt 0 ]]; do
+    case $1 in --uid) uid=$2; shift 2 ;; --gid) gid=$2; shift 2 ;; *) shift ;; esac
+  done
+  local base="uid=$uid,gid=$gid,umask=022,windows_names,prealloc,noatime,nofail,x-systemd.device-timeout=5s,x-gvfs-show"
+  local used="" path uuid label pt size tran name opts
+  echo "$FSTAB_BEGIN"
+  while IFS=$'\t' read -r path uuid label pt size tran; do
+    name=$(mount_name "$path" "$label" "$uuid")
+    while [[ " $used " == *" $name "* ]]; do name="$name-${uuid:0:4}"; done
+    used+=" $name"
+    opts=$base
+    [[ $tran == usb ]] && opts+=",noauto,x-systemd.automount,x-systemd.idle-timeout=0"
+    printf '# %s (%s GB%s)\nUUID=%s  /mnt/%s  ntfs3  %s  0 0\n' \
+      "$path" "$((size / 1000000000))" "${tran:+, $tran}" "$uuid" "$name" "$opts"
+  done < <(ntfs_partitions)
+  echo "$FSTAB_END"
+}
+
+drives_rescan() {
+  need_root drives rescan
+  local user=${SUDO_USER:-}
+  [[ -z $user && -n ${PKEXEC_UID:-} ]] && user=$(id -nu "$PKEXEC_UID")
+  [[ -n $user ]] || user=$(id -nu 1000 2>/dev/null || echo root)
+  local block; block=$(drives_fstab --uid "$(id -u "$user")" --gid "$(id -g "$user")")
+  cp /etc/fstab /etc/fstab.deckos-bak
+  awk -v b="$FSTAB_BEGIN" -v e="$FSTAB_END" '$0==b{skip=1} !skip{print} $0==e{skip=0}' \
+    /etc/fstab.deckos-bak > /etc/fstab
+  printf '\n%s\n' "$block" >> /etc/fstab
+  grep -oP '(?<=  /mnt/)\S+' <<<"$block" | while read -r m; do mkdir -p "/mnt/$m"; done
+  systemctl daemon-reload
+  mount -a 2>/dev/null || true
+  ok "fstab updated (backup: /etc/fstab.deckos-bak)"
+  drives_list
+}
+
+drives_list() {
+  section "Drives"
+  local line
+  awk -v b="$FSTAB_BEGIN" -v e="$FSTAB_END" '$0==b{f=1;next} $0==e{f=0} f && /^UUID=/ {print $2}' /etc/fstab |
+  while read -r mp; do
+    if findmnt -n "$mp" >/dev/null 2>&1; then
+      local fo; fo=$(findmnt -no OPTIONS "$mp")
+      if [[ ,$fo, == *,ro,* ]]; then warn "$mp mounted READ-ONLY (Windows Fast Startup?) — see: deckos drives doctor"
+      else ok "$mp  ${C_SUB}$(df -h --output=used,size "$mp" | tail -1 | awk '{print $1" / "$2" used"}')${C_0}"; fi
+    else
+      sub "$mp  not mounted (unplugged, or mounts on first open)"
+    fi
+  done
+}
+
+drives_doctor() {
+  section "NTFS health"
+  local bad
+  bad=$(journalctl -k -b --no-pager 2>/dev/null | grep -iE 'ntfs3.*(dirty|hiber|force)' | tail -5 || true)
+  if [[ -z $bad ]]; then ok "no dirty/hibernated NTFS volumes reported this boot"; else
+    warn "Windows left these volumes 'dirty' or hibernated, so Linux won't write to them:"
+    sed 's/^/    /' <<<"$bad"
+    say ""
+    say "  Fix it from Windows (once): open Terminal as Administrator and run"
+    say "    ${C_B}powercfg /h off${C_0}     (turns off Fast Startup + hibernation)"
+    say "  then Shut Down Windows normally and boot DeckOS."
+    say "  If Windows is NOT hibernated and a drive is just marked dirty: sudo ntfsfix -d /dev/sdXN"
+  fi
+}
+
+drives_cmd() {
+  case ${1:-list} in
+    list) drives_list ;;
+    rescan) drives_rescan ;;
+    fstab) shift; drives_fstab "$@" ;;
+    doctor) drives_doctor ;;
+    *) err "usage: deckos drives [list|rescan|doctor|fstab]"; exit 2 ;;
+  esac
+}
+
+# -------------------------------------------------------------------- session
+
+session_cmd() {
+  local target=${1:-} ask=${2:-}
+  case $target in
+    gaming|desktop) ;;
+    *) err "usage: deckos session gaming|desktop [--ask]"; exit 2 ;;
+  esac
+  if [[ $ask == --ask ]] && command -v kdialog >/dev/null; then
+    local label=Desktop; [[ $target == gaming ]] && label="Gaming Mode"
+    kdialog --title "DeckOS" --yes-label "Switch" --no-label "Cancel" \
+      --warningyesno "Switch to $label?"$'\n\n'"Open apps will close — save your work first." || exit 0
+  fi
+  sudo -n /usr/lib/deckos/session-switch "$target" --delay 1
+}
+
+# Picks the output Gaming Mode should use: the Samsung Odyssey if present, else the first one.
+gaming_detect() {
+  local first="" conn name
+  while IFS=$'\t' read -r conn name; do
+    [[ -z $first ]] && first=$conn
+    [[ $name == *Odyssey* || $name == *G70B* ]] && { echo "$conn"; return 0; }
+  done < <(monitors)
+  [[ -n $first ]] && echo "$first"
+}
+
+# ----------------------------------------------------------------- steam-ntfs
+#
+# Proton prefixes (compatdata) can't live on NTFS — Windows filenames like "C:" break them.
+# Keep games on the NTFS drive, move just the prefixes to the Linux drive via symlink.
+
+steam_ntfs() {
+  local steam=$HOME/.local/share/Steam vdf
+  vdf=$steam/steamapps/libraryfolders.vdf
+  [[ -f $vdf ]] || { err "Steam library list not found — open Steam once and add your library folders first"; exit 1; }
+  pgrep -x steam >/dev/null && { err "close Steam first"; exit 1; }
+  section "Steam libraries on NTFS"
+  local lib fs n=0
+  while IFS= read -r lib; do
+    [[ -d $lib/steamapps ]] || continue
+    fs=$(findmnt -no FSTYPE -T "$lib" 2>/dev/null || true)
+    [[ $fs == ntfs3 || $fs == ntfs || $fs == fuseblk ]] || { sub "$lib ($fs) — fine as is"; continue; }
+    local key; key=$(printf '%s' "$lib" | md5sum | cut -c1-10)
+    local dest=$HOME/.local/share/deckos/steam-ntfs/$key
+    local d
+    for d in compatdata shadercache; do
+      local src=$lib/steamapps/$d
+      mkdir -p "$dest/$d"
+      if [[ -L $src ]]; then continue; fi
+      if [[ -d $src ]]; then cp -a "$src/." "$dest/$d/" 2>/dev/null || true; rm -rf "$src"; fi
+      ln -s "$dest/$d" "$src"
+    done
+    ok "$lib → prefixes in ~/.local/share/deckos/steam-ntfs/$key"; n=$((n + 1))
+  done < <(grep -oP '"path"\s+"\K[^"]+' "$vdf")
+  [[ $n -gt 0 ]] || sub "no NTFS libraries found"
+}
+
+# --------------------------------------------------------------------- update
+
+update_cmd() {
+  section "Updating DeckOS"
+  sub "snap-pac takes a btrfs snapshot before and after; roll back from the GRUB 'snapshots' menu."
+  if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi
+  command -v flatpak >/dev/null && flatpak update -y || true
+  ok "done"
+}
+
+doctor_cmd() {
+  section "DeckOS $VERSION"
+  say "  Kernel  $(uname -r)"
+  say "  Mesa    $(pacman -Q mesa 2>/dev/null | cut -d' ' -f2)"
+  say "  Boot    $(cat /proc/cmdline | tr ' ' '\n' | grep -E 'amdgpu|zswap|splash' | tr '\n' ' ')"
+  if [[ -d /sys/firmware/efi ]]; then
+    local sb; sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ')
+    [[ $sb == 1 ]] && warn "Secure Boot is ON" || ok "Secure Boot off"
+  fi
+  display_status
+  drives_list
+  drives_doctor
+  section "Snapshots"
+  say "  $(sudo -n snapper -c root list 2>/dev/null | tail -n +3 | wc -l) snapshots ${C_SUB}(sudo snapper -c root list)${C_0}"
+  section "AI"
+  systemctl is-active --quiet ollama && ok "ollama running" || sub "ollama stopped (systemctl start ollama)"
+  command -v claude >/dev/null || [[ -x $HOME/.local/bin/claude ]] && ok "Claude Code installed" || sub "Claude Code not installed (curl -fsSL https://claude.ai/install.sh | bash)"
+}
+
+usage() {
+  cat <<EOF
+${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
+
+  deckos display [status|levels|set N|watch|monitors]   Samsung G7 blackout fix ladder
+  deckos drives  [list|rescan|doctor]                   your NTFS drives (no reformatting)
+  deckos session gaming|desktop                         switch Gaming Mode <-> Desktop
+  deckos gaming detect                                  which output Gaming Mode uses
+  deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
+  deckos update                                         update everything (with snapshots)
+  deckos doctor                                         health check
+  deckos hub                                            open DeckOS Hub
+EOF
+}
+
+case ${1:-} in
+  display) shift; display_cmd "$@" ;;
+  drives) shift; drives_cmd "$@" ;;
+  session) shift; session_cmd "$@" ;;
+  gaming) shift; [[ ${1:-detect} == detect ]] && gaming_detect ;;
+  steam-ntfs) steam_ntfs ;;
+  update) update_cmd ;;
+  doctor) doctor_cmd ;;
+  hub) exec /usr/bin/deckos-hub ;;
+  version|--version) echo "$VERSION" ;;
+  ""|help|-h|--help) usage ;;
+  *) err "unknown command: $1"; usage; exit 2 ;;
+esac

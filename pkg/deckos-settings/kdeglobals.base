@@ -1,0 +1,21 @@
+# System-wide KDE defaults for DeckOS. The PKGBUILD appends the DeckOS color scheme groups
+# so every app starts in DeckOS colors before the user has opened System Settings.
+[General]
+AccentColor=76,141,255
+font=Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Inter,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Inter,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+fixed=JetBrainsMono Nerd Font,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+TerminalApplication=konsole
+
+[WM]
+activeFont=Inter,10,-1,5,600,0,0,0,0,0,0,0,0,0,0,1
+
+[KDE]
+LookAndFeelPackage=org.deckos.desktop
+widgetStyle=Breeze
+AnimationDurationFactor=0.5
+
+[Icons]
+Theme=Papirus-Dark

@@ -1,0 +1,17 @@
+[Compositing]
+# Let fullscreen games tear for the lowest input latency (VRR still applies when enabled).
+AllowTearing=true
+
+[org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze
+
+[Plugins]
+blurEnabled=true
+wobblywindowsEnabled=false
+
+[Effect-overview]
+BorderActivate=9
+
+[Windows]
+FocusStealingPreventionLevel=1

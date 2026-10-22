@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=DeckOS session cleanup
+Comment=Removes the one-shot autologin used to switch between Gaming Mode and Desktop
+Exec=sudo -n /usr/lib/deckos/session-switch --clear
+Type=Application
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=1

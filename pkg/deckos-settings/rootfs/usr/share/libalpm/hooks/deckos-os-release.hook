@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = deckos-settings
+
+[Action]
+Description = Branding os-release as DeckOS...
+When = PostTransaction
+Exec = /usr/lib/deckos/brand-os-release

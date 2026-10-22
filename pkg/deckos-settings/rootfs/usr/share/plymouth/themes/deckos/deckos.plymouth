@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=DeckOS
+Description=DeckOS wordmark with the gear spinning in place of the O
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/deckos
+ScriptFile=/usr/share/plymouth/themes/deckos/deckos.script

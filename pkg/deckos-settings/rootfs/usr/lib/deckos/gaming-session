@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# DeckOS Gaming Mode: Steam Big Picture inside gamescope, on the 9070 XT, on the Samsung G7.
+sudo -n /usr/lib/deckos/session-switch --clear 2>/dev/null || true
+
+set -a
+[[ -r /etc/deckos/gaming.conf ]] && . /etc/deckos/gaming.conf
+[[ -r $HOME/.config/deckos/gaming.conf ]] && . "$HOME/.config/deckos/gaming.conf"
+set +a
+
+if [[ -z ${OUTPUT_CONNECTOR:-} ]]; then
+  conn=$(/usr/bin/deckos gaming detect 2>/dev/null) && [[ -n $conn ]] && export OUTPUT_CONNECTOR="$conn"
+fi
+
+exec gamescope-session-plus steam

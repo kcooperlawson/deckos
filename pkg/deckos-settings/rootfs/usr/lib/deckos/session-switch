@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Root helper (sudo, no password for wheel) that switches between Gaming Mode and Desktop
+# SteamOS-style: arm a one-shot SDDM autologin into the target session, then restart SDDM.
+# The next session clears the autologin again (--clear), so normal boots still ask for a password.
+set -euo pipefail
+
+CONF=/etc/sddm.conf.d/zz-deckos-session.conf
+delay=1
+
+case ${1:-} in
+  --clear) rm -f "$CONF"; exit 0 ;;
+  gaming) session=deckos-gaming.desktop ;;
+  desktop) session=plasma.desktop ;;
+  *) echo "usage: session-switch gaming|desktop [--delay N] | --clear" >&2; exit 2 ;;
+esac
+if [[ ${2:-} == --delay && ${3:-} =~ ^[0-9]{1,2}$ ]]; then delay=$3; fi
+
+user=${SUDO_USER:-}
+[[ -n $user && $user != root ]] || { echo "run via sudo from your user account" >&2; exit 1; }
+id -nG "$user" | tr ' ' '\n' | grep -qx wheel || { echo "$user is not in wheel" >&2; exit 1; }
+
+mkdir -p /etc/sddm.conf.d
+printf '# One-shot session switch written by DeckOS; removed on next login.\n[Autologin]\nUser=%s\nSession=%s\nRelogin=false\n' \
+  "$user" "$session" > "$CONF"
+systemd-run --quiet --collect --on-active="${delay}s" /usr/bin/systemctl restart sddm.service

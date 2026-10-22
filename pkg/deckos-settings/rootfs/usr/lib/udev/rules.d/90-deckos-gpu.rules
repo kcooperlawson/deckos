@@ -1,0 +1,2 @@
+# Stable name for the RX 9070 XT so the desktop never picks the Ryzen iGPU as its main GPU.
+SUBSYSTEM=="drm", KERNEL=="card[0-9]*", ATTRS{vendor}=="0x1002", ATTRS{device}=="0x7550", SYMLINK+="dri/deckos-dgpu"
