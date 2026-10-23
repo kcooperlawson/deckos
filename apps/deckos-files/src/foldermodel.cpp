@@ -236,8 +236,8 @@ QVariant FolderModel::data(const QModelIndex &index, int role) const
         break;
     case Qt::TextAlignmentRole:
         if (index.column() == SizeColumn)
-            return QVariant::fromValue(Qt::AlignRight | Qt::AlignVCenter);
-        return QVariant::fromValue(Qt::AlignLeft | Qt::AlignVCenter);
+            return int(Qt::AlignRight | Qt::AlignVCenter);
+        return int(Qt::AlignLeft | Qt::AlignVCenter);
     case FileItemRole:
         return QVariant::fromValue(r.item);
     case IsDirRole:
@@ -268,7 +268,7 @@ QVariant FolderModel::headerData(int section, Qt::Orientation orientation, int r
             return QStringLiteral("Type");
         }
     } else if (role == Qt::TextAlignmentRole) {
-        return QVariant::fromValue((section == SizeColumn ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignVCenter);
+        return int((section == SizeColumn ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignVCenter);
     }
     return {};
 }

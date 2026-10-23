@@ -28,6 +28,7 @@
 #include <KIO/Paste>
 #include <KIO/PasteJob>
 #include <KIO/RestoreJob>
+#include <KJobUiDelegate>
 #include <KJobWidgets>
 #include <KPropertiesDialog>
 #include <KTerminalLauncherJob>
@@ -36,6 +37,12 @@
 namespace Ops {
 
 using Iface = KIO::AskUserActionInterface;
+
+void autoErrors(KJob *job)
+{
+    if (job->uiDelegate())
+        job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+}
 
 QList<QUrl> urls(const KFileItemList &items)
 {
@@ -100,7 +107,7 @@ void restore(const QList<QUrl> &list, QWidget *window)
 {
     KIO::Job *job = KIO::restoreFromTrash(list);
     KJobWidgets::setWindow(job, window);
-    job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    autoErrors(job);
 }
 
 void emptyTrash(QWidget *window)
@@ -116,7 +123,7 @@ void rename(const KFileItem &item, const QString &newName, QWidget *window)
     to.setPath(to.path() + newName);
     KIO::Job *job = KIO::moveAs(from, to, KIO::HideProgressInfo);
     KJobWidgets::setWindow(job, window);
-    job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    autoErrors(job);
     KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Rename, {from}, to, job);
 }
 
@@ -151,16 +158,23 @@ void batchRename(const KFileItemList &items, QWidget *window)
     QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
 
-    auto newName = [&](const KFileItem &item, int i) {
-        if (replace->isChecked())
-            return find->text().isEmpty() ? item.name() : QString(item.name()).replace(find->text(), with->text());
+    auto newName = [&](const KFileItem &item, int i) -> QString {
+        if (replace->isChecked()) {
+            QString name = item.name();
+            return find->text().isEmpty() ? name : name.replace(find->text(), with->text());
+        }
         const QString suffix = item.isDir() ? QString() : QMimeDatabase().suffixForFileName(item.name());
         QString p = pattern->text();
         const int hashes = int(p.count(QLatin1Char('#')));
         const QString num = QStringLiteral("%1").arg(start->value() + i, qMax(1, hashes), 10, QLatin1Char('0'));
         const int at = int(p.indexOf(QLatin1Char('#')));
-        p = at < 0 ? p + QLatin1Char(' ') + num : p.remove(QLatin1Char('#')).insert(at, num);
-        return suffix.isEmpty() ? p : p + QLatin1Char('.') + suffix;
+        if (at < 0)
+            p += QLatin1Char(' ') + num;
+        else
+            p.remove(QLatin1Char('#')).insert(at, num);
+        if (!suffix.isEmpty())
+            p += QLatin1Char('.') + suffix;
+        return p;
     };
     auto refresh = [&] {
         preview->clear();
@@ -186,7 +200,7 @@ void drop(QDropEvent *event, const QUrl &dest, QWidget *window)
 {
     KIO::DropJob *job = KIO::drop(event, dest);
     KJobWidgets::setWindow(job, window);
-    job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    autoErrors(job);
 }
 
 void openTerminal(const QUrl &dir, QWidget *)

@@ -18,6 +18,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMenu>
 #include <QSlider>
 #include <QSplitter>
@@ -34,6 +35,7 @@
 #include <KIO/Global>
 #include <KIO/PreviewJob>
 #include <KSharedConfig>
+#include <KUrlComboBox>
 #include <KUrlNavigator>
 
 namespace {

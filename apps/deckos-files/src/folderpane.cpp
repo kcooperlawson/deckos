@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMenu>
 #include <QPainter>
 #include <QUrlQuery>

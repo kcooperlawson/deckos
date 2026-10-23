@@ -3,6 +3,7 @@
 // selection model, so switching views keeps the selection.
 #pragma once
 
+#include <QAbstractItemModel>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QUrl>

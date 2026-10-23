@@ -22,7 +22,7 @@ jobs:
           ( startdir=$PWD/pkg/deckos-files; . pkg/deckos-files/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
           useradd -m builder
           mkdir /home/builder/src && cp -r apps pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
-          su builder -c "cd ~/src/pkg/deckos-files && makepkg --nodeps --noconfirm"
+          su builder -c "cd ~/src/pkg/deckos-files && MAKEFLAGS='-k -j4' makepkg --nodeps --noconfirm"
           pacman -U --noconfirm /home/builder/src/pkg/deckos-files/*.pkg.tar.zst
           pacman -Qlp /home/builder/src/pkg/deckos-files/*.pkg.tar.zst
       - name: Screenshots (offscreen)
