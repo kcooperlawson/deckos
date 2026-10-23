@@ -1,6 +1,6 @@
 # DeckOS
 
-**D E C K ⚙ S** · Decko clan systems. An Arch-based, CachyOS-accelerated gaming + AI distro built for one
+**DeckOS**: an Arch-based, CachyOS-accelerated gaming + AI distro built for one
 machine: Ryzen 7 7800X3D · RX 9070 XT · ASRock B850M-C · 32 GB DDR5-6000 · Samsung Odyssey G70B + LG UltraGear.
 
 Same design language as Steady Downloader (slate `#0F1115` / `#171A21`, `#262B36` borders, `#4C8DFF` accent),
@@ -47,20 +47,26 @@ sudo ./build.sh
 The ISO lands in `out/`.
 
 **Then** copy `deckos-*.iso` onto your Ventoy USB (the SSK drive, **F:**), boot it (F11 on ASRock for
-the boot menu) and pick DeckOS.
+the boot menu) and pick DeckOS. Secure Boot must be off.
 
 ## Install
 
-The installer starts by itself on the USB. It:
+The USB boots straight into the **DeckOS desktop** (KDE Plasma, logged in as `liveuser`, no password).
+Try things first (Wi-Fi, the Samsung, DeckOS Hub), then double-click **Install DeckOS**:
 
-- preselects **the 970 EVO's "NVME" partition**, shows what's on it, and refuses any partition containing Windows;
-- needs you to type `ERASE`. **Only that partition** is formatted (btrfs: `@ @home @snapshots @log @pkg`);
-- reuses the existing EFI partition, so the GRUB menu offers **DeckOS, Windows and snapshots**;
-- enables the CachyOS repos with CachyOS's own script, then installs everything above;
-- mounts your NTFS drives by label: **`/mnt/Windows`** (C:), **`/mnt/SSD`** (D:), **`/mnt/BIG`** (E:, mounts when opened);
-- builds the `deckos-settings` package (theme, tools, fixes) and takes a **"Fresh DeckOS install"** snapshot.
+1. **Welcome** checks space, power and internet.
+2. **Location / Keyboard** default to US Eastern and US English.
+3. **Partitions:** choose *Replace a partition* and click the 232 GB partition on the Samsung 970 EVO
+   (or use manual partitioning). Windows and your NTFS drives are shown and left alone; btrfs is the default.
+4. **Software:** tick what you want: Gaming extras, Modding, AI (Claude Code, Ollama + ROCm),
+   Development (VS Code, JetBrains Toolbox, Docker, .NET), Apps.
+5. **Start-up:** Desktop or Gaming Mode. **Display fix:** level 1 recommended for the Samsung.
+6. **Users**, **Summary**, then **Install** (with a slideshow).
 
-Log: `/var/log/deckos-install.log` (copied into the installed system too).
+Behind the scenes it copies the live system to disk, switches to the CachyOS **Zen 4** repos, installs your
+choices, mounts your NTFS drives (`/mnt/Windows`, `/mnt/SSD`, `/mnt/BIG`), sets up snapshots and the
+GRUB menu (DeckOS, Windows, snapshots). The installer log is saved to the live desktop as
+`installer-log.txt`. A text-mode installer is on the desktop too, as a backup.
 
 ## The Samsung G7 blackouts
 

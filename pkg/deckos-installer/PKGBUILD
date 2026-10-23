@@ -1,0 +1,16 @@
+# Maintainer: kcooperlawson
+# Live-USB only: the Calamares setup that installs DeckOS. Removed from the installed system.
+pkgname=deckos-installer
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="DeckOS graphical installer (Calamares configuration, branding, install scripts)"
+arch=(any)
+license=(MIT)
+depends=(cachyos-calamares ckbcomp deckos-settings reflector gcc snapper grub-btrfs xorg-xhost)
+
+package() {
+  cp -a "$startdir/rootfs/." "$pkgdir/"
+  find "$pkgdir" -type d -exec chmod 755 {} +
+  find "$pkgdir" -type f -exec chmod 644 {} +
+  chmod 755 "$pkgdir"/usr/bin/deckos-installer "$pkgdir"/usr/lib/deckos/installer/{prep,post}
+}

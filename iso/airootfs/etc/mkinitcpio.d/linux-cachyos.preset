@@ -1,0 +1,8 @@
+# mkinitcpio preset for the live USB (the installer swaps in a normal one)
+
+PRESETS=('archiso')
+
+ALL_kver='/boot/vmlinuz-linux-cachyos'
+archiso_config='/etc/mkinitcpio.conf.d/archiso.conf'
+
+archiso_image="/boot/initramfs-linux-cachyos.img"

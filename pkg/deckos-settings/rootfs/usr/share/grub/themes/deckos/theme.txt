@@ -1,26 +1,26 @@
-# DeckOS GRUB theme. Background is rendered from branding/grub-background.svg at package build;
-# fonts are JetBrains Mono converted with grub-mkfont (family renamed to "DeckOS Mono").
+# DeckOS boot menu. Art comes from branding/grub-background.svg and branding/grub/select_*.svg
+# (rasterised at package build); fonts are Inter Display converted with grub-mkfont.
 title-text: ""
 desktop-image: "background.png"
 desktop-color: "#0F1115"
-terminal-font: "DeckOS Mono Regular 16"
+terminal-font: "DeckOS Sans Regular 16"
 terminal-left: "10%"
 terminal-top: "10%"
 terminal-width: "80%"
 terminal-height: "80%"
 
 + boot_menu {
-  left = 30%
-  top = 42%
-  width = 40%
-  height = 44%
-  item_font = "DeckOS Mono Regular 22"
-  selected_item_font = "DeckOS Mono Bold 22"
+  left = 33%
+  top = 38%
+  width = 34%
+  height = 46%
+  item_font = "DeckOS Sans Regular 22"
+  selected_item_font = "DeckOS Sans Strong Regular 22"
   item_color = "#8C94A6"
   selected_item_color = "#FFFFFF"
-  item_height = 44
-  item_padding = 18
-  item_spacing = 8
+  item_height = 48
+  item_padding = 20
+  item_spacing = 6
   icon_width = 0
   icon_height = 0
   item_icon_space = 0
@@ -31,10 +31,10 @@ terminal-height: "80%"
 + label {
   id = "__timeout__"
   left = 0
-  top = 91%
+  top = 90%
   width = 100%
   align = "center"
   color = "#5A6172"
-  font = "DeckOS Mono Regular 16"
-  text = "AUTO-BOOT IN %d s  //  ENTER TO LAUNCH  //  E TO EDIT"
+  font = "DeckOS Sans Regular 16"
+  text = "Starting the highlighted entry in %d s   ·   Enter to start   ·   E to edit"
 }

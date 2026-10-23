@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Calamares shellprocess@post — runs chrooted in the new system after the Software step.
+# Usage: post USER BOOT(desktop|gaming) DISPLAY_LEVEL(0-4)
+set -uo pipefail
+say() { printf '[deckos-post] %s\n' "$*"; }
+
+user=${1:?user}
+boot=${2:-desktop}
+level=${3:-1}
+[[ $level =~ ^[0-4]$ ]] || level=1
+online=no
+curl -fsS -o /dev/null --max-time 8 https://archlinux.org && online=yes
+
+# ---------------------------------------------------------------- packages
+if [[ $online == yes ]]; then
+  say "updating to the latest (Zen 4) builds"
+  pacman -Syu --noconfirm || say "update failed; run 'deckos update' after first boot"
+fi
+
+say "removing installer-only packages"
+for p in deckos-installer cachyos-calamares mkinitcpio-archiso syslinux edk2-shell memtest86+ memtest86+-efi; do
+  pacman -Q "$p" >/dev/null 2>&1 && pacman -Rns --noconfirm "$p" >/dev/null 2>&1 || true
+done
+
+say "dropping the on-USB DeckOS repo (its apps update from the AUR from now on)"
+awk '/^\[deckos\]$/{skip=1; next} skip && /^\[/{skip=0} !skip' /etc/pacman.conf > /etc/pacman.conf.deckos \
+  && mv /etc/pacman.conf.deckos /etc/pacman.conf
+rm -rf /opt/deckos/repo
+
+# ---------------------------------------------------------------- accounts / clock
+passwd -l root >/dev/null 2>&1          # use sudo; the live USB's root had no password
+# Windows keeps the hardware clock in local time; match it so both show the right time.
+printf '0.0 0 0.0\n0\nLOCAL\n' > /etc/adjtime
+
+# ---------------------------------------------------------------- display fix
+say "Samsung display fix: level $level"
+printf '# Managed by deckos display set\nLEVEL=%s\n' "$level" > /etc/deckos/display.conf
+case $level in
+  0) amd="" ;;
+  1|2) amd="amdgpu.dcdebugmask=0x20000" ;;
+  *) amd="amdgpu.dcdebugmask=0x20410 amdgpu.dcfeaturemask=0x0" ;;
+esac
+if [[ -f /etc/default/grub ]]; then
+  cur=$(sed -n 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/\1/p' /etc/default/grub)
+  kept=()
+  for t in $cur; do [[ $t == amdgpu.dc* ]] || kept+=("$t"); done
+  new="${kept[*]} $amd"; new=${new% }
+  sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"${new}\"|" /etc/default/grub
+  grep -q '^GRUB_DISTRIBUTOR=' /etc/default/grub || echo 'GRUB_DISTRIBUTOR="DeckOS"' >> /etc/default/grub
+fi
+
+# ---------------------------------------------------------------- start-up mode
+if [[ $boot == gaming ]]; then
+  say "starting in Gaming Mode"
+  mkdir -p /etc/sddm.conf.d
+  printf '# DeckOS: start in Gaming Mode (change in DeckOS Hub)\n[Autologin]\nUser=%s\nSession=deckos-gaming.desktop\nRelogin=false\n' \
+    "$user" > /etc/sddm.conf.d/zz-deckos-boot.conf
+fi
+
+# ---------------------------------------------------------------- drives
+say "mounting your NTFS drives as they are (no reformatting)"
+uid=$(id -u "$user") gid=$(id -g "$user")
+if block=$(/usr/bin/deckos drives fstab --uid "$uid" --gid "$gid" 2>/dev/null); then
+  printf '\n%s\n' "$block" >> /etc/fstab
+  grep -oP '(?<=  /mnt/)\S+' <<<"$block" | while read -r m; do mkdir -p "/mnt/$m"; say "  /mnt/$m"; done
+fi
+
+# ---------------------------------------------------------------- snapshots
+if [[ $(findmnt -no FSTYPE /) == btrfs ]]; then
+  say "snapshots (snapper + GRUB menu)"
+  if [[ ! -f /etc/snapper/configs/root ]]; then
+    snapper --no-dbus -c root create-config / || say "snapper config failed"
+  fi
+  if [[ -f /etc/snapper/configs/root ]]; then
+    sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBER_LIMIT="12"/;
+               s/^NUMBER_LIMIT_IMPORTANT=.*/NUMBER_LIMIT_IMPORTANT="6"/; s/^ALLOW_GROUPS=.*/ALLOW_GROUPS="wheel"/' \
+      /etc/snapper/configs/root
+    chmod 750 /.snapshots 2>/dev/null
+    snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes || true
+  fi
+fi
+
+# ---------------------------------------------------------------- user
+for g in gamemode docker render; do  # one at a time: usermod rejects the lot if one is missing
+  getent group "$g" >/dev/null && usermod -aG "$g" "$user"
+done
+say "done"
+exit 0

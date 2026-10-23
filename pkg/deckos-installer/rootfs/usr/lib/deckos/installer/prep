@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Calamares shellprocess@prep — runs chrooted in the new system right after the live USB's
+# system was copied onto disk. Turns it into a normal install and readies the package repos.
+set -uo pipefail
+say() { printf '[deckos-prep] %s\n' "$*"; }
+
+say "removing live-USB-only settings"
+rm -f /etc/sudoers.d/00-live \
+      /usr/share/polkit-1/rules.d/49-deckos-live.rules \
+      /etc/sddm.conf.d/00-live-autologin.conf \
+      /etc/systemd/system/etc-pacman.d-gnupg.mount \
+      /etc/systemd/journald.conf.d/volatile-storage.conf \
+      /etc/systemd/logind.conf.d/do-not-suspend.conf \
+      /etc/ssh/sshd_config.d/10-archiso.conf \
+      /etc/mkinitcpio.conf.d/archiso.conf \
+      /etc/motd \
+      /root/.automated_script.sh /root/.zlogin
+rm -rf /etc/systemd/system/getty@tty1.service.d
+rm -f /usr/local/bin/{choose-mirror,livecd-sound,Installation_guide}
+
+say "normal kernel preset (was the live-USB one)"
+cat > /etc/mkinitcpio.d/linux-cachyos.preset <<'EOF'
+# mkinitcpio preset file for the 'linux-cachyos' package
+
+ALL_kver="/boot/vmlinuz-linux-cachyos"
+
+PRESETS=('default')
+
+default_image="/boot/initramfs-linux-cachyos.img"
+EOF
+
+say "package keyring (the live USB kept it in RAM)"
+rm -rf /etc/pacman.d/gnupg
+pacman-key --init
+pacman-key --populate archlinux cachyos
+
+if curl -fsS -o /dev/null --max-time 8 https://archlinux.org; then
+  say "fastest Arch mirrors"
+  reflector --country US --latest 15 --protocol https --sort rate \
+            --save /etc/pacman.d/mirrorlist --connect-timeout 5 --download-timeout 8 \
+    || say "reflector failed; keeping the existing mirror list"
+else
+  say "no internet: Software step will be skipped"
+fi
+
+# CachyOS packages compiled for Zen 4 (AVX-512) go above Arch's, so everything installed from
+# here on, and every future update, uses the optimised builds. Same check CachyOS's own
+# script makes; other CPUs keep the generic repos.
+march=$(gcc -march=native -Q --help=target 2>/dev/null | awk '/^ +-march=/{print $2; exit}')
+if [[ -z $march ]] && grep -q AuthenticAMD /proc/cpuinfo && grep -qw avx512f /proc/cpuinfo; then
+  march=znver4  # no gcc: AMD with AVX-512 means Zen 4 or newer
+fi
+if [[ $march == znver4 || $march == znver5 ]] && ! grep -q '^\[cachyos-znver4\]' /etc/pacman.conf; then
+  say "enabling CachyOS znver4 repos ($march)"
+  awk '
+    /^\[core\]$/ && !done {
+      print "[cachyos-znver4]\nInclude = /etc/pacman.d/cachyos-v4-mirrorlist\n"
+      print "[cachyos-core-znver4]\nInclude = /etc/pacman.d/cachyos-v4-mirrorlist\n"
+      print "[cachyos-extra-znver4]\nInclude = /etc/pacman.d/cachyos-v4-mirrorlist\n"
+      done = 1
+    }
+    { print }' /etc/pacman.conf > /etc/pacman.conf.deckos && mv /etc/pacman.conf.deckos /etc/pacman.conf
+else
+  say "CPU is ${march:-unknown}: keeping generic repos"
+fi
+exit 0

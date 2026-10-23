@@ -1,0 +1,32 @@
+# Removed from Arch's releng (rescue/server) package list: wrong kernel, VM guest tools,
+# network daemons that fight NetworkManager, and console-only extras.
+linux
+archinstall
+cloud-init
+hyperv
+open-vm-tools
+qemu-guest-agent
+virtualbox-guest-utils-nox
+iwd
+dhcpcd
+livecd-sounds
+espeakup
+brltty
+clonezilla
+grml-zsh-config
+zsh
+irssi
+lftp
+lynx
+mc
+ppp
+pptpclient
+vpnc
+wvdial
+xl2tpd
+openconnect
+openvpn
+darkhttpd
+partimage
+fsarchiver
+refind

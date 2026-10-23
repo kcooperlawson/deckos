@@ -1,0 +1,100 @@
+# DeckOS Software page. Already on the USB: KDE Plasma, Steam + Gaming Mode, Firefox, MangoHud,
+# GameMode, the DeckOS Hub and tools. These groups add to that. Names are checked against the
+# Arch, CachyOS and DeckOS (on-USB) repos.
+- name: "Gaming"
+  description: "Launchers, Proton builds and tuning tools on top of Steam."
+  selected: true
+  expanded: true
+  subgroups:
+    - name: "Game launchers"
+      description: "Heroic (Epic, GOG, Amazon) and Lutris (everything else)."
+      selected: true
+      packages: [ heroic-games-launcher-bin, lutris, umu-launcher ]
+    - name: "Proton and Wine"
+      description: "Proton-CachyOS, ProtonUp-Qt for GE-Proton, Wine and Winetricks."
+      selected: true
+      packages: [ proton-cachyos-slr, protonup-qt, wine-staging, winetricks, protontricks ]
+    - name: "GPU tuning (LACT) and overlays (GOverlay)"
+      description: "Fan curves, clocks and power limits for the RX 9070 XT; MangoHud settings."
+      selected: true
+      packages: [ lact, goverlay ]
+    - name: "Xbox Wireless Adapter"
+      description: "Driver and firmware for the Xbox Wireless Adapter for Windows."
+      selected: true
+      packages: [ linux-cachyos-headers, dkms, xone-dkms, xone-dongle-firmware ]
+
+- name: "Modding"
+  description: "Mod managers and the tools Windows mods expect."
+  selected: true
+  packages: [ r2modman-bin, dotnet-runtime, 7zip ]
+
+- name: "AI"
+  description: "Claude Code, and local models on the RX 9070 XT through ROCm + Ollama."
+  selected: true
+  expanded: true
+  subgroups:
+    - name: "Claude Code"
+      selected: true
+      packages: [ claude-code ]
+    - name: "Local models (Ollama + ROCm)"
+      description: "About 3 GB. Run models like Qwen or Llama on the GPU: ollama run qwen3"
+      selected: true
+      packages: [ ollama-rocm, rocm-hip-runtime, rocm-opencl-runtime, rocminfo, rocm-smi-lib ]
+
+- name: "Development"
+  description: "Editors, languages and containers."
+  selected: true
+  expanded: true
+  subgroups:
+    - name: "Visual Studio Code"
+      selected: true
+      packages: [ visual-studio-code-bin ]
+    - name: "JetBrains Toolbox"
+      description: "Installs PyCharm, Rider, IntelliJ and the rest."
+      selected: true
+      packages: [ jetbrains-toolbox ]
+    - name: "Languages"
+      description: "Python (uv, pip), Node.js, .NET SDK, Java, GitHub CLI."
+      selected: true
+      packages: [ python-pip, uv, nodejs, npm, dotnet-sdk, jdk-openjdk, github-cli ]
+    - name: "Docker"
+      selected: true
+      packages: [ docker, docker-compose, docker-buildx ]
+
+- name: "Apps"
+  description: "Everyday apps."
+  selected: true
+  expanded: true
+  subgroups:
+    - name: "Discord"
+      selected: true
+      packages: [ discord ]
+    - name: "OBS Studio"
+      description: "Recording and streaming."
+      selected: true
+      packages: [ obs-studio ]
+    - name: "Spotify"
+      selected: false
+      packages: [ spotify-launcher ]
+    - name: "VLC"
+      selected: false
+      packages: [ vlc ]
+    - name: "GIMP"
+      selected: false
+      packages: [ gimp ]
+    - name: "LibreOffice"
+      selected: false
+      packages: [ libreoffice-fresh ]
+
+- name: "System"
+  description: "Safety nets."
+  selected: true
+  subgroups:
+    - name: "Backup kernel (LTS)"
+      description: "A second, long-term-support kernel in the boot menu in case a new one misbehaves."
+      selected: true
+      packages: [ linux-cachyos-lts, linux-cachyos-lts-headers ]
+    - name: "Btrfs Assistant"
+      description: "A window for browsing and restoring snapshots."
+      selected: true
+      packages: [ btrfs-assistant ]

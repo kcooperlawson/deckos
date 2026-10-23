@@ -1,0 +1,2 @@
+# Live USB only (removed by the installer): no password prompts for the live user.
+liveuser ALL=(ALL) NOPASSWD: ALL

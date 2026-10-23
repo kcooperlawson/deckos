@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=DeckOS Hub
+Comment=Try the display fix and check your hardware before installing
+Exec=deckos-hub
+Icon=deckos
+Terminal=false

@@ -1,7 +1,7 @@
-# Maintainer: Decko clan
+# Maintainer: kcooperlawson
 # Local package: everything it installs lives next to this file (rootfs/, kdeglobals.base).
 pkgname=deckos-settings
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="DeckOS branding, theme, hardware fixes and the deckos tool"
 arch=(any)
@@ -9,7 +9,7 @@ license=(MIT)
 depends=(bash python pyside6 qt6-svg jq util-linux sudo polkit kdialog konsole
          grub plymouth snapper btrfs-progs ntfs-3g
          papirus-icon-theme inter-font ttf-jetbrains-mono-nerd)
-makedepends=(librsvg grub fontconfig ttf-jetbrains-mono-nerd)
+makedepends=(librsvg grub)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
             'lact: GPU clock/fan control GUI')
 backup=(etc/deckos/display.conf
@@ -17,14 +17,6 @@ backup=(etc/deckos/display.conf
         etc/udisks2/mount_options.conf
         etc/systemd/zram-generator.conf)
 install=deckos-settings.install
-
-_px() {  # _px WIDTHxHEIGHT COLOR OUT — solid-colour PNG for GRUB 9-slice pieces
-  local w=${1%x*} h=${1#*x} tmp
-  tmp=$(mktemp --suffix=.svg)
-  printf '<svg xmlns="http://www.w3.org/2000/svg" width="%s" height="%s"><rect width="100%%" height="100%%" fill="%s"/></svg>' "$w" "$h" "$2" > "$tmp"
-  rsvg-convert "$tmp" -o "$3"
-  rm -f "$tmp"
-}
 
 package() {
   local src=$startdir
@@ -38,6 +30,7 @@ package() {
   chmod 440 "$pkgdir/etc/sudoers.d/deckos"
 
   local b=$pkgdir/usr/share/deckos/branding
+  local fonts=$pkgdir/usr/share/fonts/deckos
 
   # Wallpapers (desktop + login screen).
   local wp=$pkgdir/usr/share/wallpapers/DeckOS/contents/images
@@ -48,27 +41,38 @@ package() {
   rsvg-convert -w 960 -h 540 "$b/wallpaper.svg" -o "$pkgdir/usr/share/wallpapers/DeckOS/contents/screenshot.png"
   rsvg-convert -w 1920 -h 1080 "$b/wallpaper.svg" -o "$b/wallpaper-1920.png"
 
-  # App icon (Kickoff button, Hub, os-release LOGO).
+  # App icon (controller tile): Kickoff button, Hub, os-release LOGO, fastfetch.
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos.svg"
+  for s in 16 24 32 48 64 128 256; do
+    install -d "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps"
+    rsvg-convert -w "$s" -h "$s" "$b/logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos.png"
+  done
+  rsvg-convert -w 256 -h 256 "$b/logo.svg" -o "$b/logo-256.png"
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
 
-  # Boot splash: wordmark without the O + the gear, same scale, gear spun by the script.
+  # Boot splash: wordmark without its O + the thumbstick O, same scale, spun by the script.
   local ply=$pkgdir/usr/share/plymouth/themes/deckos
   rsvg-convert -z 0.75 "$b/wordmark-nogear.svg" -o "$ply/wordmark-nogear.png"
   rsvg-convert -z 0.75 "$b/gear.svg" -o "$ply/gear.png"
 
-  # GRUB theme: background, highlight bar, fonts.
+  # Installer art (used by the live USB's Calamares branding).
+  rsvg-convert -w 900 "$b/installer-welcome.svg" -o "$b/installer-welcome.png"
+  rsvg-convert -w 520 "$b/wordmark.svg" -o "$b/wordmark-520.png"
+  for c in desktop gaming display; do
+    rsvg-convert -w 640 -h 360 "$b/choice-$c.svg" -o "$b/choice-$c.png"
+  done
+
+  # GRUB theme: background, rounded highlight (9-slice), Inter Display fonts.
   local gt=$pkgdir/usr/share/grub/themes/deckos
   rsvg-convert -w 1920 -h 1080 "$b/grub-background.svg" -o "$gt/background.png"
-  for piece in nw n ne e se s sw c; do _px 1x1 '#1B2333' "$gt/select_$piece.png"; done
-  _px 4x1 '#4C8DFF' "$gt/select_w.png"
-  local regular bold
-  regular=$(fc-match -f '%{file}' 'JetBrainsMono Nerd Font:style=Regular')
-  bold=$(fc-match -f '%{file}' 'JetBrainsMono Nerd Font:style=Bold')
-  for s in 16 22; do
-    grub-mkfont -n "DeckOS Mono" -s "$s" -o "$gt/deckos-mono-regular-$s.pf2" "$regular"
+  local piece
+  for piece in "$b"/grub/select_*.svg; do
+    rsvg-convert "$piece" -o "$gt/$(basename "${piece%.svg}").png"
   done
-  grub-mkfont -n "DeckOS Mono" -s 22 -o "$gt/deckos-mono-bold-22.pf2" "$bold"
+  for s in 16 22; do
+    grub-mkfont -n "DeckOS Sans" -s "$s" -o "$gt/deckos-sans-$s.pf2" "$fonts/InterDisplay-Medium.otf"
+  done
+  grub-mkfont -n "DeckOS Sans Strong" -s 22 -o "$gt/deckos-sans-strong-22.pf2" "$fonts/InterDisplay-SemiBold.otf"
 
   # System-wide KDE defaults = base settings + the DeckOS color groups.
   {

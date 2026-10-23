@@ -84,7 +84,7 @@ banner() {
   local word
   word="$(style --foreground '#E8EAF0' --bold 'D E C K ')$(style --foreground '#4C8DFF' --bold 'O')$(style --foreground '#E8EAF0' --bold ' S')"
   style --border normal --border-foreground "#4C8DFF" --padding "1 4" --margin "1 2" \
-    "$word" "" "$(style --foreground '#8C94A6' 'DECKO CLAN SYSTEMS  //  INSTALLER')"
+    "$word" "" "$(style --foreground '#8C94A6' 'INSTALLER')"
 }
 
 # Up to ~90 s for Ethernet/DHCP to come up, with a live countdown (no gum: plain printf).

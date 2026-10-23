@@ -1,0 +1,6 @@
+/* Live USB only (removed by the installer): the live user can do admin actions without a password. */
+polkit.addRule(function (action, subject) {
+    if (subject.user == "liveuser") {
+        return polkit.Result.YES;
+    }
+});

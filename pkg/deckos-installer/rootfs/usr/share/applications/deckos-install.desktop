@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Install DeckOS
+GenericName=System installer
+Comment=Install DeckOS to your PC
+Exec=deckos-installer
+Icon=deckos
+Terminal=false
+Categories=System;
+Keywords=install;installer;calamares;deckos;
