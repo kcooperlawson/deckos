@@ -6,3 +6,4 @@ pkg/deckos-settings/pkg/
 pkg/deckos-settings/src/
 pkg/deckos-settings/*.pkg.tar.zst
 assets/hub-preview.png
+builder/.venv/
