@@ -24,28 +24,32 @@ jobs:
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python
         run: |
-          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py builder/deckos_builder.py \
-            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py
+          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/*.py builder/deckos_builder.py \
+            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py assets/*.py
 
   package:
-    # Proves both DeckOS packages (theme, fonts, splash, tools, installer) build on Arch.
+    # Proves the DeckOS packages (theme, icons, fonts, splash, Hub, tools, installer) build on Arch.
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - run: pacman -Syu --noconfirm --needed base-devel git librsvg grub
+      - run: pacman -Syu --noconfirm --needed base-devel git librsvg grub papirus-icon-theme
       - uses: actions/checkout@v4
       - name: makepkg
         run: |
           useradd -m builder
-          cp -r pkg /home/builder/pkg && chown -R builder: /home/builder/pkg
-          for p in deckos-settings deckos-installer; do
-            su builder -c "cd ~/pkg/$p && makepkg --nodeps --noconfirm"
+          mkdir /home/builder/src && cp -r pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
+          for p in deckos-settings deckos-theme-tmpikes deckos-installer; do
+            su builder -c "cd ~/src/pkg/$p && makepkg --nodeps --noconfirm"
           done
-          pacman -Qlp /home/builder/pkg/deckos-settings/*.pkg.tar.zst | grep -cE '\.(png|pf2)$'
+          files=$(pacman -Qlp /home/builder/src/pkg/deckos-settings/*.pkg.tar.zst)
+          echo "$files" | grep -cE '\.(png|pf2)$'
+          echo "DeckOS folder icons: $(echo "$files" | grep -c 'usr/share/icons/DeckOS/.*\.svg$')"
+          echo "$files" | grep -q 'usr/share/icons/DeckOS/index.theme'
+          echo "$files" | grep -q 'usr/share/sddm/themes/deckos/Main.qml'
       - uses: actions/upload-artifact@v4
         with:
           name: deckos-packages
-          path: /home/builder/pkg/*/*.pkg.tar.zst
+          path: /home/builder/src/pkg/*/*.pkg.tar.zst
 
   iso:
     needs: [lint, package]

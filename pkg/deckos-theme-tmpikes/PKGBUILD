@@ -1,0 +1,28 @@
+# Maintainer: kcooperlawson
+# Optional DeckOS theme: TMpikes. Deep space, electric blue to violet, the steering-wheel TM.
+# Pick it in DeckOS Hub > Appearance (or System Settings > Global Theme). Sources and the
+# brand kit it was made from are kept outside the repo (personal/tmpikes/generate.py).
+pkgname=deckos-theme-tmpikes
+pkgver=1.0
+pkgrel=1
+pkgdesc="TMpikes theme for DeckOS: colours, wallpaper, Konsole profile and global theme"
+arch=(any)
+license=(CC-BY-SA-4.0)
+depends=(deckos-settings)
+makedepends=(librsvg)
+
+package() {
+  cp -a "$startdir/rootfs/." "$pkgdir/"
+  find "$pkgdir" -type d -exec chmod 755 {} +
+  find "$pkgdir" -type f -exec chmod 644 {} +
+
+  # Wallpaper sizes, plus the avatar as a PNG for the user picture.
+  local tw=$pkgdir/usr/share/wallpapers/TMpikes/contents/images
+  local tt=$pkgdir/usr/share/deckos/themes/tmpikes
+  install -d "$tw"
+  for size in 3840x2160 2560x1440 1920x1080; do
+    rsvg-convert -w "${size%x*}" -h "${size#*x}" "$tt/wallpaper.svg" -o "$tw/$size.png"
+  done
+  rsvg-convert -w 960 -h 540 "$tt/wallpaper.svg" -o "$pkgdir/usr/share/wallpapers/TMpikes/contents/screenshot.png"
+  rsvg-convert -w 512 -h 512 "$tt/avatar.svg" -o "$tt/avatar.png"
+}

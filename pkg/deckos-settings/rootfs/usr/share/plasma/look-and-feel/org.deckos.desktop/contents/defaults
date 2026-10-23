@@ -6,10 +6,10 @@ ColorScheme=DeckOS
 AccentColor=76,141,255
 
 [kdeglobals][Icons]
-Theme=Papirus-Dark
+Theme=DeckOS
 
 [plasmarc][Theme]
-name=default
+name=deckos
 
 [kcminputrc][Mouse]
 cursorTheme=breeze_cursors

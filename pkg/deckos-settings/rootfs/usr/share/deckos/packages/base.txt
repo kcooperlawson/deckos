@@ -50,6 +50,7 @@ htop
 nvtop
 git
 gum
+pacman-contrib
 python
 fuse2
 flatpak

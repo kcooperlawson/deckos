@@ -19,6 +19,8 @@ DEFAULT_LOCALE=en_US.UTF-8
 DEFAULT_KEYMAP=us
 CMDLINE="quiet splash loglevel=3 nowatchdog zswap.enabled=0"
 DECKOS_TOOL=$SRC/pkg/deckos-settings/rootfs/usr/bin/deckos
+# What gets installed: shipped in deckos-settings too, so the Hub can add groups later.
+PACKAGES=$SRC/pkg/deckos-settings/rootfs/usr/share/deckos/packages
 USB_REPO=$SRC/repo  # prebuilt DeckOS + AUR packages on the live USB (build.sh)
 
 export GUM_CHOOSE_CURSOR_FOREGROUND="#4C8DFF" GUM_CHOOSE_SELECTED_FOREGROUND="#4C8DFF"
@@ -28,7 +30,7 @@ export GUM_SPIN_SPINNER_FOREGROUND="#4C8DFF" GUM_FILTER_INDICATOR_FOREGROUND="#4
 export GUM_FILTER_MATCH_FOREGROUND="#4C8DFF"
 
 FAILED=()
-# Optional software groups (installer/packages/<group>.txt); base and desktop always go in.
+# Optional software groups (<group>.txt in PACKAGES); base and desktop always go in.
 OPTIONAL_GROUPS=(gaming ai dev)
 declare -A GROUP_DESC=(
   [gaming]="Gaming: Steam + Gaming Mode, Proton, Lutris, Heroic, MangoHud, Discord, OBS"
@@ -90,11 +92,11 @@ spin() {
 }
 inchroot() { arch-chroot "$MNT" "$@"; }
 
-list_pkgs() { grep -vE '^\s*(#|$)' "$SRC/installer/packages/$1.txt" | awk '{print $1}'; }
+list_pkgs() { grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk '{print $1}'; }
 chosen() { [[ " ${CHOSEN[*]} " == *" $1 "* ]]; }
 # AUR packages for the chosen groups (aur.txt's second column; none = always).
 list_aur() {
-  grep -vE '^\s*(#|$)' "$SRC/installer/packages/aur.txt" | awk -v chosen=" ${CHOSEN[*]} " \
+  grep -vE '^\s*(#|$)' "$PACKAGES/aur.txt" | awk -v chosen=" ${CHOSEN[*]} " \
     'NF == 1 || index(chosen, " " $2 " ") {print $1}'
 }
 
@@ -547,6 +549,11 @@ else
   inchroot chown -R "$USERNAME_:$USERNAME_" "/home/$USERNAME_/.cache"
   spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-settings && makepkg -si --noconfirm"
+fi
+# Extra themes, to pick in DeckOS Hub > Appearance. Optional: a USB without them is fine.
+if pkgfile=$(usb_pkg deckos-theme-tmpikes); then
+  if inchroot pacman -U --needed --noconfirm "$pkgfile" >>"$LOG" 2>&1; then good "TMpikes theme"
+  else warn "TMpikes theme didn't install (see log)"; fi
 fi
 
 section "AUR"

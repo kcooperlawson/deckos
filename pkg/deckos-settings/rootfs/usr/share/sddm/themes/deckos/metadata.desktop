@@ -1,0 +1,13 @@
+[SddmGreeterTheme]
+Name=DeckOS
+Description=DeckOS login screen: a clock, one login card and the DeckOS wallpaper
+Author=kcooperlawson
+License=MIT
+Type=sddm-theme
+Version=1.0
+Screenshot=preview.png
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=deckos
+Theme-API=2.0
+QtVersion=6

@@ -2,7 +2,7 @@
 # deckos — DeckOS system tool: display flicker fixes, NTFS drives, session switching, updates.
 set -euo pipefail
 
-VERSION=0.1.0
+VERSION=$(cat /usr/share/deckos/version 2>/dev/null || echo rolling)
 CONF_DIR=/etc/deckos
 DISPLAY_CONF=$CONF_DIR/display.conf
 GRUB_DEFAULT=/etc/default/grub
@@ -388,11 +388,76 @@ steam_ntfs() {
 # --------------------------------------------------------------------- update
 
 update_cmd() {
+  if [[ ${1:-} == --system ]]; then
+    # DeckOS Hub runs this through pkexec: no prompts, and no progress bars, so it can read
+    # pacman's "(n/N)" lines for its own. AUR apps need the interactive form below.
+    need_root update --system
+    pacman -Syu --noconfirm --noprogressbar
+    if command -v flatpak >/dev/null; then flatpak update -y --noninteractive || true; fi
+    ok "done"
+    return
+  fi
   section "Updating DeckOS"
   sub "snap-pac takes a btrfs snapshot before and after; roll back from the GRUB 'snapshots' menu."
   if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi
   command -v flatpak >/dev/null && flatpak update -y || true
   ok "done"
+}
+
+# --------------------------------------------------------------------- software
+#
+# The installer's optional groups, added later (DeckOS Hub > System > Software). Same lists the
+# installer used; services, user groups and firewall rules match what it sets up.
+
+PACKAGES=/usr/share/deckos/packages
+SOFTWARE_GROUPS=(gaming ai dev)
+
+pkg_list() { grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk '{print $1}'; }
+aur_list() { grep -vE '^\s*(#|$)' "$PACKAGES/aur.txt" | awk -v g="$1" '$2 == g {print $1}'; }
+
+software_list() {
+  local g pkgs missing
+  for g in "${SOFTWARE_GROUPS[@]}"; do
+    mapfile -t pkgs < <(pkg_list "$g")
+    missing=$(pacman -T "${pkgs[@]}" | wc -l)
+    if [[ $missing == 0 ]]; then ok "$g"; else sub "$g: $missing of ${#pkgs[@]} packages missing (deckos software add $g)"; fi
+  done
+}
+
+software_add() {
+  local g=${1:-} pkgs aur
+  [[ " ${SOFTWARE_GROUPS[*]} " == *" $g "* ]] || { err "usage: deckos software add gaming|ai|dev"; exit 2; }
+  [[ $EUID -ne 0 ]] || { err "run this as your user: it uses sudo itself, and AUR apps build as you"; exit 1; }
+  section "Adding $g"
+  mapfile -t pkgs < <(pkg_list "$g")
+  mapfile -t aur < <(aur_list "$g")
+  sudo pacman -S --needed "${pkgs[@]}"
+  if [[ ${#aur[@]} -gt 0 ]]; then paru -S --needed "${aur[@]}" || warn "some AUR apps failed: ${aur[*]}"; fi
+  case $g in
+    gaming)
+      sudo systemctl enable --now lactd || warn "could not start lactd"
+      if getent group gamemode >/dev/null; then sudo usermod -aG gamemode "$USER"; fi
+      if systemctl is-active --quiet firewalld; then
+        sudo firewall-cmd --permanent --add-service=steam-streaming >/dev/null && sudo firewall-cmd --reload >/dev/null \
+          || warn "could not open Steam Remote Play in the firewall"
+      fi ;;
+    ai)
+      sudo systemctl enable --now ollama || warn "could not start ollama" ;;
+    dev)
+      sudo systemctl enable --now docker.socket || warn "could not start docker"
+      sudo usermod -aG docker "$USER"
+      curl -fsSL https://claude.ai/install.sh | bash || warn "Claude Code install failed (DeckOS Hub can retry)" ;;
+  esac
+  ok "$g added"
+  sub "Log out and back in so new group memberships apply."
+}
+
+software_cmd() {
+  case ${1:-list} in
+    list) software_list ;;
+    add) shift; software_add "$@" ;;
+    *) err "usage: deckos software [list|add gaming|ai|dev]"; exit 2 ;;
+  esac
 }
 
 doctor_cmd() {
@@ -424,7 +489,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos session gaming|desktop                         switch Gaming Mode <-> Desktop
   deckos gaming detect                                  which output Gaming Mode uses
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
-  deckos update                                         update everything (with snapshots)
+  deckos update [--system]                              update everything (with snapshots)
+  deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos doctor                                         health check
   deckos hub                                            open DeckOS Hub
 EOF
@@ -436,7 +502,8 @@ case ${1:-} in
   session) shift; session_cmd "$@" ;;
   gaming) shift; [[ ${1:-detect} == detect ]] && gaming_detect ;;
   steam-ntfs) steam_ntfs ;;
-  update) update_cmd ;;
+  update) shift; update_cmd "$@" ;;
+  software) shift; software_cmd "$@" ;;
   doctor) doctor_cmd ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;

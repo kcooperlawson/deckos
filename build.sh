@@ -3,10 +3,11 @@
 # Arch's official "releng" profile and the CachyOS kernel.
 #
 # Needs Arch Linux: a real install, WSL "archlinux", or the archlinux Docker image used by CI.
-# Output: out/deckos-YYYY.MM.DD-x86_64.iso
+# Output: out/deckos-VERSION-x86_64.iso (VERSION is the file at the top of the repo)
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 OUT=${OUT:-$ROOT/out}
 WORK=${WORK:-/var/tmp/deckos-build}
 # Display blackout fix level 1 on the live USB only, so it never blacks out mid-install. The
@@ -17,7 +18,7 @@ if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK "$0" "$@"; fi
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
 nocomments() { grep -vE '^\s*(#|$)' "$1"; }
 # AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
-mapfile -t AUR_PKGS < <(nocomments "$ROOT/installer/packages/aur.txt" | awk '{print $1}')
+mapfile -t AUR_PKGS < <(nocomments "$ROOT/pkg/deckos-settings/rootfs/usr/share/deckos/packages/aur.txt" | awk '{print $1}')
 
 # ------------------------------------------------------------------ build host
 step "Build host: archiso + CachyOS repo"
@@ -29,7 +30,7 @@ if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
   grep -q '^\[multilib\]' /etc/pacman.conf || printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >> /etc/pacman.conf
   printf '\n[cachyos]\nServer = https://mirror.cachyos.org/repo/$arch/$repo\n' >> /etc/pacman.conf
 fi
-pacman -Syu --noconfirm --needed archiso git base-devel librsvg grub cachyos-keyring
+pacman -Syu --noconfirm --needed archiso git base-devel librsvg grub papirus-icon-theme cachyos-keyring
 
 id builder >/dev/null 2>&1 || useradd -m builder
 echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-deckos-builder
@@ -39,13 +40,13 @@ rm -rf "$WORK"
 REPO=$WORK/repo
 BUILD=$WORK/build
 mkdir -p "$REPO" "$BUILD" "$OUT"
-cp -r "$ROOT/pkg" "$BUILD/"
+cp -r "$ROOT/pkg" "$ROOT/VERSION" "$BUILD/"
 chown -R builder: "$BUILD" "$REPO"
 as_builder() { sudo -u builder -H env PKGDEST="$REPO" "$@"; }
 
 # ------------------------------------------------------------------ packages
 step "DeckOS packages"
-for p in deckos-settings deckos-installer; do
+for p in deckos-settings deckos-theme-tmpikes deckos-installer; do
   as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"
 done
 
@@ -65,7 +66,8 @@ cp -r /usr/share/archiso/configs/releng "$P"
 sed -i -e 's/^iso_name=.*/iso_name="deckos"/' \
        -e 's/^iso_label="ARCH_/iso_label="DECKOS_/' \
        -e 's|^iso_publisher=.*|iso_publisher="DeckOS"|' \
-       -e 's|^iso_application=.*|iso_application="DeckOS live desktop and installer"|' "$P/profiledef.sh"
+       -e 's|^iso_application=.*|iso_application="DeckOS live desktop and installer"|' \
+       -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" "$P/profiledef.sh"
 sed -i '/^file_permissions=(/a\
   ["/etc/gshadow"]="0:0:400"\
   ["/etc/sudoers.d"]="0:0:750"\

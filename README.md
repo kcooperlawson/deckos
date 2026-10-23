@@ -10,7 +10,8 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 | | |
 |---|---|
 | **Base** | Arch Linux + CachyOS repos built for your CPU (x86-64-v3, v4 or Zen 4), `linux-cachyos` (BORE) + `linux-cachyos-lts` fallback |
-| **Desktop** | KDE Plasma 6 (Wayland), DeckOS look-and-feel, Papirus, Inter + JetBrains Mono |
+| **Desktop** | KDE Plasma 6 (Wayland) with the DeckOS look: its own Plasma style, login screen and icons (Papirus with DeckOS-blue folders), Inter + JetBrains Mono. An optional TMpikes theme comes along |
+| **DeckOS Hub** | one app for live stats, the display fix, Gaming Mode, drives, AI and dev tools, updates, snapshots, the firewall, adding software and changing the look |
 | **Gaming** (optional) | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync, Discord, OBS |
 | **Local AI** (optional) | Ollama + ROCm for running models on a Radeon |
 | **Development** (optional) | Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
@@ -46,7 +47,7 @@ sudo pacman -Syu --needed archiso git
 sudo ./build.sh
 ```
 
-The ISO lands in `out/`.
+The ISO lands in `out/`, named after the release in `VERSION` (for example `deckos-0.3.0-x86_64.iso`).
 
 **Write it to a USB stick** with [Ventoy](https://www.ventoy.net) (copy the ISO onto the stick),
 [Rufus](https://rufus.ie) (pick *DD Image mode* when asked) or `dd`. Boot it from your firmware's
@@ -129,11 +130,26 @@ Sources: [Bazzite #4934](https://github.com/ublue-os/bazzite/issues/4934),
 [Arch BBS 311159](https://bbs.archlinux.org/viewtopic.php?id=311159),
 [`amd_shared.h` DC_DEBUG_MASK](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/amd/include/amd_shared.h).
 
+## DeckOS Hub
+
+The DeckOS Hub (in the panel, or `deckos hub`) is where DeckOS's own settings live:
+
+| Page | What's there |
+|---|---|
+| **Home** | live GPU, VRAM, CPU and memory graphs; status of updates, snapshots, firewall, display fix, drives and software, each a click away |
+| **Display** | the blackout fix ladder with the level recommended for your setup, your monitors, and the blackout watcher |
+| **Gaming** | Gaming Mode, its resolution, refresh rate, VRR and HDR, plus LACT, GOverlay, ProtonUp-Qt and the Steam-on-NTFS fix |
+| **Drives** | your Windows drives with how full they are, and help when one is read-only |
+| **AI & Dev** | Claude Code, Ollama (start/stop, your models) and which dev tools are installed |
+| **System** | updates with a progress bar (AUR apps in the terminal), snapshots, the firewall, and adding Gaming, Local AI or Development later |
+| **Appearance** | global theme (DeckOS, TMpikes), accent colour, wallpaper, Plasma style and icons |
+
 ## Using it
 
 | | |
 |---|---|
 | `deckos` / **DeckOS Hub** | everything below in one place |
+| `deckos software add gaming` | add a software group you skipped at install (`gaming`, `ai` or `dev`) |
 | **Gaming Mode** | panel launcher, or pick *DeckOS Gaming Mode* on the login screen. Back: Steam › Power › *Switch to Desktop* |
 | `deckos steam-ntfs` | run once after adding a Steam library that lives on a Windows drive. Games stay on NTFS, Proton prefixes move to Linux |
 | `deckos drives` | `list`, `rescan` (new drives), `doctor` (read-only/Fast Startup problems) |
@@ -143,9 +159,9 @@ Sources: [Bazzite #4934](https://github.com/ublue-os/bazzite/issues/4934),
 | `claude` | Claude Code, installed for your user (`~/.local/bin`) |
 | `ollama run qwen3` | local models on your Radeon via ROCm |
 
-**Gaming Mode resolution:** it defaults to 3840×2160 at up to 144 Hz. For a different screen, set
-`SCREEN_WIDTH`, `SCREEN_HEIGHT` and `CUSTOM_REFRESH_RATES` in `~/.config/deckos/gaming.conf`
-(system defaults and comments are in `/etc/deckos/gaming.conf`).
+**Gaming Mode resolution:** it defaults to 3840×2160 at up to 144 Hz. For a different screen, pick yours in
+**DeckOS Hub › Gaming** (it's saved in `~/.config/deckos/gaming.conf`; system defaults are in
+`/etc/deckos/gaming.conf`).
 
 ## Known limitations
 
@@ -181,17 +197,23 @@ hazard stripes.
 to a Ventoy stick. See [builder/README.md](builder/README.md).
 
 ```
+VERSION                   the DeckOS release: names the ISO, shows in os-release, the Hub and deckos doctor
 builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy USB)
-assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg) — run after design tweaks
+assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg)
+assets/icons.py           the DeckOS line icons (Hub, login screen)
+assets/plasma_theme.py    the DeckOS Plasma style (panel, popups, tooltips, widgets)
+assets/preview_*.py       render the Hub, login screen or Plasma style on any OS
 build.sh                  ISO build (Arch releng profile + DeckOS)
 iso/                      live-USB additions (packages, live user, autologin)
-installer/deckos-install  the install script; installer/packages/*.txt = what gets installed
+installer/                the install script, plus the language and keyboard lists it offers
+pkg/deckos-settings/      Arch package: Hub, deckos tool, themes, icons, fixes (rootfs/ mirrors /);
+                          usr/share/deckos/packages/*.txt = what gets installed, per group
+pkg/deckos-theme-tmpikes/ the optional TMpikes theme
 pkg/deckos-installer/     the graphical installer (drives deckos-install)
-pkg/deckos-settings/      Arch package: theme, Hub, deckos tool, fixes (rootfs/ mirrors /)
 docs/                     the reference machine's setup
 .github/workflows/        lint + package test + ISO build
 ```
 
-The installer window has a demo mode for working on the UI anywhere, including Windows:
-`python pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py --demo`
-(set `DECKOS_BRANDING` to `pkg/deckos-settings/rootfs/usr/share/deckos/branding`).
+The generators write into `pkg/` and their output is committed; run them again after changing a
+design. The installer and the Hub both have a demo mode for working on the UI anywhere, including
+Windows: run `deckos_installer.py --demo` or `deckos_hub.py --demo` from their folders in `pkg/`.

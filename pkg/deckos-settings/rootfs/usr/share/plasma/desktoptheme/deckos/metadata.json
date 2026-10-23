@@ -1,0 +1,16 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "DeckOS: slate plates with a 1px edge and screw heads, following your colour scheme",
+        "Id": "deckos",
+        "License": "MIT",
+        "Name": "DeckOS",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
