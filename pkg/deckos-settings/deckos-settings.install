@@ -2,6 +2,14 @@ post_install() {
   /usr/lib/deckos/brand-os-release
   plymouth-set-default-theme deckos >/dev/null 2>&1 || true
   systemctl enable deckos-display.service >/dev/null 2>&1 || true
+  # DeckOS updates: trust the DeckOS signing key and add the [deckos] repo (the live USB already
+  # has its own [deckos] section, pointing at the packages on the stick, and keeps it).
+  pacman-key --populate deckos >/dev/null 2>&1 \
+    || echo "DeckOS: run 'sudo pacman-key --populate deckos' so DeckOS updates are trusted"
+  if ! grep -q '^\[deckos\]' /etc/pacman.conf; then
+    printf '\n# DeckOS updates (the Hub, deckos tool, themes): see /etc/pacman.d/deckos-repo\n[deckos]\nInclude = /etc/pacman.d/deckos-repo\n' \
+      >> /etc/pacman.conf
+  fi
 }
 
 post_upgrade() {

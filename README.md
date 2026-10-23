@@ -141,7 +141,7 @@ The DeckOS Hub (in the panel, or `deckos hub`) is where DeckOS's own settings li
 | **Gaming** | Gaming Mode, its resolution, refresh rate, VRR and HDR, plus LACT, GOverlay, ProtonUp-Qt and the Steam-on-NTFS fix |
 | **Drives** | your Windows drives with how full they are, and help when one is read-only |
 | **AI & Dev** | Claude Code, Ollama (start/stop, your models) and which dev tools are installed |
-| **System** | updates with a progress bar (AUR apps in the terminal), snapshots, the firewall, and adding Gaming, Local AI or Development later |
+| **System** | updates with a progress bar (AUR apps in the terminal), system and home snapshots, backup to another drive, the firewall, and adding Gaming, Local AI or Development later |
 | **Appearance** | global theme (DeckOS, TMpikes), accent colour, wallpaper, Plasma style and icons |
 
 ## Using it
@@ -155,6 +155,8 @@ The DeckOS Hub (in the panel, or `deckos hub`) is where DeckOS's own settings li
 | `deckos drives` | `list`, `rescan` (new drives), `doctor` (read-only/Fast Startup problems) |
 | `deckos update` | full update; snap-pac snapshots before and after |
 | broken update? | reboot › *DeckOS snapshots* › pick the one before the update |
+| deleted a file? | `/home` has hourly snapshots: copy it back from `/home/.snapshots/<number>/snapshot/` (Hub › System › Browse snapshots). Older installs: `sudo deckos home enable` |
+| `deckos backup /mnt/BIG` | copy your home folder (minus caches, Steam games, ISOs) to another drive; remembered for next time |
 | `deckos doctor` | health check: kernel, display fix, drives, snapshots, AI |
 | `claude` | Claude Code, installed for your user (`~/.local/bin`) |
 | `ollama run qwen3` | local models on your Radeon via ROCm |
@@ -213,6 +215,27 @@ pkg/deckos-installer/     the graphical installer (drives deckos-install)
 docs/                     the reference machine's setup
 .github/workflows/        lint + package test + ISO build
 ```
+
+### Updates for installed systems
+
+DeckOS's own packages (`deckos-settings` with the Hub, `deckos` tool, themes and fixes, plus
+`deckos-theme-tmpikes`) are published as a signed pacman repo in this repo's
+[`repo` release](https://github.com/kcooperlawson/deckos/releases/tag/repo). Installed systems have it as
+`[deckos]` in `pacman.conf`, so `deckos update` and the Hub's Update button pick up new versions like
+any other package.
+
+**To release:** bump `VERSION`, commit, then tag and push (`git tag v0.3.1 && git push origin v0.3.1`).
+CI checks that the tag matches `VERSION`, signs the packages with the DeckOS key (fingerprint
+`E8EB594BA885437D0346AA5C1ED97D15577C42B9`, kept as the `DECKOS_SIGNING_KEY` secret) and replaces the
+repo's contents. `deckos-theme-tmpikes` only updates on installed systems when its own `pkgver` goes up.
+
+**Working on DeckOS from DeckOS:** clone the repo into your home folder (not a Windows drive: NTFS loses
+file permissions and symlinks), then `deckos dev-install` builds and installs your checkout. A later
+release replaces it as a normal update. Installs from 0.3.0 or earlier don't have the update channel or
+`dev-install` yet; run `makepkg -si` once in `pkg/deckos-settings` to get both.
+
+`build.sh` and DeckOS Builder keep their work folder and `out/` as btrfs subvolumes of their own on DeckOS,
+so system and `/home` snapshots don't hold on to old builds and ISOs.
 
 The generators write into `pkg/` and their output is committed; run them again after changing a
 design. The installer and the Hub both have a demo mode for working on the UI anywhere, including

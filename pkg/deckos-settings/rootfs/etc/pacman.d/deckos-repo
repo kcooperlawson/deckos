@@ -1,0 +1,4 @@
+# DeckOS's own packages (deckos-settings: the Hub, deckos tool, themes, fixes), signed with the
+# DeckOS key that pacman-key --populate deckos trusts. Published from GitHub on every release.
+SigLevel = Required
+Server = https://github.com/kcooperlawson/deckos/releases/download/repo

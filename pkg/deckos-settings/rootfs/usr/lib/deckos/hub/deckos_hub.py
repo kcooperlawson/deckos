@@ -45,7 +45,7 @@ class HubData:
 
     def _get(self, key, fresh, cb, start):
         hit = self.cache.get(key)
-        if hit and not fresh and time.time() - hit[0] < self.TTL[key]:
+        if hit and not fresh and time.time() - hit[0] < self.TTL[key.split(":")[0]]:
             cb(*hit[1])
             return
         first = key not in self.waiting
@@ -80,12 +80,12 @@ class HubData:
                         demo=("\n".join(f"pkg{i} 1.0-1 -> 1.1-1" for i in range(11)), 0))
         self._get("updates", fresh, cb, start)
 
-    def snapshots(self, cb, fresh=False):
-        """cb([(number, date, description, important)] newest first, or None)"""
-        self._get("snapshots", fresh, cb, lambda done: sysinfo.Job(
-            self.owner, ["snapper", "--jsonout", "-c", "root", "list"],
+    def snapshots(self, cb, fresh=False, config="root"):
+        """cb([(number, date, description, important)] newest first, or None). config: root or home."""
+        self._get(f"snapshots:{config}", fresh, cb, lambda done: sysinfo.Job(
+            self.owner, ["snapper", "--jsonout", "-c", config, "list"],
             lambda out, code: done(sysinfo.parse_snapshots(out) if code == 0 else None),
-            demo=(sysinfo.DEMO_SNAPSHOTS, 0)))
+            demo=(sysinfo.DEMO_SNAPSHOTS if config == "root" else sysinfo.DEMO_HOME_SNAPSHOTS, 0)))
 
     def firewall(self, cb, fresh=False):
         """cb(running, [open services])"""

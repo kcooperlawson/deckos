@@ -466,6 +466,10 @@ class Builder(QWidget):
 
     def out_dir(self):
         d = Path(self.settings.value("out_dir", str(REPO_DIR / "out")))
+        if not d.exists() and sys.platform.startswith("linux"):
+            # On DeckOS (btrfs) a subvolume of its own, so /home snapshots don't keep old ISOs.
+            d.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["btrfs", "subvolume", "create", str(d)], capture_output=True)
         d.mkdir(parents=True, exist_ok=True)
         return d
 

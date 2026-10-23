@@ -327,6 +327,27 @@ DEMO_SNAPSHOTS = json.dumps({"root": [
 ]})
 
 
+DEMO_HOME_SNAPSHOTS = json.dumps({"home": [{"number": 0, "description": "current"}] + [
+    {"number": n, "date": f"2026-10-28 {h:02d}:00:01", "description": "timeline", "userdata": None}
+    for n, h in zip(range(31, 43), range(8, 20))]})
+
+
+def home_snapshots_on():
+    return DEMO or Path("/etc/snapper/configs/home").exists()
+
+
+def backup_info():
+    """(destination folder, last backup time) from ~/.config/deckos/backup.conf, or ("", "")."""
+    if DEMO:
+        return "/mnt/BIG", "2026-10-27 22:15"
+    c = conf(Path.home() / ".config/deckos/backup.conf")
+    return c.get("DEST", ""), c.get("LAST", "")
+
+
+def update_channel_on():
+    return DEMO or "Include = /etc/pacman.d/deckos-repo" in read("/etc/pacman.conf")
+
+
 # ------------------------------------------------------------------ appearance
 
 _PKG = Path(__file__).resolve().parents[6]  # pkg/ in the repo

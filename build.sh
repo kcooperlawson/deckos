@@ -20,6 +20,26 @@ nocomments() { grep -vE '^\s*(#|$)' "$1"; }
 # AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
 mapfile -t AUR_PKGS < <(nocomments "$ROOT/pkg/deckos-settings/rootfs/usr/share/deckos/packages/aur.txt" | awk '{print $1}')
 
+# On btrfs (DeckOS), the work and output folders are subvolumes of their own: snapshots of / and
+# /home skip those, so they don't keep old builds (20+ GB each) alive.
+on_btrfs() { [[ $(stat -f -c %T "$1" 2>/dev/null) == btrfs ]]; }
+fresh_dir() {  # fresh_dir DIR - an empty DIR, as a subvolume when it can be
+  if btrfs subvolume show "$1" >/dev/null 2>&1; then btrfs subvolume delete "$1" >/dev/null; else rm -rf "$1"; fi
+  mkdir -p "$(dirname "$1")"
+  if on_btrfs "$(dirname "$1")"; then btrfs subvolume create "$1" >/dev/null; else mkdir -p "$1"; fi
+}
+keep_dir() {  # keep_dir DIR - DIR as a subvolume when it can be, keeping what's already in it
+  mkdir -p "$(dirname "$1")"
+  on_btrfs "$(dirname "$1")" || { mkdir -p "$1"; return; }
+  btrfs subvolume show "$1" >/dev/null 2>&1 && return
+  if [[ -e $1 ]]; then mv "$1" "$1.deckos-old"; fi
+  btrfs subvolume create "$1" >/dev/null
+  if [[ -e $1.deckos-old ]]; then cp -a --reflink=auto "$1.deckos-old/." "$1/" && rm -rf "$1.deckos-old"; fi
+}
+# Cleared first: the pacman -Syu below takes a system snapshot.
+fresh_dir "$WORK"
+keep_dir "$OUT"
+
 # ------------------------------------------------------------------ build host
 step "Build host: archiso + CachyOS repo"
 pacman-key --init >/dev/null 2>&1 || true
@@ -36,7 +56,6 @@ id builder >/dev/null 2>&1 || useradd -m builder
 echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-deckos-builder
 chmod 440 /etc/sudoers.d/90-deckos-builder
 
-rm -rf "$WORK"
 REPO=$WORK/repo
 BUILD=$WORK/build
 mkdir -p "$REPO" "$BUILD" "$OUT"

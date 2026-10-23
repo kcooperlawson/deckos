@@ -8,3 +8,4 @@ pkg/*/*.pkg.tar.zst
 assets/hub-preview.png
 builder/.venv/
 assets/plasma-preview.png
+personal/

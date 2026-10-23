@@ -1,6 +1,7 @@
 """DeckOS Hub pages. Each page builds once; `refresh()` runs when it's shown, `tick(stats)` every
 two seconds while it's on screen."""
 import re
+import shlex
 from datetime import datetime
 from pathlib import Path
 
@@ -120,6 +121,18 @@ class HomePage(Page):
         for key, tile in self.tiles.items():
             tile.set(*stats.get(key, ("—", None)))
 
+    def show_snapshots(self, system):
+        tile = self.status["snapshots"]
+        if system is None:
+            tile.set("Unavailable", "Couldn't read snapper", "info")
+            return
+        if not sysinfo.home_snapshots_on():
+            tile.set(f"{len(system)} system", "Your files have no snapshots", "warn")
+            return
+        self.hub.data.snapshots(lambda home: tile.set(
+            f"{len(system)} system · {len(home or [])} home",
+            f"Newest: {home[0][1]}" if home else (f"Last: {system[0][1]}" if system else ""), "ok"), config="home")
+
     def refresh(self):
         lvl = sysinfo.display_level()
         self.status["display"].set(f"Level {lvl}", sysinfo.LEVELS[lvl][0], "ok" if lvl else "info")
@@ -136,9 +149,7 @@ class HomePage(Page):
         self.hub.data.updates(lambda n, aur, err: self.status["updates"].set(
             "Couldn't check" if err else "Up to date" if n + aur == 0 else f"{n + aur} waiting",
             err or (f"{aur} from the AUR" if aur else "Arch + CachyOS"), "warn" if err or n + aur else "ok"))
-        self.hub.data.snapshots(lambda snaps: self.status["snapshots"].set(
-            f"{len(snaps)} saved" if snaps is not None else "Unavailable",
-            f"Last: {snaps[0][1]}" if snaps else "", "ok" if snaps else "info"))
+        self.hub.data.snapshots(self.show_snapshots)
         self.hub.data.firewall(lambda on, svcs: self.status["firewall"].set(
             "On" if on else "Off", ("Open: " + ", ".join(svcs)) if on and svcs else
             ("Blocking incoming connections" if on else "Incoming connections allowed"), "ok" if on else "bad"))
@@ -461,6 +472,8 @@ class SystemPage(Page):
         self.up_detail = label("", "sub")
         up.body.addWidget(self.up_state)
         up.body.addWidget(self.up_detail)
+        self.channel = label("", "muted")
+        up.body.addWidget(self.channel)
         self.up_meter = Meter(6)
         self.up_meter.hide()
         up.body.addWidget(self.up_meter)
@@ -479,7 +492,7 @@ class SystemPage(Page):
                                      icon="terminal", tip="Includes AUR apps (paru)")))
         self.lay.addWidget(up)
 
-        snaps = Card("Snapshots", "Roll back a bad update", "snapshot")
+        snaps = Card("System snapshots", "Roll back a bad update", "snapshot")
         snaps.body.addWidget(label("A snapshot is taken before and after every update. To go back, restart and pick "
                                    "<b>DeckOS snapshots</b> in the boot menu, then the one from before the problem.",
                                    "sub"))
@@ -487,6 +500,17 @@ class SystemPage(Page):
         self.snap_list.setSpacing(6)
         snaps.body.addLayout(self.snap_list)
         self.lay.addWidget(snaps)
+
+        home = Card("Your files", "Home snapshots and backup", "folder")
+        home.body.addWidget(label("Snapshots bring back a file you deleted or broke, from the last hours or days. A "
+                                  "backup on another drive survives this disk failing.", "sub"))
+        self.home_box = QVBoxLayout()
+        self.home_box.setSpacing(6)
+        home.body.addLayout(self.home_box)
+        self.home_buttons = QHBoxLayout()
+        self.home_buttons.setSpacing(6)
+        home.body.addLayout(self.home_buttons)
+        self.lay.addWidget(home)
 
         fw = Card("Firewall", "Incoming connections", "shield")
         self.fw_row = QVBoxLayout()
@@ -505,7 +529,13 @@ class SystemPage(Page):
 
     def refresh(self):
         self.check_updates()
+        self.channel.setText(
+            "DeckOS's own updates (the Hub, tools, themes) come from the signed DeckOS repo." if
+            sysinfo.update_channel_on() else
+            f"<span style='color:{S.WARNING}'>DeckOS's own updates aren't set up yet.</span> Run "
+            "<b>deckos dev-install</b> once from a DeckOS checkout, or install a newer deckos-settings.")
         self.hub.data.snapshots(self.show_snapshots)
+        self.show_home()
         self.hub.data.firewall(self.show_firewall)
         self.clear(self.sw_list)
         for key, title, desc, ic, cmd in sysinfo.GROUPS:
@@ -587,6 +617,52 @@ class SystemPage(Page):
             self.snap_list.addWidget(RowItem("snapshot", desc or "Snapshot", f"#{num}  ·  {date}", right=right))
         if len(snaps) > 8:
             self.snap_list.addWidget(label(f"…and {len(snaps) - 8} older.", "muted"))
+
+    def show_home(self):
+        self.clear(self.home_box)
+        self.clear(self.home_buttons)
+        if sysinfo.home_snapshots_on():
+            self.home_snap_row = RowItem("snapshot", "Hourly snapshots of /home", "Checking…", S.SUCCESS)
+            self.home_box.addWidget(self.home_snap_row)
+            self.hub.data.snapshots(self.show_home_snapshots, config="home")
+            self.home_buttons.addWidget(button("Browse snapshots", slot=lambda: QProcess.startDetached(
+                "dolphin", ["/home/.snapshots"]), icon="folder"))
+        else:
+            self.home_box.addWidget(RowItem("alert", "No snapshots of your files yet",
+                                            "System snapshots don't include /home.", S.WARNING))
+            self.home_buttons.addWidget(button("Turn on home snapshots", "primary", self.enable_home, icon="snapshot"))
+        dest, last = sysinfo.backup_info()
+        if dest:
+            self.home_box.addWidget(RowItem("drives", f"Backup on {dest}", f"Last backup: {last or 'never'}",
+                                            S.SUCCESS if last else S.SUBTEXT))
+            self.home_buttons.addWidget(button("Back up now", slot=lambda: self.hub.terminal("deckos backup"),
+                                               icon="download"))
+            self.home_buttons.addWidget(button("Change drive", slot=self.pick_backup, icon="drives"))
+        else:
+            self.home_box.addWidget(RowItem("drives", "No backup yet", "Pick a drive or folder to copy your files to.",
+                                            S.SUBTEXT))
+            self.home_buttons.addWidget(button("Back up to…", slot=self.pick_backup, icon="download"))
+        self.home_buttons.addStretch(1)
+
+    def show_home_snapshots(self, snaps):
+        if snaps is None:
+            self.home_snap_row.detail.setText("Couldn't read the list (snapper).")
+        else:
+            self.home_snap_row.detail.setText(f"{len(snaps)} saved" + (f", newest {snaps[0][1]}" if snaps else "")
+                                              + ". Kept: 12 hourly, 7 daily, 2 weekly.")
+        self.home_snap_row.detail.show()
+
+    def enable_home(self):
+        self.hub.privileged(["home", "enable"], lambda ok: (self.hub.data.invalidate(), self.show_home(),
+                                                             self.hub.toast("Home snapshots are on." if ok else
+                                                                            "Home snapshots not changed.",
+                                                                            "ok" if ok else "warn")))
+
+    def pick_backup(self):
+        dest = QFileDialog.getExistingDirectory(self, "Back up your files to…", "/mnt" if Path("/mnt").is_dir() else "")
+        if dest:
+            self.hub.terminal(f"deckos backup {shlex.quote(dest)}")
+            self.hub.toast("Backing up in a terminal.", "info")
 
     def show_firewall(self, on, svcs):
         self.clear(self.fw_row)

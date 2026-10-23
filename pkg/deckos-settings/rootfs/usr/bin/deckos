@@ -460,6 +460,137 @@ software_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ dev-install
+#
+# Builds the DeckOS packages from a checkout of the repo and installs them: the loop for working
+# on DeckOS from DeckOS. A later release with a higher version replaces them as a normal update.
+
+dev_install() {
+  [[ $EUID -ne 0 ]] || { err "run this as your user (makepkg won't build as root)"; exit 1; }
+  local root=${1:-} c p
+  if [[ -z $root ]]; then
+    root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+    for c in "$root" "$HOME/deckos" "$HOME/DeckOS" "$HOME/src/deckos" "$HOME/Projects/deckos"; do
+      [[ -n $c && -f $c/VERSION && -d $c/pkg/deckos-settings ]] && { root=$c; break; }
+    done
+  fi
+  [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DeckOS checkout found: deckos dev-install PATH"; exit 2; }
+  section "Installing DeckOS $(tr -d '[:space:]' < "$root/VERSION") from $root"
+  for p in deckos-settings deckos-theme-tmpikes; do
+    [[ -d $root/pkg/$p ]] || continue
+    (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
+    ok "$p"
+  done
+  sub "Restart DeckOS Hub to see Hub changes."
+}
+
+# ------------------------------------------------------------------ home
+#
+# /home gets its own hourly snapshots (the system's only cover /). Caches and Steam games change
+# all the time, so they become their own subvolumes, which snapshots skip.
+
+HOME_SKIP=(.cache .local/share/Steam)
+
+as_subvolume() {  # as_subvolume PATH OWNER - make a folder a nested subvolume, keeping its files
+  local path=$1 owner=$2 parent
+  parent=$(dirname "$path")
+  runuser -u "$owner" -- mkdir -p "$parent"
+  [[ $(stat -f -c %T "$parent") == btrfs ]] || return 0
+  btrfs subvolume show "$path" >/dev/null 2>&1 && return 0
+  if [[ -e $path ]]; then mv "$path" "$path.deckos-old"; fi
+  btrfs subvolume create "$path" >/dev/null
+  if [[ -e $path.deckos-old ]]; then
+    cp -a --reflink=auto "$path.deckos-old/." "$path/" && rm -rf "$path.deckos-old"
+  fi
+  chown "$owner:$(id -gn "$owner")" "$path"
+}
+
+home_enable() {
+  need_root home enable
+  [[ $(findmnt -no FSTYPE /home) == btrfs ]] || { err "/home isn't on btrfs, so it can't have snapshots"; exit 1; }
+  local cfg=/etc/snapper/configs/home d u home
+  [[ -f $cfg ]] || snapper --no-dbus -c home create-config /home
+  sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="yes"/; s/^TIMELINE_CLEANUP=.*/TIMELINE_CLEANUP="yes"/;
+             s/^TIMELINE_LIMIT_HOURLY=.*/TIMELINE_LIMIT_HOURLY="12"/; s/^TIMELINE_LIMIT_DAILY=.*/TIMELINE_LIMIT_DAILY="7"/;
+             s/^TIMELINE_LIMIT_WEEKLY=.*/TIMELINE_LIMIT_WEEKLY="2"/; s/^TIMELINE_LIMIT_MONTHLY=.*/TIMELINE_LIMIT_MONTHLY="0"/;
+             s/^TIMELINE_LIMIT_YEARLY=.*/TIMELINE_LIMIT_YEARLY="0"/; s/^NUMBER_LIMIT=.*/NUMBER_LIMIT="10"/;
+             s/^ALLOW_GROUPS=.*/ALLOW_GROUPS="wheel"/; s/^SYNC_ACL=.*/SYNC_ACL="yes"/' "$cfg"
+  for home in /home/*/; do
+    home=${home%/}
+    u=$(stat -c %U "$home")
+    [[ $(id -u "$u" 2>/dev/null || echo 0) -ge 1000 ]] || continue
+    for d in "${HOME_SKIP[@]}"; do
+      if [[ $d == .local/share/Steam ]] && pgrep -u "$u" -x steam >/dev/null; then
+        warn "$u: close Steam, then run this again to move ~/$d out of snapshots"; continue
+      fi
+      as_subvolume "$home/$d" "$u"
+    done
+    ok "$u: ~/.cache and Steam games are left out of snapshots"
+  done
+  systemctl enable snapper-timeline.timer snapper-cleanup.timer >/dev/null 2>&1 || true
+  if [[ -d /run/systemd/system ]]; then systemctl start snapper-timeline.timer snapper-cleanup.timer || true; fi
+  snapper --no-dbus -c home create -d "Home snapshots turned on" || true
+  ok "/home snapshots: hourly, keeping 12 hourly, 7 daily and 2 weekly"
+  sub "Browse them in /home/.snapshots/<number>/snapshot (DeckOS Hub > System > Snapshots)."
+}
+
+home_status() {
+  section "Home"
+  if [[ -f /etc/snapper/configs/home ]]; then
+    ok "snapshots on: $(snapper -c home list 2>/dev/null | tail -n +3 | wc -l) saved"
+  else
+    warn "no /home snapshots (sudo deckos home enable)"
+  fi
+  local conf=$HOME/.config/deckos/backup.conf
+  if [[ -r $conf ]]; then
+    ok "backup: $(sed -n 's/^DEST=//p' "$conf"), last $(sed -n 's/^LAST=//p' "$conf")"
+  else
+    sub "no backup yet (deckos backup /mnt/YOURDRIVE)"
+  fi
+}
+
+home_cmd() {
+  case ${1:-status} in
+    status) home_status ;;
+    enable) home_enable ;;
+    *) err "usage: deckos home [status|enable]"; exit 2 ;;
+  esac
+}
+
+# ------------------------------------------------------------------ backup
+#
+# Snapshots live on the same disk; a backup doesn't. Copies your home folder to another drive
+# (an NTFS one is fine) without caches, Steam games or build output. Remembers the drive.
+
+backup_cmd() {
+  [[ $EUID -ne 0 ]] || { err "run this as your user: it backs up your own home folder"; exit 1; }
+  local conf=$HOME/.config/deckos/backup.conf dest=${1:-} target rc=0
+  [[ -z $dest && -r $conf ]] && dest=$(sed -n 's/^DEST=//p' "$conf")
+  [[ -n $dest ]] || { err "usage: deckos backup /mnt/BIG   (remembered for next time)"; exit 2; }
+  [[ -d $dest && -w $dest ]] || { err "$dest isn't a writable folder (is the drive mounted?)"; exit 1; }
+  target="$dest/DeckOS backup/$USER@$(uname -n)"
+  mkdir -p "$target" "$(dirname "$conf")"
+  section "Backing up $HOME"
+  sub "to $target"
+  rsync -rlt --delete --delete-excluded --info=progress2 --exclude-from=- "$HOME/" "$target/" <<'EOF' || rc=$?
+.cache/
+.local/share/Steam/
+.local/share/Trash/
+.local/share/deckos/steam-ntfs/
+.snapshots/
+node_modules/
+.venv/
+__pycache__/
+*.iso
+EOF
+  case $rc in
+    0) ok "backed up" ;;
+    23|24) warn "backed up, but some files were skipped (names Windows doesn't allow, or files that changed while copying)" ;;
+    *) err "backup stopped (rsync exit $rc)"; exit "$rc" ;;
+  esac
+  printf 'DEST=%s\nLAST=%s\n' "$dest" "$(date '+%Y-%m-%d %H:%M')" > "$conf"
+}
+
 doctor_cmd() {
   section "DeckOS $VERSION"
   say "  Kernel  $(uname -r)"
@@ -474,6 +605,10 @@ doctor_cmd() {
   drives_doctor
   section "Snapshots"
   say "  $(sudo -n snapper -c root list 2>/dev/null | tail -n +3 | wc -l) snapshots ${C_SUB}(sudo snapper -c root list)${C_0}"
+  home_status
+  section "Updates"
+  if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on"
+  else warn "DeckOS update channel not set up (reinstall deckos-settings, or deckos dev-install)"; fi
   section "AI"
   systemctl is-active --quiet ollama && ok "ollama running" || sub "ollama stopped (systemctl start ollama)"
   command -v claude >/dev/null || [[ -x $HOME/.local/bin/claude ]] && ok "Claude Code installed" || sub "Claude Code not installed (curl -fsSL https://claude.ai/install.sh | bash)"
@@ -491,6 +626,9 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
   deckos update [--system]                              update everything (with snapshots)
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
+  deckos home    [status|enable]                        /home snapshots (hourly) and backup status
+  deckos backup  [FOLDER]                               copy your home folder to another drive
+  deckos dev-install [CHECKOUT]                         build and install DeckOS from a repo checkout
   deckos doctor                                         health check
   deckos hub                                            open DeckOS Hub
 EOF
@@ -504,6 +642,9 @@ case ${1:-} in
   steam-ntfs) steam_ntfs ;;
   update) shift; update_cmd "$@" ;;
   software) shift; software_cmd "$@" ;;
+  home) shift; home_cmd "$@" ;;
+  backup) shift; backup_cmd "$@" ;;
+  dev-install) shift; dev_install "$@" ;;
   doctor) doctor_cmd ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;

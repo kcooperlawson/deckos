@@ -78,3 +78,54 @@ jobs:
           path: out/*.iso
           compression-level: 0
           retention-days: 14
+
+  publish:
+    # The DeckOS update channel: on a version tag (v0.3.1), sign deckos-settings and the themes and
+    # publish them as a pacman repo in the "repo" release. Installed systems pull from
+    # https://github.com/<owner>/<repo>/releases/download/repo (see /etc/pacman.d/deckos-repo).
+    needs: [lint, package]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      KEY: E8EB594BA885437D0346AA5C1ED97D15577C42B9
+    steps:
+      - run: pacman -Syu --noconfirm --needed github-cli gnupg git
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deckos-packages
+          path: built
+      - name: Tag matches VERSION
+        run: |
+          [ "${GITHUB_REF_NAME#v}" = "$(tr -d '[:space:]' < VERSION)" ] \
+            || { echo "tag $GITHUB_REF_NAME doesn't match VERSION $(cat VERSION)"; exit 1; }
+      - name: Sign and build the repo
+        env:
+          SIGNING_KEY: ${{ secrets.DECKOS_SIGNING_KEY }}
+        run: |
+          export GNUPGHOME=$(mktemp -d)
+          printf '%s\n' "$SIGNING_KEY" | gpg --batch --import
+          mkdir repo
+          # deckos-installer only belongs on the live USB, so it isn't published.
+          find built -name '*.pkg.tar.zst' ! -name 'deckos-installer-*' -exec cp {} repo/ \;
+          cd repo
+          for p in *.pkg.tar.zst; do gpg --batch --yes --local-user "$KEY" --detach-sign "$p"; done
+          repo-add --sign --key "$KEY" deckos.db.tar.gz *.pkg.tar.zst
+          # Release assets can't be symlinks: give pacman real deckos.db / deckos.files.
+          for f in deckos.db deckos.files deckos.db.sig deckos.files.sig; do cp --remove-destination "$(readlink -f "$f")" "$f"; done
+          ls -l
+      - name: Publish to the "repo" release
+        run: |
+          gh release view repo >/dev/null 2>&1 || gh release create repo --prerelease --title "DeckOS package repo" \
+            --notes "pacman repository for DeckOS's own packages, updated on every version tag. Not a download for people."
+          gh release upload repo repo/* --clobber
+          # Drop packages from older versions (the database only lists the current ones).
+          keep=" $(cd repo && echo *) "
+          gh release view repo --json assets --jq '.assets[].name' | while read -r a; do
+            case "$keep" in *" $a "*) ;; *) gh release delete-asset repo "$a" --yes ;; esac
+          done

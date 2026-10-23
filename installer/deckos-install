@@ -628,6 +628,9 @@ sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBE
   "$MNT/etc/snapper/configs/root"
 
 spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes
+# /home gets hourly snapshots of its own (caches and Steam games left out).
+if inchroot deckos home enable >>"$LOG" 2>&1; then good "/home snapshots (hourly)"
+else warn "/home snapshots not set up - run 'sudo deckos home enable' after first boot"; fi
 CHANGED=boot
 spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
 spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg

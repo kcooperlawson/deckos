@@ -1,7 +1,9 @@
 # Maintainer: kcooperlawson
 # Local package: everything it installs lives next to this file (rootfs/, kdeglobals.base).
 pkgname=deckos-settings
-pkgver=0.3.0
+# The DeckOS release (VERSION at the top of the repo), so a release is one number to bump.
+pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
+pkgver=${pkgver:-0.3.1}
 pkgrel=1
 pkgdesc="DeckOS branding, theme, Hub, hardware fixes and the deckos tool"
 arch=(any)
@@ -14,6 +16,7 @@ optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
             'lact: GPU clock/fan control GUI')
 backup=(etc/deckos/display.conf
         etc/deckos/gaming.conf
+        etc/pacman.d/deckos-repo
         etc/udisks2/mount_options.conf
         etc/systemd/zram-generator.conf)
 install=deckos-settings.install
