@@ -1,0 +1,11 @@
+#!/bin/sh
+# DeckOS Builder on Linux/DeckOS. Uses the system PySide6 (pacman -S pyside6 github-cli).
+# ./deckos-builder --install adds it to the app menu.
+here=$(cd "$(dirname "$0")" && pwd)
+if [ "$1" = "--install" ]; then
+  mkdir -p "$HOME/.local/share/applications"
+  sed "s|@BUILDER@|$here/deckos-builder|" "$here/deckos-builder.desktop" > "$HOME/.local/share/applications/deckos-builder.desktop"
+  echo "Added DeckOS Builder to the app menu."
+  exit 0
+fi
+exec python3 "$here/deckos_builder.py" "$@"

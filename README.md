@@ -112,9 +112,24 @@ Sources: [Bazzite #4934](https://github.com/ublue-os/bazzite/issues/4934),
 | `claude` | Claude Code, installed for your user (`~/.local/bin`) |
 | `ollama run qwen3` | local models on the 9070 XT via ROCm |
 
+## DeckOS Builder (app)
+
+`builder/` is a desktop app for all of the above, in the DeckOS/Steady style. It runs on Windows now and
+on DeckOS later:
+
+- **Build ISO** starts the GitHub build, then shows each step live with an estimate based on GitHub's clock.
+- **Builds** lists history with result and duration, plus **Download ISO** and **Log** (failed steps only, for failures).
+- **USB** finds your Ventoy drive and copies the newest ISO with a SHA256 check. It can also remove older DeckOS ISOs.
+- **Build on this PC** (DeckOS/Arch only) runs `build.sh` locally and streams the output.
+
+Needs the GitHub CLI signed in (`gh auth login`). Windows: double-click `builder/DeckOS Builder.bat`
+(the first run sets up its own Python environment). DeckOS: `builder/deckos-builder`, or add it to the app
+menu with `builder/deckos-builder --install`.
+
 ## Layout
 
 ```
+builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy USB)
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg) — run after design tweaks
 build.sh                  ISO build (releng profile + DeckOS)
 iso/                      live-USB additions

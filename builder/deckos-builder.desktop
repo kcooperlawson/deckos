@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DeckOS Builder
+GenericName=ISO builds
+Comment=Build DeckOS ISOs on GitHub or this PC, download them and copy them to a Ventoy USB
+Exec=@BUILDER@
+Icon=deckos
+Terminal=false
+Categories=Development;
+Keywords=deckos;iso;build;github;ventoy;usb;

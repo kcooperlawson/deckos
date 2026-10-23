@@ -25,7 +25,7 @@ jobs:
           shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python
-        run: python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py
+        run: python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py builder/deckos_builder.py
       - name: yaml
         run: |
           python3 - <<'PY'

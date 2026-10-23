@@ -4,3 +4,4 @@
 *.iso binary
 *.otf binary
 *.ttf binary
+*.bat text eol=crlf
