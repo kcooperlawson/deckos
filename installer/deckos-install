@@ -670,9 +670,18 @@ else warn "could not enable the firewall"; fi
 # ------------------------------------------------------------------ done
 
 cp "$LOG" "$MNT/var/log/deckos-install.log"
+trap - ERR  # DeckOS is installed; nothing below may turn that into a failure
+# pacman-key and AUR builds can leave gpg-agent and friends running inside the new system, which
+# keeps /mnt busy. End whatever still runs there, then unmount (lazily if something still holds on).
+for p in /proc/[0-9]*; do
+  [[ $(readlink "$p/root" 2>/dev/null) == "$MNT" ]] && kill "${p#/proc/}" 2>/dev/null
+done
+sleep 1
 sync
-umount -R "$MNT"
-trap - ERR
+if ! umount -R "$MNT" 2>>"$LOG"; then
+  umount -R -l "$MNT" 2>>"$LOG" || true
+  warn "The new system was still busy, so it was detached lazily; restarting finishes that"
+fi
 
 section "DeckOS is installed"
 if [[ ${#FAILED[@]} -gt 0 ]]; then
