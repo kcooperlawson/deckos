@@ -16,15 +16,16 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   unattended through `DECKOS_*` env vars (see the comment near the top). `installer/*.tsv` are the
   language and keyboard lists both use.
 - `pkg/deckos-settings/`: the main package; `rootfs/` mirrors `/`. Holds the `deckos` tool
-  (`usr/bin/deckos`), DeckOS Hub (`usr/lib/deckos/hub/`), DeckOS Store (`usr/lib/deckos/store/`), the
-  package lists per group (`usr/share/deckos/packages/*.txt`, shared by the installer and
-  `deckos software add`), themes, icons, SDDM and Plasma styles, the signing public key.
+  (`usr/bin/deckos`), DeckOS Hub (`usr/lib/deckos/hub/`), DeckOS Store (`usr/lib/deckos/store/`), DeckOS
+  Welcome (`usr/lib/deckos/welcome/`, the first-login tour), the package lists per group
+  (`usr/share/deckos/packages/*.txt`, shared by the installer and `deckos software add`), themes, icons,
+  SDDM and Plasma styles, the signing public key.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).
 - `assets/`: generators whose output is committed into `pkg/` (brand, `icons.py`, `plasma_theme.py`)
-  and previews (`preview_hub.py`, `preview_sddm.py`, `preview_plasma.py`). Re-run a generator after
-  changing it and commit both.
+  and previews (`preview_hub.py`, `preview_welcome.py`, `preview_sddm.py`, `preview_plasma.py`). Re-run a
+  generator after changing it and commit both.
 - `builder/`: DeckOS Builder (starts GitHub builds, downloads ISOs, copies to Ventoy, builds locally).
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
@@ -37,9 +38,9 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   optional columns last). Quote everything. CI runs `shellcheck -S warning` on the scripts.
 - **Python UIs**: PySide6. The Hub, Store and installer share one look: `hub_style.py` (palette, QSS,
   `icon()`/`pixmap()` recolouring DeckOS line icons) and `hub_widgets.py` (Card, StatusTile, RowItem,
-  Meter, Toast, Empty…). Reuse them; the Store imports them from `../hub`. Slow work goes through
-  `hub_system.Job` / threads, never blocking the UI. Qt treats `&` in button text as a shortcut: escape
-  as `&&`.
+  Meter, Toast, Empty…). Reuse them; the Store and Welcome import them from `../hub`. Slow work goes
+  through `hub_system.Job` / threads, never blocking the UI. Qt treats `&` in button text as a shortcut:
+  escape as `&&`.
 - **Every UI has `--demo`** (canned data, no system calls) so it runs and can be screenshotted on any
   OS, Windows included. Keep demo data working when adding features; render with
   `QT_QPA_PLATFORM=offscreen` (and `QT_QPA_FONTDIR` on Windows) to check layouts.
@@ -90,6 +91,13 @@ not die: a finished install must never be reported as failed.
 - Spotify's MPRIS reports position 0 and old art URLs (`open.spotify.com/image/…`): the Now Playing card
   keeps its own clock and rewrites them to `i.scdn.co/image/…`.
 - `sed` with `|` as delimiter breaks on text containing `|` (usage strings): edit those directly.
+- Don't name a page method after a QWidget one (`update`, `show`, `close`…): a Welcome step's `update()`
+  ran `deckos update` every time an accent change repainted the window.
+- DeckOS Welcome autostarts (`/etc/xdg/autostart/deckos-welcome.desktop`) until
+  `~/.config/deckos/welcome-done` exists; the launcher checks that in shell, so later logins don't start
+  Python. `welcome-startup` is the "Show at startup" opt-in. Welcome reuses the Hub's
+  `Hub.terminal`/`privileged`/`write_gaming` and `HubData`, and the Store's `Jobs`/`Installed`: changing
+  those changes it too.
 
 ## Open work
 

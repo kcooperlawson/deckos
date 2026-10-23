@@ -125,7 +125,9 @@ class HomePage(Page):
                                  button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
                                  button("Terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal"),
                                  button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
-                                 button("Files", slot=lambda: QProcess.startDetached("dolphin", []), icon="folder")))
+                                 button("Files", slot=lambda: QProcess.startDetached("dolphin", []), icon="folder"),
+                                 button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
+                                        icon="star", tip="DeckOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
 
     def tick(self, stats):

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DeckOS Welcome
+GenericName=First steps
+Comment=Set up the look, display, software, gaming, backups and updates
+Exec=deckos-welcome
+Icon=deckos
+Type=Application
+Categories=System;Settings;
+Keywords=deckos;welcome;tour;setup;first;start;theme;wallpaper;

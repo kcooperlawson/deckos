@@ -1,0 +1,8 @@
+#!/bin/sh
+# At login (--autostart) it only opens once per user, never on the live USB; the check stays in
+# shell so a login after the first doesn't pay for starting Python.
+if [ "${1:-}" = --autostart ]; then
+  [ -e "${XDG_CONFIG_HOME:-$HOME/.config}/deckos/welcome-done" ] && exit 0
+  [ -d /run/archiso ] && exit 0
+fi
+exec python3 /usr/lib/deckos/welcome/deckos_welcome.py "$@"

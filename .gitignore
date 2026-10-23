@@ -6,6 +6,7 @@ pkg/*/pkg/
 pkg/*/src/
 pkg/*/*.pkg.tar.zst
 assets/hub-preview.png
+assets/welcome-preview*.png
 builder/.venv/
 assets/plasma-preview.png
 personal/

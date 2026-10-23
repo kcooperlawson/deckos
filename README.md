@@ -94,6 +94,25 @@ hardware clock in local time only if it finds Windows, so the clock is right in 
 If an install fails, the message says exactly what was changed so far. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
 the live desktop. A text-mode installer (`sudo deckos-install`) is in the app menu as a backup.
 
+## First login: DeckOS Welcome
+
+The first time you log in, **DeckOS Welcome** walks through what most people change right away. Every
+step is optional and applies as you go:
+
+| Step | What's there |
+|---|---|
+| **Look** | global theme (DeckOS, TMpikes), light or dark, accent colour, wallpaper, Plasma style and icons |
+| **Display** | scale per screen, a shortcut to arranging them, and the [blackout fix](#display-blackouts-on-radeon-cards) level with the one recommended for your setup picked |
+| **Software** | add Gaming, Local AI or Development if you skipped them, and one-click Spotify, Discord, OBS, VS Code and more |
+| **Gaming** | Gaming Mode's resolution and refresh rate (matched to your screen in one click), VRR and HDR, Steam libraries on Windows drives, the Xbox Wireless Adapter |
+| **Your files** | hourly snapshots of your home folder, a backup drive, your Windows drives |
+| **Privacy & updates** | the update channel, checking for updates, the firewall |
+| **Extras** | the DeckOS look for Spotify, Claude Code, KDE Connect and a keyboard shortcut cheat sheet |
+
+It ends with a summary of what changed (and whether a restart is needed). After that it stays out of
+the way: open it again from the app menu, **DeckOS Hub › Home › Welcome tour**, or `deckos-welcome`.
+Tick *Show at startup* to have it back at every login.
+
 ## Display blackouts on Radeon cards
 
 Some Radeon cards (confirmed on the RX 9070 XT) save power at idle by switching their VRAM clock with
@@ -225,7 +244,7 @@ builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy U
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg)
 assets/icons.py           the DeckOS line icons (Hub, Store, login screen) and the Store's app icon
 assets/plasma_theme.py    the DeckOS Plasma style (panel, popups, tooltips, widgets)
-assets/preview_*.py       render the Hub, login screen or Plasma style on any OS
+assets/preview_*.py       render the Hub, Welcome, login screen or Plasma style on any OS
 build.sh                  ISO build (Arch releng profile + DeckOS)
 iso/                      live-USB additions (packages, live user, autologin)
 installer/                the install script, plus the language and keyboard lists it offers
@@ -259,5 +278,5 @@ release replaces it as a normal update. Installs from 0.3.0 or earlier don't hav
 so system and `/home` snapshots don't hold on to old builds and ISOs.
 
 The generators write into `pkg/` and their output is committed; run them again after changing a
-design. The installer and the Hub both have a demo mode for working on the UI anywhere, including
-Windows: run `deckos_installer.py --demo`, `deckos_hub.py --demo` or `deckos_store.py --demo` from their folders in `pkg/`.
+design. The installer, Hub, Store and Welcome all have a demo mode for working on the UI anywhere, including
+Windows: run `deckos_installer.py --demo`, `deckos_hub.py --demo`, `deckos_store.py --demo` or `deckos_welcome.py --demo` from their folders in `pkg/`.
