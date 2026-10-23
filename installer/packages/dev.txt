@@ -1,0 +1,12 @@
+# Optional "dev" group: languages, containers and tools. Claude Code, VS Code and JetBrains
+# Toolbox come with it too (Claude Code from its installer, the others from aur.txt).
+python-pip
+uv
+nodejs
+npm
+docker
+docker-compose
+docker-buildx
+github-cli
+dotnet-sdk
+jdk-openjdk

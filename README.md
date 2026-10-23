@@ -11,8 +11,9 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 |---|---|
 | **Base** | Arch Linux + CachyOS repos built for your CPU (x86-64-v3, v4 or Zen 4), `linux-cachyos` (BORE) + `linux-cachyos-lts` fallback |
 | **Desktop** | KDE Plasma 6 (Wayland), DeckOS look-and-feel, Papirus, Inter + JetBrains Mono |
-| **Gaming** | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync |
-| **AI / dev** | Claude Code, ROCm + Ollama for local models, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
+| **Gaming** (optional) | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync, Discord, OBS |
+| **Local AI** (optional) | Ollama + ROCm for running models on a Radeon |
+| **Development** (optional) | Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
 | **Disks** | btrfs with snapshots: boot an older snapshot from GRUB after a bad update. Existing NTFS drives stay NTFS and are mounted read/write |
 | **Fixes** | Display blackout fix ladder for Radeon cards (`deckos display`), Windows dual-boot clock, Steam libraries on NTFS |
 
@@ -74,11 +75,13 @@ first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
    safely check (BitLocker, encrypted, in use, part of a RAID) are shown greyed out with the reason,
    and a partition that holds Windows is always refused.
 3. **You**: username, computer name, password and time zone.
-4. **Confirm**: read the summary, tick the box, *Erase and install*.
-5. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
+4. **Software**: tick Gaming, Local AI and/or Development. The desktop, kernel, graphics drivers and
+   snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 is found.
+5. **Confirm**: read the summary, tick the box, *Erase and install*.
+6. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
-Behind the scenes it installs Arch, switches to the CachyOS repos for your CPU, installs everything listed
-above (the DeckOS package and AUR apps come prebuilt on the USB), mounts your NTFS drives under
+Behind the scenes it installs Arch, switches to the CachyOS repos for your CPU, installs the desktop and
+the groups you picked (the DeckOS package and AUR apps come prebuilt on the USB), mounts your NTFS drives under
 `/mnt/<drive label>`, takes a "fresh install" snapshot and sets up GRUB with DeckOS, Windows and a
 snapshots menu. The EFI partition is shared with Windows and never formatted. It also picks the
 [display fix level](#display-blackouts-on-radeon-cards) for your GPU and monitors, and keeps the
@@ -149,8 +152,6 @@ DeckOS is early, and these are on the list:
   `sudo grub-mkconfig -o /boot/grub/grub.cfg`.
 - **Disk layout:** DeckOS installs onto one existing partition and reuses an existing EFI partition.
   Installing to free space or an empty disk isn't supported yet.
-- **Software choices:** everything in the table at the top is installed, including ROCm, Docker and the
-  dev tools.
 - **Language and keyboard** are set to English (US) and a US layout, and mirrors are ranked from the US.
   Change the language and keyboard after installing in *System Settings*.
 - **Secure Boot** has to stay off.

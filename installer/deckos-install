@@ -28,9 +28,17 @@ export GUM_SPIN_SPINNER_FOREGROUND="#4C8DFF" GUM_FILTER_INDICATOR_FOREGROUND="#4
 export GUM_FILTER_MATCH_FOREGROUND="#4C8DFF"
 
 FAILED=()
+# Optional software groups (installer/packages/<group>.txt); base and desktop always go in.
+OPTIONAL_GROUPS=(gaming ai dev)
+declare -A GROUP_DESC=(
+  [gaming]="Gaming: Steam + Gaming Mode, Proton, Lutris, Heroic, MangoHud, Discord, OBS"
+  [ai]="Local AI: Ollama + ROCm on a Radeon RX 7000/9000 (a large download)"
+  [dev]="Development: Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java"
+)
 # DECKOS_GUI=1: driven by the graphical installer. Nothing is asked; the answers come from
-# DECKOS_TARGET, DECKOS_HOSTNAME, DECKOS_USER, DECKOS_PASSWORD_FILE and DECKOS_TZ, and output
-# is plain text that the window turns into its progress view.
+# DECKOS_TARGET, DECKOS_HOSTNAME, DECKOS_USER, DECKOS_PASSWORD_FILE, DECKOS_TZ and DECKOS_GROUPS
+# (comma-separated optional groups, all of them if unset), and output is plain text that the
+# window turns into its progress view.
 GUI=${DECKOS_GUI:-}
 
 # ------------------------------------------------------------------ helpers
@@ -72,6 +80,12 @@ spin() {
 inchroot() { arch-chroot "$MNT" "$@"; }
 
 list_pkgs() { grep -vE '^\s*(#|$)' "$SRC/installer/packages/$1.txt" | awk '{print $1}'; }
+chosen() { [[ " ${CHOSEN[*]} " == *" $1 "* ]]; }
+# AUR packages for the chosen groups (aur.txt's second column; none = always).
+list_aur() {
+  grep -vE '^\s*(#|$)' "$SRC/installer/packages/aur.txt" | awk -v chosen=" ${CHOSEN[*]} " \
+    'NF == 1 || index(chosen, " " $2 " ") {print $1}'
+}
 
 # Installs a package list in one transaction; if that fails, one by one, collecting failures.
 install_group() {
@@ -350,6 +364,17 @@ if [[ -z $GUI ]]; then
   gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
 fi
 
+# Software groups. Unset DECKOS_GROUPS means all of them; set but empty means none.
+CHOSEN=()
+if [[ -n $GUI ]]; then
+  IFS=, read -ra CHOSEN <<<"${DECKOS_GROUPS-$(IFS=,; echo "${OPTIONAL_GROUPS[*]}")}"
+  for g in "${CHOSEN[@]}"; do [[ -v GROUP_DESC[$g] ]] || die "Unknown software group: $g"; done
+else
+  for g in "${OPTIONAL_GROUPS[@]}"; do gum confirm "Install ${GROUP_DESC[$g]}?" && CHOSEN+=("$g"); done
+fi
+software="CachyOS kernel, KDE Plasma"
+for g in "${CHOSEN[@]}"; do software+=", ${GROUP_DESC[$g]%%:*}"; done
+
 # ------------------------------------------------------------------ confirm
 
 section "Ready"
@@ -359,8 +384,7 @@ style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0
   "Keep       every other partition and drive" \
   "Display    blackout fix level $DISPLAY_LEVEL ($display_why)" \
   "User       $USERNAME_ @ $HOSTNAME_   |   $TZ_" \
-  "Software   CachyOS znver4 kernel, KDE Plasma, Steam + Gaming Mode," \
-  "           ROCm + Ollama, Claude Code, VS Code, Docker, .NET"
+  "Software   $software"
 echo
 # The window asks for this itself before it starts.
 if [[ -n $GUI ]]; then confirm=${DECKOS_CONFIRM:-}
@@ -424,10 +448,7 @@ grep -q '^\[cachyos-znver4\]' "$MNT/etc/pacman.conf" && good "znver4 repos enabl
 # ------------------------------------------------------------------ software
 
 section "Software"
-install_group base
-install_group desktop
-install_group gaming
-install_group ai
+for g in base desktop "${CHOSEN[@]}"; do install_group "$g"; done
 
 section "Your account"
 groups=wheel
@@ -478,7 +499,7 @@ else
 fi
 
 section "AUR"
-mapfile -t aur < <(list_pkgs aur)
+mapfile -t aur < <(list_aur)
 from_usb=() usb_names=() to_build=()
 for p in "${aur[@]}"; do
   if f=$(usb_pkg "$p"); then from_usb+=("$f"); usb_names+=("$p"); else to_build+=("$p"); fi
@@ -503,7 +524,9 @@ for p in "${to_build[@]}"; do
 done
 rm -rf "${MNT:?}$USB_PKGS"
 
-if busy "Installing Claude Code" bash -c \
+if ! chosen dev; then
+  :
+elif busy "Installing Claude Code" bash -c \
      'arch-chroot "$0" sudo -u "$1" -H bash -c "curl -fsSL https://claude.ai/install.sh | bash" >>"$LOG" 2>&1' "$MNT" "$USERNAME_"; then
   good "Claude Code (run: claude)"
 else
@@ -552,8 +575,12 @@ spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mk
 grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet - run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
 
 section "Services"
-for s in NetworkManager bluetooth sddm power-profiles-daemon fstrim.timer grub-btrfsd snapper-cleanup.timer \
-         docker.socket ollama deckos-display lactd ananicy-cpp systemd-timesyncd; do
+services=(NetworkManager bluetooth sddm power-profiles-daemon fstrim.timer grub-btrfsd snapper-cleanup.timer
+          deckos-display ananicy-cpp systemd-timesyncd)
+chosen gaming && services+=(lactd)
+chosen ai && services+=(ollama)
+chosen dev && services+=(docker.socket)
+for s in "${services[@]}"; do
   inchroot systemctl enable "$s" >>"$LOG" 2>&1 || warn "could not enable $s"
 done
 good "services enabled"

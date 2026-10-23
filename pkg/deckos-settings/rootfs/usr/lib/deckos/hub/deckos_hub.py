@@ -281,9 +281,14 @@ class Hub(QWidget):
 
     def gaming_plate(self):
         p = Card("Gaming", "Steam Gaming Mode")
-        p.body.addWidget(label("Console-style Steam Big Picture on the Odyssey at 4K 144 Hz. "
-                               "Use Steam’s Power menu › Switch to Desktop to come back.", "sub"))
-        p.body.addWidget(row(button("Switch to Gaming Mode", True, slot=self.to_gaming)))
+        installed = shutil.which("gamescope-session-plus") is not None
+        p.body.addWidget(label("Console-style Steam Big Picture, full screen. "
+                               "Use Steam’s Power menu › Switch to Desktop to come back." if installed else
+                               "Gaming wasn’t picked when DeckOS was installed. To add it: sudo pacman -S steam "
+                               "gamescope gamescope-session-git, then paru -S gamescope-session-steam-git.", "sub"))
+        switch = button("Switch to Gaming Mode", True, slot=self.to_gaming)
+        switch.setEnabled(installed)
+        p.body.addWidget(row(switch))
         conf = {**read_conf("/etc/deckos/gaming.conf"), **read_conf(USER_GAMING_CONF)}
         self.vrr = QCheckBox("Variable refresh rate (FreeSync)")
         self.vrr.setChecked(conf.get("ADAPTIVE_SYNC") == "1")
@@ -319,8 +324,11 @@ class Hub(QWidget):
         p.body.addWidget(row(button("Install / update Claude Code", True,
                                     slot=lambda: terminal("curl -fsSL https://claude.ai/install.sh | bash")),
                              button("Terminal", slot=lambda: QProcess.startDetached("konsole", []))))
-        p.body.addWidget(row(button("Start Ollama", slot=lambda: terminal("sudo systemctl enable --now ollama && ollama list")),
-                             button("GPU compute check", slot=lambda: terminal("rocminfo | grep -E 'Marketing|gfx' | head -n 6"))))
+        ollama = button("Start Ollama", slot=lambda: terminal("sudo systemctl enable --now ollama && ollama list"))
+        rocm = button("GPU compute check", slot=lambda: terminal("rocminfo | grep -E 'Marketing|gfx' | head -n 6"))
+        ollama.setEnabled(shutil.which("ollama") is not None)
+        rocm.setEnabled(shutil.which("rocminfo") is not None)
+        p.body.addWidget(row(ollama, rocm))
         return p
 
     def system_plate(self):

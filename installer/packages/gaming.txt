@@ -1,11 +1,4 @@
-# RX 9070 XT (RADV), Steam + Gaming Mode, Proton, launchers, Xbox Wireless Adapter.
-mesa
-lib32-mesa
-vulkan-radeon
-lib32-vulkan-radeon
-vulkan-tools
-mesa-utils
-libva-utils
+# Optional "gaming" group: Steam + Gaming Mode, Proton, launchers, Xbox Wireless Adapter, Discord, OBS.
 steam
 gamescope
 gamescope-session-git

@@ -52,10 +52,10 @@ QLabel#now {{ font-family: "Inter Display", "Inter"; font-size: 13pt; font-weigh
 QLabel#error {{ color: {DANGER}; }}
 #card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
 #card QLabel, #card QCheckBox, #card QRadioButton {{ background: transparent; }}
-#disk {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
-#disk[picked="true"] {{ border: 1px solid {ACCENT}; background: #182033; }}
+#disk, #choice {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
+#disk[picked="true"], #choice[picked="true"] {{ border: 1px solid {ACCENT}; background: #182033; }}
 #disk[blocked="true"] {{ background: #13161C; }}
-#disk QLabel, #disk QRadioButton {{ background: transparent; }}
+#disk QLabel, #disk QRadioButton, #choice QLabel, #choice QCheckBox {{ background: transparent; }}
 QPushButton {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 8px 16px; }}
 QPushButton:hover {{ background: {HOVER}; }}
 QPushButton:pressed {{ background: {PRESSED}; }}
@@ -84,7 +84,16 @@ QScrollBar::handle:vertical {{ background: {HOVER}; border-radius: 4px; margin: 
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 """
 
-STEPS = ["Welcome", "Where", "You", "Confirm", "Install", "Done"]
+STEPS = ["Welcome", "Where", "You", "Software", "Confirm", "Install", "Done"]
+WELCOME, WHERE, YOU, SOFTWARE, CONFIRM, INSTALL, DONE = range(len(STEPS))
+# Optional software groups: deckos-install's DECKOS_GROUPS names, title, what's in it.
+GROUPS = [
+    ("gaming", "Gaming", "Steam with Gaming Mode, Proton, Lutris, Heroic, MangoHud, GameMode, LACT, Discord and OBS."),
+    ("ai", "Local AI", "Ollama with ROCm, for running models on your graphics card. Needs a Radeon RX 7000 or "
+                       "9000 series card, and it's a large download."),
+    ("dev", "Development", "Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java and the "
+                           "GitHub CLI."),
+]
 # Where each section of deckos-install starts on the progress bar (Software is the long part).
 PROGRESS = [("Preparing", 0.02), ("Base system", 0.05), ("CachyOS", 0.20), ("Software", 0.25),
             ("Your account", 0.70), ("DeckOS layer", 0.72), ("AUR", 0.78), ("Your drives", 0.88),
@@ -227,10 +236,11 @@ class Installer(QWidget):
         self.build_welcome()
         self.build_disk()
         self.build_you()
+        self.build_software()
         self.build_confirm()
         self.build_install()
         self.build_done()
-        self.go(0)
+        self.go(WELCOME)
         QTimer.singleShot(150, self.check_system)
 
     # ------------------------------------------------------------- pages
@@ -311,6 +321,57 @@ class Installer(QWidget):
         self.tz.currentTextChanged.connect(self.validate_you)
         self.stack.addWidget(p)
 
+    def build_software(self):
+        p = Page("Choose your software",
+                 "DeckOS always installs the CachyOS kernel, the KDE Plasma desktop, Firefox, graphics drivers and "
+                 "snapshots. Add any of these now; you can install them later too.")
+        radeon = DEMO or self.has_radeon()
+        self.group_boxes = {}
+        for key, title, desc in GROUPS:
+            card = QFrame()
+            card.setObjectName("choice")
+            card.setAttribute(Qt.WA_StyledBackground, True)
+            h = QHBoxLayout(card)
+            h.setContentsMargins(16, 12, 16, 12)
+            box = QCheckBox()
+            h.addWidget(box, 0, Qt.AlignTop)
+            info = QVBoxLayout()
+            info.setSpacing(2)
+            info.addWidget(label(title, "cardTitle"))
+            info.addWidget(label(desc, "sub"))
+            if key == "ai" and not radeon:
+                info.addWidget(label(f"<span style='color:{WARNING}'>No Radeon RX 7000/9000 card found, so this "
+                                     f"starts unticked.</span>"))
+            h.addLayout(info, 1)
+            box.toggled.connect(lambda on, c=card: self.set_picked(c, on))
+            box.setChecked(key != "ai" or radeon)
+            self.set_picked(card, box.isChecked())
+            card.mousePressEvent = lambda _e, b=box: b.toggle()
+            self.group_boxes[key] = box
+            p.lay.addWidget(card)
+        p.lay.addStretch(1)
+        self.stack.addWidget(p)
+
+    @staticmethod
+    def set_picked(card, on):
+        card.setProperty("picked", on)
+        card.style().unpolish(card)
+        card.style().polish(card)
+
+    @staticmethod
+    def has_radeon():
+        """An AMD card with more than 4 GB of VRAM: a Radeon, not a Ryzen's built-in graphics."""
+        for vram in Path("/sys/class/drm").glob("card*/device/mem_info_vram_total"):
+            try:
+                if (vram.parent / "vendor").read_text().strip() == "0x1002" and int(vram.read_text()) > 4 << 30:
+                    return True
+            except (OSError, ValueError):
+                pass
+        return False
+
+    def groups(self):
+        return [key for key, *_ in GROUPS if self.group_boxes[key].isChecked()]
+
     def build_confirm(self):
         p = Page("Ready to install", "Check this over. Nothing has been changed yet.")
         self.summary = Card("Summary")
@@ -318,9 +379,8 @@ class Installer(QWidget):
         self.summary.body.addWidget(self.summary_text)
         p.lay.addWidget(self.summary)
         sw = Card("Installed for you")
-        sw.body.addWidget(label("CachyOS kernel and Zen 4 packages, KDE Plasma, Steam with Gaming Mode, "
-                                "ROCm + Ollama, Claude Code, VS Code, Docker, .NET. Your NTFS drives are mounted "
-                                "as they are. It takes 20–60 minutes depending on your internet.", "sub"))
+        self.software_text = label("", "sub")
+        sw.body.addWidget(self.software_text)
         p.lay.addWidget(sw)
         self.agree = QCheckBox()
         self.agree.toggled.connect(lambda _: self.update_nav())
@@ -364,32 +424,33 @@ class Installer(QWidget):
             lab.setObjectName("stepNow" if n == i else "stepDone" if n < i else "step")
             lab.style().unpolish(lab)
             lab.style().polish(lab)
-        if i == 1 and not self.disk_cards:
+        if i == WHERE and not self.disk_cards:
             self.load_disks()
-        if i == 3:
+        if i == CONFIRM:
             self.fill_summary()
         self.update_nav()
 
     def update_nav(self):
         i = self.stack.currentIndex()
-        self.back_btn.setVisible(i in (1, 2, 3))
-        self.next_btn.setVisible(i != 4)
-        self.next_btn.setObjectName("danger" if i == 3 else "primary")
+        self.back_btn.setVisible(i in (WHERE, YOU, SOFTWARE, CONFIRM))
+        self.next_btn.setVisible(i != INSTALL)
+        self.next_btn.setObjectName("danger" if i == CONFIRM else "primary")
         self.next_btn.style().unpolish(self.next_btn)
         self.next_btn.style().polish(self.next_btn)
-        text = {3: "Erase and install", 5: "Restart now" if self.finished_ok else "Close"}.get(i, "Next")
+        text = {CONFIRM: "Erase and install", DONE: "Restart now" if self.finished_ok else "Close"}.get(i, "Next")
         self.next_btn.setText(text)
-        ok = {0: self.net_ok, 1: self.target() is not None, 2: self.validate_you(), 3: self.agree.isChecked()}
+        ok = {WELCOME: self.net_ok, WHERE: self.target() is not None, YOU: self.validate_you(),
+              CONFIRM: self.agree.isChecked()}
         self.next_btn.setEnabled(ok.get(i, True))
 
     def back(self):
-        self.go(max(0, self.stack.currentIndex() - 1))
+        self.go(max(WELCOME, self.stack.currentIndex() - 1))
 
     def next(self):
         i = self.stack.currentIndex()
-        if i == 3:
+        if i == CONFIRM:
             self.start_install()
-        elif i == 5:
+        elif i == DONE:
             if self.finished_ok and not DEMO:
                 QProcess.startDetached("systemctl", ["reboot"])
             self.close()
@@ -551,7 +612,7 @@ class Installer(QWidget):
         if hasattr(self, "you_error"):
             self.you_error.setText(err)
         ok = not err and bool(u and h and p1 and p1 == p2) and self.tz.currentText() in self.zone_names()
-        if self.stack.currentIndex() == 2:
+        if self.stack.currentIndex() == YOU:
             self.next_btn.setEnabled(ok)
         return ok
 
@@ -570,13 +631,18 @@ class Installer(QWidget):
             f"<tr><td style='color:{SUBTEXT}'>Keep</td><td>Every other partition and drive</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Account</td><td>{html.escape(self.user.text())} @ {html.escape(self.host.text())}</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Time zone</td><td>{self.tz.currentText()}</td></tr></table>")
+        extras = [title for key, title, _ in GROUPS if key in self.groups()]
+        self.software_text.setText(
+            "CachyOS kernel, KDE Plasma desktop, Firefox, graphics drivers and snapshots"
+            + (f", plus {', '.join(extras)}." if extras else ". Nothing extra: add software later with Discover or pacman.")
+            + " Your NTFS drives are mounted as they are. It takes 20–60 minutes depending on your internet.")
         self.agree.setText(f"I understand everything on {t} will be erased")
         self.agree.setChecked(False)
 
     # ------------------------------------------------------------- install
 
     def start_install(self):
-        self.go(4)
+        self.go(INSTALL)
         self.log_view.clear()
         if DEMO:
             self.demo_lines = iter(["// Pre-flight", "  [ OK ] internet", "// Preparing /dev/nvme1n1p3",
@@ -595,7 +661,7 @@ class Installer(QWidget):
             f.write(self.pw1.text())
         env = {"DECKOS_GUI": "1", "DECKOS_TARGET": self.target(), "DECKOS_HOSTNAME": self.host.text(),
                "DECKOS_USER": self.user.text(), "DECKOS_PASSWORD_FILE": pwfile, "DECKOS_TZ": self.tz.currentText(),
-               "DECKOS_CONFIRM": "ERASE"}
+               "DECKOS_GROUPS": ",".join(self.groups()), "DECKOS_CONFIRM": "ERASE"}
         self.proc = QProcess(self)
         self.proc.setProcessChannelMode(QProcess.MergedChannels)
         self.proc.readyReadStandardOutput.connect(self.read_output)
@@ -656,7 +722,7 @@ class Installer(QWidget):
             tail = "<br>".join(html.escape(x) for x in self.log_view.toPlainText().splitlines()[-14:]).replace(" ", "&nbsp;")
             self.done_body.setText(f"<span style='color:{SUBTEXT}'>{saved}</span><br><br>"
                                    f"<span style='font-family:monospace; font-size:8.5pt'>{tail}</span>")
-        self.go(5)
+        self.go(DONE)
 
     def save_log(self):
         """Copies the full log to the desktop, where it survives a reboot onto the USB stick only if copied."""

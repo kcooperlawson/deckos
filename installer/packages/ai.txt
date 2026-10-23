@@ -1,16 +1,7 @@
-# AI + dev + modding. ROCm supports the RX 9070 XT (gfx1201) for local models.
+# Optional "ai" group: local models on the GPU. ROCm supports Radeon RX 7000 / 9000 cards
+# (the RX 9070 XT is gfx1201).
 ollama-rocm
 rocm-hip-runtime
 rocm-opencl-runtime
 rocminfo
 rocm-smi-lib
-python-pip
-uv
-nodejs
-npm
-docker
-docker-compose
-docker-buildx
-github-cli
-dotnet-sdk
-jdk-openjdk

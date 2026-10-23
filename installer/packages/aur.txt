@@ -1,5 +1,6 @@
-# Built from the AUR with paru during install.
-gamescope-session-steam-git
-visual-studio-code-bin
-jetbrains-toolbox
-r2modman-bin
+# Built from the AUR (prebuilt on the USB by build.sh). Second column: the optional group that
+# installs it (gaming, ai, dev); no group = always installed.
+gamescope-session-steam-git gaming
+r2modman-bin                gaming
+visual-studio-code-bin      dev
+jetbrains-toolbox           dev
