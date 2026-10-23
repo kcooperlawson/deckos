@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: makepkg
         run: |
-          ( . pkg/deckos-files/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
+          ( startdir=$PWD/pkg/deckos-files; . pkg/deckos-files/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
           useradd -m builder
           mkdir /home/builder/src && cp -r apps pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
           for p in deckos-files deckos-settings deckos-theme-tmpikes deckos-installer; do
