@@ -1,10 +1,51 @@
 #!/usr/bin/env bash
 # Starts the DeckOS installer (Calamares) as root inside the live Plasma session.
-# Its full log ends up in /root/.cache/calamares/session.log (copied to the desktop on exit).
-if command -v xhost >/dev/null; then xhost +si:localuser:root >/dev/null 2>&1; fi
-sudo --preserve-env=WAYLAND_DISPLAY,XDG_RUNTIME_DIR,DISPLAY,XAUTHORITY,XDG_SESSION_TYPE,XDG_CURRENT_DESKTOP,KDE_FULL_SESSION,KDE_SESSION_VERSION,QT_QPA_PLATFORM,DBUS_SESSION_BUS_ADDRESS \
-  calamares -D 6 "$@"
-status=$?
+# Tries native Wayland first, then XWayland; if both fail it shows the error instead of
+# vanishing. Calamares' log and its console output are copied to the desktop either way.
+LOG=$HOME/Desktop/installer-output.txt
+mkdir -p "$HOME/Desktop"
+: > "$LOG"
+
+if command -v xhost >/dev/null; then xhost +si:localuser:root >>"$LOG" 2>&1; fi
+# Root's own runtime dir, for the XWayland fallback.
+sudo install -d -m 700 /run/user/0 2>/dev/null
+
+run_calamares() {  # run_calamares PLATFORM
+  local rt=/run/user/0
+  # Wayland's socket lives in the user's runtime dir; XWayland only needs DISPLAY.
+  [[ $1 == wayland ]] && rt=${XDG_RUNTIME_DIR:-/run/user/1000}
+  echo "### calamares on $1 ($(date '+%T'))" >>"$LOG"
+  sudo env WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" XDG_RUNTIME_DIR="$rt" \
+    DISPLAY="${DISPLAY:-:0}" XAUTHORITY="${XAUTHORITY:-}" \
+    XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" \
+    KDE_FULL_SESSION=true KDE_SESSION_VERSION=6 QT_QPA_PLATFORM="$1" \
+    calamares -D 6 >>"$LOG" 2>&1
+}
+
+status=1
+if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
+  start=$SECONDS
+  run_calamares wayland; status=$?
+  # A crash within seconds means it never got a window up: retry through XWayland.
+  if [[ $status -ne 0 && $((SECONDS - start)) -lt 20 ]]; then
+    run_calamares xcb; status=$?
+  fi
+else
+  run_calamares xcb; status=$?
+fi
+
 sudo cp /root/.cache/calamares/session.log "$HOME/Desktop/installer-log.txt" 2>/dev/null &&
   sudo chown "$USER:" "$HOME/Desktop/installer-log.txt"
+
+if [[ $status -ne 0 ]]; then
+  msg="The installer stopped (exit code $status).
+
+Last lines of its output (full copy: Desktop/installer-output.txt):
+
+$(tail -n 25 "$LOG")
+
+You can also use \"Install DeckOS (text mode)\" from the app menu."
+  if command -v kdialog >/dev/null; then kdialog --title "DeckOS installer" --error "$msg"
+  else konsole --hold -e bash -c 'cat "$1"' _ "$LOG"; fi
+fi
 exit $status

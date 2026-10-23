@@ -114,6 +114,8 @@ display_apply() {
   local level card; level=$(display_level)
   card=$(dgpu_card) || { warn "no AMD GPU found"; return 0; }
   local dev=$card/device
+  # Older or non-amdgpu cards (and other PCs booting the live USB) have no power controls.
+  [[ -w $dev/power_dpm_force_performance_level ]] || { warn "$(basename "$card") has no amdgpu power controls"; return 0; }
   case $level in
     0|1)
       echo auto > "$dev/power_dpm_force_performance_level" ;;

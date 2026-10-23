@@ -1,7 +1,7 @@
 # Maintainer: kcooperlawson
 # Live-USB only: the Calamares setup that installs DeckOS. Removed from the installed system.
 pkgname=deckos-installer
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="DeckOS graphical installer (Calamares configuration, branding, install scripts)"
 arch=(any)
