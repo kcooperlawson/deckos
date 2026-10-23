@@ -88,7 +88,17 @@ banner() {
 }
 
 # Up to ~90 s for Ethernet/DHCP to come up, with a live countdown (no gum: plain printf).
-internet_ok() { curl -fsS -o /dev/null --connect-timeout 4 --max-time 6 https://archlinux.org 2>/dev/null; }
+# Any one of several sites will do: archlinux.org alone is sometimes slow or down.
+NET_URLS=(https://geo.mirror.pkgbuild.com https://mirror.cachyos.org https://archlinux.org https://www.google.com)
+NET_ERR=/tmp/deckos-net-check.txt
+internet_ok() {
+  local u
+  : > "$NET_ERR"
+  for u in "${NET_URLS[@]}"; do
+    curl -sS -o /dev/null --connect-timeout 5 --max-time 10 "$u" 2>>"$NET_ERR" && return 0
+  done
+  return 1
+}
 wait_for_internet() {
   local i
   for i in $(seq 1 30); do
@@ -115,10 +125,12 @@ set -x
 section "Pre-flight"
 note "Checking internet..."
 until wait_for_internet; do
-  warn "No internet yet. Network interfaces:"
+  warn "No internet yet. What failed:"
+  sed 's/^/      /' "$NET_ERR" || true
+  note "Network interfaces:"
   ip -br addr | grep -v '^lo ' | sed 's/^/      /' || true
   note "Ethernet: check the cable is in the motherboard's port (not the Xbox adapter)."
-  note "Wi-Fi: press Ctrl+C, run  iwctl station wlan0 connect \"NETWORK\"  then  deckos-install"
+  note "Wi-Fi: connect from the network icon on the desktop panel, or run  nmtui  in another terminal"
   read -rp "  Press Enter to try again... " _
 done
 good "internet"

@@ -124,6 +124,8 @@ ln -sf /usr/lib/systemd/system/NetworkManager-dispatcher.service "$S/dbus-org.fr
 ln -sf /usr/lib/systemd/system/bluetooth.service "$S/bluetooth.target.wants/bluetooth.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$S/dbus-org.bluez.service"
 ln -sf /usr/lib/systemd/system/power-profiles-daemon.service "$S/multi-user.target.wants/power-profiles-daemon.service"
+# DNS through systemd-resolved (NetworkManager feeds it); without this file nothing resolves.
+ln -sf /run/systemd/resolve/stub-resolv.conf "$A/etc/resolv.conf"
 
 # On-USB repo (installer Software page) + the text installer as a backup.
 mkdir -p "$A/opt/deckos"
