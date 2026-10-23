@@ -72,7 +72,7 @@ monitors() {
 
 LEVEL_DESC=(
   "0  stock          — AMD defaults, no workarounds"
-  "1  no-FAMS        — disable SubVP + firmware-assisted memory-clock switching (default)"
+  "1  no-FAMS        — disable SubVP + firmware-assisted memory-clock switching"
   "2  pinned-mclk    — level 1 + lock VRAM clock to max at boot (~+15–30 W idle)"
   "3  no-mclk-switch — level 2 + no multi-monitor clock switching, no PSR/Panel Replay"
   "4  locked-high    — level 3 + force every GPU clock high (max idle power, last resort)"
@@ -89,10 +89,29 @@ level_cmdline() {
 }
 
 display_level() {
-  local LEVEL=1
+  local LEVEL=0
   # shellcheck source=/dev/null
   [[ -r $DISPLAY_CONF ]] && . "$DISPLAY_CONF"
-  echo "${LEVEL:-1}"
+  echo "${LEVEL:-0}"
+}
+
+# Starting level for this PC, as "LEVEL<TAB>reason"; the installer uses it. Level 1 only where
+# the blackouts are known: an RX 9070-series card driving a Samsung Odyssey or more than one
+# screen. Everything else starts at stock and can climb the ladder if it ever blacks out.
+display_recommend() {
+  local card n=0 odyssey=0 conn name
+  if ! card=$(dgpu_card) || [[ " $DGPU_IDS " != *" $(cat "$card/device/device" 2>/dev/null) "* ]]; then
+    printf '0\tno RX 9070-series card\n'; return 0
+  fi
+  while IFS=$'\t' read -r conn name; do
+    [[ -n $conn ]] || continue
+    n=$((n + 1))
+    [[ $name == *Odyssey* || $name == *G70B* ]] && odyssey=1
+  done < <(monitors)
+  if [[ $odyssey == 1 ]]; then printf '1\tRX 9070-series card + Samsung Odyssey\n'
+  elif [[ $n -gt 1 ]]; then printf '1\tRX 9070-series card + %d monitors\n' "$n"
+  elif [[ $n == 1 ]]; then printf '0\tRX 9070-series card, one monitor\n'
+  else printf '0\tRX 9070-series card, no monitors detected\n'; fi
 }
 
 grub_set_amdgpu_args() {
@@ -198,7 +217,9 @@ display_cmd() {
     watch) display_watch ;;
     levels) printf '  %s\n' "${LEVEL_DESC[@]}" ;;
     monitors) monitors ;;
-    *) err "usage: deckos display [status|levels|set N|watch|monitors]"; exit 2 ;;
+    recommend) display_recommend ;;
+    flags) level_cmdline "${2:-}" ;;  # kernel flags for level N (used by the installer)
+    *) err "usage: deckos display [status|levels|set N|watch|monitors|recommend]"; exit 2 ;;
   esac
 }
 
@@ -397,7 +418,8 @@ usage() {
   cat <<EOF
 ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
 
-  deckos display [status|levels|set N|watch|monitors]   Samsung G7 blackout fix ladder
+  deckos display [status|levels|set N|watch|monitors|recommend]
+                                                        display blackout fix ladder
   deckos drives  [list|rescan|doctor]                   your NTFS drives (no reformatting)
   deckos session gaming|desktop                         switch Gaming Mode <-> Desktop
   deckos gaming detect                                  which output Gaming Mode uses

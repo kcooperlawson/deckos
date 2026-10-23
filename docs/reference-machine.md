@@ -31,7 +31,7 @@ then DeckOS. In the installer, keep the preselected **NVME** partition and the A
 ## What you get on this machine
 
 - NTFS drives mounted at `/mnt/Windows`, `/mnt/SSD` and `/mnt/BIG`.
-- Display fix **level 1**, which stops the G70B's blackouts on the 9070 XT. `deckos display watch` is the
-  tool if they come back.
+- Display fix **level 1**, picked automatically for the 9070 XT + Odyssey. It stops the G70B's blackouts;
+  `deckos display watch` is the tool if they come back.
 - Gaming Mode on the Odyssey at 3840×2160 / 144 Hz, VRR off (the G7 flickers with Adaptive-Sync).
 - A Steam library on `D:\SteamLibrary`: run `deckos steam-ntfs` once after adding it in Steam.

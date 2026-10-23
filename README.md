@@ -78,9 +78,11 @@ first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
 5. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
 Behind the scenes it installs Arch, switches to the CachyOS repos for your CPU, installs everything listed
-above, mounts your NTFS drives under `/mnt/<drive label>`, takes a "fresh install" snapshot and sets up
-GRUB with DeckOS, Windows and a snapshots menu. The EFI partition is shared with Windows and never
-formatted. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
+above (the DeckOS package and AUR apps come prebuilt on the USB), mounts your NTFS drives under
+`/mnt/<drive label>`, takes a "fresh install" snapshot and sets up GRUB with DeckOS, Windows and a
+snapshots menu. The EFI partition is shared with Windows and never formatted. It also picks the
+[display fix level](#display-blackouts-on-radeon-cards) for your GPU and monitors, and keeps the
+hardware clock in local time only if it finds Windows, so the clock is right in both. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
 the live desktop. A text-mode installer (`sudo deckos-install`) is in the app menu as a backup.
 
 ## Display blackouts on Radeon cards
@@ -88,12 +90,14 @@ the live desktop. A text-mode installer (`sudo deckos-install`) is in the app me
 Some Radeon cards (confirmed on the RX 9070 XT) save power at idle by switching their VRAM clock with
 firmware help (FAMS). With a high-bandwidth monitor (the Samsung Odyssey G7 at 4K 144 Hz is the known
 case), especially alongside a second screen, each switch can drop the DisplayPort signal for 1–2 seconds.
-DeckOS ships **level 1** of a fix ladder and lets you climb it if blackouts still happen:
+DeckOS has a fix ladder you can climb if it happens to you. The installer starts you at **level 1** if it
+finds an RX 9070-series card driving a Samsung Odyssey or more than one monitor, and at level 0 otherwise
+(the live USB always runs level 1):
 
 | Level | What it does | Cost |
 |---|---|---|
 | 0 | stock AMD behaviour | — |
-| **1** (default) | `amdgpu.dcdebugmask=0x20000`: no SubVP/FAMS memory-clock switching | small idle power |
+| 1 | `amdgpu.dcdebugmask=0x20000`: no SubVP/FAMS memory-clock switching | small idle power |
 | 2 | + VRAM clock pinned to max at boot | ~15–30 W idle |
 | 3 | + no multi-monitor clock switching, no PSR / Panel Replay | same |
 | 4 | + every GPU clock forced high | most idle power / heat |
@@ -102,8 +106,9 @@ DeckOS ships **level 1** of a fix ladder and lets you climb it if blackouts stil
 sudo deckos display set 2
 ```
 
-Or use **DeckOS Hub › Display**, then reboot. If you never see blackouts, `sudo deckos display set 0`
-gets the idle power back. To find the cause, run `deckos display watch` (also a button in the Hub) and
+Or use **DeckOS Hub › Display**, then reboot. If you're on level 1 and never see blackouts,
+`sudo deckos display set 0` gets the idle power back. `deckos display recommend` shows what the installer
+would pick for your setup. To find the cause, run `deckos display watch` (also a button in the Hub) and
 press Enter each time the screen blinks. It logs VRAM clock changes, kernel display messages and
 hotplugs, so the cause shows up right next to your marker.
 

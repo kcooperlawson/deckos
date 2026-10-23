@@ -63,7 +63,7 @@ QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 
 LEVELS = [
     ("0 · Stock", "AMD defaults, no workarounds."),
-    ("1 · No FAMS (default)", "Turns off firmware-assisted memory-clock switching — the usual cause of 1–2 s blackouts."),
+    ("1 · No FAMS","Turns off firmware-assisted memory-clock switching — the usual cause of 1–2 s blackouts."),
     ("2 · Pinned VRAM clock", "Level 1 + VRAM clock locked to max at boot. A little more idle power."),
     ("3 · No multi-monitor switching", "Level 2 + no multi-monitor clock switching, PSR or Panel Replay."),
     ("4 · Locked high", "Every GPU clock forced high. Last resort; most idle power and heat."),
@@ -262,9 +262,9 @@ class Hub(QWidget):
     # ---- plates
 
     def display_plate(self):
-        p = Card("Display", "Samsung G7 blackout fix")
-        p.body.addWidget(label("If the Odyssey still flashes black, step up one level, reboot, and use it for a while. "
-                               "Higher levels trade a little idle power for stability.", "sub"))
+        p = Card("Display", "Blackout fix")
+        p.body.addWidget(label("If a screen flashes black for a second or two, step up one level, reboot, and use it "
+                               "for a while. Higher levels trade a little idle power for stability.", "sub"))
         self.level_box = QComboBox()
         for name, _ in LEVELS:
             self.level_box.addItem(name)
@@ -351,8 +351,8 @@ class Hub(QWidget):
     # ---- state
 
     def refresh(self):
-        level = read_conf("/etc/deckos/display.conf").get("LEVEL", "1")
-        idx = int(level) if level.isdigit() and int(level) < len(LEVELS) else 1
+        level = read_conf("/etc/deckos/display.conf").get("LEVEL", "0")
+        idx = int(level) if level.isdigit() and int(level) < len(LEVELS) else 0
         self.level_box.setCurrentIndex(idx)
         self.level_desc.setText(LEVELS[idx][1])
         self.refresh_drives()

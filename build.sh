@@ -9,13 +9,15 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 OUT=${OUT:-$ROOT/out}
 WORK=${WORK:-/var/tmp/deckos-build}
-# AUR apps shipped in the on-USB [deckos] repo (the rest comes from Arch and CachyOS).
-AUR_PKGS=(gamescope-session-steam-git visual-studio-code-bin jetbrains-toolbox r2modman-bin)
+# Display blackout fix level 1 on the live USB only, so it never blacks out mid-install. The
+# installer picks the level for the installed system from the GPU and monitors it finds.
 LIVE_KERNEL_PARAMS="amdgpu.dcdebugmask=0x20000"
 
 if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK "$0" "$@"; fi
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
 nocomments() { grep -vE '^\s*(#|$)' "$1"; }
+# AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
+mapfile -t AUR_PKGS < <(nocomments "$ROOT/installer/packages/aur.txt" | awk '{print $1}')
 
 # ------------------------------------------------------------------ build host
 step "Build host: archiso + CachyOS repo"
