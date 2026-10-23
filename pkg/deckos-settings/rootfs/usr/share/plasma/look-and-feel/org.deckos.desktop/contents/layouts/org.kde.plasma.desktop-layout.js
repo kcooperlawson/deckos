@@ -24,6 +24,7 @@ tasks.writeConfig("launchers", [
 ].join(","));
 
 panel.addWidget("org.kde.plasma.marginsseparator");
+panel.addWidget("org.deckos.quicksettings");  // Wi-Fi, sound, Gaming Mode, updates and more
 panel.addWidget("org.kde.plasma.systemtray");
 var clock = panel.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];

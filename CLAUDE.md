@@ -24,11 +24,17 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   suggestions come from `usr/lib/deckos/store/store_find.py` (no Qt, a slim index the Store writes).
   Preview it with `assets/preview_menu.py` (stand-in Plasma modules in `assets/preview_menu/`). JS names
   like `escape` or `get` break QML method/signal declarations.
+- `pkg/deckos-settings/rootfs/usr/share/plasma/plasmoids/org.deckos.quicksettings/`: DeckOS Quick Settings,
+  the panel popup (native QML). Plasma services through their own QML modules (plasma-nm, bluedevil,
+  plasma-pa, powerdevil, KWin over `org.kde.plasma.workspace.dbus`), each in its own Loader so a missing
+  one hides only its piece; DeckOS bits through `Backend.qml` → `deckos quick-status` / `deckos updates`.
+  Optimisation first: no polling, timers only while open, the update check every 3 h.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).
 - `assets/`: generators whose output is committed into `pkg/` (brand, `icons.py`, `plasma_theme.py`)
-  and previews (`preview_hub.py`, `preview_welcome.py`, `preview_sddm.py`, `preview_plasma.py`). Re-run a
+  and previews (`preview_hub.py`, `preview_welcome.py`, `preview_sddm.py`, `preview_plasma.py`,
+  `preview_quicksettings.py`: the real plasmoid QML on stand-ins from `assets/qml-stubs/`). Re-run a
   generator after changing it and commit both.
 - `builder/`: DeckOS Builder (starts GitHub builds, downloads ISOs, copies to Ventoy, builds locally).
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never

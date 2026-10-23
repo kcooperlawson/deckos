@@ -1,0 +1,5 @@
+module org.kde.plasma.networkmanagement
+EnabledConnections 1.0 EnabledConnections.qml
+AvailableDevices 1.0 AvailableDevices.qml
+NetworkStatus 1.0 NetworkStatus.qml
+Handler 1.0 Handler.qml

@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Wi-Fi, Bluetooth, sound, brightness, media, Gaming Mode and updates in one panel popup",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.quicksettings",
+        "License": "MIT",
+        "Name": "DeckOS Quick Settings",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

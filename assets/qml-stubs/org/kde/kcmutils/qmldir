@@ -1,0 +1,2 @@
+module org.kde.kcmutils
+singleton KCMLauncher 1.0 KCMLauncher.qml

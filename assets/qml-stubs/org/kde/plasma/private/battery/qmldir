@@ -1,0 +1,2 @@
+module org.kde.plasma.private.battery
+BatteryControlModel 1.0 BatteryControlModel.qml

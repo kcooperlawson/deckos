@@ -5,6 +5,8 @@ Same visual language as Steady Downloader and the installer: slate surfaces, 1px
 radii, Inter, DeckOS line icons, and the accent gradient on primary actions.
     deckos-hub            the real thing
     deckos-hub --demo     canned data, for working on the UI anywhere (Windows included)
+    deckos-hub --page system [--update]
+                          open on a page (DeckOS Quick Settings uses this), and start the update
 """
 import os
 import platform
@@ -257,6 +259,12 @@ def main():
     app.setFont(QFont("Inter", 10))
     app.setStyleSheet(S.qss())
     w = Hub()
+    if "--page" in sys.argv[:-1]:
+        page = sys.argv[sys.argv.index("--page") + 1]
+        if page in w.pages:
+            w.navigate(page)
+            if page == "system" and "--update" in sys.argv:
+                w.pages["system"].run_update()
     w.show()
     sys.exit(app.exec())
 

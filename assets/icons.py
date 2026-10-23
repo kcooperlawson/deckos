@@ -114,6 +114,26 @@ ICONS = {
     "power": '<path d="M13.2 3 5.8 13.2h5.6L10.6 21l7.6-10.4h-5.6z"/>',
 }
 
+# DeckOS Quick Settings (the panel popup)
+ICONS.update({
+    "wifi": ('<path d="M2.8 9.2a13.5 13.5 0 0 1 18.4 0M5.9 12.6a9 9 0 0 1 12.2 0M9 16a4.5 4.5 0 0 1 6 0"/>'
+             + dot(12, 19.2, 1.1)),
+    "wifi-off": ('<path d="M9.6 5.3a13.5 13.5 0 0 1 11.6 3.9M2.8 9.2a13.5 13.5 0 0 1 3-2.1M14.4 9.5a9 9 0 0 1 3.7 3.1'
+                 'M5.9 12.6a9 9 0 0 1 4-2.3M9 16a4.5 4.5 0 0 1 6 0M4 4l16 16"/>' + dot(12, 19.2, 1.1)),
+    "bluetooth": '<path d="M7 7.5l10 9-5 4.5v-18l5 4.5-10 9"/>',
+    "bell": ('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>'),
+    "bell-off": ('<path d="M8.2 6.2A6 6 0 0 1 18 11v4M6 11v5.5L4.5 18H18M10 20.5a2.2 2.2 0 0 0 4 0M4 4l16 16"/>'),
+    "night": ('<path d="M18.5 15.2A7.3 7.3 0 0 1 8.8 5.5a7.3 7.3 0 1 0 9.7 9.7z"/>'
+              '<path d="M16.5 3.5v3M15 5h3M20 8.5v2M19 9.5h2"/>'),
+    "volume": ('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a7.5 7.5 0 0 1 0 11"/>'),
+    "volume-mute": '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>',
+    "sun": ('<circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4'
+            'M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4"/>'),
+    "battery": '<rect x="2.5" y="7" width="17" height="10" rx="2"/><path d="M22 10.5v3M5.5 10v4M8.5 10v4"/>',
+    "battery-charging": ('<rect x="2.5" y="7" width="17" height="10" rx="2"/><path d="M22 10.5v3"/>'
+                         '<path d="M11.8 8.8 9 12.3h3.2l-1.2 2.9"/>'),
+})
+
 
 # The login screen can't recolour SVGs, so it gets its own light copies of the few it uses.
 SDDM = OUT.parent.parent / "sddm/themes/deckos/icons"

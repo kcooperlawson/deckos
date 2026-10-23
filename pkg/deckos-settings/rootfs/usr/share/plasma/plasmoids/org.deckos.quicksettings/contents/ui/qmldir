@@ -1,0 +1,22 @@
+singleton Deck 1.0 Deck.qml
+Backend 1.0 Backend.qml
+CompactRepresentation 1.0 CompactRepresentation.qml
+FullRepresentation 1.0 FullRepresentation.qml
+DeckIcon 1.0 DeckIcon.qml
+DeckText 1.0 DeckText.qml
+DeckButton 1.0 DeckButton.qml
+DeckSlider 1.0 DeckSlider.qml
+Tile 1.0 Tile.qml
+SmallTile 1.0 SmallTile.qml
+Section 1.0 Section.qml
+NetworkTile 1.0 NetworkTile.qml
+BluetoothTile 1.0 BluetoothTile.qml
+DndTile 1.0 DndTile.qml
+NightLightTile 1.0 NightLightTile.qml
+FirewallTile 1.0 FirewallTile.qml
+VolumeSection 1.0 VolumeSection.qml
+BrightnessSection 1.0 BrightnessSection.qml
+MediaCard 1.0 MediaCard.qml
+PowerRow 1.0 PowerRow.qml
+UpdatesRow 1.0 UpdatesRow.qml
+DisplayPicker 1.0 DisplayPicker.qml

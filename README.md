@@ -170,6 +170,22 @@ press *Apply DeckOS look* in **Hub › Appearance** (or run `deckos spotify them
 the gradient play buttons; everything Spotify does keeps working. Spotify updates undo it, so apply it
 again after one; `deckos spotify restore` puts the stock look back.
 
+## Quick Settings
+
+The sliders button in the panel opens **DeckOS Quick Settings**, the everyday controls in one popup:
+
+- **Wi-Fi, Bluetooth, Do not disturb and Night light** tiles (the arrow on a tile opens its settings page)
+- **Volume** for your default output, or every output with the arrow; **brightness** for each screen
+  that can be dimmed (laptop panels, and monitors that support DDC/CI)
+- **Now playing** with controls for Spotify, Firefox or any media player
+- **DeckOS**: Gaming Mode, the [display fix level](#display-blackouts-on-radeon-cards) (pick a new one
+  right there; it applies after a restart), the firewall, the power profile and, on laptops, the battery
+- **Updates**: how many are waiting, with *Update now* (opens Hub › System and starts the update). The
+  panel button shows the count as a badge; the check runs in the background every few hours
+
+It uses Plasma's own services for Wi-Fi, sound and the rest, so it opens instantly and does nothing
+while it's closed. On an existing install, add it with right-click on the panel › *Add or Manage Widgets*.
+
 ## DeckOS Menu
 
 The app launcher at the left of the dock (or press **Meta**) is DeckOS Menu. Start typing right away:
@@ -206,6 +222,7 @@ catalogs Arch and Flathub publish; repo installs ask for your password, Flathub 
 | `deckos steam-ntfs` | run once after adding a Steam library that lives on a Windows drive. Games stay on NTFS, Proton prefixes move to Linux |
 | `deckos drives` | `list`, `rescan` (new drives), `doctor` (read-only/Fast Startup problems) |
 | `deckos update` | full update; snap-pac snapshots before and after |
+| `deckos updates` | how many updates are waiting (cached; `--max-age 0` checks now) |
 | broken update? | reboot › *DeckOS snapshots* › pick the one before the update |
 | deleted a file? | `/home` has hourly snapshots: copy it back from `/home/.snapshots/<number>/snapshot/` (Hub › System › Browse snapshots). Older installs: `sudo deckos home enable` |
 | `deckos backup /mnt/BIG` | copy your home folder (minus caches, Steam games, ISOs) to another drive; remembered for next time |
@@ -256,7 +273,8 @@ builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy U
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg)
 assets/icons.py           the DeckOS line icons (Hub, Store, login screen) and the Store's app icon
 assets/plasma_theme.py    the DeckOS Plasma style (panel, popups, tooltips, widgets)
-assets/preview_*.py       render the Hub, Welcome, login screen or Plasma style on any OS
+assets/preview_*.py       render the Hub, Welcome, login screen, Plasma style or Quick Settings on any OS
+assets/qml-stubs/         stand-ins for Plasma's QML modules, so plasmoid previews run without Plasma
 build.sh                  ISO build (Arch releng profile + DeckOS)
 iso/                      live-USB additions (packages, live user, autologin)
 installer/                the install script, plus the language and keyboard lists it offers

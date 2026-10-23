@@ -1,0 +1,3 @@
+module org.kde.kirigami
+Icon 1.0 Icon.qml
+singleton Theme 1.0 Theme.qml

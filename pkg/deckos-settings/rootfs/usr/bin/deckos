@@ -404,6 +404,69 @@ update_cmd() {
   ok "done"
 }
 
+# How many updates are waiting (DeckOS Quick Settings shows it in the panel). Checking needs the
+# network, so the answer is cached and reused while it's younger than --max-age seconds and pacman
+# hasn't installed anything since.
+UPDATES_CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/deckos/updates
+
+updates_stale() {  # updates_stale MAX_AGE
+  [[ -s $UPDATES_CACHE ]] || return 0
+  [[ /var/lib/pacman/local -nt $UPDATES_CACHE ]] && return 0
+  (( $(date +%s) - $(stat -c %Y "$UPDATES_CACHE") >= $1 ))
+}
+
+updates_check() {
+  local repo=0 aur=0 out rc=0 error="" old
+  if ! command -v checkupdates >/dev/null; then
+    error="checkupdates isn't installed (pacman-contrib)"
+  else
+    out=$(checkupdates 2>/dev/null) || rc=$?
+    case $rc in
+      0) repo=$(grep -c . <<<"$out" || true) ;;
+      2) ;;  # nothing to update
+      *) error="No connection to the package mirrors" ;;
+    esac
+  fi
+  if [[ -z $error ]] && command -v paru >/dev/null; then
+    aur=$( (paru -Qua 2>/dev/null || true) | grep -v '\[ignored\]' | grep -c . || true)
+  fi
+  if [[ -n $error && -r $UPDATES_CACHE ]]; then  # keep the last known counts
+    old=$(cat "$UPDATES_CACHE")
+    repo=$(sed -n 's/^repo=//p' <<<"$old"); aur=$(sed -n 's/^aur=//p' <<<"$old")
+  fi
+  {
+    printf 'repo=%s\naur=%s\nchecked=%s\n' "${repo:-0}" "${aur:-0}" "$(date +%s)"
+    if [[ -n $error ]]; then printf 'error=%s\n' "$error"; fi
+  } > "$UPDATES_CACHE.new"
+  mv "$UPDATES_CACHE.new" "$UPDATES_CACHE"
+}
+
+updates_cmd() {
+  local max_age=3600
+  case ${1:-} in
+    "") ;;
+    --cached) [[ -r $UPDATES_CACHE ]] && cat "$UPDATES_CACHE"; return 0 ;;
+    --max-age) max_age=${2:-}; [[ $max_age =~ ^[0-9]+$ ]] || { err "--max-age takes seconds"; exit 2; } ;;
+    *) err "usage: deckos updates [--cached|--max-age SECONDS]"; exit 2 ;;
+  esac
+  mkdir -p "${UPDATES_CACHE%/*}"
+  exec 9>"$UPDATES_CACHE.lock"
+  flock 9  # the panel and a terminal checking at once: the second one waits, then reuses the answer
+  if updates_stale "$max_age"; then updates_check; fi
+  cat "$UPDATES_CACHE"
+}
+
+# Everything DeckOS Quick Settings shows from the deckos side, in one quick call: no network, no root.
+quick_status() {
+  printf 'display=%s\n' "$(display_level)"
+  if command -v gamescope-session-plus >/dev/null; then echo gaming=1; else echo gaming=0; fi
+  if command -v firewall-cmd >/dev/null; then echo firewall=1; else echo firewall=0; fi
+  if [[ -r $UPDATES_CACHE ]]; then
+    cat "$UPDATES_CACHE"
+    if [[ /var/lib/pacman/local -nt $UPDATES_CACHE ]]; then echo stale=1; fi
+  fi
+}
+
 # --------------------------------------------------------------------- software
 #
 # The installer's optional groups, added later (DeckOS Hub > System > Software). Same lists the
@@ -677,6 +740,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos gaming detect                                  which output Gaming Mode uses
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
   deckos update [--system]                              update everything (with snapshots)
+  deckos updates [--cached|--max-age S]                 how many updates are waiting (cached)
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
   deckos backup  [FOLDER]                               copy your home folder to another drive
@@ -694,6 +758,8 @@ case ${1:-} in
   gaming) shift; [[ ${1:-detect} == detect ]] && gaming_detect ;;
   steam-ntfs) steam_ntfs ;;
   update) shift; update_cmd "$@" ;;
+  updates) shift; updates_cmd "$@" ;;
+  quick-status) quick_status ;;  # for DeckOS Quick Settings
   software) shift; software_cmd "$@" ;;
   home) shift; home_cmd "$@" ;;
   backup) shift; backup_cmd "$@" ;;

@@ -1,0 +1,5 @@
+module org.kde.plasma.workspace.dbus
+Properties 1.0 Properties.qml
+DBusServiceWatcher 1.0 DBusServiceWatcher.qml
+BusType 1.0 BusType.qml
+singleton SessionBus 1.0 SessionBus.qml
