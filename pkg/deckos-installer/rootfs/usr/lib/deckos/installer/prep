@@ -34,11 +34,24 @@ rm -rf /etc/pacman.d/gnupg
 pacman-key --init
 pacman-key --populate archlinux cachyos
 
-if curl -fsS -o /dev/null --max-time 8 https://archlinux.org; then
+if curl -fsS -o /dev/null --max-time 8 https://geo.mirror.pkgbuild.com ||
+   curl -fsS -o /dev/null --max-time 8 https://archlinux.org; then
   say "fastest Arch mirrors"
-  reflector --country US --latest 15 --protocol https --sort rate \
-            --save /etc/pacman.d/mirrorlist --connect-timeout 5 --download-timeout 8 \
-    || say "reflector failed; keeping the existing mirror list"
+  if reflector --country US --latest 15 --protocol https --sort rate \
+               --save /etc/pacman.d/mirrorlist.new --connect-timeout 5 --download-timeout 8 &&
+     grep -q '^Server' /etc/pacman.d/mirrorlist.new; then
+    mv /etc/pacman.d/mirrorlist.new /etc/pacman.d/mirrorlist
+  else
+    # archlinux.org's mirror status is often slow or down: fall back to big, reliable mirrors.
+    say "reflector failed; using a standard mirror list"
+    rm -f /etc/pacman.d/mirrorlist.new
+    cat > /etc/pacman.d/mirrorlist <<'EOF'
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirrors.mit.edu/archlinux/$repo/os/$arch
+EOF
+  fi
 else
   say "no internet: Software step will be skipped"
 fi

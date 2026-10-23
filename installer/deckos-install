@@ -74,6 +74,28 @@ install_group() {
   good "$name packages (with retries)"
 }
 
+# reflector needs archlinux.org's mirror status, which is often slow or down. If it fails,
+# use a short list of big, reliable mirrors instead of stopping the install.
+rank_mirrors() {
+  local ml=/etc/pacman.d/mirrorlist
+  echo "### Ranking mirrors" >> "$LOG"
+  if gum spin --spinner line --title " Ranking mirrors" -- bash -c \
+       'reflector --country US --latest 15 --protocol https --sort rate --connect-timeout 5 --download-timeout 8 --save "$0.new" >>"$LOG" 2>&1' "$ml" \
+     && grep -q '^Server' "$ml.new"; then
+    mv "$ml.new" "$ml"
+    good "Ranking mirrors"
+  else
+    rm -f "$ml.new"
+    cat > "$ml" <<'EOF'
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirrors.mit.edu/archlinux/$repo/os/$arch
+EOF
+    warn "Mirror ranking failed - using a standard mirror list"
+  fi
+}
+
 set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   local f=$MNT/etc/default/grub
   if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
@@ -267,7 +289,8 @@ good "btrfs subvolumes: @ @home @snapshots @log @pkg"
 # ------------------------------------------------------------------ base system
 
 section "Base system"
-spin "Ranking mirrors" reflector --country US --latest 15 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+rank_mirrors
+
 spin "Installing Arch base" pacstrap -K "$MNT" base base-devel linux-firmware amd-ucode btrfs-progs \
   gawk git sudo nano networkmanager grub efibootmgr os-prober curl jq
 genfstab -U "$MNT" | sed -E 's/,subvolid=[0-9]+//; s/subvolid=[0-9]+,//' > "$MNT/etc/fstab"
