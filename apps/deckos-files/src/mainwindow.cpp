@@ -271,6 +271,9 @@ QToolButton *MainWindow::toolButton(const QString &icon, const QString &tip, QAc
 {
     auto *b = new QToolButton(this);
     if (action) {
+        // The button re-reads the action when it toggles, so the icon lives on the action.
+        action->setIcon(Style::icon(icon));
+        action->setToolTip(tip);
         b->setDefaultAction(action);
     }
     b->setIcon(Style::icon(icon));

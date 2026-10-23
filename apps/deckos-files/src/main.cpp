@@ -133,9 +133,13 @@ void runScreenshots(MainWindow *w, const QString &root, const QString &out)
         w->setViewMode(FolderView::Grid);
         w->toggleSplit();
         w->setPreviewsVisible(true);
-        open(root + QStringLiteral("/Pictures"), 2000, [=] {
+        w->activePane()->setUrl(QUrl::fromLocalFile(root + QStringLiteral("/Pictures")));
+        whenListed(w, 1500, [=] {
             w->selectUrls({QUrl::fromLocalFile(root + QStringLiteral("/Pictures/beach-2.png"))});
-            QTimer::singleShot(1500, [=] { shoot(w, out, QStringLiteral("5-split-previews")); });
+            QTimer::singleShot(2000, [=] {
+                shoot(w, out, QStringLiteral("5-split-previews"));
+                (*next)();
+            });
         });
     };
     *steps << [=] {
@@ -188,7 +192,10 @@ int main(int argc, char **argv)
     if (demo) {
         // Offscreen CI has no Plasma platform theme: pick the DeckOS fonts and icons by hand.
         if (const QString theme = qEnvironmentVariable("DECKOS_ICON_THEME", QStringLiteral("Papirus-Dark")); !theme.isEmpty())
+        {
+            QIcon::setThemeSearchPaths(QIcon::themeSearchPaths() << QStringLiteral("/usr/share/icons"));
             QIcon::setThemeName(theme);
+        }
         QIcon::setFallbackThemeName(QStringLiteral("breeze-dark"));
         QApplication::setFont(QFont(QStringLiteral("Inter"), 10));
         if (QStyleFactory::keys().contains(QStringLiteral("Breeze")))
