@@ -1,7 +1,8 @@
 """Generates the DeckOS brand: icon, wordmark, wallpaper, GRUB theme art, installer art.
 
 Same family as Steady Downloader: deep slate surfaces, quiet 1px borders, and the
-blue→violet gradient tile with a white rounded glyph. The O in "DeckOS" is a gear ring.
+blue→violet gradient tile with a white rounded glyph. The O in "DeckOS" is a thumbstick seen
+from above: its gate ring, and the cap (raised rim, dished centre) tilted slightly up-right.
 
 Run with fontTools available (the outputs are committed, so builds don't need it):
     python -m pip install fonttools && python assets/generate.py
@@ -78,34 +79,43 @@ def text_path(font, text, x, baseline, size, tracking=0.0):
     return " ".join(d), cx - x - tracking
 
 
-# ------------------------------------------------------------------ the gear O
+# ------------------------------------------------------------------ the thumbstick O
+#
+# One emblem everywhere (wordmark O, app tile, boot splash, wallpaper): the gate ring at the
+# letters' stroke weight, and the stick's cap, a raised rim with a dished centre, tilted slightly
+# toward the upper right. Spun around the gate's centre (the boot splash), the cap circles the gate.
 
-def gear_ring(cx, cy, r_out, thickness, teeth=8, tooth_depth=0.13, steps=960):
-    """A ring whose outer edge carries soft rounded teeth. evenodd path (outer + round hole)."""
-    r_root = r_out * (1 - tooth_depth)
-    r_in = r_root - thickness
-    pts = []
-    for i in range(steps):
-        t = i / steps
-        a = 2 * math.pi * t - math.pi / 2
-        # Tooth profile: flat top over ~38% of the pitch, smooth cosine flanks.
-        p = (t * teeth) % 1.0
-        top, flank = 0.38, 0.16
-        lo, hi = 0.5 - top / 2, 0.5 + top / 2
-        if lo <= p <= hi:
-            k = 1.0
-        elif lo - flank < p < lo:
-            k = 0.5 - 0.5 * math.cos(math.pi * (p - (lo - flank)) / flank)
-        elif hi < p < hi + flank:
-            k = 0.5 + 0.5 * math.cos(math.pi * (p - hi) / flank)
-        else:
-            k = 0.0
-        r = r_root + (r_out - r_root) * k
-        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
-    outer = "M" + " L".join(f"{x:.2f},{y:.2f}" for x, y in pts) + " Z"
-    hole = (f"M{cx - r_in:.2f},{cy:.2f} a{r_in:.2f},{r_in:.2f} 0 1,0 {2 * r_in:.2f},0 "
-            f"a{r_in:.2f},{r_in:.2f} 0 1,0 {-2 * r_in:.2f},0 Z")
-    return outer + " " + hole
+STICK_W = 0.30     # gate ring weight, as a share of the radius (matches Inter's stems in the O)
+CAP_TILT = 0.08    # cap offset toward the upper right, share of the radius
+CAP_R = 0.47       # cap radius
+CAP_RIM = 0.55     # cap rim weight, share of the gate weight
+CAP_DISH = 0.30    # dished centre radius, share of the cap radius
+
+
+def circle_path(cx, cy, r):
+    return (f"M{cx - r:.2f},{cy:.2f} a{r:.2f},{r:.2f} 0 1,0 {2 * r:.2f},0 "
+            f"a{r:.2f},{r:.2f} 0 1,0 {-2 * r:.2f},0 Z")
+
+
+def ring_path(cx, cy, r_out, r_in):
+    """An annulus (draw with fill-rule evenodd)."""
+    return circle_path(cx, cy, r_out) + " " + circle_path(cx, cy, r_in)
+
+
+def thumbstick(cx, cy, r, weight=None, tilt=CAP_TILT):
+    """(gate, cap, cap centre) for the emblem at centre (cx, cy), radius r. evenodd paths.
+    `tilt` pushes the cap further for illustrations (the wallpaper); the emblem keeps CAP_TILT."""
+    w = weight or r * STICK_W
+    ox, oy, cr = cx + r * tilt, cy - r * tilt, r * CAP_R
+    gate = ring_path(cx, cy, r, r - w)
+    cap = ring_path(ox, oy, cr, cr - w * CAP_RIM) + " " + circle_path(ox, oy, cr * CAP_DISH)
+    return gate, cap, (ox, oy, cr)
+
+
+def thumbstick_svg(cx, cy, r, fill, weight=None, extra=""):
+    """The emblem as two filled paths; `extra` adds attributes (opacity, filter) to both."""
+    gate, cap, _ = thumbstick(cx, cy, r, weight)
+    return "".join(f'<path fill="{fill}" fill-rule="evenodd" {extra} d="{d}"/>' for d in (gate, cap))
 
 
 def gradient(id_, x1="0", y1="0", x2="1", y2="1", a=GRAD_A, b=GRAD_B, units=None):
@@ -150,14 +160,9 @@ def controller(id_, x, y, height, body, stick=None, ring=True, glow=None, right=
         out.append(f'<path d="{PAD_PATH}" fill="{body}" opacity="0.45" filter="url(#{glow})"/>')
     out.append(f'<path d="{PAD_PATH}" fill="{body}" mask="url(#m-{id_})"/>')
     if ring:
-        out.append(f'<path fill="{stick or body}" fill-rule="evenodd" d="{stick_ring(sx, sy, sr * 0.80)}"/>')
+        out.append(thumbstick_svg(sx, sy, sr * 0.80, stick or body))
     out.append("</g>")
     return "".join(out)
-
-
-def stick_ring(cx, cy, r, thickness=None):
-    """The thumbstick 'O' of DeckO: a ring with fine grip ridges round its edge."""
-    return gear_ring(cx, cy, r, thickness or r * 0.34, teeth=18, tooth_depth=0.07)
 
 
 def controller_file(size=512, bg=None):
@@ -189,16 +194,16 @@ def pad_gradient(*_unused, id_="padgrad"):
     return gradient(id_, units="userSpaceOnUse", x1="0", y1="0", x2=f"{PAD_W}", y2=f"{PAD_H}")
 
 
-def wordmark(x, baseline, size, text=TEXT, gear_fill="url(#deckos-grad)", with_gear=True, glow=None):
-    """'Deck' + gear-O + 'S' in Inter Display SemiBold. Returns (svg, width, gear(cx, cy, r))."""
+def wordmark(x, baseline, size, text=TEXT, stick_fill="url(#deckos-grad)", with_stick=True, glow=None):
+    """'Deck' + thumbstick-O + 'S' in Inter Display SemiBold. Returns (svg, width, stick(cx, cy, r))."""
     s = size / INTER.upm
     deck, w_deck = text_path(INTER, "Deck", x, baseline, size)
-    # The gear takes the exact box of Inter's "O" so it optically matches the caps.
+    # The emblem takes the exact box of Inter's "O" so it optically matches the caps, with a
+    # little extra room each side (a full circle reads smaller than the O's slightly squared bowl).
     ox0, oy0, ox1, oy1 = INTER.bounds("O")
-    # Teeth stick out past the O's outline, so the gear gets extra room on both sides.
-    margin = size * 0.045
+    margin = size * 0.03
     o_left = x + w_deck + ox0 * s + margin
-    r = (oy1 - oy0) * s / 2 * 1.02
+    r = (oy1 - oy0) * s / 2
     cx = o_left + (ox1 - ox0) * s / 2
     cy = baseline - (oy0 + oy1) / 2 * s
     stem = size * 0.112
@@ -206,11 +211,10 @@ def wordmark(x, baseline, size, text=TEXT, gear_fill="url(#deckos-grad)", with_g
     S, w_S = text_path(INTER, "S", S_x, baseline, size)
     width = S_x + w_S - x
     parts = [f'<path fill="{text}" d="{deck}"/>', f'<path fill="{text}" d="{S}"/>']
-    if with_gear:
-        ring = stick_ring(cx, cy, r, stem)
-        parts.insert(1, f'<path fill="{gear_fill}" fill-rule="evenodd" d="{ring}"/>')
-        if glow:  # neon halo under the gear (filter id supplied by the caller's defs)
-            parts.insert(0, f'<path fill="{gear_fill}" fill-rule="evenodd" opacity="0.85" filter="url(#{glow})" d="{ring}"/>')
+    if with_stick:
+        parts.insert(1, thumbstick_svg(cx, cy, r, stick_fill, weight=stem))
+        if glow:  # neon halo under the emblem (filter id supplied by the caller's defs)
+            parts.insert(0, thumbstick_svg(cx, cy, r, stick_fill, weight=stem, extra=f'opacity="0.85" filter="url(#{glow})"'))
     return "".join(parts), width, (cx, cy, r)
 
 
@@ -222,28 +226,28 @@ def svg(w, h, body, defs="", vb=None):
 # ------------------------------------------------------------------ pieces
 
 def icon(size=256):
-    """Steady-style app tile: blue-violet squircle, white controller with the thumbstick O."""
-    ph = size * 0.50
-    pw = ph * PAD_W / PAD_H
+    """The DeckOS emblem as an app tile: blue-violet squircle, white thumbstick."""
+    c = size / 2
     body = (f'<rect width="{size}" height="{size}" rx="{size * 0.22}" fill="url(#tile)"/>'
-            + controller("i", (size - pw) / 2, (size - ph) / 2 + size * 0.015, ph, "#FFFFFF"))
+            + thumbstick_svg(c, c, size * 0.31, "#FFFFFF"))
     return svg(size, size, body, gradient("tile"))
 
 
-def wordmark_file(with_gear=True, size=200):
+def wordmark_file(with_stick=True, size=200):
     pad = size * 0.12
-    frag, w, gear = wordmark(pad, pad + INTER.cap * size / INTER.upm + size * 0.04, size, with_gear=with_gear)
+    frag, w, stick = wordmark(pad, pad + INTER.cap * size / INTER.upm + size * 0.04, size, with_stick=with_stick)
     h = pad * 2 + INTER.cap * size / INTER.upm + size * 0.08
-    defs = gradient("deckos-grad", units="userSpaceOnUse", x1=f"{gear[0] - gear[2]:.1f}", y1=f"{gear[1] - gear[2]:.1f}",
-                    x2=f"{gear[0] + gear[2]:.1f}", y2=f"{gear[1] + gear[2]:.1f}")
-    return svg(round(w + pad * 2), round(h), frag, defs), gear, (w + pad * 2, h)
+    defs = gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]:.1f}", y1=f"{stick[1] - stick[2]:.1f}",
+                    x2=f"{stick[0] + stick[2]:.1f}", y2=f"{stick[1] + stick[2]:.1f}")
+    return svg(round(w + pad * 2), round(h), frag, defs), stick, (w + pad * 2, h)
 
 
-def gear_file(r_px=60):
+def stick_file(r_px, weight):
+    """The emblem alone, centred, for the boot splash to spin (the cap then circles the gate)."""
     size = r_px * 2 + 4
     c = size / 2
     defs = gradient("g", units="userSpaceOnUse", x1=f"{c - r_px}", y1=f"{c - r_px}", x2=f"{c + r_px}", y2=f"{c + r_px}")
-    return svg(size, size, f'<path fill="url(#g)" fill-rule="evenodd" d="{stick_ring(c, c, r_px, r_px * 0.88 * 0.112 / 0.51)}"/>', defs)
+    return svg(round(size), round(size), thumbstick_svg(c, c, r_px, "url(#g)", weight=weight), defs)
 
 
 def backdrop(w, h, glow_a=(0.18, 0.92), glow_b=(0.86, 0.12)):
@@ -311,7 +315,7 @@ def wallpaper(w=3840, h=2160):
     defs += (f'<linearGradient id="streak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{GRAD_A}" stop-opacity="0"/>'
              f'<stop offset="0.7" stop-color="{GRAD_A}"/><stop offset="1" stop-color="{GRAD_B}"/></linearGradient>')
     defs += glow_filter("glow", 26 * k) + glow_filter("glowsoft", 60 * k)
-    # Fine dot matrix that only shows around the gear.
+    # Fine dot matrix that only shows around the emblem.
     step = 48 * k
     defs += (f'<pattern id="dots" width="{step}" height="{step}" patternUnits="userSpaceOnUse">'
              f'<circle cx="{step / 2}" cy="{step / 2}" r="{2.2 * k}" fill="{TEXT}"/></pattern>'
@@ -320,13 +324,23 @@ def wallpaper(w=3840, h=2160):
              f'<mask id="dotmask"><rect width="{w}" height="{h}" fill="url(#dotfade)"/></mask>')
     body += f'<rect width="{w}" height="{h}" fill="url(#dots)" mask="url(#dotmask)"/>'
     body += streaks(w, h, k)
-    ring = gear_ring(cx, cy, r, 120 * k, teeth=30, tooth_depth=0.045)
-    # Neon: a wide soft halo, a tighter glow, then the crisp edge on top.
-    body += f'<path d="{ring}" fill="none" stroke="url(#line)" stroke-opacity="0.35" stroke-width="{14 * k}" filter="url(#glowsoft)"/>'
-    body += f'<path d="{ring}" fill="url(#line)" fill-opacity="0.05" stroke="url(#line)" stroke-opacity="0.55" stroke-width="{5 * k}" filter="url(#glow)"/>'
-    body += f'<path d="{ring}" fill="none" stroke="url(#line)" stroke-opacity="0.9" stroke-width="{2.5 * k}"/>'
-    inner = gear_ring(cx, cy, r * 0.55, 60 * k, teeth=8, tooth_depth=0.10)
-    body += f'<path d="{inner}" fill="none" stroke="url(#line)" stroke-opacity="0.22" stroke-width="{2 * k}"/>'
+    # The emblem as neon outlines: the gate ring, then the tilted cap (rim and dished centre).
+    gate, cap, (ox, oy, cr) = thumbstick(cx, cy, r, weight=110 * k, tilt=0.15)
+    for d, soft, mid, edge in ((gate, 0.35, 0.55, 0.9), (cap, 0.22, 0.40, 0.75)):
+        # A wide soft halo, a tighter glow, then the crisp edge on top.
+        body += f'<path d="{d}" fill="none" stroke="url(#line)" stroke-opacity="{soft}" stroke-width="{14 * k}" filter="url(#glowsoft)"/>'
+        body += (f'<path d="{d}" fill="url(#line)" fill-opacity="0.05" fill-rule="evenodd" stroke="url(#line)" '
+                 f'stroke-opacity="{mid}" stroke-width="{5 * k}" filter="url(#glow)"/>')
+        body += f'<path d="{d}" fill="none" stroke="url(#line)" stroke-opacity="{edge}" stroke-width="{2.5 * k}"/>'
+    # The cap's travel: a faint circle it would trace if the stick went all the way round.
+    travel = math.hypot(ox - cx, oy - cy)
+    body += (f'<circle cx="{cx}" cy="{cy}" r="{travel + cr:.1f}" fill="none" stroke="url(#line)" stroke-opacity="0.30" '
+             f'stroke-width="{3 * k}" stroke-dasharray="{4 * k} {16 * k}" stroke-linecap="round"/>')
+    # A short motion trail behind the cap, along that circle.
+    for i, op in enumerate((0.20, 0.12, 0.06)):
+        a = math.atan2(oy - cy, ox - cx) - (i + 1) * 0.22
+        body += (f'<circle cx="{cx + travel * math.cos(a):.1f}" cy="{cy + travel * math.sin(a):.1f}" r="{cr:.1f}" '
+                 f'fill="none" stroke="url(#line)" stroke-opacity="{op}" stroke-width="{2 * k}"/>')
     body += gauge(cx, cy, r * 1.17, k)
     return svg(w, h, body, defs)
 
@@ -334,12 +348,12 @@ def wallpaper(w=3840, h=2160):
 def grub_background(w=1920, h=1080):
     defs, body = backdrop(w, h, glow_a=(0.5, 0.0), glow_b=(0.5, 1.15))
     size = 120
-    frag, ww, gear = wordmark(0, 0, size)
+    frag, ww, stick = wordmark(0, 0, size)
     x = (w - ww) / 2
     baseline = h * 0.25
-    frag, ww, gear = wordmark(x, baseline, size, glow="glow")
-    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{gear[0] - gear[2]}", y1=f"{gear[1] - gear[2]}",
-                     x2=f"{gear[0] + gear[2]}", y2=f"{gear[1] + gear[2]}") + glow_filter("glow", 14)
+    frag, ww, stick = wordmark(x, baseline, size, glow="glow")
+    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]}", y1=f"{stick[1] - stick[2]}",
+                     x2=f"{stick[0] + stick[2]}", y2=f"{stick[1] + stick[2]}") + glow_filter("glow", 14)
     defs += (f'<linearGradient id="streak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{GRAD_A}" stop-opacity="0"/>'
              f'<stop offset="0.7" stop-color="{GRAD_A}"/><stop offset="1" stop-color="{GRAD_B}"/></linearGradient>')
     body += streaks(w, h, w / 3840, count=5, seed=3)
@@ -369,10 +383,10 @@ def grub_select_pieces(r=10, fill="#1C2130", stroke="#2E3546"):
 
 def installer_welcome(w=900, h=260):
     defs, body = backdrop(w, h, glow_a=(0.2, 1.0), glow_b=(0.9, 0.0))
-    frag, ww, gear = wordmark(0, 0, 96)
-    frag, ww, gear = wordmark((w - ww) / 2, h * 0.62, 96, glow="glow")
-    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{gear[0] - gear[2]}", y1=f"{gear[1] - gear[2]}",
-                     x2=f"{gear[0] + gear[2]}", y2=f"{gear[1] + gear[2]}") + glow_filter("glow", 12)
+    frag, ww, stick = wordmark(0, 0, 96)
+    frag, ww, stick = wordmark((w - ww) / 2, h * 0.62, 96, glow="glow")
+    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]}", y1=f"{stick[1] - stick[2]}",
+                     x2=f"{stick[0] + stick[2]}", y2=f"{stick[1] + stick[2]}") + glow_filter("glow", 12)
     return svg(w, h, f'<rect width="{w}" height="{h}" rx="14" fill="{BG}"/>' + body + frag, defs)
 
 
@@ -426,13 +440,13 @@ def choice_display(w=640, h=360):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "grub").mkdir(exist_ok=True)
-    wm, wm_gear, wm_size = wordmark_file()
-    wm_nogear, _, _ = wordmark_file(with_gear=False)
+    wm, wm_stick, wm_size = wordmark_file()
+    wm_bare, _, _ = wordmark_file(with_stick=False)
     files = {
         "logo.svg": icon(),
         "wordmark.svg": wm,
-        "wordmark-nogear.svg": wm_nogear,
-        "gear.svg": gear_file(round(wm_gear[2])),
+        "wordmark-bare.svg": wm_bare,
+        "stick.svg": stick_file(wm_stick[2], 200 * 0.112),
         "wallpaper.svg": wallpaper(),
         "grub-background.svg": grub_background(),
         "installer-welcome.svg": installer_welcome(),
@@ -445,8 +459,8 @@ def main():
     for name, data in files.items():
         (OUT / name).write_text(data, encoding="utf-8", newline="\n")
         print("wrote", name)
-    print(f"gear centre in wordmark.svg: ({wm_gear[0]:.1f}, {wm_gear[1]:.1f}) r={wm_gear[2]:.1f} "
-          f"of ({wm_size[0]:.0f}, {wm_size[1]:.0f})")
+    print(f"stick centre in wordmark.svg (for deckos.script): ({wm_stick[0]:.1f}, {wm_stick[1]:.1f}) "
+          f"r={wm_stick[2]:.1f} of ({wm_size[0]:.0f}, {wm_size[1]:.0f})")
 
     # Preview sheet for eyeballing (not committed).
     show = [("wordmark.svg", 420), ("logo.svg", 160), ("wallpaper.svg", 1200),

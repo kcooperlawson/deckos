@@ -213,8 +213,8 @@ partition DeckOS goes on, the drive layout).
 ## Development
 
 The look shares its design language with Steady Downloader (slate `#0F1115` / `#171A21`, `#262B36`
-borders, `#4C8DFF` accent), reworked mechanically: stencil letters, a gear for the O, bolted plates,
-hazard stripes.
+borders, `#4C8DFF` accent), reworked mechanically: stencil letters, a thumbstick for the O (gate ring
+and tilted cap), bolted plates, hazard stripes.
 
 **DeckOS Builder** (`builder/`) is a desktop app that starts GitHub builds, downloads ISOs and copies them
 to a Ventoy stick. See [builder/README.md](builder/README.md).

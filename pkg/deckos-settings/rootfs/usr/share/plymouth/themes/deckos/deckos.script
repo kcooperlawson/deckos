@@ -1,29 +1,31 @@
-// DeckOS boot splash: the wordmark, with the thumbstick O spinning while the system boots.
-// The O's centre inside wordmark.svg comes from assets/generate.py: (574.0, 104.8) in an 810-wide image.
+// DeckOS boot splash: the wordmark, with the thumbstick O's cap circling its gate while the
+// system boots. The emblem image is spun around the gate's centre; the cap sits off-centre, so it
+// orbits while the ring stays put. The O's centre inside wordmark.svg comes from
+// assets/generate.py: (571.0, 104.8) in an 804-wide image.
 
 Window.SetBackgroundTopColor(0.059, 0.067, 0.082);
 Window.SetBackgroundBottomColor(0.043, 0.051, 0.067);
 
-word.image = Image("wordmark-nogear.png");
-stick.image = Image("gear.png");
+word.image = Image("wordmark-bare.png");
+stick.image = Image("stick.png");
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
-scale = word.image.GetWidth() / 810;
+scale = word.image.GetWidth() / 804;
 
 word.x = screen_w / 2 - word.image.GetWidth() / 2;
 word.y = screen_h / 2 - word.image.GetHeight() / 2;
 word.sprite = Sprite(word.image);
 word.sprite.SetPosition(word.x, word.y, 1);
 
-stick.cx = word.x + 574.0 * scale;
+stick.cx = word.x + 571.0 * scale;
 stick.cy = word.y + 104.8 * scale;
 stick.sprite = Sprite(stick.image);
 stick.sprite.SetZ(2);
 
 angle = 0;
 fun refresh_callback() {
-    angle = angle + 0.04;
+    angle = angle - 0.05;  // about one lap every 2.5 s (Plymouth redraws ~50 times a second)
     rotated = stick.image.Rotate(angle);
     stick.sprite.SetImage(rotated);
     stick.sprite.SetPosition(stick.cx - rotated.GetWidth() / 2, stick.cy - rotated.GetHeight() / 2, 2);

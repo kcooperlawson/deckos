@@ -68,8 +68,9 @@ def main():
     ctx = view.rootContext()
     sddm = Sddm()
     users = Model(["name", "realName", "icon", "needsPassword"], [["keagan", "Keagan", "", True]])
-    sessions = Model(["name", "file"], [["Plasma (Wayland)", "plasma.desktop"],
-                                       ["DeckOS Gaming Mode", "deckos-gaming.desktop"]])
+    # SDDM's order: alphabetical by file, so Gaming Mode is first and lastIndex is 0 on a first login.
+    sessions = Model(["name", "file"], [["DeckOS Gaming Mode", "deckos-gaming.desktop"],
+                                       ["Plasma (Wayland)", "plasma.desktop"]], last=0)
     ctx.setContextProperty("sddm", sddm)
     ctx.setContextProperty("userModel", users)
     ctx.setContextProperty("sessionModel", sessions)

@@ -90,8 +90,8 @@ package() {
 
   # Boot splash: wordmark without its O + the thumbstick O, same scale, spun by the script.
   local ply=$pkgdir/usr/share/plymouth/themes/deckos
-  rsvg-convert -z 0.75 "$b/wordmark-nogear.svg" -o "$ply/wordmark-nogear.png"
-  rsvg-convert -z 0.75 "$b/gear.svg" -o "$ply/gear.png"
+  rsvg-convert -z 0.75 "$b/wordmark-bare.svg" -o "$ply/wordmark-bare.png"
+  rsvg-convert -z 0.75 "$b/stick.svg" -o "$ply/stick.png"
 
   # Installer art (used by the live USB's Calamares branding).
   rsvg-convert -w 900 "$b/installer-welcome.svg" -o "$b/installer-welcome.png"

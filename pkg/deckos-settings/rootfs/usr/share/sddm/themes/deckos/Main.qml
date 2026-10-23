@@ -19,7 +19,10 @@ Rectangle {
     readonly property color accentB: config.accentB || "#7A5CFF"
     readonly property color danger: "#FF6B6B"
     readonly property real s: Math.max(0.75, Math.min(width / 1920, height / 1080))  // UI scale
-    property int sessionIndex: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
+    // Picked once the session list is in (pickSession): never Gaming Mode by default, since SDDM
+    // lists it first and a Gaming Mode that fails to start would bounce you straight back here.
+    property int sessionIndex: 0
+    property bool sessionPicked: false
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     readonly property var user: users.count > 0 ? users.itemAt(Math.min(userIndex, users.count - 1)) : null
 
@@ -39,7 +42,11 @@ Rectangle {
         Repeater {
             id: sessions
             model: sessionModel
-            delegate: Item { required property string name }
+            delegate: Item {
+                required property string name
+                required property string file
+            }
+            onCountChanged: Qt.callLater(root.pickSession)
         }
     }
 
@@ -316,6 +323,22 @@ Rectangle {
         Pill { visible: sddm.canSuspend; icon: "sleep"; label: "Sleep"; onClicked: sddm.suspend() }
         Pill { visible: sddm.canReboot; icon: "refresh"; label: "Restart"; onClicked: sddm.reboot() }
         Pill { visible: sddm.canPowerOff; icon: "power-off"; label: "Shut down"; onClicked: sddm.powerOff() }
+    }
+
+    // The last session used, unless that was Gaming Mode; then Plasma (Wayland).
+    function pickSession() {
+        if (sessionPicked || sessions.count === 0)
+            return
+        var plasma = -1, last = sessionModel.lastIndex
+        for (var i = 0; i < sessions.count; i++) {
+            var f = sessions.itemAt(i) ? String(sessions.itemAt(i).file) : ""
+            if (plasma < 0 && (f === "plasma.desktop" || f.endsWith("/plasma.desktop")))
+                plasma = i
+        }
+        var lastItem = last >= 0 ? sessions.itemAt(last) : null
+        var lastIsGaming = lastItem && String(lastItem.file).indexOf("deckos-gaming") >= 0
+        sessionIndex = lastItem && !lastIsGaming ? last : (plasma >= 0 ? plasma : Math.max(0, last))
+        sessionPicked = true
     }
 
     function login() {
