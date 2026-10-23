@@ -17,6 +17,9 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT HAVE_LTO OUTPUT LTO_ERROR)
 include(GNUInstallDirs)
 
+# FindKF6 (the umbrella over the KF6 components) comes with extra-cmake-modules.
+find_package(ECM 6.0 REQUIRED NO_MODULE)
+list(APPEND CMAKE_MODULE_PATH ${ECM_FIND_MODULE_DIR})
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus Concurrent)
 find_package(KF6 6.0 REQUIRED COMPONENTS CoreAddons Config KIO DBusAddons JobWidgets Solid)
 find_package(KF6Baloo 6.0)
