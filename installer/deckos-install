@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deckos-install — installs DeckOS from the live USB onto one partition, next to Windows.
+# deckos-install - installs DeckOS from the live USB onto one partition, next to Windows.
 #
 # Formats ONLY the partition you pick. The EFI partition is reused (never formatted) and
 # every other drive is left exactly as it is; NTFS drives get mounted, not converted.
@@ -29,23 +29,26 @@ FAILED=()
 
 # ------------------------------------------------------------------ helpers
 
+# Everything here must render on the bare Linux text console: its font has no emoji, braille
+# spinners or double-line borders, so status marks are plain [ OK ]-style tags.
 style()   { gum style "$@"; }
 section() { echo; style --foreground "#4C8DFF" --bold "// $*"; }
 note()    { style --foreground "#8C94A6" "  $*"; }
-good()    { style --foreground "#3DD68C" "  ✔ $*"; }
-warn()    { style --foreground "#F5B84B" "  ! $*"; }
+good()    { style --foreground "#3DD68C" "  [ OK ] $*"; }
+warn()    { style --foreground "#F5B84B" "  [ !! ] $*"; }
 die() {
-  style --foreground "#FF6B6B" --bold "  ✖ $*"
+  { set +x; } 2>/dev/null
+  style --foreground "#FF6B6B" --bold "  [FAIL] $*"
   [[ -s $LOG ]] && { echo; note "Last lines of $LOG:"; tail -n 25 "$LOG"; }
   exit 1
 }
 trap 'die "Something failed on line $LINENO. Nothing outside the chosen partition was changed."' ERR
 
-# spin "Title" cmd args... — runs quietly into the log with a spinner.
+# spin "Title" cmd args... - runs quietly into the log with a spinner.
 spin() {
   local title=$1; shift
   echo "### $title :: $*" >> "$LOG"
-  gum spin --spinner minidot --title " $title" -- bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
+  gum spin --spinner line --title " $title" -- bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
     || die "$title failed"
   good "$title"
 }
@@ -58,7 +61,7 @@ install_group() {
   local name=$1 pkgs
   mapfile -t pkgs < <(list_pkgs "$name")
   echo "### pacman $name: ${pkgs[*]}" >> "$LOG"
-  if gum spin --spinner minidot --title " Installing $name (${#pkgs[@]} packages) — this can take a while" -- \
+  if gum spin --spinner line --title " Installing $name (${#pkgs[@]} packages) - this can take a while" -- \
        bash -c 'arch-chroot "$0" pacman -S --needed --noconfirm "${@}" >>"$LOG" 2>&1' "$MNT" "${pkgs[@]}"; then
     good "$name packages"
     return
@@ -71,32 +74,57 @@ install_group() {
   good "$name packages (with retries)"
 }
 
-set_grub() {  # set_grub KEY VALUE — set or append in /etc/default/grub
+set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   local f=$MNT/etc/default/grub
   if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
 }
 
 banner() {
   clear
-  style --foreground "#E8EAF0" --bold --border double --border-foreground "#262B36" --padding "1 4" --margin "1 2" \
-    "D E C K ⚙ S" "" "$(style --foreground '#8C94A6' 'DECKO CLAN SYSTEMS  //  INSTALLER')"
+  local word
+  word="$(style --foreground '#E8EAF0' --bold 'D E C K ')$(style --foreground '#4C8DFF' --bold 'O')$(style --foreground '#E8EAF0' --bold ' S')"
+  style --border normal --border-foreground "#4C8DFF" --padding "1 4" --margin "1 2" \
+    "$word" "" "$(style --foreground '#8C94A6' 'DECKO CLAN SYSTEMS  //  INSTALLER')"
+}
+
+# Up to ~90 s for Ethernet/DHCP to come up, with a live countdown (no gum: plain printf).
+internet_ok() { curl -fsS -o /dev/null --connect-timeout 4 --max-time 6 https://archlinux.org 2>/dev/null; }
+wait_for_internet() {
+  local i
+  for i in $(seq 1 30); do
+    if internet_ok; then printf '\r%60s\r' ''; return 0; fi
+    printf '\r  Waiting for internet... %ds (Ethernet cable plugged in?)   ' "$((i * 3))"
+    sleep 1
+  done
+  printf '\n'
+  return 1
 }
 
 # ------------------------------------------------------------------ checks
 
 banner
 : > "$LOG"
+# Trace every step into the log (not the screen) so a stall can be pinpointed afterwards.
+exec 19>>"$LOG"
+BASH_XTRACEFD=19
+set -x
 [[ $EUID -eq 0 ]] || die "Run as root (you are root by default on the live USB)."
 [[ -d /sys/firmware/efi/efivars ]] || die "The USB was booted in legacy mode. Reboot and pick the UEFI entry for the USB."
 [[ -d $SRC/pkg/deckos-settings ]] || die "DeckOS files not found in $SRC."
 
 section "Pre-flight"
-if ping -c1 -W5 archlinux.org >/dev/null 2>&1; then good "internet"; else
-  die "No internet. Plug in Ethernet, or connect Wi-Fi with: iwctl station wlan0 connect \"NETWORK\""
-fi
-grep -qw avx512f /proc/cpuinfo && good "Zen 4 CPU (znver4-optimised packages)" || warn "CPU lacks AVX-512 — CachyOS will pick a compatible repo"
+note "Checking internet..."
+until wait_for_internet; do
+  warn "No internet yet. Network interfaces:"
+  ip -br addr | grep -v '^lo ' | sed 's/^/      /' || true
+  note "Ethernet: check the cable is in the motherboard's port (not the Xbox adapter)."
+  note "Wi-Fi: press Ctrl+C, run  iwctl station wlan0 connect \"NETWORK\"  then  deckos-install"
+  read -rp "  Press Enter to try again... " _
+done
+good "internet"
+grep -qw avx512f /proc/cpuinfo && good "Zen 4 CPU (znver4-optimised packages)" || warn "CPU lacks AVX-512 - CachyOS will pick a compatible repo"
 sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ' || true)
-if [[ $sb == 1 ]]; then warn "Secure Boot is ON — turn it off in the BIOS (Security › Secure Boot) before rebooting into DeckOS"
+if [[ $sb == 1 ]]; then warn "Secure Boot is ON - turn it off in the BIOS (Security > Secure Boot) before rebooting into DeckOS"
 else good "Secure Boot off"; fi
 timedatectl set-ntp true >/dev/null 2>&1 || true
 
@@ -167,23 +195,26 @@ mount -o ro "$ESP" "$espprobe"
 esp_free=$(df -BM --output=avail "$espprobe" | tail -1 | tr -dc '0-9')
 umount "$espprobe"; rmdir "$espprobe"
 [[ $esp_free -ge 20 ]] || die "EFI partition $ESP has only ${esp_free} MB free (need 20 MB)."
-good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' — Windows Boot Manager found')"
+good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found')"
 
 # ------------------------------------------------------------------ you
 
 section "You"
-HOSTNAME_=$(gum input --prompt "Computer name › " --value "deckos")
+# No tracing while the password is in variables.
+{ set +x; } 2>/dev/null
+HOSTNAME_=$(gum input --prompt "Computer name > " --value "deckos")
 while :; do
-  USERNAME_=$(gum input --prompt "Username › " --placeholder "lowercase, e.g. keagan")
+  USERNAME_=$(gum input --prompt "Username > " --placeholder "lowercase, e.g. keagan")
   [[ $USERNAME_ =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
   warn "lowercase letters, digits, - and _ only"
 done
 while :; do
-  PASS1=$(gum input --password --prompt "Password › ")
-  PASS2=$(gum input --password --prompt "Again › ")
+  PASS1=$(gum input --password --prompt "Password > ")
+  PASS2=$(gum input --password --prompt "Again > ")
   [[ -n $PASS1 && $PASS1 == "$PASS2" ]] && break
-  warn "passwords empty or different — try again"
+  warn "passwords empty or different - try again"
 done
+set -x
 TZ_=$DEFAULT_TZ
 gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
 
@@ -191,15 +222,15 @@ gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timez
 
 section "Ready"
 style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0 2" \
-  "ERASE      $(style --foreground '#FF6B6B' --bold "$TARGET") → btrfs (snapshots on)" \
+  "ERASE      $(style --foreground '#FF6B6B' --bold "$TARGET") -> btrfs (snapshots on)" \
   "Boot menu  $ESP (kept; DeckOS + Windows)" \
   "Keep       every other partition and drive" \
-  "User       $USERNAME_ @ $HOSTNAME_   ·   $TZ_" \
+  "User       $USERNAME_ @ $HOSTNAME_   |   $TZ_" \
   "Software   CachyOS znver4 kernel, KDE Plasma, Steam + Gaming Mode," \
   "           ROCm + Ollama, Claude Code, VS Code, Docker, .NET"
 echo
-confirm=$(gum input --prompt "Type ERASE to install › " --placeholder "ERASE")
-[[ $confirm == ERASE ]] || die "Cancelled — nothing was changed."
+confirm=$(gum input --prompt "Type ERASE to install > " --placeholder "ERASE")
+[[ $confirm == ERASE ]] || die "Cancelled - nothing was changed."
 
 # ------------------------------------------------------------------ disk
 
@@ -264,12 +295,14 @@ for g in video render input audio docker gamemode lp; do
   inchroot getent group "$g" >/dev/null && groups+=",$g"
 done
 inchroot useradd -m -G "$groups" -s /bin/bash "$USERNAME_"
+{ set +x; } 2>/dev/null
 printf '%s:%s\n' "$USERNAME_" "$PASS1" | inchroot chpasswd
 inchroot passwd -l root >>"$LOG" 2>&1
 unset PASS1 PASS2
+set -x
 echo '%wheel ALL=(ALL:ALL) ALL' > "$MNT/etc/sudoers.d/10-wheel"
 chmod 440 "$MNT/etc/sudoers.d/10-wheel"
-good "$USERNAME_ (groups: $groups) — root login disabled, use sudo"
+good "$USERNAME_ (groups: $groups) - root login disabled, use sudo"
 
 # Temporary passwordless sudo so makepkg/paru can install as the new user. Removed below.
 echo "$USERNAME_ ALL=(ALL) NOPASSWD: ALL" > "$MNT/etc/sudoers.d/00-deckos-install"
@@ -286,7 +319,7 @@ spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u
 section "AUR"
 mapfile -t aur < <(list_pkgs aur)
 for p in "${aur[@]}"; do
-  if gum spin --spinner minidot --title " Building $p" -- bash -c \
+  if gum spin --spinner line --title " Building $p" -- bash -c \
        'arch-chroot "$0" sudo -u "$1" -H paru -S --needed --noconfirm --skipreview "$2" >>"$LOG" 2>&1' "$MNT" "$USERNAME_" "$p"; then
     good "$p"
   else
@@ -294,11 +327,11 @@ for p in "${aur[@]}"; do
   fi
 done
 
-if gum spin --spinner minidot --title " Installing Claude Code" -- bash -c \
+if gum spin --spinner line --title " Installing Claude Code" -- bash -c \
      'arch-chroot "$0" sudo -u "$1" -H bash -c "curl -fsSL https://claude.ai/install.sh | bash" >>"$LOG" 2>&1' "$MNT" "$USERNAME_"; then
   good "Claude Code (run: claude)"
 else
-  warn "Claude Code install failed — DeckOS Hub has a button to retry"; FAILED+=("claude-code")
+  warn "Claude Code install failed - DeckOS Hub has a button to retry"; FAILED+=("claude-code")
 fi
 rm -f "$MNT/etc/sudoers.d/00-deckos-install"
 
@@ -339,7 +372,7 @@ sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBE
 spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes
 spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
 spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
-grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet — run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
+grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet - run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
 
 section "Services"
 for s in NetworkManager bluetooth sddm power-profiles-daemon fstrim.timer grub-btrfsd snapper-cleanup.timer \
@@ -364,6 +397,6 @@ style --margin "1 2" --foreground "#8C94A6" \
   "  1. BIOS: Secure Boot off. DeckOS is now first in the boot order (Windows is in its menu)." \
   "  2. Windows: run 'powercfg /h off' as admin once, or your NTFS drives mount read-only." \
   "After first login:" \
-  "  • DeckOS Hub (bottom panel) — display fix level, Gaming Mode, drives." \
-  "  • If the Samsung still blinks: Hub › Display › 'Watch for blackouts', then step up a level."
+  "  - DeckOS Hub (bottom panel) - display fix level, Gaming Mode, drives." \
+  "  - If the Samsung still blinks: Hub > Display > 'Watch for blackouts', then step up a level."
 gum confirm "Reboot now?" && reboot
