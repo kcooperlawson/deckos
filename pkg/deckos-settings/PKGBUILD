@@ -26,7 +26,7 @@ package() {
   cp -a "$src/rootfs/." "$pkgdir/"
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
-  chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub \
+  chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
             "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,brand-os-release} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
@@ -81,6 +81,12 @@ package() {
   done
   rsvg-convert -w 256 -h 256 "$b/logo.svg" -o "$b/logo-256.png"
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
+
+  # DeckOS Store app icon.
+  install -Dm644 "$b/store-logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos-store.svg"
+  for s in 16 24 32 48 64 128 256; do
+    rsvg-convert -w "$s" -h "$s" "$b/store-logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos-store.png"
+  done
 
   # Boot splash: wordmark without its O + the thumbstick O, same scale, spun by the script.
   local ply=$pkgdir/usr/share/plymouth/themes/deckos

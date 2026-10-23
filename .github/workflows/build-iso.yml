@@ -24,7 +24,7 @@ jobs:
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python
         run: |
-          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/*.py builder/deckos_builder.py \
+          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/*.py pkg/deckos-settings/rootfs/usr/lib/deckos/store/*.py builder/deckos_builder.py \
             pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py assets/*.py
 
   package:
@@ -92,7 +92,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      KEY: E8EB594BA885437D0346AA5C1ED97D15577C42B9
+      KEY: F67E15FABF95D2DA72BE5D3F6322881773088C41
     steps:
       - run: pacman -Syu --noconfirm --needed github-cli gnupg git
       - uses: actions/checkout@v4

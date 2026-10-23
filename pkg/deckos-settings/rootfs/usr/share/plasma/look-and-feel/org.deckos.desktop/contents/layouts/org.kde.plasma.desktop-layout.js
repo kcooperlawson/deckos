@@ -19,7 +19,8 @@ tasks.writeConfig("launchers", [
     "preferred://browser",
     "applications:steam.desktop",
     "applications:code.desktop",
-    "applications:deckos-hub.desktop"
+    "applications:deckos-hub.desktop",
+    "applications:deckos-store.desktop"
 ].join(","));
 
 panel.addWidget("org.kde.plasma.marginsseparator");

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 /usr/lib/deckos/store/deckos_store.py "$@"

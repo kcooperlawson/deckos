@@ -12,6 +12,7 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 | **Base** | Arch Linux + CachyOS repos built for your CPU (x86-64-v3, v4 or Zen 4), `linux-cachyos` (BORE) + `linux-cachyos-lts` fallback |
 | **Desktop** | KDE Plasma 6 (Wayland) with the DeckOS look: its own Plasma style, login screen and icons (Papirus with DeckOS-blue folders), Inter + JetBrains Mono. An optional TMpikes theme comes along |
 | **DeckOS Hub** | one app for live stats, the display fix, Gaming Mode, drives, AI and dev tools, updates, snapshots, the firewall, adding software and changing the look |
+| **DeckOS Store** | one app store for the Arch and CachyOS repos, Flathub and the AUR: browse, search and install with a click |
 | **Gaming** (optional) | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync, Discord, OBS |
 | **Local AI** (optional) | Ollama + ROCm for running models on a Radeon |
 | **Development** (optional) | Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
@@ -144,6 +145,20 @@ The DeckOS Hub (in the panel, or `deckos hub`) is where DeckOS's own settings li
 | **System** | updates with a progress bar (AUR apps in the terminal), system and home snapshots, backup to another drive, the firewall, and adding Gaming, Local AI or Development later |
 | **Appearance** | global theme (DeckOS, TMpikes), accent colour, wallpaper, Plasma style and icons |
 
+## DeckOS Store
+
+The DeckOS Store (in the panel, or `deckos-store`) installs apps without the command line, from all
+three places DeckOS gets software:
+
+- **Arch and CachyOS repos**: installed with pacman, updated with the rest of the system. Preferred
+  when an app is available from more than one place.
+- **Flathub**: apps that aren't in the repos (Spotify, Bottles…), sandboxed, updated by `deckos update`.
+- **AUR**: community packages, searched live and built with paru. Labelled, since Arch doesn't check them.
+
+It has editor's picks and categories on the home page, one search across all three sources, app pages
+with screenshots and a choice of source, and an Installed list. App details come from the AppStream
+catalogs Arch and Flathub publish; repo installs ask for your password, Flathub ones don't.
+
 ## Using it
 
 | | |
@@ -202,13 +217,13 @@ to a Ventoy stick. See [builder/README.md](builder/README.md).
 VERSION                   the DeckOS release: names the ISO, shows in os-release, the Hub and deckos doctor
 builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy USB)
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg)
-assets/icons.py           the DeckOS line icons (Hub, login screen)
+assets/icons.py           the DeckOS line icons (Hub, Store, login screen) and the Store's app icon
 assets/plasma_theme.py    the DeckOS Plasma style (panel, popups, tooltips, widgets)
 assets/preview_*.py       render the Hub, login screen or Plasma style on any OS
 build.sh                  ISO build (Arch releng profile + DeckOS)
 iso/                      live-USB additions (packages, live user, autologin)
 installer/                the install script, plus the language and keyboard lists it offers
-pkg/deckos-settings/      Arch package: Hub, deckos tool, themes, icons, fixes (rootfs/ mirrors /);
+pkg/deckos-settings/      Arch package: Hub, Store, deckos tool, themes, icons, fixes (rootfs/ mirrors /);
                           usr/share/deckos/packages/*.txt = what gets installed, per group
 pkg/deckos-theme-tmpikes/ the optional TMpikes theme
 pkg/deckos-installer/     the graphical installer (drives deckos-install)
@@ -226,7 +241,7 @@ any other package.
 
 **To release:** bump `VERSION`, commit, then tag and push (`git tag v0.3.1 && git push origin v0.3.1`).
 CI checks that the tag matches `VERSION`, signs the packages with the DeckOS key (fingerprint
-`E8EB594BA885437D0346AA5C1ED97D15577C42B9`, kept as the `DECKOS_SIGNING_KEY` secret) and replaces the
+`F67E15FABF95D2DA72BE5D3F6322881773088C41`, kept as the `DECKOS_SIGNING_KEY` secret) and replaces the
 repo's contents. `deckos-theme-tmpikes` only updates on installed systems when its own `pkgver` goes up.
 
 **Working on DeckOS from DeckOS:** clone the repo into your home folder (not a Windows drive: NTFS loses
@@ -239,4 +254,4 @@ so system and `/home` snapshots don't hold on to old builds and ISOs.
 
 The generators write into `pkg/` and their output is committed; run them again after changing a
 design. The installer and the Hub both have a demo mode for working on the UI anywhere, including
-Windows: run `deckos_installer.py --demo` or `deckos_hub.py --demo` from their folders in `pkg/`.
+Windows: run `deckos_installer.py --demo`, `deckos_hub.py --demo` or `deckos_store.py --demo` from their folders in `pkg/`.

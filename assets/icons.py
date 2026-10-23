@@ -76,6 +76,23 @@ ICONS = {
     "keyboard": ('<rect x="2.5" y="6" width="19" height="12" rx="2"/>'
                  '<path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 14h.01M17 14h.01M9.5 14h5"/>'),
     "user": '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    # DeckOS Store
+    "store": ('<path d="M5 8.5h14l-1.1 10.6a1.6 1.6 0 0 1-1.6 1.4H7.7a1.6 1.6 0 0 1-1.6-1.4z"/>'
+              '<path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>'),
+    "search": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    "star": '<path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z"/>',
+    "grid": ('<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/>'
+             '<rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>'),
+    "music": '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+    "globe": ('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.8 5.4 3.8 8.5s-1.3 5.9-3.8 8.5'
+              'c-2.5-2.6-3.8-5.4-3.8-8.5S9.5 6.1 12 3.5z"/>'),
+    "doc": ('<path d="M7 3.5h7l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/>'
+            '<path d="M13.5 3.5V8.5h5M8.5 13h7M8.5 16.5h5"/>'),
+    "flask": ('<path d="M9.5 3.5h5M10.5 3.5v5.2L5.4 17.6A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-2.9L13.5 8.7V3.5"/>'
+              '<path d="M7.6 14h8.8"/>'),
+    "sliders": '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+    "trash": ('<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>'
+              '<path d="M10 11v5.5M14 11v5.5"/>'),
     # hardware
     "cpu": ('<rect x="7" y="7" width="10" height="10" rx="1.5"/><rect x="10" y="10" width="4" height="4" rx=".5"/>'
             '<path d="M9.5 3.5V7M14.5 3.5V7M9.5 17v3.5M14.5 17v3.5M3.5 9.5H7M3.5 14.5H7M17 9.5h3.5M17 14.5h3.5"/>'),
@@ -101,8 +118,22 @@ def svg_text(body, color="#000"):
             ).replace("#000", color)
 
 
+STORE_LOGO = OUT.parent / "branding/store-logo.svg"
+
+
+def store_logo():
+    """The DeckOS Store app icon: the brand tile's gradient with the store bag in white."""
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">'
+            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+            '<stop offset="0" stop-color="#4C8DFF"/><stop offset="1" stop-color="#7A5CFF"/></linearGradient></defs>'
+            '<rect x="6" y="6" width="116" height="116" rx="28" fill="url(#g)"/>'
+            '<g transform="translate(22 20) scale(3.5)" fill="none" stroke="#fff" stroke-width="1.6" '
+            f'stroke-linecap="round" stroke-linejoin="round">{ICONS["store"]}</g></svg>\n')
+
+
 def write():
     OUT.mkdir(parents=True, exist_ok=True)
+    STORE_LOGO.write_text(store_logo(), newline="\n")
     for name, body in ICONS.items():
         (OUT / f"{name}.svg").write_text(svg_text(body), newline="\n")
     SDDM.mkdir(parents=True, exist_ok=True)

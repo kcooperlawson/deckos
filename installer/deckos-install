@@ -502,6 +502,12 @@ grep -q '^\[cachyos-znver4\]' "$MNT/etc/pacman.conf" && good "znver4 repos enabl
 
 section "Software"
 for g in base desktop "${CHOSEN[@]}"; do install_group "$g"; done
+# Flathub for the DeckOS Store (apps that aren't in the Arch repos, like Spotify and Bottles).
+if inchroot flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >>"$LOG" 2>&1; then
+  good "Flathub"
+else
+  warn "Flathub not added - the DeckOS Store can set it up later"
+fi
 
 section "Your account"
 groups=wheel

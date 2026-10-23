@@ -111,7 +111,9 @@ class HomePage(Page):
         self.lay.addLayout(grid)
 
         quick = Card("Quick actions", None, None)
-        quick.body.addWidget(row(button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
+        quick.body.addWidget(row(button("Get apps", slot=lambda: QProcess.startDetached("deckos-store", []),
+                                        icon="store"),
+                                 button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
                                  button("Terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal"),
                                  button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
                                  button("Files", slot=lambda: QProcess.startDetached("dolphin", []), icon="folder")))
@@ -521,6 +523,8 @@ class SystemPage(Page):
         self.lay.addWidget(fw)
 
         sw = Card("Software", "Add what you skipped at install", "package")
+        sw.actions.addWidget(button("Open DeckOS Store", slot=lambda: QProcess.startDetached("deckos-store", []),
+                                    icon="store", tip="Every app from Arch, CachyOS, Flathub and the AUR"))
         self.sw_list = QVBoxLayout()
         self.sw_list.setSpacing(6)
         sw.body.addLayout(self.sw_list)

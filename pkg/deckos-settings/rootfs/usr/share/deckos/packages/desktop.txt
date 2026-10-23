@@ -13,6 +13,8 @@ partitionmanager
 kdeconnect
 plasma-systemmonitor
 kdialog
+# DeckOS Store: app names, icons and screenshots for the Arch repos
+archlinux-appstream-data
 xdg-desktop-portal-kde
 xdg-desktop-portal-gtk
 breeze-gtk
