@@ -1,0 +1,47 @@
+name: DeckOS Files
+
+# Builds DeckOS Files in an Arch container and screenshots it offscreen (--demo --screenshot), so
+# the app can be checked from any OS. The screenshots are the deckos-files-screenshots artifact.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths: ["apps/deckos-files/**", "pkg/deckos-files/**", ".github/workflows/deckos-files.yml"]
+  pull_request:
+    paths: ["apps/deckos-files/**", "pkg/deckos-files/**", ".github/workflows/deckos-files.yml"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - run: pacman -Syu --noconfirm --needed base-devel git
+      - uses: actions/checkout@v4
+      - name: makepkg
+        run: |
+          ( . pkg/deckos-files/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
+          useradd -m builder
+          mkdir /home/builder/src && cp -r apps pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
+          su builder -c "cd ~/src/pkg/deckos-files && makepkg --nodeps --noconfirm"
+          pacman -U --noconfirm /home/builder/src/pkg/deckos-files/*.pkg.tar.zst
+          pacman -Qlp /home/builder/src/pkg/deckos-files/*.pkg.tar.zst
+      - name: Screenshots (offscreen)
+        run: |
+          pacman -S --noconfirm --needed papirus-icon-theme breeze breeze-icons inter-font kdegraphics-thumbnailers dbus
+          cp -r pkg/deckos-settings/rootfs/usr/share/deckos /usr/share/
+          export QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR=/tmp/xdg
+          mkdir -p -m 700 /tmp/xdg
+          timeout 240 dbus-run-session -- deckos-files --demo --screenshot "$PWD/screenshots" 2>&1 | tee screenshots.log
+          ls -l screenshots
+          test "$(ls screenshots/*.png | wc -l)" -ge 6
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deckos-files-screenshots
+          path: |
+            screenshots/*.png
+            screenshots.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deckos-files-package
+          path: /home/builder/src/pkg/deckos-files/*.pkg.tar.zst

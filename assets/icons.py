@@ -112,6 +112,34 @@ ICONS = {
                'M17 9.5v3.5M6 16v2.5M10 16v2.5M14 16v2.5M18 16v2.5"/>'),
     "temp": '<path d="M10 13.6V5.5a2 2 0 1 1 4 0v8.1a4 4 0 1 1-4 0z"/><path d="M12 9v7.5"/>',
     "power": '<path d="M13.2 3 5.8 13.2h5.6L10.6 21l7.6-10.4h-5.6z"/>',
+    # DeckOS Files
+    "arrow-up": '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    "list": '<path d="M9 6.5h11M9 12h11M9 17.5h11"/>' + dot(4.8, 6.5, 1.1) + dot(4.8, 12, 1.1) + dot(4.8, 17.5, 1.1),
+    "details": ('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10"/>'
+                '<path d="M12.5 13h5M12.5 16.3h3.5"/>'),
+    "split": '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M12 4.5v15"/>',
+    "panel-right": '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15M16.8 8.5h1.4M16.8 11.5h1.4"/>',
+    "sidebar": '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15M5.8 8.5h1.4M5.8 11.5h1.4"/>',
+    "menu": '<path d="M4.5 7h15M4.5 12h15M4.5 17h15"/>',
+    "close": '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+    "copy": ('<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/>'
+             '<path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>'),
+    "cut": ('<circle cx="6.5" cy="17.5" r="2.7"/><circle cx="17.5" cy="17.5" r="2.7"/>'
+            '<path d="M8.4 15.6 17 4M15.6 15.6 7 4"/>'),
+    "paste": ('<path d="M9 4.5H7A1.5 1.5 0 0 0 5.5 6v13A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V6A1.5 1.5 0 0 0 17 4.5h-2"/>'
+              '<rect x="9" y="3" width="6" height="3.5" rx="1"/><path d="M9 11.5h6M9 15h4"/>'),
+    "undo": '<path d="M9 14.5 4.5 10 9 5.5"/><path d="M4.5 10H15a4.5 4.5 0 0 1 0 9h-3"/>',
+    "rename": ('<path d="M14.6 5.4l4 4L9 19H5v-4z"/><path d="M12.6 7.4l4 4"/>'),
+    "folder-plus": ('<path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.2l2 2.2H19A1.5 1.5 0 0 1 20.5 9.2V18a1.5 1.5 0 0 1-1.5 1.5H5'
+                    'A1.5 1.5 0 0 1 3.5 18z"/><path d="M12 10.8v5.4M9.3 13.5h5.4"/>'),
+    "eject": '<path d="M12 5 19 13H5z"/><path d="M5 18h14"/>',
+    "network": ('<rect x="9" y="3.5" width="6" height="5" rx="1"/><rect x="3" y="15.5" width="6" height="5" rx="1"/>'
+                '<rect x="15" y="15.5" width="6" height="5" rx="1"/><path d="M12 8.5v3.5M6 15.5V12h12v3.5"/>'),
+    "eye-off": ('<path d="M10 5.7a9.7 9.7 0 0 1 2-.2c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.4 3.2M6.6 6.9C3.9 8.6 2.5 12 2.5 12'
+                'S6 18.5 12 18.5c1.8 0 3.3-.5 4.6-1.2"/><path d="M9.9 9.9a2.8 2.8 0 0 0 4 4M4 4l16 16"/>'),
+    "filter": '<path d="M4 5.5h16l-6.2 7.3v5.4l-3.6 1.8v-7.2z"/>',
+    "sort": '<path d="M7 4.5v15M3.8 16.3 7 19.5l3.2-3.2M14 6.5h6.5M14 11h4.5M14 15.5h2.5"/>',
+    "restore": '<path d="M4.2 12a7.8 7.8 0 1 0 2.3-5.5"/><path d="M4.2 4.2v4.3h4.3"/>',
 }
 
 # DeckOS Quick Settings (the panel popup)
@@ -161,9 +189,19 @@ def store_logo():
             f'stroke-linecap="round" stroke-linejoin="round">{ICONS["store"]}</g></svg>\n')
 
 
+FILES_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-files/data/deckos-files.svg"
+
+
+def files_logo():
+    """The DeckOS Files app icon: the same tile with the folder in white."""
+    return store_logo().replace(ICONS["store"], ICONS["folder"])
+
+
 def write():
     OUT.mkdir(parents=True, exist_ok=True)
     STORE_LOGO.write_text(store_logo(), newline="\n")
+    FILES_LOGO.parent.mkdir(parents=True, exist_ok=True)
+    FILES_LOGO.write_text(files_logo(), newline="\n")
     for name, body in ICONS.items():
         (OUT / f"{name}.svg").write_text(svg_text(body), newline="\n")
     SDDM.mkdir(parents=True, exist_ok=True)

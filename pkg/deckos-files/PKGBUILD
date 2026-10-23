@@ -1,0 +1,28 @@
+# Maintainer: kcooperlawson
+# DeckOS Files, the DeckOS file manager. Built from ../../apps/deckos-files in this repo.
+pkgname=deckos-files
+pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
+pkgver=${pkgver:-0.3.5}
+pkgrel=1
+pkgdesc="DeckOS Files: the DeckOS file manager (Qt 6, KDE Frameworks / KIO)"
+arch=(x86_64)
+license=(MIT)
+depends=(qt6-base qt6-svg kio kio-extras kio-fuse kconfig kcoreaddons kdbusaddons kjobwidgets solid baloo
+         kfilemetadata)
+makedepends=(cmake extra-cmake-modules)
+optdepends=('kio-admin: "Open as administrator" in the right-click menu'
+            'ffmpegthumbs: video thumbnails'
+            'kdegraphics-thumbnailers: PDF and RAW photo thumbnails'
+            'ark: compress and extract from the right-click menu'
+            'konsole: open a terminal here')
+backup=(etc/xdg/mimeapps.list)
+
+build() {
+  cmake -S "$startdir/../../apps/deckos-files" -B build -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=Release -DDECKOS_VERSION="$pkgver"
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}

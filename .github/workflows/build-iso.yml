@@ -36,9 +36,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: makepkg
         run: |
+          ( . pkg/deckos-files/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
           useradd -m builder
-          mkdir /home/builder/src && cp -r pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
-          for p in deckos-settings deckos-theme-tmpikes deckos-installer; do
+          mkdir /home/builder/src && cp -r apps pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
+          for p in deckos-files deckos-settings deckos-theme-tmpikes deckos-installer; do
             su builder -c "cd ~/src/pkg/$p && makepkg --nodeps --noconfirm"
           done
           files=$(pacman -Qlp /home/builder/src/pkg/deckos-settings/*.pkg.tar.zst)
@@ -80,7 +81,7 @@ jobs:
           retention-days: 14
 
   publish:
-    # The DeckOS update channel: on a version tag (v0.3.1), sign deckos-settings and the themes and
+    # The DeckOS update channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files and the themes and
     # publish them as a pacman repo in the "repo" release. Installed systems pull from
     # https://github.com/<owner>/<repo>/releases/download/repo (see /etc/pacman.d/deckos-repo).
     needs: [lint, package]

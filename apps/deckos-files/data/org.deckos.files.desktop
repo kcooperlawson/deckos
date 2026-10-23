@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=DeckOS Files
+GenericName=File Manager
+Comment=Browse, organise and share your files
+Keywords=files;folders;file manager;explorer;browse;network;trash;
+Icon=deckos-files
+Exec=deckos-files %u
+Categories=Qt;KDE;System;FileTools;FileManager;
+MimeType=inode/directory;
+StartupNotify=true
+StartupWMClass=deckos-files
+InitialPreference=10
+Actions=new-window;
+
+[Desktop Action new-window]
+Name=New window
+Exec=deckos-files --new-window

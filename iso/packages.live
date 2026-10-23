@@ -19,6 +19,7 @@ paru
 
 # DeckOS
 deckos-settings
+deckos-files
 deckos-installer
 gamescope-session-git
 gamescope-session-steam-git
@@ -45,7 +46,12 @@ xdg-desktop-portal-kde
 sddm
 sddm-kcm
 konsole
-dolphin
+# Files: DeckOS Files (deckos-settings pulls it in) runs on these KIO workers and thumbnailers
+kio-extras
+kio-fuse
+kio-admin
+ffmpegthumbs
+kdegraphics-thumbnailers
 kate
 ark
 spectacle

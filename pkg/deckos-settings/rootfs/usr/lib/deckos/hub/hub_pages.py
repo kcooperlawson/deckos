@@ -125,7 +125,7 @@ class HomePage(Page):
                                  button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
                                  button("Terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal"),
                                  button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
-                                 button("Files", slot=lambda: QProcess.startDetached("dolphin", []), icon="folder"),
+                                 button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
                                         icon="star", tip="DeckOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
@@ -394,7 +394,7 @@ class DrivesPage(Page):
     def build(self):
         self.head_actions.addWidget(button("Rescan", slot=self.rescan, icon="refresh",
                                            tip="Adds new NTFS drives to /etc/fstab"))
-        self.head_actions.addWidget(button("Open in Files", slot=lambda: QProcess.startDetached("dolphin", ["/mnt"]),
+        self.head_actions.addWidget(button("Open in Files", slot=lambda: QProcess.startDetached("deckos-files", ["/mnt"]),
                                            icon="folder"))
         self.card = Card("Mounted", "Drives", "drives")
         self.list = QVBoxLayout()
@@ -687,7 +687,7 @@ class SystemPage(Page):
             self.home_box.addWidget(self.home_snap_row)
             self.hub.data.snapshots(self.show_home_snapshots, config="home")
             self.home_buttons.addWidget(button("Browse snapshots", slot=lambda: QProcess.startDetached(
-                "dolphin", ["/home/.snapshots"]), icon="folder"))
+                "deckos-files", ["/home/.snapshots"]), icon="folder"))
         else:
             self.home_box.addWidget(RowItem("alert", "No snapshots of your files yet",
                                             "System snapshots don't include /home.", S.WARNING))

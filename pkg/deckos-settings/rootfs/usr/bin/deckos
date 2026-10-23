@@ -591,7 +591,7 @@ dev_install() {
   fi
   [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DeckOS checkout found: deckos dev-install PATH"; exit 2; }
   section "Installing DeckOS $(tr -d '[:space:]' < "$root/VERSION") from $root"
-  for p in deckos-settings deckos-theme-tmpikes; do
+  for p in deckos-files deckos-settings deckos-theme-tmpikes; do
     [[ -d $root/pkg/$p ]] || continue
     (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
     ok "$p"

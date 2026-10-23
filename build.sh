@@ -59,12 +59,14 @@ chmod 440 /etc/sudoers.d/90-deckos-builder
 REPO=$WORK/repo
 BUILD=$WORK/build
 mkdir -p "$REPO" "$BUILD" "$OUT"
-cp -r "$ROOT/pkg" "$ROOT/VERSION" "$BUILD/"
+cp -r "$ROOT/apps" "$ROOT/pkg" "$ROOT/VERSION" "$BUILD/"
 chown -R builder: "$BUILD" "$REPO"
 as_builder() { sudo -u builder -H env PKGDEST="$REPO" "$@"; }
 
 # ------------------------------------------------------------------ packages
 step "DeckOS packages"
+# DeckOS Files is compiled (Qt/KDE): its build dependencies come from the repos.
+as_builder bash -c "cd '$BUILD/pkg/deckos-files' && makepkg --syncdeps --noconfirm --clean --force"
 for p in deckos-settings deckos-theme-tmpikes deckos-installer; do
   as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"
 done
@@ -153,7 +155,7 @@ ln -sf /run/systemd/resolve/stub-resolv.conf "$A/etc/resolv.conf"
 # On-USB repo (installer Software page) + the text installer as a backup.
 mkdir -p "$A/opt/deckos"
 cp -a "$REPO" "$A/opt/deckos/repo"
-cp -a "$ROOT/installer" "$ROOT/pkg" "$A/opt/deckos/"
+cp -a "$ROOT/installer" "$ROOT/pkg" "$ROOT/apps" "$ROOT/VERSION" "$A/opt/deckos/"
 install -Dm755 "$ROOT/installer/deckos-install" "$A/usr/local/bin/deckos-install"
 find "$A/opt/deckos" -name __pycache__ -type d -prune -exec rm -rf {} +
 

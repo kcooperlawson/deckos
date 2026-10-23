@@ -29,6 +29,9 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   plasma-pa, powerdevil, KWin over `org.kde.plasma.workspace.dbus`), each in its own Loader so a missing
   one hides only its piece; DeckOS bits through `Backend.qml` → `deckos quick-status` / `deckos updates`.
   Optimisation first: no polling, timers only while open, the update check every 3 h.
+- `apps/deckos-files/` + `pkg/deckos-files/`: DeckOS Files, the file manager (C++/Qt 6/KIO, design in
+  `docs/files.md`). `deckos-settings` depends on it. No Linux here? Push a branch: the "DeckOS Files"
+  workflow builds it and uploads offscreen screenshots (`deckos-files --demo --screenshot DIR`).
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).
