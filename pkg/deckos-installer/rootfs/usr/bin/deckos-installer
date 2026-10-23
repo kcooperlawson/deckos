@@ -15,6 +15,8 @@ run_calamares() {  # run_calamares PLATFORM
   # Wayland's socket lives in the user's runtime dir; XWayland only needs DISPLAY.
   [[ $1 == wayland ]] && rt=${XDG_RUNTIME_DIR:-/run/user/1000}
   echo "### calamares on $1 ($(date '+%T'))" >>"$LOG"
+  # The log is meant to be written as the live user, so the redirect stays outside sudo.
+  # shellcheck disable=SC2024
   sudo env WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" XDG_RUNTIME_DIR="$rt" \
     DISPLAY="${DISPLAY:-:0}" XAUTHORITY="${XAUTHORITY:-}" \
     XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" \
