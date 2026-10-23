@@ -26,12 +26,27 @@ export GUM_SPIN_SPINNER_FOREGROUND="#4C8DFF" GUM_FILTER_INDICATOR_FOREGROUND="#4
 export GUM_FILTER_MATCH_FOREGROUND="#4C8DFF"
 
 FAILED=()
+# DECKOS_GUI=1: driven by the graphical installer. Nothing is asked; the answers come from
+# DECKOS_TARGET, DECKOS_HOSTNAME, DECKOS_USER, DECKOS_PASSWORD_FILE and DECKOS_TZ, and output
+# is plain text that the window turns into its progress view.
+GUI=${DECKOS_GUI:-}
 
 # ------------------------------------------------------------------ helpers
 
 # Everything here must render on the bare Linux text console: its font has no emoji, braille
 # spinners or double-line borders, so status marks are plain [ OK ]-style tags.
-style()   { gum style "$@"; }
+style() {
+  if [[ -z $GUI ]]; then gum style "$@"; return; fi
+  while [[ $# -gt 0 ]]; do  # plain text: drop gum's styling flags
+    case $1 in --bold) shift ;; --*) shift 2 ;; *) printf '%s\n' "$1"; shift ;; esac
+  done
+}
+# busy "Title" cmd args... - gum's spinner on the console, a plain status line for the window.
+busy() {
+  local title=$1; shift
+  if [[ -n $GUI ]]; then echo "  [ .. ] $title"; "$@"; return; fi
+  gum spin --spinner line --title " $title" -- "$@"
+}
 section() { echo; style --foreground "#4C8DFF" --bold "// $*"; }
 note()    { style --foreground "#8C94A6" "  $*"; }
 good()    { style --foreground "#3DD68C" "  [ OK ] $*"; }
@@ -48,7 +63,7 @@ trap 'die "Something failed on line $LINENO. Nothing outside the chosen partitio
 spin() {
   local title=$1; shift
   echo "### $title :: $*" >> "$LOG"
-  gum spin --spinner line --title " $title" -- bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
+  busy "$title" bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
     || die "$title failed"
   good "$title"
 }
@@ -61,7 +76,7 @@ install_group() {
   local name=$1 pkgs
   mapfile -t pkgs < <(list_pkgs "$name")
   echo "### pacman $name: ${pkgs[*]}" >> "$LOG"
-  if gum spin --spinner line --title " Installing $name (${#pkgs[@]} packages) - this can take a while" -- \
+  if busy "Installing $name (${#pkgs[@]} packages) - this can take a while" \
        bash -c 'arch-chroot "$0" pacman -S --needed --noconfirm "${@}" >>"$LOG" 2>&1' "$MNT" "${pkgs[@]}"; then
     good "$name packages"
     return
@@ -79,7 +94,7 @@ install_group() {
 rank_mirrors() {
   local ml=/etc/pacman.d/mirrorlist
   echo "### Ranking mirrors" >> "$LOG"
-  if gum spin --spinner line --title " Ranking mirrors" -- bash -c \
+  if busy "Ranking mirrors" bash -c \
        'reflector --country US --latest 15 --protocol https --sort rate --connect-timeout 5 --download-timeout 8 --save "$0.new" >>"$LOG" 2>&1' "$ml" \
      && grep -q '^Server' "$ml.new"; then
     mv "$ml.new" "$ml"
@@ -101,7 +116,28 @@ set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
 }
 
+# Partitions DeckOS may go on: path, size, filesystem, label, disk model, 1 if the default.
+# Skips the live USB / Ventoy stick, EFI, Microsoft reserved and recovery partitions.
+list_targets() {
+  local live_disk="" src
+  if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
+  # The default is the empty 232 GB "NVME" partition on the Samsung 970 EVO Plus.
+  lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL | jq -r \
+    --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" '
+    .blockdevices[] | . as $d
+    | select($d.name != $live)
+    | select(([$d.children[]?.label] | index("Ventoy")) | not)
+    | ($d.children // [])[] | select(.type == "part")
+    | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
+    | [.path, ((.size / 1e9) | floor | tostring) + " GB", (.fstype // "empty"), (.label // "-"), ($d.model // "?"),
+       (if (($d.model // "") | test("970 EVO")) and .label == "NVME" then "1" else "0" end)]
+    | @tsv'
+}
+
+if [[ ${1:-} == --list-targets ]]; then list_targets; exit 0; fi
+
 banner() {
+  [[ -n $GUI ]] && return
   clear
   local word
   word="$(style --foreground '#E8EAF0' --bold 'D E C K ')$(style --foreground '#4C8DFF' --bold 'O')$(style --foreground '#E8EAF0' --bold ' S')"
@@ -153,6 +189,7 @@ until wait_for_internet; do
   ip -br addr | grep -v '^lo ' | sed 's/^/      /' || true
   note "Ethernet: check the cable is in the motherboard's port (not the Xbox adapter)."
   note "Wi-Fi: connect from the network icon on the desktop panel, or run  nmtui  in another terminal"
+  [[ -n $GUI ]] && die "No internet connection."
   read -rp "  Press Enter to try again... " _
 done
 good "internet"
@@ -167,32 +204,25 @@ timedatectl set-ntp true >/dev/null 2>&1 || true
 section "Where should DeckOS go?"
 note "Only the partition you pick is erased. Windows, its EFI partition and your other drives stay untouched."
 
-live_disk=""
-if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
-
-mapfile -t rows < <(lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL | jq -r \
-  --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" '
-  .blockdevices[] | . as $d
-  | select($d.name != $live)
-  | select(([$d.children[]?.label] | index("Ventoy")) | not)
-  | ($d.children // [])[] | select(.type == "part")
-  | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
-  | [.path, ((.size / 1e9) | floor | tostring) + " GB", (.fstype // "empty"), (.label // "-"), ($d.model // "?")]
-  | @tsv')
+mapfile -t rows < <(list_targets)
 [[ ${#rows[@]} -gt 0 ]] || die "No suitable partitions found."
 
-choices=() default=""
-for r in "${rows[@]}"; do
-  IFS=$'\t' read -r p s f l m <<<"$r"
-  line=$(printf '%-16s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
-  choices+=("$line")
-  # The empty 232 GB "NVME" partition on the Samsung 970 EVO Plus.
-  [[ -z $default && $m == *"970 EVO"* && $l == NVME ]] && default=$line
-done
-choose_args=(--header "  Partition         Size     FS     Label      Disk")
-[[ -n $default ]] && choose_args+=(--selected "$default")
-pick=$(gum choose "${choose_args[@]}" "${choices[@]}")
-TARGET=${pick%% *}
+if [[ -n $GUI ]]; then
+  TARGET=${DECKOS_TARGET:-}
+  printf '%s\n' "${rows[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DeckOS can use."
+else
+  choices=() default=""
+  for r in "${rows[@]}"; do
+    IFS=$'\t' read -r p s f l m d <<<"$r"
+    line=$(printf '%-16s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
+    choices+=("$line")
+    [[ -z $default && $d == 1 ]] && default=$line
+  done
+  choose_args=(--header "  Partition         Size     FS     Label      Disk")
+  [[ -n $default ]] && choose_args+=(--selected "$default")
+  pick=$(gum choose "${choose_args[@]}" "${choices[@]}")
+  TARGET=${pick%% *}
+fi
 [[ -b $TARGET ]] || die "No partition selected."
 
 # Refuse Windows; show anything that would be lost.
@@ -220,7 +250,9 @@ mapfile -t esps < <(lsblk -rpno PATH,PARTTYPE,PKNAME | awk -v g="$ESP_GUID" '$2=
 [[ ${#esps[@]} -gt 0 ]] || die "No EFI system partition found. (Windows normally has one.)"
 ESP=""
 for e in "${esps[@]}"; do [[ /dev/${e#* } == "$TARGET_DISK" || ${e#* } == "$TARGET_DISK" ]] && ESP=${e%% *}; done
-if [[ -z $ESP ]]; then
+if [[ -z $ESP && -n $GUI ]]; then
+  ESP=${DECKOS_ESP:-${esps[0]%% *}}
+elif [[ -z $ESP ]]; then
   ESP=$(printf '%s\n' "${esps[@]%% *}" | gum choose --header "  Which EFI partition should hold the boot menu?")
 fi
 espprobe=$(mktemp -d)
@@ -236,6 +268,14 @@ good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && ech
 section "You"
 # No tracing while the password is in variables.
 { set +x; } 2>/dev/null
+if [[ -n $GUI ]]; then
+  HOSTNAME_=${DECKOS_HOSTNAME:-deckos} USERNAME_=${DECKOS_USER:-}
+  [[ $USERNAME_ =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid username."
+  [[ -r ${DECKOS_PASSWORD_FILE:-} ]] || die "No password given."
+  PASS1=$(<"$DECKOS_PASSWORD_FILE"); PASS2=$PASS1
+  rm -f "$DECKOS_PASSWORD_FILE"
+  [[ -n $PASS1 ]] || die "Empty password."
+else
 HOSTNAME_=$(gum input --prompt "Computer name > " --value "deckos")
 while :; do
   USERNAME_=$(gum input --prompt "Username > " --placeholder "lowercase, e.g. keagan")
@@ -248,9 +288,13 @@ while :; do
   [[ -n $PASS1 && $PASS1 == "$PASS2" ]] && break
   warn "passwords empty or different - try again"
 done
+fi
 set -x
-TZ_=$DEFAULT_TZ
-gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
+TZ_=${DECKOS_TZ:-$DEFAULT_TZ}
+[[ -e /usr/share/zoneinfo/$TZ_ ]] || TZ_=$DEFAULT_TZ
+if [[ -z $GUI ]]; then
+  gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
+fi
 
 # ------------------------------------------------------------------ confirm
 
@@ -263,7 +307,9 @@ style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0
   "Software   CachyOS znver4 kernel, KDE Plasma, Steam + Gaming Mode," \
   "           ROCm + Ollama, Claude Code, VS Code, Docker, .NET"
 echo
-confirm=$(gum input --prompt "Type ERASE to install > " --placeholder "ERASE")
+# The window asks for this itself before it starts.
+if [[ -n $GUI ]]; then confirm=${DECKOS_CONFIRM:-}
+else confirm=$(gum input --prompt "Type ERASE to install > " --placeholder "ERASE"); fi
 [[ $confirm == ERASE ]] || die "Cancelled - nothing was changed."
 
 # ------------------------------------------------------------------ disk
@@ -354,7 +400,7 @@ spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u
 section "AUR"
 mapfile -t aur < <(list_pkgs aur)
 for p in "${aur[@]}"; do
-  if gum spin --spinner line --title " Building $p" -- bash -c \
+  if busy "Building $p" bash -c \
        'arch-chroot "$0" sudo -u "$1" -H paru -S --needed --noconfirm --skipreview "$2" >>"$LOG" 2>&1' "$MNT" "$USERNAME_" "$p"; then
     good "$p"
   else
@@ -362,7 +408,7 @@ for p in "${aur[@]}"; do
   fi
 done
 
-if gum spin --spinner line --title " Installing Claude Code" -- bash -c \
+if busy "Installing Claude Code" bash -c \
      'arch-chroot "$0" sudo -u "$1" -H bash -c "curl -fsSL https://claude.ai/install.sh | bash" >>"$LOG" 2>&1' "$MNT" "$USERNAME_"; then
   good "Claude Code (run: claude)"
 else
@@ -434,4 +480,5 @@ style --margin "1 2" --foreground "#8C94A6" \
   "After first login:" \
   "  - DeckOS Hub (bottom panel) - display fix level, Gaming Mode, drives." \
   "  - If the Samsung still blinks: Hub > Display > 'Watch for blackouts', then step up a level."
-gum confirm "Reboot now?" && reboot
+[[ -z $GUI ]] && gum confirm "Reboot now?" && reboot
+exit 0

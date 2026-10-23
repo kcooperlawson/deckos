@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the DeckOS live USB: a KDE Plasma live desktop with the Calamares installer, on top of
+# Builds the DeckOS live USB: a KDE Plasma live desktop with the DeckOS installer, on top of
 # Arch's official "releng" profile and the CachyOS kernel.
 #
 # Needs Arch Linux: a real install, WSL "archlinux", or the archlinux Docker image used by CI.

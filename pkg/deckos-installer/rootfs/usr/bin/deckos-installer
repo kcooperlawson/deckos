@@ -1,46 +1,19 @@
 #!/usr/bin/env bash
-# Starts the DeckOS installer (Calamares) as root inside the live Plasma session.
-# Tries native Wayland first, then XWayland; if both fail it shows the error instead of
-# vanishing. Calamares' log and its console output are copied to the desktop either way.
-LOG=$HOME/Desktop/installer-output.txt
-mkdir -p "$HOME/Desktop"
-: > "$LOG"
-
-if command -v xhost >/dev/null; then xhost +si:localuser:root >>"$LOG" 2>&1; fi
-
-run_calamares() {  # run_calamares PLATFORM
-  echo "### calamares on $1 ($(date '+%T'))" >>"$LOG"
-  # Same as the CachyOS live ISO: keep the desktop's environment (sudo -E) and give root its
-  # own D-Bus session. Without one, Calamares' KDE libraries can hang before showing a window.
-  # The log is meant to be written as the live user, so the redirect stays outside sudo.
-  # shellcheck disable=SC2024
-  QT_QPA_PLATFORM=$1 sudo -E dbus-run-session -- calamares -D 6 >>"$LOG" 2>&1
-}
-
-status=1
-if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
-  start=$SECONDS
-  run_calamares wayland; status=$?
-  # A crash within seconds means it never got a window up: retry through XWayland.
-  if [[ $status -ne 0 && $((SECONDS - start)) -lt 20 ]]; then
-    run_calamares xcb; status=$?
-  fi
-else
-  run_calamares xcb; status=$?
-fi
-
-sudo cp /root/.cache/calamares/session.log "$HOME/Desktop/installer-log.txt" 2>/dev/null &&
-  sudo chown "$USER:" "$HOME/Desktop/installer-log.txt"
-
+# Starts the DeckOS installer window. It runs as the live user like any other app (so it opens
+# on the Wayland desktop) and only the install itself runs as root, through sudo.
+# If the window can't start at all, the error is shown and the text installer is offered.
+err=$(mktemp)
+python3 /usr/lib/deckos/installer/deckos_installer.py "$@" 2>"$err"
+status=$?
 if [[ $status -ne 0 ]]; then
-  msg="The installer stopped (exit code $status).
+  mkdir -p "$HOME/Desktop" && cp "$err" "$HOME/Desktop/installer-error.txt"
+  if kdialog --title "Install DeckOS" --yesno "The installer window stopped with an error:
 
-Last lines of its output (full copy: Desktop/installer-output.txt):
+$(tail -n 12 "$err")
 
-$(tail -n 25 "$LOG")
-
-You can also use \"Install DeckOS (text mode)\" from the app menu."
-  if command -v kdialog >/dev/null; then kdialog --title "DeckOS installer" --error "$msg"
-  else konsole --hold -e bash -c 'cat "$1"' _ "$LOG"; fi
+Open the text installer instead?"; then
+    konsole --hold -e sudo deckos-install
+  fi
 fi
+rm -f "$err"
 exit $status

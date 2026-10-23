@@ -7,4 +7,4 @@ Exec=deckos-installer
 Icon=deckos
 Terminal=false
 Categories=System;
-Keywords=install;installer;calamares;deckos;
+Keywords=install;installer;deckos;

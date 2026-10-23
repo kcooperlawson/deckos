@@ -19,24 +19,13 @@ jobs:
             pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
             pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-session \
             pkg/deckos-settings/rootfs/usr/lib/os-session-select \
-            pkg/deckos-installer/rootfs/usr/bin/deckos-installer \
-            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/prep \
-            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/post
+            pkg/deckos-installer/rootfs/usr/bin/deckos-installer
           shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python
-        run: python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py builder/deckos_builder.py
-      - name: yaml
         run: |
-          python3 - <<'PY'
-          import glob, yaml
-          files = glob.glob("pkg/deckos-installer/rootfs/etc/calamares/**/*.conf", recursive=True) + \
-                  glob.glob("pkg/deckos-installer/rootfs/etc/calamares/**/*.yaml", recursive=True) + \
-                  ["pkg/deckos-installer/rootfs/usr/share/calamares/branding/deckos/branding.desc"]
-          for f in files:
-              yaml.safe_load(open(f))
-          print(f"{len(files)} Calamares YAML files parse")
-          PY
+          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py builder/deckos_builder.py \
+            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py
 
   package:
     # Proves both DeckOS packages (theme, fonts, splash, tools, installer) build on Arch.
