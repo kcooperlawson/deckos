@@ -23,7 +23,7 @@
 #include <KIO/DeleteOrTrashJob>
 #include <KIO/DropJob>
 #include <KIO/FileUndoManager>
-#include <KIO/JobUiDelegate>
+#include <KIO/JobUiDelegateFactory>
 #include <KIO/OpenUrlJob>
 #include <KIO/Paste>
 #include <KIO/PasteJob>
@@ -56,7 +56,7 @@ void open(const KFileItemList &items, QWidget *window)
 {
     for (const KFileItem &item : items) {
         auto *job = new KIO::OpenUrlJob(item.targetUrl(), item.mimetype());
-        job->setUiDelegate(new KIO::JobUiDelegate(KJobUiDelegate::AutoHandlingEnabled, window));
+        job->setUiDelegate(KIO::createDefaultJobUiDelegate(KJobUiDelegate::AutoHandlingEnabled, window));
         job->setShowOpenOrExecuteDialog(true);
         job->start();
     }
