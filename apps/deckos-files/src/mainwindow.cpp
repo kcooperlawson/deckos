@@ -91,6 +91,7 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     m_navSlot = new QHBoxLayout;
     m_navSlot->setContentsMargins(0, 0, 0, 0);
     tl->addLayout(m_navSlot, 1);
+    tl->addStretch(0);  // holds the toolbar together while split view has no path bar here
     tl->addSpacing(6);
     m_search = new QLineEdit(toolbar);
     m_search->setObjectName(QStringLiteral("search"));
@@ -107,6 +108,7 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     tl->addSpacing(6);
     auto *segment = new QFrame(toolbar);
     segment->setObjectName(QStringLiteral("segment"));
+    segment->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     auto *sl = new QHBoxLayout(segment);
     sl->setContentsMargins(3, 3, 3, 3);
     sl->setSpacing(2);

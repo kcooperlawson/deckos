@@ -374,6 +374,8 @@ void FolderView::setMode(Mode mode)
         setCurrentWidget(m_tree);
     } else {
         m_list->setFlow(mode == Grid ? QListView::LeftToRight : QListView::TopToBottom);
+        // The grid always fits the width; only the compact list scrolls sideways.
+        m_list->setHorizontalScrollBarPolicy(mode == Grid ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded);
         relayoutGrid();
         setCurrentWidget(m_list);
     }
