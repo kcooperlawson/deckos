@@ -79,6 +79,13 @@ ICONS = {
     "keyboard": ('<rect x="2.5" y="6" width="19" height="12" rx="2"/>'
                  '<path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M6.5 14h.01M17 14h.01M9.5 14h5"/>'),
     "user": '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    "lock": '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>' + dot(12, 15.5),
+    "log-out": ('<path d="M13.5 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5h7"/>'
+                '<path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5"/>'),
+    "clock": '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    "calculator": ('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7h7"/>'
+                   + dot(9, 11.5) + dot(12, 11.5) + dot(15, 11.5) + dot(9, 15) + dot(12, 15) + dot(15, 15)
+                   + dot(9, 18) + dot(12, 18) + dot(15, 18)),
     # DeckOS Store
     "store": ('<path d="M5 8.5h14l-1.1 10.6a1.6 1.6 0 0 1-1.6 1.4H7.7a1.6 1.6 0 0 1-1.6-1.4z"/>'
               '<path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>'),

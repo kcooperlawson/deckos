@@ -1,0 +1,24 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Application Launchers",
+        "Description": "DeckOS's app launcher: search, pinned apps, recent files, power and Gaming Mode",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.menu",
+        "License": "MIT",
+        "Name": "DeckOS Menu",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-PreloadWeight": 100,
+    "X-Plasma-Provides": [
+        "org.kde.plasma.launchermenu"
+    ]
+}

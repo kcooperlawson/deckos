@@ -170,6 +170,18 @@ press *Apply DeckOS look* in **Hub › Appearance** (or run `deckos spotify them
 the gradient play buttons; everything Spotify does keeps working. Spotify updates undo it, so apply it
 again after one; `deckos spotify restore` puts the stock look back.
 
+## DeckOS Menu
+
+The app launcher at the left of the dock (or press **Meta**) is DeckOS Menu. Start typing right away:
+results cover apps, files, settings, a calculator and commands (Plasma's own search), and when a search
+matches apps you don't have yet, they're listed from the DeckOS Store with a **Get it** button. Arrows
+move, Enter opens, Escape clears or closes.
+
+Without a search it shows your pinned apps (right-click any app to pin, unpin or move it), your recent
+apps and files, **All apps** by category, and a footer with Gaming Mode, lock, log out, sleep, restart
+and shut down. On an older install that still has Plasma's launcher, right-click it › *Show
+Alternatives…* › *DeckOS Menu*.
+
 ## DeckOS Store
 
 The DeckOS Store (in the panel, or `deckos-store`) installs apps without the command line, from all

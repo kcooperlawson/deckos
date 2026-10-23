@@ -7,9 +7,9 @@ panel.floating = true;
 panel.lengthMode = "fit";
 panel.alignment = "center";
 
-var kickoff = panel.addWidget("org.kde.plasma.kickoff");
-kickoff.currentConfigGroup = ["General"];
-kickoff.writeConfig("icon", "deckos");
+var menu = panel.addWidget("org.deckos.menu");  // DeckOS Menu (replaces Kickoff; Meta opens it)
+menu.currentConfigGroup = ["General"];
+menu.writeConfig("icon", "deckos");
 
 var tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];

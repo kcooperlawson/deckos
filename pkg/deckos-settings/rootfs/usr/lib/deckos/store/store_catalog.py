@@ -231,6 +231,8 @@ class Catalog:
             data = json.loads(cache.read_text())
             if data.get("stamp") == stamp:
                 self.apps = {a["key"]: App(**a) for a in data["apps"]}
+                if not MENU_INDEX.exists() or MENU_INDEX.stat().st_mtime < cache.stat().st_mtime:
+                    write_menu_index(self.apps)
                 self._status(arch, flathub)
                 return
         except (OSError, ValueError, TypeError):
@@ -247,6 +249,7 @@ class Catalog:
         self.apps = apps
         CACHE.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({"stamp": stamp, "apps": [asdict(a) for a in apps.values()]}))
+        write_menu_index(apps)
         self._status(arch, flathub)
 
     def _status(self, arch, flathub):
@@ -274,6 +277,23 @@ class Catalog:
             if score:
                 scored.append((-score, not a.icon, a.name.lower(), a))
         return [s[-1] for s in sorted(scored, key=lambda s: s[:3])[:120]]
+
+
+MENU_INDEX = CACHE / "menu-index.json"
+
+
+def write_menu_index(apps):
+    """Just the fields DeckOS Menu's search needs (store_find.py), so its lookups start in milliseconds
+    instead of reading the whole catalog with descriptions and screenshots."""
+    rows = [{"key": a.key, "name": a.name, "summary": a.summary, "icon": a.icon, "desktop_id": a.desktop_id,
+             "sources": a.sources} for a in apps.values()]
+    tmp = MENU_INDEX.with_suffix(".tmp")
+    try:
+        CACHE.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(json.dumps(rows))
+        tmp.replace(MENU_INDEX)
+    except OSError:
+        pass
 
 
 def aur_search(term):

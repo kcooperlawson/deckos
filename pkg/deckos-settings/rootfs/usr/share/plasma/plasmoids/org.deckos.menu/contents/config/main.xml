@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="icon" type="String">
+      <label>Icon of the panel button</label>
+      <default>deckos</default>
+    </entry>
+    <entry name="favorites" type="StringList">
+      <label>Pinned apps on a fresh profile (moved into KActivities stats on first run, like Kickoff)</label>
+      <default>preferred://browser,org.kde.dolphin.desktop,org.kde.konsole.desktop,steam.desktop,code.desktop,deckos-hub.desktop,deckos-store.desktop,systemsettings.desktop,org.kde.kate.desktop,org.kde.gwenview.desktop,org.kde.spectacle.desktop,org.kde.kcalc.desktop</default>
+    </entry>
+    <entry name="favoritesPortedToKAstats" type="Bool">
+      <label>Whether the favorites above were moved into KActivities stats</label>
+      <default>false</default>
+    </entry>
+    <entry name="storeResults" type="Bool">
+      <label>Suggest apps from the DeckOS Store when a search matches apps you don't have</label>
+      <default>true</default>
+    </entry>
+  </group>
+</kcfg>

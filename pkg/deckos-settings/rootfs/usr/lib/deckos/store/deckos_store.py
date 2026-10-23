@@ -3,6 +3,8 @@
 Same look as DeckOS Hub: slate surfaces, 1px borders, Inter, DeckOS line icons, accent gradient.
     deckos-store            the real thing
     deckos-store --demo     canned apps and fake installs, for working on the UI anywhere
+    deckos-store --app ID   open on one app (its AppStream id; DeckOS Menu's "Get it")
+    deckos-store --search TERM   open on a search
 """
 import sys
 import threading
@@ -20,7 +22,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QComboBox, QFrame, QG
 import hub_style as S  # noqa: E402
 from hub_widgets import Card, Empty, Meter, RowItem, Toast, button, icon_label, label, row  # noqa: E402
 from store_catalog import (CATEGORIES, DEMO, SOURCE_NAMES, SOURCE_ORDER, Catalog, Installed,  # noqa: E402
-                           aur_search)
+                           aur_search, norm)
 from store_jobs import Jobs  # noqa: E402
 from store_widgets import AppCard, AppIcon, CardGrid, Screenshots, badge  # noqa: E402
 
@@ -31,6 +33,11 @@ class Bridge(QObject):
     """Results from worker threads, delivered on the UI thread."""
     loaded = Signal()
     aur = Signal(int, object)
+
+
+def arg(name):
+    """The value after `name` on the command line, or ""."""
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv[:-1] else ""
 
 
 def scrolling(widget):
@@ -56,6 +63,7 @@ class Store(QWidget):
         self.jobs.changed.connect(self.job_changed)
         self.jobs.done.connect(self.job_done)
         self.history, self.current, self.search_token = [], None, 0
+        self.start_app, self.start_search = arg("--app"), arg("--search")
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -214,6 +222,17 @@ class Store(QWidget):
         self.history.clear()
         self.current = None
         self.open_section("home")
+        if self.start_app or self.start_search:  # asked for on the command line; only the first load
+            app = self.catalog.apps.get(norm(self.start_app)) if self.start_app else None
+            term = self.start_search or self.start_app
+            self.start_app = self.start_search = ""
+            if app:
+                self.open_app(app)
+            else:
+                self.search.blockSignals(True)
+                self.search.setText(term)
+                self.search.blockSignals(False)
+                self.run_search()
 
     def refresh_catalog(self):
         if self.installed.flathub_ready:

@@ -19,7 +19,11 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   (`usr/bin/deckos`), DeckOS Hub (`usr/lib/deckos/hub/`), DeckOS Store (`usr/lib/deckos/store/`), DeckOS
   Welcome (`usr/lib/deckos/welcome/`, the first-login tour), the package lists per group
   (`usr/share/deckos/packages/*.txt`, shared by the installer and `deckos software add`), themes, icons,
-  SDDM and Plasma styles, the signing public key.
+  SDDM and Plasma styles, the signing public key. DeckOS Menu, the launcher, is a QML plasmoid
+  (`usr/share/plasma/plasmoids/org.deckos.menu/`) on Plasma's kicker models and KRunner; its Store
+  suggestions come from `usr/lib/deckos/store/store_find.py` (no Qt, a slim index the Store writes).
+  Preview it with `assets/preview_menu.py` (stand-in Plasma modules in `assets/preview_menu/`). JS names
+  like `escape` or `get` break QML method/signal declarations.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).
