@@ -1,40 +1,41 @@
 # DeckOS
 
-**DeckOS**: an Arch-based, CachyOS-accelerated gaming + AI distro built for one
-machine: Ryzen 7 7800X3D · RX 9070 XT · ASRock B850M-C · 32 GB DDR5-6000 · Samsung Odyssey G70B + LG UltraGear.
+**DeckOS** is an Arch-based, CachyOS-accelerated distro for gaming and local AI. It boots into a
+KDE Plasma desktop or a console-style Steam **Gaming Mode**, keeps itself recoverable with btrfs
+snapshots, and installs next to Windows without touching your Windows drives.
 
-Same design language as Steady Downloader (slate `#0F1115` / `#171A21`, `#262B36` borders, `#4C8DFF` accent),
-reworked mechanically: stencil letters, a gear for the O, bolted plates, hazard stripes.
+It's tuned on a Ryzen 7 7800X3D + Radeon RX 9070 XT machine (see [Reference machine](#reference-machine)),
+and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 
 | | |
 |---|---|
-| **Base** | Arch Linux + CachyOS **znver4** repos (packages compiled for Zen 4), `linux-cachyos` 7.x (BORE) + `linux-cachyos-lts` fallback |
+| **Base** | Arch Linux + CachyOS repos built for your CPU (x86-64-v3, v4 or Zen 4), `linux-cachyos` (BORE) + `linux-cachyos-lts` fallback |
 | **Desktop** | KDE Plasma 6 (Wayland), DeckOS look-and-feel, Papirus, Inter + JetBrains Mono |
 | **Gaming** | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync |
-| **AI / dev** | Claude Code, ROCm + Ollama on the 9070 XT, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
-| **Disks** | DeckOS on btrfs with snapshots (boot an older snapshot from GRUB). Your NTFS drives stay NTFS, mounted read/write |
-| **Fixes** | Samsung G7 blackout ladder (`deckos display`), GPU pinned to the 9070 XT, Windows dual-boot clock |
+| **AI / dev** | Claude Code, ROCm + Ollama for local models, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
+| **Disks** | btrfs with snapshots: boot an older snapshot from GRUB after a bad update. Existing NTFS drives stay NTFS and are mounted read/write |
+| **Fixes** | Display blackout fix ladder for Radeon cards (`deckos display`), Windows dual-boot clock, Steam libraries on NTFS |
 
-## Before you install (once, on Windows)
+## Requirements
 
-1. **Turn off Fast Startup.** Open Terminal **as Administrator** and run `powercfg /h off`. Fast Startup
-   leaves NTFS drives half-hibernated, and Linux will only mount them read-only.
-2. **BitLocker:** if C:, D: or E: are BitLocker-encrypted, Linux can't read them. Check in
-   *Settings › Privacy & security › Device encryption*.
-3. **BIOS (ASRock):** *Security › Secure Boot* → **Disabled**. Optional: *Advanced › AMD CBS › NBIO ›
-   GFX Configuration › iGPU* → **Disabled** (DeckOS ignores the iGPU anyway). Make sure EXPO is on.
-4. **H: will disappear from Windows.** DeckOS replaces the empty 232 GB "NVME" partition on the
-   Samsung 970 EVO Plus. The EFI partition on that disk (Windows' boot files) is reused, not formatted.
+| | |
+|---|---|
+| **CPU** | Any 64-bit x86 CPU. Packages are optimised for whatever level your CPU supports |
+| **GPU** | **AMD Radeon** recommended. Local AI (ROCm) needs an RX 7000 / 9000 series card. Intel and NVIDIA GPUs aren't set up by the installer yet ([limitations](#known-limitations)) |
+| **Firmware** | UEFI with **Secure Boot off** |
+| **Disk** | A partition of **64 GB or more** (150 GB+ if games go on it too), created beforehand, plus an existing EFI partition (any PC with Windows has one) |
+| **Memory** | 8 GB minimum, 16 GB recommended |
+| **Internet** | Wired or Wi-Fi during the install: packages are downloaded fresh |
 
-## Build the ISO
+## Get DeckOS
 
-The ISO has to be built on Arch Linux. Pick one:
+The ISO is built on Arch Linux. Pick one:
 
-**A. GitHub (no setup on this PC beyond git).** Push this folder to a GitHub repo, then go to
-*Actions › Build DeckOS ISO › Run workflow*. When it finishes (~20 min), download the `deckos-iso` artifact.
-The same workflow lints the scripts and test-builds the DeckOS package on every push.
+**A. GitHub Actions (nothing to install).** Fork this repo, then go to *Actions › Build DeckOS ISO ›
+Run workflow*. When it finishes (~30 min), download the `deckos-iso` artifact.
 
-**B. WSL on this PC.** In an admin terminal: `wsl --install -d archlinux`, reboot, then inside Arch:
+**B. An Arch machine, or WSL on Windows.** On Windows, in an admin terminal:
+`wsl --install -d archlinux`, reboot, then inside Arch:
 
 ```bash
 sudo pacman -Syu --needed archiso git
@@ -46,33 +47,48 @@ sudo ./build.sh
 
 The ISO lands in `out/`.
 
-**Then** copy `deckos-*.iso` onto your Ventoy USB (the SSK drive, **F:**), boot it (F11 on ASRock for
-the boot menu) and pick DeckOS. Secure Boot must be off.
+**Write it to a USB stick** with [Ventoy](https://www.ventoy.net) (copy the ISO onto the stick),
+[Rufus](https://rufus.ie) (pick *DD Image mode* when asked) or `dd`. Boot it from your firmware's
+boot menu (usually F11, F12 or F8 right after power-on) and pick the UEFI entry.
+
+## Before you install
+
+If DeckOS is going next to Windows, do this in Windows first:
+
+1. **Make room.** Open *Disk Management*, right-click a drive with free space › *Shrink Volume*, then
+   create a new partition in the free space (any format: the installer erases it). Skip this if you
+   already have a spare partition.
+2. **Turn off Fast Startup.** Open Terminal **as Administrator** and run `powercfg /h off`. Fast Startup
+   leaves NTFS drives half-hibernated, and Linux will only mount them read-only.
+3. **BitLocker.** Linux can't read BitLocker drives, and the installer won't offer a BitLocker partition
+   as a target. Check *Settings › Privacy & security › Device encryption*.
+4. **Secure Boot off** in your firmware settings (usually under *Security* or *Boot*).
 
 ## Install
 
-The USB boots straight into the **DeckOS desktop** (KDE Plasma, logged in as `liveuser`, no password).
-Try things first (Wi-Fi, the Samsung, DeckOS Hub), then double-click **Install DeckOS**:
+The USB boots straight into the **DeckOS desktop** (logged in as `liveuser`, no password). Try things
+first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
 
-1. **Welcome** checks space, power and internet.
-2. **Location / Keyboard** default to US Eastern and US English.
-3. **Partitions:** choose *Replace a partition* and click the 232 GB partition on the Samsung 970 EVO
-   (or use manual partitioning). Windows and your NTFS drives are shown and left alone; btrfs is the default.
-4. **Software:** tick what you want: Gaming extras, Modding, AI (Claude Code, Ollama + ROCm),
-   Development (VS Code, JetBrains Toolbox, Docker, .NET), Apps.
-5. **Start-up:** Desktop or Gaming Mode. **Display fix:** level 1 recommended for the Samsung.
-6. **Users**, **Summary**, then **Install** (with a slideshow).
+1. **Welcome** checks UEFI mode, Secure Boot and internet. Connect to Wi-Fi from here if needed.
+2. **Where** lists the partitions DeckOS can go on. Only the one you pick is erased. Partitions it can't
+   safely check (BitLocker, encrypted, in use, part of a RAID) are shown greyed out with the reason,
+   and a partition that holds Windows is always refused.
+3. **You**: username, computer name, password and time zone.
+4. **Confirm**: read the summary, tick the box, *Erase and install*.
+5. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
-Behind the scenes it copies the live system to disk, switches to the CachyOS **Zen 4** repos, installs your
-choices, mounts your NTFS drives (`/mnt/Windows`, `/mnt/SSD`, `/mnt/BIG`), sets up snapshots and the
-GRUB menu (DeckOS, Windows, snapshots). The installer log is saved to the live desktop as
-`installer-log.txt`. A text-mode installer is on the desktop too, as a backup.
+Behind the scenes it installs Arch, switches to the CachyOS repos for your CPU, installs everything listed
+above, mounts your NTFS drives under `/mnt/<drive label>`, takes a "fresh install" snapshot and sets up
+GRUB with DeckOS, Windows and a snapshots menu. The EFI partition is shared with Windows and never
+formatted. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
+the live desktop. A text-mode installer (`sudo deckos-install`) is in the app menu as a backup.
 
-## The Samsung G7 blackouts
+## Display blackouts on Radeon cards
 
-The likely cause: the RX 9070 XT saves power at idle by changing its VRAM clock, using firmware-assisted
-switching (FAMS). With a 4K144 G70B plus a second monitor, those switches can drop the DisplayPort signal
-for 1–2 seconds. DeckOS ships **level 1** by default and lets you climb the ladder if it still happens:
+Some Radeon cards (confirmed on the RX 9070 XT) save power at idle by switching their VRAM clock with
+firmware help (FAMS). With a high-bandwidth monitor (the Samsung Odyssey G7 at 4K 144 Hz is the known
+case), especially alongside a second screen, each switch can drop the DisplayPort signal for 1–2 seconds.
+DeckOS ships **level 1** of a fix ladder and lets you climb it if blackouts still happen:
 
 | Level | What it does | Cost |
 |---|---|---|
@@ -86,12 +102,14 @@ for 1–2 seconds. DeckOS ships **level 1** by default and lets you climb the la
 sudo deckos display set 2
 ```
 
-Or use **DeckOS Hub › Display**, then reboot. To find out what's happening, run `deckos display watch`
-(also a button in the Hub) and press Enter each time the screen blinks. It logs VRAM clock changes, kernel
-display messages and hotplugs, so the cause shows up right next to your marker.
+Or use **DeckOS Hub › Display**, then reboot. If you never see blackouts, `sudo deckos display set 0`
+gets the idle power back. To find the cause, run `deckos display watch` (also a button in the Hub) and
+press Enter each time the screen blinks. It logs VRAM clock changes, kernel display messages and
+hotplugs, so the cause shows up right next to your marker.
 
-If it's still flickering on level 3+, it's probably the monitor/cable rather than the GPU:
-- In the G70B menu: update the firmware, turn **Adaptive-Sync/FreeSync off**, turn **Auto Source Switch+ off**.
+Still flickering on level 3+? It's probably the monitor or cable:
+- In the monitor's menu: update the firmware, turn **Adaptive-Sync/FreeSync off**, turn off automatic
+  source switching.
 - Use the DisplayPort cable that came with the monitor (or a VESA-certified DP 1.4 one).
 - Gaming Mode ships with VRR **off** for the same reason. Turn it on in the Hub once things are stable.
 
@@ -105,42 +123,67 @@ Sources: [Bazzite #4934](https://github.com/ublue-os/bazzite/issues/4934),
 |---|---|
 | `deckos` / **DeckOS Hub** | everything below in one place |
 | **Gaming Mode** | panel launcher, or pick *DeckOS Gaming Mode* on the login screen. Back: Steam › Power › *Switch to Desktop* |
-| `deckos steam-ntfs` | run once after adding `D:\SteamLibrary` in Steam. Games stay on NTFS, Proton prefixes move to Linux |
+| `deckos steam-ntfs` | run once after adding a Steam library that lives on a Windows drive. Games stay on NTFS, Proton prefixes move to Linux |
 | `deckos drives` | `list`, `rescan` (new drives), `doctor` (read-only/Fast Startup problems) |
 | `deckos update` | full update; snap-pac snapshots before and after |
 | broken update? | reboot › *DeckOS snapshots* › pick the one before the update |
+| `deckos doctor` | health check: kernel, display fix, drives, snapshots, AI |
 | `claude` | Claude Code, installed for your user (`~/.local/bin`) |
-| `ollama run qwen3` | local models on the 9070 XT via ROCm |
+| `ollama run qwen3` | local models on your Radeon via ROCm |
 
-## DeckOS Builder (app)
+**Gaming Mode resolution:** it defaults to 3840×2160 at up to 144 Hz. For a different screen, set
+`SCREEN_WIDTH`, `SCREEN_HEIGHT` and `CUSTOM_REFRESH_RATES` in `~/.config/deckos/gaming.conf`
+(system defaults and comments are in `/etc/deckos/gaming.conf`).
 
-`builder/` is a desktop app for all of the above, in the DeckOS/Steady style. It runs on Windows now and
-on DeckOS later:
+## Known limitations
 
-- **Build ISO** starts the GitHub build, then shows each step live with an estimate based on GitHub's clock.
-- **Builds** lists history with result and duration, plus **Download ISO** and **Log** (failed steps only, for failures).
-- **USB** finds your Ventoy drive and copies the newest ISO with a SHA256 check. It can also remove older DeckOS ISOs.
-- **Build on this PC** (DeckOS/Arch only) runs `build.sh` locally and streams the output.
+DeckOS is early, and these are on the list:
 
-Needs the GitHub CLI signed in (`gh auth login`). Windows: double-click `builder/DeckOS Builder.bat`
-(the first run sets up its own Python environment). DeckOS: `builder/deckos-builder`, or add it to the app
-menu with `builder/deckos-builder --install`.
+- **Intel and NVIDIA GPUs:** the installer only sets up AMD graphics drivers. On an Intel CPU, add
+  microcode after installing: `sudo pacman -S intel-ucode` then
+  `sudo grub-mkconfig -o /boot/grub/grub.cfg`.
+- **Disk layout:** DeckOS installs onto one existing partition and reuses an existing EFI partition.
+  Installing to free space or an empty disk isn't supported yet.
+- **Software choices:** everything in the table at the top is installed, including ROCm, Docker and the
+  dev tools.
+- **Language and keyboard** are set to English (US) and a US layout, and mirrors are ranked from the US.
+  Change the language and keyboard after installing in *System Settings*.
+- **Secure Boot** has to stay off.
 
-## Layout
+Bug reports are welcome. Please attach the output of `deckos doctor` and, for install problems,
+`deckos-install.log`.
+
+## Reference machine
+
+Every default in DeckOS was chosen and tested on this machine:
+
+Ryzen 7 7800X3D · Radeon RX 9070 XT · ASRock B850M-C · 32 GB DDR5-6000 · Samsung Odyssey G70B + LG UltraGear,
+dual-booting Windows 11.
+
+[docs/reference-machine.md](docs/reference-machine.md) has the exact setup for it (BIOS settings, which
+partition DeckOS goes on, the drive layout).
+
+## Development
+
+The look shares its design language with Steady Downloader (slate `#0F1115` / `#171A21`, `#262B36`
+borders, `#4C8DFF` accent), reworked mechanically: stencil letters, a gear for the O, bolted plates,
+hazard stripes.
+
+**DeckOS Builder** (`builder/`) is a desktop app that starts GitHub builds, downloads ISOs and copies them
+to a Ventoy stick. See [builder/README.md](builder/README.md).
 
 ```
 builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy USB)
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg) — run after design tweaks
-build.sh                  ISO build (releng profile + DeckOS)
-iso/                      live-USB additions
-installer/deckos-install  the installer; installer/packages/*.txt = what gets installed
+build.sh                  ISO build (Arch releng profile + DeckOS)
+iso/                      live-USB additions (packages, live user, autologin)
+installer/deckos-install  the install script; installer/packages/*.txt = what gets installed
+pkg/deckos-installer/     the graphical installer (drives deckos-install)
 pkg/deckos-settings/      Arch package: theme, Hub, deckos tool, fixes (rootfs/ mirrors /)
+docs/                     the reference machine's setup
 .github/workflows/        lint + package test + ISO build
 ```
 
-## Status
-
-Written and partly checked on Windows: the Python compiles, the brand renders, and the package names
-were verified against the Arch, CachyOS and AUR repos (Oct 2026). **Not yet run on Linux.** The first
-GitHub Actions run (shellcheck + makepkg + ISO) is the next check. After that, test the ISO in a VM
-before installing it on the real H: partition.
+The installer window has a demo mode for working on the UI anywhere, including Windows:
+`python pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py --demo`
+(set `DECKOS_BRANDING` to `pkg/deckos-settings/rootfs/usr/share/deckos/branding`).

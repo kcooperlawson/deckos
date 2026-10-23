@@ -54,6 +54,7 @@ QLabel#error {{ color: {DANGER}; }}
 #card QLabel, #card QCheckBox, #card QRadioButton {{ background: transparent; }}
 #disk {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
 #disk[picked="true"] {{ border: 1px solid {ACCENT}; background: #182033; }}
+#disk[blocked="true"] {{ background: #13161C; }}
 #disk QLabel, #disk QRadioButton {{ background: transparent; }}
 QPushButton {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 8px 16px; }}
 QPushButton:hover {{ background: {HOVER}; }}
@@ -470,42 +471,50 @@ class Installer(QWidget):
                 item.widget().deleteLater()
         self.disk_cards = {}
         if DEMO:
-            out = ("/dev/nvme1n1p3\t232 GB\tntfs\tNVME\tSamsung SSD 970 EVO Plus 250GB\t1\n"
-                   "/dev/sda2\t1000 GB\tntfs\tBIG\tST1000DM010\t0\n")
+            out = ("/dev/nvme1n1p3\t232 GB\tntfs\tNVME\tSamsung SSD 970 EVO Plus 250GB\t1\t\n"
+                   "/dev/sda2\t1000 GB\tntfs\tBIG\tST1000DM010\t0\t\n"
+                   "/dev/nvme0n1p3\t500 GB\tBitLocker\t-\tWD_BLACK SN850X\t0\tBitLocker-encrypted, so DeckOS cannot "
+                   "check what is on it. Turn BitLocker off or delete this partition in Windows first.\n")
         else:
             out = run([INSTALLER, "--list-targets"], timeout=20)
-        rows = [line.split("\t") for line in out.splitlines() if line.count("\t") >= 5]
-        if not rows:
+        # path, size, fs, label, model, default, and why it's blocked (empty = usable)
+        rows = [(line.split("\t") + [""])[:7] for line in out.splitlines() if line.count("\t") >= 5]
+        if not any(not why for *_, why in rows):
             self.disk_list.addWidget(label("No partitions found that DeckOS can use. In Windows, shrink a drive in "
                                            "Disk Management to make free space, create a partition there, then "
                                            "press Refresh.", "sub"))
         default = None
-        for path, size, fs, lab, model, is_default in rows:
+        for path, size, fs, lab, model, is_default, why in rows:
             card = QFrame()
             card.setObjectName("disk")
             card.setAttribute(Qt.WA_StyledBackground, True)
+            card.setProperty("blocked", bool(why))
             h = QHBoxLayout(card)
             h.setContentsMargins(16, 12, 16, 12)
             rb = QRadioButton()
             rb.setProperty("path", path)
+            rb.setEnabled(not why)
             self.disk_group.addButton(rb)
             h.addWidget(rb)
             info = QVBoxLayout()
             info.setSpacing(2)
-            name = lab if lab not in ("-", "") else "No label"
+            name = html.escape(lab if lab not in ("-", "") else "No label")
             info.addWidget(label(f"<b>{name}</b> &nbsp;<span style='color:{SUBTEXT}'>{path} · {size} · "
                                  f"{'empty' if fs == 'empty' else fs}</span>"))
-            note = model
-            if fs == "ntfs":
+            note = html.escape(model)
+            if why:
+                note += f" · <span style='color:{DANGER}'>Can't install here: {html.escape(why)}</span>"
+            elif fs == "ntfs":
                 note += f" · <span style='color:{WARNING}'>Windows-format partition: everything on it will be erased</span>"
             elif fs != "empty":
                 note += f" · <span style='color:{WARNING}'>has a {fs} file system: it will be erased</span>"
             info.addWidget(label(f"<span style='color:{SUBTEXT}'>{note}</span>"))
             h.addLayout(info, 1)
-            card.mousePressEvent = lambda _e, r=rb: r.setChecked(True)
+            if not why:
+                card.mousePressEvent = lambda _e, r=rb: r.setChecked(True)
             self.disk_list.addWidget(card)
             self.disk_cards[path] = card
-            if is_default == "1" and default is None:
+            if is_default == "1" and default is None and not why:
                 default = rb
         self.disk_list.addStretch(1)
         if default:

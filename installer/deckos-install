@@ -116,21 +116,34 @@ set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
 }
 
-# Partitions DeckOS may go on: path, size, filesystem, label, disk model, 1 if the default.
-# Skips the live USB / Ventoy stick, EFI, Microsoft reserved and recovery partitions.
+# Partitions DeckOS may go on: path, size, filesystem, label, disk model, 1 if the default, and
+# why it can't be used (empty if it can). Skips the live USB / Ventoy stick, EFI, Microsoft
+# reserved and recovery partitions. Encrypted, RAID/LVM members and anything mounted are listed
+# but blocked: the Windows check below has to mount a partition to look inside, and can't.
+# Runs as the live user for the window, so it only uses what lsblk can see without root.
+# Mounted under /mnt is a previous failed install, which the installer unmounts itself.
 list_targets() {
   local live_disk="" src
   if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
   # The default is the empty 232 GB "NVME" partition on the Samsung 970 EVO Plus.
-  lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL | jq -r \
-    --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" '
+  lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL,MOUNTPOINTS | jq -r \
+    --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" --arg mnt "$MNT" '
     .blockdevices[] | . as $d
     | select($d.name != $live)
     | select(([$d.children[]?.label] | index("Ventoy")) | not)
     | ($d.children // [])[] | select(.type == "part")
     | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
-    | [.path, ((.size / 1e9) | floor | tostring) + " GB", (.fstype // "empty"), (.label // "-"), ($d.model // "?"),
-       (if (($d.model // "") | test("970 EVO")) and .label == "NVME" then "1" else "0" end)]
+    | (.fstype // "") as $fs
+    | [.mountpoints[]? | select(. != null and . != $mnt and (startswith($mnt + "/") | not))] as $mp
+    | (if $fs == "BitLocker" then "BitLocker-encrypted, so DeckOS cannot check what is on it. Turn BitLocker off or delete this partition in Windows first."
+       elif $fs == "crypto_LUKS" then "Encrypted (LUKS), so DeckOS cannot check what is on it. Delete it in a partition manager first if you want to use it."
+       elif ($fs | endswith("_member")) then "Part of a RAID, LVM or ZFS set. Erasing it would break the whole set."
+       elif ($mp | index("[SWAP]")) then "In use as swap."
+       elif ($mp | length) > 0 then "Mounted at " + ($mp | join(", ")) + ". Unmount it (eject it in Dolphin), then refresh."
+       else "" end) as $why
+    | [.path, ((.size / 1e9) | floor | tostring) + " GB", (if $fs == "" then "empty" else $fs end), (.label // "-"),
+       ($d.model // "?"),
+       (if $why == "" and (($d.model // "") | test("970 EVO")) and .label == "NVME" then "1" else "0" end), $why]
     | @tsv'
 }
 
@@ -204,16 +217,23 @@ timedatectl set-ntp true >/dev/null 2>&1 || true
 section "Where should DeckOS go?"
 note "Only the partition you pick is erased. Windows, its EFI partition and your other drives stay untouched."
 
+# A failed earlier run leaves the target mounted under /mnt; free it before checking it.
+umount -R "$MNT" 2>/dev/null || true
 mapfile -t rows < <(list_targets)
-[[ ${#rows[@]} -gt 0 ]] || die "No suitable partitions found."
+mapfile -t usable < <(printf '%s\n' "${rows[@]}" | awk -F'\t' 'NF && $7 == ""')
+[[ ${#usable[@]} -gt 0 ]] || die "No suitable partitions found."
 
 if [[ -n $GUI ]]; then
   TARGET=${DECKOS_TARGET:-}
-  printf '%s\n' "${rows[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DeckOS can use."
+  printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DeckOS can use."
 else
-  choices=() default=""
   for r in "${rows[@]}"; do
-    IFS=$'\t' read -r p s f l m d <<<"$r"
+    IFS=$'\t' read -r p _ _ _ _ _ why <<<"$r"
+    [[ -n $why ]] && note "Not offered: $p - $why"
+  done
+  choices=() default=""
+  for r in "${usable[@]}"; do
+    IFS=$'\t' read -r p s f l m d _ <<<"$r"
     line=$(printf '%-16s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
     choices+=("$line")
     [[ -z $default && $d == 1 ]] && default=$line
@@ -225,10 +245,16 @@ else
 fi
 [[ -b $TARGET ]] || die "No partition selected."
 
-# Refuse Windows; show anything that would be lost.
+# Refuse Windows and anything DeckOS can't look inside; show anything that would be lost.
+# Only a partition that mounts can be checked for Windows, so one with a file system that won't
+# mount (a hibernated Windows drive, a damaged or unknown one) is refused rather than trusted.
+fstype=$(lsblk -no FSTYPE "$TARGET" | head -n1)
 probe=$(mktemp -d)
 if mount -o ro "$TARGET" "$probe" 2>/dev/null; then
-  [[ -d $probe/Windows/System32 ]] && { umount "$probe"; die "$TARGET contains Windows. Pick a different partition."; }
+  if [[ -d $probe/Windows/System32 || -e $probe/bootmgr || -e $probe/hiberfil.sys || -d $probe/Recovery/WindowsRE ]]; then
+    umount "$probe"; rmdir "$probe"
+    die "$TARGET holds Windows or its boot or recovery files. Pick a different partition."
+  fi
   mapfile -t contents < <(find "$probe" -mindepth 1 -maxdepth 1 ! -name 'System Volume Information' ! -name '$RECYCLE.BIN' -printf '%f\n' | head -n 15)
   used=$(df -h --output=used "$probe" | tail -1 | tr -d ' ')
   umount "$probe"
@@ -238,8 +264,11 @@ if mount -o ro "$TARGET" "$probe" 2>/dev/null; then
   else
     good "$TARGET is empty"
   fi
+elif [[ -n $fstype ]]; then
+  rmdir "$probe"
+  die "$TARGET has a $fstype file system that DeckOS can't open to check what's on it, so it won't erase it. If it's a Windows drive, start Windows and run 'powercfg /h off' as administrator (hibernation keeps it locked), or delete the partition in Disk Management to leave it empty."
 fi
-rmdir "$probe"
+rmdir "$probe" 2>/dev/null || true
 
 TARGET_DISK=/dev/$(lsblk -no PKNAME "$TARGET")
 TARGET_PARTNO=$(cat "/sys/class/block/$(basename "$TARGET")/partition")
