@@ -36,9 +36,10 @@ declare -A GROUP_DESC=(
   [dev]="Development: Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java"
 )
 # DECKOS_GUI=1: driven by the graphical installer. Nothing is asked; the answers come from
-# DECKOS_TARGET, DECKOS_HOSTNAME, DECKOS_USER, DECKOS_PASSWORD_FILE, DECKOS_TZ and DECKOS_GROUPS
-# (comma-separated optional groups, all of them if unset), and output is plain text that the
-# window turns into its progress view.
+# DECKOS_TARGET, DECKOS_HOSTNAME, DECKOS_USER, DECKOS_PASSWORD_FILE, DECKOS_TZ, DECKOS_LOCALE,
+# DECKOS_KEYMAP (an XKB layout from keyboards.tsv) and DECKOS_GROUPS (comma-separated optional
+# groups, all of them if unset), and output is plain text that the window turns into its
+# progress view.
 GUI=${DECKOS_GUI:-}
 
 # ------------------------------------------------------------------ helpers
@@ -67,14 +68,24 @@ die() {
   [[ -s $LOG ]] && { echo; note "Last lines of $LOG:"; tail -n 25 "$LOG"; }
   exit 1
 }
-trap 'die "Something failed on line $LINENO. Nothing outside the chosen partition was changed."' ERR
+# What a failure has touched so far, for the failure message: nothing, partition or boot.
+CHANGED=nothing
+changed_note() {
+  case $CHANGED in
+    nothing) echo "Nothing was changed." ;;
+    partition) echo "Only $TARGET was changed, and it's unusable until you install again." ;;
+    boot) echo "$TARGET and the boot menu on $ESP were changed. If the PC won't start, pick Windows Boot" \
+               "Manager in your firmware's boot menu (often F11, F12 or F8 at power-on)." ;;
+  esac
+}
+trap 'die "Something failed on line $LINENO. $(changed_note)"' ERR
 
 # spin "Title" cmd args... - runs quietly into the log with a spinner.
 spin() {
   local title=$1; shift
   echo "### $title :: $*" >> "$LOG"
   busy "$title" bash -c '"$@" >>"$LOG" 2>&1' _ "$@" \
-    || die "$title failed"
+    || die "$title failed. $(changed_note)"
   good "$title"
 }
 inchroot() { arch-chroot "$MNT" "$@"; }
@@ -105,27 +116,36 @@ install_group() {
   good "$name packages (with retries)"
 }
 
-# reflector needs archlinux.org's mirror status, which is often slow or down. If it fails,
-# use a short list of big, reliable mirrors instead of stopping the install.
+# Mirrors in the time zone's country (COUNTRY), or worldwide if it has fewer than 3. reflector
+# needs archlinux.org's mirror status, which is often slow or down. If it fails, use a short
+# list of big, reliable mirrors instead of stopping the install.
 rank_mirrors() {
-  local ml=/etc/pacman.d/mirrorlist
-  echo "### Ranking mirrors" >> "$LOG"
-  if busy "Ranking mirrors" bash -c \
-       'reflector --country US --latest 15 --protocol https --sort rate --connect-timeout 5 --download-timeout 8 --save "$0.new" >>"$LOG" 2>&1' "$ml" \
-     && grep -q '^Server' "$ml.new"; then
-    mv "$ml.new" "$ml"
-    good "Ranking mirrors"
-  else
+  local ml=/etc/pacman.d/mirrorlist where title
+  for where in "${COUNTRY:-}" worldwide; do
+    [[ -n $where ]] || continue
+    local args=(--latest 15 --protocol https --sort rate --connect-timeout 5 --download-timeout 8)
+    if [[ $where == worldwide ]]; then title="Ranking mirrors worldwide"
+    else title="Ranking mirrors in $where"; args+=(--country "$where"); fi
+    echo "### $title" >> "$LOG"
+    if busy "$title" bash -c 'reflector "$@" --save "$0.new" >>"$LOG" 2>&1' "$ml" "${args[@]}" \
+       && [[ $(grep -c '^Server' "$ml.new" 2>/dev/null) -ge 3 ]]; then
+      mv "$ml.new" "$ml"
+      good "$title"
+      return
+    fi
     rm -f "$ml.new"
-    cat > "$ml" <<'EOF'
+  done
+  cat > "$ml" <<'EOF'
 Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
 Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
 Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
 Server = https://mirrors.mit.edu/archlinux/$repo/os/$arch
 EOF
-    warn "Mirror ranking failed - using a standard mirror list"
-  fi
+  warn "Mirror ranking failed - using a standard mirror list"
 }
+
+# table NAME - the rows of installer/NAME.tsv, without comments.
+table() { grep -vE '^\s*(#|$)' "$SRC/installer/$1.tsv"; }
 
 set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   local f=$MNT/etc/default/grub
@@ -334,6 +354,22 @@ done
 # ------------------------------------------------------------------ you
 
 section "You"
+# Language and keyboard first, so the password is typed on the layout DeckOS will use.
+if [[ -n $GUI ]]; then
+  LOCALE_=${DECKOS_LOCALE:-$DEFAULT_LOCALE} KEYMAP_=${DECKOS_KEYMAP:-$DEFAULT_KEYMAP}
+else
+  pick=$(table locales | awk -F'\t' '{printf "%-12s %s\n", $1, $2}' \
+    | gum filter --placeholder "Language: type to search, Enter for English (US)" || true)
+  LOCALE_=${pick%% *}
+  pick=$(table keyboards | awk -F'\t' '{printf "%-6s %s\n", $1, $3}' \
+    | gum filter --placeholder "Keyboard layout: type to search, Enter for English (US)" || true)
+  KEYMAP_=${pick%% *}
+fi
+table locales | cut -f1 | grep -qxF "$LOCALE_" || die "Unknown language: $LOCALE_"
+CONSOLE_KEYMAP=$(table keyboards | awk -F'\t' -v k="$KEYMAP_" '$1 == k {print $2}')
+[[ -n $CONSOLE_KEYMAP ]] || die "Unknown keyboard layout: $KEYMAP_"
+[[ -z $GUI ]] && { loadkeys "$CONSOLE_KEYMAP" >/dev/null 2>&1 || true; }
+
 # No tracing while the password is in variables.
 { set +x; } 2>/dev/null
 if [[ -n $GUI ]]; then
@@ -363,6 +399,8 @@ TZ_=${DECKOS_TZ:-$DEFAULT_TZ}
 if [[ -z $GUI ]]; then
   gum confirm "Timezone $DEFAULT_TZ (US Eastern)?" || TZ_=$(timedatectl list-timezones | gum filter --placeholder "type a city")
 fi
+# The time zone's country, for picking nearby mirrors.
+COUNTRY=$(awk -v tz="$TZ_" '$3 == tz {print $1; exit}' /usr/share/zoneinfo/zone.tab 2>/dev/null || true)
 
 # Software groups. Unset DECKOS_GROUPS means all of them; set but empty means none.
 CHOSEN=()
@@ -384,6 +422,7 @@ style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0
   "Keep       every other partition and drive" \
   "Display    blackout fix level $DISPLAY_LEVEL ($display_why)" \
   "User       $USERNAME_ @ $HOSTNAME_   |   $TZ_" \
+  "Language   $LOCALE_   |   keyboard $KEYMAP_" \
   "Software   $software"
 echo
 # The window asks for this itself before it starts.
@@ -395,6 +434,7 @@ else confirm=$(gum input --prompt "Type ERASE to install > " --placeholder "ERAS
 
 section "Preparing $TARGET"
 umount -R "$MNT" 2>/dev/null || true
+CHANGED=partition
 spin "Wiping $TARGET" wipefs -af "$TARGET"
 # Mark it as a Linux partition so Windows stops offering to "format" it.
 spin "Setting partition type" sfdisk --part-type "$TARGET_DISK" "$TARGET_PARTNO" "$LINUX_FS_GUID"
@@ -427,15 +467,26 @@ if [[ $WINDOWS == yes ]]; then
 else
   inchroot hwclock --systohc --utc >>"$LOG" 2>&1 || true
 fi
-sed -i "s/^#\($DEFAULT_LOCALE\)/\1/" "$MNT/etc/locale.gen"
+# English (US) is always generated too, as the fallback many tools expect.
+sed -i "s/^#\($LOCALE_ \)/\1/; s/^#\($DEFAULT_LOCALE \)/\1/" "$MNT/etc/locale.gen"
 inchroot locale-gen >>"$LOG" 2>&1
-echo "LANG=$DEFAULT_LOCALE" > "$MNT/etc/locale.conf"
-echo "KEYMAP=$DEFAULT_KEYMAP" > "$MNT/etc/vconsole.conf"
+echo "LANG=$LOCALE_" > "$MNT/etc/locale.conf"
+if [[ -z $(find "$MNT/usr/share/kbd/keymaps" -name "$CONSOLE_KEYMAP.map.gz" -print -quit) ]]; then
+  warn "No console keymap '$CONSOLE_KEYMAP' - the text console uses US, the desktop still uses $KEYMAP_"
+  CONSOLE_KEYMAP=us
+fi
+echo "KEYMAP=$CONSOLE_KEYMAP" > "$MNT/etc/vconsole.conf"
+# The desktop's layout: xorg.conf.d for the login screen (and what localectl reports), and
+# Plasma's system-wide default.
+mkdir -p "$MNT/etc/X11/xorg.conf.d" "$MNT/etc/xdg"
+printf 'Section "InputClass"\n  Identifier "system-keyboard"\n  MatchIsKeyboard "on"\n  Option "XkbLayout" "%s"\nEndSection\n' \
+  "$KEYMAP_" > "$MNT/etc/X11/xorg.conf.d/00-keyboard.conf"
+printf '[Layout]\nLayoutList=%s\nUse=true\n' "$KEYMAP_" > "$MNT/etc/xdg/kxkbrc"
 echo "$HOSTNAME_" > "$MNT/etc/hostname"
 printf '127.0.0.1 localhost\n::1 localhost\n127.0.1.1 %s.localdomain %s\n' "$HOSTNAME_" "$HOSTNAME_" > "$MNT/etc/hosts"
 sed -i '/^#\[multilib\]/{N;s/#//g}' "$MNT/etc/pacman.conf"
 sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 10/; s/^#Color/Color/' "$MNT/etc/pacman.conf"
-good "locale, time, hostname, multilib"
+good "language $LOCALE_, keyboard $KEYMAP_, time, hostname, multilib"
 
 section "CachyOS optimised repos (Zen 4)"
 mkdir -p "$MNT/root/cachyos-repo"
@@ -570,6 +621,7 @@ sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBE
   "$MNT/etc/snapper/configs/root"
 
 spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes
+CHANGED=boot
 spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
 spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
 grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet - run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
@@ -584,6 +636,16 @@ for s in "${services[@]}"; do
   inchroot systemctl enable "$s" >>"$LOG" 2>&1 || warn "could not enable $s"
 done
 good "services enabled"
+
+# Firewall: firewalld's default zone blocks incoming connections. Open only what DeckOS's own
+# apps need (firewall-offline-cmd edits the config without touching the live USB's firewall).
+allow=(kdeconnect)
+chosen gaming && allow+=(steam-streaming)
+for svc in "${allow[@]}"; do
+  inchroot firewall-offline-cmd --add-service="$svc" >>"$LOG" 2>&1 || warn "firewall: couldn't open $svc"
+done
+if inchroot systemctl enable firewalld >>"$LOG" 2>&1; then good "firewall on (open: ${allow[*]})"
+else warn "could not enable the firewall"; fi
 
 # ------------------------------------------------------------------ done
 

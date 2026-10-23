@@ -28,6 +28,7 @@ power-profiles-daemon
 reflector
 sudo
 polkit
+firewalld
 nano
 vim
 man-db

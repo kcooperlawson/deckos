@@ -74,18 +74,22 @@ first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
 2. **Where** lists the partitions DeckOS can go on. Only the one you pick is erased. Partitions it can't
    safely check (BitLocker, encrypted, in use, part of a RAID) are shown greyed out with the reason,
    and a partition that holds Windows is always refused.
-3. **You**: username, computer name, password and time zone.
+3. **You**: username, computer name, language, keyboard layout, password and time zone. The live
+   desktop switches to your keyboard layout right away, so the password you type is the one that works
+   at login.
 4. **Software**: tick Gaming, Local AI and/or Development. The desktop, kernel, graphics drivers and
    snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 is found.
 5. **Confirm**: read the summary, tick the box, *Erase and install*.
 6. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
-Behind the scenes it installs Arch, switches to the CachyOS repos for your CPU, installs the desktop and
+Behind the scenes it installs Arch from mirrors in your time zone's country, switches to the CachyOS repos for your CPU, installs the desktop and
 the groups you picked (the DeckOS package and AUR apps come prebuilt on the USB), mounts your NTFS drives under
 `/mnt/<drive label>`, takes a "fresh install" snapshot and sets up GRUB with DeckOS, Windows and a
 snapshots menu. The EFI partition is shared with Windows and never formatted. It also picks the
 [display fix level](#display-blackouts-on-radeon-cards) for your GPU and monitors, and keeps the
-hardware clock in local time only if it finds Windows, so the clock is right in both. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
+hardware clock in local time only if it finds Windows, so the clock is right in both. The firewall
+(firewalld) is on, blocking incoming connections except KDE Connect and, with Gaming, Steam Remote Play.
+If an install fails, the message says exactly what was changed so far. The log is saved to `/var/log/deckos-install.log`. If the install fails, the log is copied to
 the live desktop. A text-mode installer (`sudo deckos-install`) is in the app menu as a backup.
 
 ## Display blackouts on Radeon cards
@@ -152,8 +156,6 @@ DeckOS is early, and these are on the list:
   `sudo grub-mkconfig -o /boot/grub/grub.cfg`.
 - **Disk layout:** DeckOS installs onto one existing partition and reuses an existing EFI partition.
   Installing to free space or an empty disk isn't supported yet.
-- **Language and keyboard** are set to English (US) and a US layout, and mirrors are ranked from the US.
-  Change the language and keyboard after installing in *System Settings*.
 - **Secure Boot** has to stay off.
 
 Bug reports are welcome. Please attach the output of `deckos doctor` and, for install problems,

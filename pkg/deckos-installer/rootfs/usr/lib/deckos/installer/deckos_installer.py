@@ -28,7 +28,12 @@ BRANDING = Path(os.environ.get("DECKOS_BRANDING", "/usr/share/deckos/branding"))
 INSTALLER = os.environ.get("DECKOS_INSTALLER", "/usr/local/bin/deckos-install")
 INSTALL_LOG = "/var/log/deckos-install.log"
 DEFAULT_TZ = "America/New_York"
+DEFAULT_LOCALE, DEFAULT_KEYMAP = "en_US.UTF-8", "us"
 DEMO = "--demo" in sys.argv  # canned disks and a fake install, for working on the UI anywhere
+# deckos-install's files on the USB (language and keyboard tables); the repo itself in demo mode.
+SRC = Path(os.environ.get("DECKOS_SRC", "/opt/deckos"))
+if not (SRC / "installer").is_dir():
+    SRC = Path(__file__).resolve().parents[7]
 
 BG, SURFACE, BORDER, HOVER, PRESSED = "#0F1115", "#171A21", "#262B36", "#2A2F3B", "#353B49"
 TEXT, SUBTEXT, MUTED = "#E8EAF0", "#8C94A6", "#5A6172"
@@ -106,6 +111,15 @@ def run(cmd, timeout=10):
         return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+def table(name):
+    """Rows of installer/NAME.tsv (the same file deckos-install reads), without comments."""
+    try:
+        lines = (SRC / "installer" / f"{name}.tsv").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [line.split("\t") for line in lines if line.strip() and not line.startswith("#")]
 
 
 def label(text, cls=None, wrap=True, rich=False):
@@ -288,7 +302,8 @@ class Installer(QWidget):
         self.stack.addWidget(p)
 
     def build_you(self):
-        p = Page("About you", "Your account on DeckOS. You'll use this password to log in and for sudo.")
+        p = Page("About you", "Your account on DeckOS. You'll use this password to log in and for sudo. The "
+                              "keyboard layout switches right away, so you type the password the way you will at login.")
         card = Card()
         g = QGridLayout()
         g.setHorizontalSpacing(14)
@@ -307,8 +322,18 @@ class Installer(QWidget):
         self.tz.setCurrentText(DEFAULT_TZ)
         self.tz.completer().setFilterMode(Qt.MatchContains)
         self.tz.completer().setCompletionMode(QCompleter.PopupCompletion)
-        for i, (name, w) in enumerate([("Username", self.user), ("Computer name", self.host),
-                                       ("Password", self.pw1), ("Password again", self.pw2), ("Time zone", self.tz)]):
+        self.lang = QComboBox()
+        for locale, name, *_ in table("locales") or [[DEFAULT_LOCALE, "English (United States)"]]:
+            self.lang.addItem(name, locale)
+        self.kbd = QComboBox()
+        for layout, _console, name, *_ in table("keyboards") or [[DEFAULT_KEYMAP, "us", "English (US)"]]:
+            self.kbd.addItem(name, layout)
+        self.lang.setCurrentIndex(max(0, self.lang.findData(DEFAULT_LOCALE)))
+        self.kbd.setCurrentIndex(max(0, self.kbd.findData(DEFAULT_KEYMAP)))
+        self.kbd.currentIndexChanged.connect(self.apply_keyboard)
+        for i, (name, w) in enumerate([("Username", self.user), ("Computer name", self.host), ("Language", self.lang),
+                                       ("Keyboard", self.kbd), ("Password", self.pw1), ("Password again", self.pw2),
+                                       ("Time zone", self.tz)]):
             g.addWidget(label(name, "sub", wrap=False), i, 0)
             g.addWidget(w, i, 1)
         card.body.addLayout(g)
@@ -320,6 +345,18 @@ class Installer(QWidget):
             w.textChanged.connect(self.validate_you)
         self.tz.currentTextChanged.connect(self.validate_you)
         self.stack.addWidget(p)
+
+    def apply_keyboard(self):
+        """Switches the live desktop to the chosen layout, the way System Settings does, and clears
+        the password fields so nothing typed on the old layout gets saved."""
+        self.pw1.clear()
+        self.pw2.clear()
+        if DEMO:
+            return
+        layout = self.kbd.currentData()
+        run(["kwriteconfig6", "--file", "kxkbrc", "--group", "Layout", "--key", "LayoutList", layout])
+        run(["kwriteconfig6", "--file", "kxkbrc", "--group", "Layout", "--key", "Use", "true"])
+        run(["dbus-send", "--session", "--type=signal", "/Layouts", "org.kde.keyboard.reloadConfig"])
 
     def build_software(self):
         p = Page("Choose your software",
@@ -630,7 +667,9 @@ class Installer(QWidget):
             f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and Windows</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Keep</td><td>Every other partition and drive</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Account</td><td>{html.escape(self.user.text())} @ {html.escape(self.host.text())}</td></tr>"
-            f"<tr><td style='color:{SUBTEXT}'>Time zone</td><td>{self.tz.currentText()}</td></tr></table>")
+            f"<tr><td style='color:{SUBTEXT}'>Time zone</td><td>{self.tz.currentText()}</td></tr>"
+            f"<tr><td style='color:{SUBTEXT}'>Language</td><td>{self.lang.currentText()} · keyboard "
+            f"{self.kbd.currentText()}</td></tr></table>")
         extras = [title for key, title, _ in GROUPS if key in self.groups()]
         self.software_text.setText(
             "CachyOS kernel, KDE Plasma desktop, Firefox, graphics drivers and snapshots"
@@ -661,6 +700,7 @@ class Installer(QWidget):
             f.write(self.pw1.text())
         env = {"DECKOS_GUI": "1", "DECKOS_TARGET": self.target(), "DECKOS_HOSTNAME": self.host.text(),
                "DECKOS_USER": self.user.text(), "DECKOS_PASSWORD_FILE": pwfile, "DECKOS_TZ": self.tz.currentText(),
+               "DECKOS_LOCALE": self.lang.currentData(), "DECKOS_KEYMAP": self.kbd.currentData(),
                "DECKOS_GROUPS": ",".join(self.groups()), "DECKOS_CONFIRM": "ERASE"}
         self.proc = QProcess(self)
         self.proc.setProcessChannelMode(QProcess.MergedChannels)

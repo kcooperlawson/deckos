@@ -1,0 +1,27 @@
+# Keyboard layouts the installer offers: XKB layout (desktop)<TAB>console keymap<TAB>name.
+# A console keymap missing from the installed system falls back to "us".
+us	us	English (US)
+gb	uk	English (UK)
+de	de-latin1	German
+at	de-latin1	German (Austria)
+ch	de_CH-latin1	German (Switzerland)
+fr	fr	French
+be	be-latin1	Belgian
+ca	cf	French (Canada)
+es	es	Spanish
+latam	la-latin1	Spanish (Latin America)
+it	it	Italian
+pt	pt-latin1	Portuguese
+br	br-abnt2	Portuguese (Brazil)
+nl	nl	Dutch
+se	sv-latin1	Swedish
+no	no-latin1	Norwegian
+dk	dk-latin1	Danish
+fi	fi	Finnish
+pl	pl	Polish
+cz	cz-qwertz	Czech
+tr	trq	Turkish
+ru	ru	Russian
+ua	ua	Ukrainian
+jp	jp106	Japanese
+kr	us	Korean
