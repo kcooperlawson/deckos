@@ -56,7 +56,9 @@ size=300MiB, type=U, name="EFI system partition"
 type=L, name="DeckOS"
 EOF
 read -r esp_start esp_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[0] | "\(.start) \(.size)"')
-mkfs.fat -F 32 -n EFI --offset "$esp_start" "$W/disk.img" $((esp_sectors / 2)) >/dev/null
+# Cluster size explicitly: mkfs.fat sizes it for the whole 40 GB image, which leaves this partition too
+# few clusters for FAT32. Linux mounts that anyway; UEFI firmware counts clusters and can't read it.
+mkfs.fat -F 32 -S 512 -s 1 -n EFI --offset "$esp_start" "$W/disk.img" $((esp_sectors / 2)) >/dev/null
 sfdisk -l "$W/disk.img"
 
 # ------------------------------------------------------------------ live kernel

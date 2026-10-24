@@ -161,6 +161,8 @@ not die: a finished install must never be reported as failed.
 - Spotify's MPRIS reports position 0 and old art URLs (`open.spotify.com/image/…`): the Now Playing card
   keeps its own clock and rewrites them to `i.scdn.co/image/…`.
 - `sed` with `|` as delimiter breaks on text containing `|` (usage strings): edit those directly.
+- `mkfs.fat --offset` into a big disk image sizes clusters for the whole image: a small EFI partition
+  ends up with too few clusters for FAT32, which Linux mounts but UEFI can't read. Pass `-S 512 -s 1`.
 - Don't name a page method after a QWidget one (`update`, `show`, `close`…): a Welcome step's `update()`
   ran `deckos update` every time an accent change repainted the window.
 - DeckOS Welcome autostarts (`/etc/xdg/autostart/deckos-welcome.desktop`) until
