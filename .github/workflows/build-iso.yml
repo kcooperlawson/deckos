@@ -55,9 +55,13 @@ jobs:
 
   plan:
     # Whether this run builds an ISO. Installed systems get a release through the update repo, so a
-    # tag only builds one when the installer or the live USB changed since the last tag, or when the
-    # tag or commit message says [iso]. Build ISO in DeckOS Builder (workflow_dispatch) always does.
+    # tag only builds one when the installer or the live USB changed since the last ISO this workflow
+    # actually built (not the last tag: a tag whose run was cancelled or failed built none), or when
+    # the tag or commit message says [iso]. Build ISO in DeckOS Builder (workflow_dispatch) always does.
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       iso: ${{ steps.check.outputs.iso }}
     steps:
@@ -65,16 +69,26 @@ jobs:
         with:
           fetch-depth: 0
       - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           live="build.sh installer iso pkg/deckos-installer pkg/deckos-settings/rootfs/usr/share/deckos/packages .github/workflows/build-iso.yml"
           iso=true why="not a version tag"
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             msg="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME") $(git log -1 --format=%B)"
-            if ! prev=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null); then why="first release"
+            # The commit of the newest earlier run whose iso job succeeded.
+            prev=""
+            for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-iso.yml/runs?status=success&per_page=30" \
+                           --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID) | \"\(.id):\(.head_sha)\""); do
+              if gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run%%:*}/jobs" \
+                   --jq '.jobs[] | select(.name == "iso") | .conclusion' | grep -qx success \
+                 && git cat-file -e "${run#*:}^{commit}" 2>/dev/null; then prev=${run#*:}; break; fi
+            done
+            if [ -z "$prev" ]; then why="no earlier ISO build found"
             elif case "$msg" in *"[iso]"*) true ;; *) false ;; esac; then why="asked for with [iso]"
             elif changed=$(git diff --name-only "$prev" HEAD -- $live) && [ -n "$changed" ]; then
-              why="installer or live USB changed since $prev: $(echo "$changed" | head -5 | tr '\n' ' ')"
-            else iso=false why="nothing for the installer or live USB changed since $prev"; fi
+              why="installer or live USB changed since the last ISO (${prev:0:7}): $(echo "$changed" | head -5 | tr '\n' ' ')"
+            else iso=false why="nothing for the installer or live USB changed since the last ISO (${prev:0:7})"; fi
           fi
           echo "ISO: $iso ($why)" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "iso=$iso" >> "$GITHUB_OUTPUT"
