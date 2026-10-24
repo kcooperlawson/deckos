@@ -17,7 +17,7 @@ Python 3.12, torch 2.10 ROCm 7.1, diffusers, and document libraries installed.
 SDXL uses CPU offloading and sliced attention/VAE to fit the GPU with Ollama unloaded.
 The next chat request reloads Ollama automatically.
 
-Validation: all 43 unit tests pass. Real gpt-oss:20b created code and ran its tests.
+Validation (at the time): all 43 unit tests pass. Real gpt-oss:20b created code and ran its tests.
 DOCX/PDF/PPTX/XLSX creation and extraction passed. Real SDXL 1024px image generation
 passed on AMD GPU. Native GUI integration passed model chat, file creation, command
 approval, task save, cancellation and command process cleanup. Stop records stopped
@@ -42,24 +42,23 @@ Image/doc Python dependencies were initially absent. uv installed; runtime setup
 Do not require an API key or send project data to a hosted model. External web tools and first-time
 model/package downloads naturally need internet. Use clear model-license links in image settings.
 
-## Prior release work — paused for Work app
+## Release status (updated October 24, 2026)
 
-Claude's latest commit `af9b81e` contains Bench, experiments, Game Doctor, installer fix and 0.5.0
-release notes. VERSION is still 0.4.0; v0.5.0 is not tagged. User asked us to pick up Claude's work,
-then redirected to this app. Hold the release until validation is resolved.
+Work shipped: 0.5.0 (Work, Bench disk fix: the sequential refill before every repetition is in
+`df8c829`) through 0.5.5 are tagged and published. VERSION is 0.5.5.
 
-30 existing tests pass. Real vkmark rerun and AI rerun passed. BeamNG JSON path fix worked
-(533.36 MBeams/s, 40 realtime vehicles, the sweep's ceiling). Disk repeats had inconsistent read
-layout after random writes. Modified Disk to refill sequentially before EVERY repetition and
-check chattr errors; adjusted test. New real run `20261024-152752-Sequential-refill-validation`:
-seq read 2539/2583/3034 MB/s; seq write 2380/2382/2373 MB/s; random rates stable. Those two source
-changes are still uncommitted. Do not rerun long workloads without a concrete reason.
+Install test: every ISO run from v0.3.15 to v0.5.5 failed install-test the same way (OVMF: no FAT
+filesystem on the EFI partition, `grubx64.efi` "Not Found"). The cause was the test harness, not the
+installer: `mkfs.fat --offset` on the 40 GB image sized clusters for the whole image (64 sectors),
+leaving the 300 MiB partition 9600 clusters, too few for FAT32. Linux mounts that; UEFI firmware
+decides the FAT type from the cluster count and can't read it. `tests/install-test.sh` now passes
+`-S 512 -s 1`; checked locally in OVMF (old flags: Not Found, new flags: boots). Confirm on CI at the
+next ISO build. A full local run of install-test.sh on the CI-built 0.5.5 ISO with the fix passed:
+install PASS, first boot reached graphical.target with sddm active.
 
-0.4.0 GitHub run 40121079581 passed package/publish/ISO but FAILED install-test: OVMF couldn't load
-EFI/DeckOS/grubx64.efi, no FAT filesystem mapping visible on next boot. Live installer said GRUB
-succeeded, then reported lazy unmount. Logs downloaded under Codex `work/release-review/install-logs`.
-A minimal OVMF FAT probe ran in shell 85952; its serial log was empty (not diagnostic).
-The package-repository installer fix in af9b81e is separate from this EFI boot failure.
-Do not claim ISO validation or publish a tested release until this is understood.
+Publish now also waits for unit-tests. The Assistant's safety rules (`is_read_only`, `BLOCKED`,
+shared with deckos-local and Work) have tests in `tests/test_assistant.py`; that closed holes where
+`env CMD`, `rg --pre`, `git branch -D`, `find -fprint`, `sort -o`, `journalctl --vacuum-*` ran
+unasked and `rm -rf --no-preserve-root /`, `rm -rf ~/*`, `shred /dev/...` weren't refused.
 
 Do not commit the unrelated `assets/quicksettings-preview.png`.
