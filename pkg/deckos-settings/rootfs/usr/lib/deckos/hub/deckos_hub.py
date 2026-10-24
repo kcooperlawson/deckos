@@ -210,7 +210,7 @@ class Hub(QWidget):
     @staticmethod
     def terminal(command):
         """Runs a command in Konsole and keeps the window open so the output can be read."""
-        QProcess.startDetached("konsole", ["--hold", "-e", "bash", "-lc", command])
+        QProcess.startDetached("deckos-terminal", ["--hold", "-e", "bash", "-lc", command])
 
     def privileged(self, args, done=None):
         """`deckos ARGS` as root through pkexec (asks for the password); done(ok) afterwards."""

@@ -49,6 +49,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
 - `apps/deckos-files/` + `pkg/deckos-files/`: DeckOS Files, the file manager (C++/Qt 6/KIO, design in
   `docs/files.md`). `deckos-settings` depends on it. No Linux here? Push a branch: the "DeckOS Files"
   workflow builds it and uploads offscreen screenshots (`deckos-files --demo --screenshot DIR`).
+- `apps/deckos-terminal/` + `pkg/deckos-terminal/`: DeckOS Terminal, the default terminal (C++/Qt 6 on
+  `qtermwidget`, design in `docs/terminal.md`). It compiles DeckOS Files' `style.cpp` for the shared look.
+  Tabs are named from `/proc` and `.git/HEAD` (no git processes); the mode chip listens for
+  `org.deckos.Mode.Changed`, which `deckos mode` emits with `busctl`. `--hold -e CMD` is what the Hub's
+  terminal steps use. In Qt 6 `quit()` asks windows to close, and a running command makes the window
+  ask: the screenshot mode uses `exit(0)`.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).

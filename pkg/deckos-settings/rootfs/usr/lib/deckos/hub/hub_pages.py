@@ -124,7 +124,7 @@ class HomePage(Page):
         quick.body.addWidget(row(button("Get apps", slot=lambda: QProcess.startDetached("deckos-store", []),
                                         icon="store"),
                                  button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
-                                 button("Terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal"),
+                                 button("Terminal", slot=lambda: QProcess.startDetached("deckos-terminal", []), icon="terminal"),
                                  button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
@@ -754,7 +754,7 @@ class AiDevPage(Page):
         claude.body.addWidget(label("Run <b>claude</b> in any project folder.", "sub"))
         claude.body.addWidget(row(button("Install / update", "primary", lambda: self.hub.terminal(
             "curl -fsSL https://claude.ai/install.sh | bash"), icon="download"),
-            button("Open terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal")))
+            button("Open terminal", slot=lambda: QProcess.startDetached("deckos-terminal", []), icon="terminal")))
         self.lay.addWidget(claude)
 
         desk = Card("Claude Desktop", "Chat, Cowork and Claude Code in a window (beta)", "ai")
@@ -938,7 +938,8 @@ class SystemPage(Page):
         self.hub.data.update_list(self.show_updates, fresh=True)
 
     DECKOS_PARTS = {"deckos-settings": "Hub, Menu, Quick Settings, deckos tool, themes",
-                    "deckos-files": "DeckOS Files", "deckos-theme-tmpikes": "TMpikes theme"}
+                    "deckos-files": "DeckOS Files", "deckos-terminal": "DeckOS Terminal",
+                    "deckos-theme-tmpikes": "TMpikes theme"}
 
     def show_updates(self, repo, aur, err):
         self.pending = (repo, aur)

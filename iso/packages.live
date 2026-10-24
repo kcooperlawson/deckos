@@ -20,6 +20,7 @@ paru
 # DeckOS
 deckos-settings
 deckos-files
+deckos-terminal
 deckos-installer
 gamescope-session-git
 gamescope-session-steam-git

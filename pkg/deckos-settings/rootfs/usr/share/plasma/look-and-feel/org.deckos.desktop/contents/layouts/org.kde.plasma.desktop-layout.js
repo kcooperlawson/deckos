@@ -15,7 +15,7 @@ var tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", [
     "preferred://filemanager",
-    "applications:org.kde.konsole.desktop",
+    "applications:org.deckos.terminal.desktop",
     "preferred://browser",
     "applications:steam.desktop",
     "applications:code.desktop",

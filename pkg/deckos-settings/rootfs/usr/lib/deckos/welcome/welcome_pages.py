@@ -1043,7 +1043,7 @@ class ExtrasStep(Step):
         have = sysinfo.installed("claude")
         self.claude_box.addWidget(button("Update" if have else "Install", "" if have else "primary", self.claude,
                                          icon="download"))
-        self.claude_box.addWidget(button("Open a terminal", slot=lambda: launch("konsole"), icon="terminal"))
+        self.claude_box.addWidget(button("Open a terminal", slot=lambda: launch("deckos-terminal"), icon="terminal"))
         if have:
             self.claude_box.addWidget(label(f"<span style='color:{S.SUCCESS}'>●</span> Installed", "sub", wrap=False))
         self.claude_box.addStretch(1)

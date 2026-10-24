@@ -199,6 +199,14 @@ def files_logo():
     return store_logo().replace(ICONS["store"], ICONS["folder"])
 
 
+TERMINAL_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-terminal/data/deckos-terminal.svg"
+
+
+def terminal_logo():
+    """The DeckOS Terminal app icon: the same tile with the prompt in white."""
+    return store_logo().replace(ICONS["store"], ICONS["terminal"]).replace('fill="#000"', 'fill="#fff"')
+
+
 HUB_LOGO = OUT.parent / "branding/hub-logo.svg"
 
 
@@ -213,6 +221,7 @@ def write():
     HUB_LOGO.write_text(hub_logo(), newline="\n")
     FILES_LOGO.parent.mkdir(parents=True, exist_ok=True)
     FILES_LOGO.write_text(files_logo(), newline="\n")
+    TERMINAL_LOGO.write_text(terminal_logo(), newline="\n")
     for name, body in ICONS.items():
         (OUT / f"{name}.svg").write_text(svg_text(body), newline="\n")
     SDDM.mkdir(parents=True, exist_ok=True)

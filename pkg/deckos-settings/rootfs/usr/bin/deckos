@@ -635,7 +635,7 @@ dev_install() {
   fi
   [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DeckOS checkout found: deckos dev-install PATH"; exit 2; }
   section "Installing DeckOS $(tr -d '[:space:]' < "$root/VERSION") from $root"
-  for p in deckos-files deckos-settings deckos-theme-tmpikes; do
+  for p in deckos-files deckos-terminal deckos-settings deckos-theme-tmpikes; do
     [[ -d $root/pkg/$p ]] || continue
     (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
     ok "$p"
@@ -1029,6 +1029,12 @@ mode_game() {  # the game running now, or nothing: Steam games (reaper), Lutris,
   esac
 }
 
+# Tells DeckOS apps the mode changed (DeckOS Terminal, ...): org.deckos.Mode.Changed(mode, game) on the
+# session bus. The details stay in $MODE_STATE; a signal needs no service, so nobody has to be listening.
+mode_announce() {
+  busctl --user emit /org/deckos/Mode org.deckos.Mode Changed ss "$1" "${2:-}" >/dev/null 2>&1 || true
+}
+
 ollama_url() {
   local h=${OLLAMA_HOST:-127.0.0.1:11434}
   [[ $h == http* ]] || h=http://$h
@@ -1066,13 +1072,14 @@ mode_enter() {  # mode_enter GAME: free what the game needs, remember what to pu
   printf 'mode=gaming\ngame=%s\nsince=%s\nollama=%s\nvram=%s\ndocker=%s\nbaloo=%s\n' \
     "$game" "$(date +%s)" "$names" "$vram" "$ids" "$baloo" > "$MODE_STATE.tmp"
   mv "$MODE_STATE.tmp" "$MODE_STATE"
+  mode_announce gaming "$game"
   if (( ${#did[@]} )) && command -v notify-send >/dev/null; then
     timeout 5 notify-send -a "DeckOS" -i deckos-hub "Ready for $game" "$(printf '%s\n' "${did[@]^}")" >/dev/null 2>&1 || true
   fi
 }
 
 mode_leave() {  # put back what mode_enter paused (Ollama loads models again on its own, when asked)
-  [[ -r $MODE_STATE ]] || return 0
+  [[ $(sed -n 's/^mode=//p' "$MODE_STATE" 2>/dev/null) == gaming ]] || return 0
   local ids baloo
   ids=$(sed -n 's/^docker=//p' "$MODE_STATE")
   baloo=$(sed -n 's/^baloo=//p' "$MODE_STATE")
@@ -1080,6 +1087,7 @@ mode_leave() {  # put back what mode_enter paused (Ollama loads models again on 
   [[ -n $ids ]] && { timeout 20 docker unpause $ids >/dev/null 2>&1 || true; }
   [[ $baloo == 1 ]] && { balooctl6 resume >/dev/null 2>&1 || true; }
   printf 'mode=normal\n' > "$MODE_STATE"
+  mode_announce normal
 }
 
 mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, no polling of anything else)

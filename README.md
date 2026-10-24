@@ -228,6 +228,22 @@ It has editor's picks and categories on the home page, one search across all thr
 with screenshots and a choice of source, and an Installed list. App details come from the AppStream
 catalogs Arch and Flathub publish; repo installs ask for your password, Flathub ones don't.
 
+## DeckOS Terminal
+
+DeckOS Terminal (in the dock, or `deckos-terminal`) is the default terminal. Each tab is named after
+the project it's in, with its git branch and whatever is running (`deckos ⎇ main · cargo build`), and
+while a game runs a chip in the corner says what workload modes freed for it.
+
+| | |
+|---|---|
+| Ctrl+Shift+T / Ctrl+Shift+W | new tab in the same folder / close the pane (the tab, when it's the last one) |
+| Ctrl+Shift+D / Ctrl+Shift+E | split right / split down; Alt+arrows move between the panes |
+| Ctrl+PgUp/PgDn, Alt+1…9 | switch tabs |
+| Ctrl+Shift+C / V / F | copy / paste / find |
+| Ctrl+= / Ctrl+- / Ctrl+0 | bigger / smaller / normal text |
+
+Konsole stays installed for anyone who prefers it (System Settings › Default Applications › Terminal).
+
 ## Using it
 
 | | |
@@ -293,6 +309,7 @@ to a Ventoy stick. See [builder/README.md](builder/README.md).
 ```
 VERSION                   the DeckOS release: names the ISO, shows in os-release, the Hub and deckos doctor
 builder/                  DeckOS Builder app (GitHub builds, downloads, Ventoy USB)
+apps/                     DeckOS Files and DeckOS Terminal (C++/Qt 6); pkg/deckos-files, pkg/deckos-terminal package them
 assets/generate.py        brand generator (wordmark, gear, wallpaper, GRUB bg)
 assets/icons.py           the DeckOS line icons (Hub, Store, login screen) and the Store's app icon
 assets/plasma_theme.py    the DeckOS Plasma style (panel, popups, tooltips, widgets)
