@@ -604,7 +604,11 @@ section "Your drives (kept as NTFS)"
 uid=$(inchroot id -u "$USERNAME_"); gid=$(inchroot id -g "$USERNAME_")
 block=$(bash "$DECKOS_TOOL" drives fstab --uid "$uid" --gid "$gid")
 printf '\n%s\n' "$block" >> "$MNT/etc/fstab"
-grep -oP '(?<=  /mnt/)\S+' <<<"$block" | while read -r m; do mkdir -p "$MNT/mnt/$m"; good "/mnt/$m"; done
+# No NTFS drives is fine (a Linux-only PC, or BitLocker); grep finding nothing mustn't stop the install.
+while read -r m; do mkdir -p "$MNT/mnt/$m"; good "/mnt/$m"; done < <(grep -oP '(?<=  /mnt/)\S+' <<<"$block" || true)
+if ! grep -q '  /mnt/' <<<"$block"; then
+  warn "No Windows (NTFS) drives found to mount - if you have some, run 'sudo deckos drives rescan' after first boot"
+fi
 
 # ------------------------------------------------------------------ boot
 
