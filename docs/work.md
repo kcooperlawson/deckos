@@ -27,6 +27,29 @@ The three modes are starting contexts for the same tools; Work, Code and Create 
 The tool loop has a configurable internal step limit and compacts older context into a local
 summary. Original messages remain on disk. Send **Continue** to resume a saved task.
 
+## How it keeps a local model on track
+
+Local models lose the thread on long tasks more often than large hosted ones, so Work makes the
+model follow a fixed routine and checks it before accepting an answer:
+
+- **Project map.** `project_map` lists every source file with its classes, functions and line
+  numbers, plus the detected test command, so the model doesn't search around blindly.
+- **Checklist.** For multi-step work the model writes a checklist (`update_plan`). The list is
+  shown under **Plan** and sent with every request, so it survives context compaction. Unfinished
+  items send the model back to work (twice at most).
+- **Verify before done.** After code changes it must pass a check: `run_checks` runs the project's
+  own tests (npm, cargo, go, make, pytest/unittest, or `py_compile` as a last resort). Only a
+  passing check-like command counts (`ls` doesn't). Without one it is sent back to verify, or to
+  explain why it can't (twice at most).
+- **Self-review.** The finished diff goes to a second, tool-free pass that is told to find bugs
+  only. Problems it reports go back to the model to fix or rebut, once per request.
+- **Tolerant edits.** `edit_file` accepts a block whose indentation drifted, as long as it matches
+  exactly one place, and re-indents the replacement.
+
+These prompts appear in the chat as *Quality check* lines. Both checks can be turned off under
+Models & tools › Quality. They make tasks slower and catch many mistakes, but not all of them:
+review the **Changes** tab before relying on a result.
+
 ## Permissions
 
 Reversible file edits inside the chosen project are allowed by default and keep private backups.

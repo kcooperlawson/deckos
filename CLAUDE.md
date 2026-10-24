@@ -190,6 +190,9 @@ frontier-model parity, a shell sandbox, or finished hardware validation without 
 Work's default model is the Assistant's `MODEL` (`/etc/deckos/ai.conf`, user override) until picked in
 Work. Entry points: the Hub's AI & Dev card and Home quick action, the Assistant header's code button,
 `deckos work`, the app menu. `work_app.py --demo --screenshot DIR` renders its three pages.
+Quality loop (docs/work.md): `work_agent.follow_up` sends the model back for unfinished plan items,
+unverified edits and self-review findings; `Tools._write` refuses edits that delete existing tests.
+Measured on gpt-oss:20b: without the test guard it deleted a failing test to get a pass.
 
 ## Open work
 

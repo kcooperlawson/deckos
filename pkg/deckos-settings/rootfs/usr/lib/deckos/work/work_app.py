@@ -278,6 +278,9 @@ class Work(QWidget):
         self.console.setMaximumBlockCount(1500)
         self.console.setPlaceholderText('Tool actions and terminal output appear here.')
         self.tabs.addTab(self.console,'Activity')
+        self.plan_list=QListWidget()
+        self.plan_list.setWordWrap(True)
+        self.tabs.addTab(self.plan_list,'Plan')
         split.addWidget(self.tabs)
         split.setSizes([780,360])
         layout.addWidget(split,1)
@@ -339,8 +342,19 @@ class Work(QWidget):
         access.body.addWidget(self.ask_commands)
         access.body.addWidget(text('File tools stay in your selected project. Approved terminal commands run as your Linux user and can access other locations.','muted'))
         self.auto_edit.toggled.connect(self.save_settings)
+        self.verify=QCheckBox('Make it run the project\'s checks after changing code, and fix what fails')
+        self.verify.setChecked(self.settings.get('verify',True))
+        self.self_review=QCheckBox('Review each finished change with a second pass before answering')
+        self.self_review.setChecked(self.settings.get('self_review',True))
+        quality=Card('Quality','Slower, but more careful','check')
+        quality.body.addWidget(self.verify)
+        quality.body.addWidget(self.self_review)
+        quality.body.addWidget(text('Local models make more mistakes than large hosted ones. These checks catch many of them; each adds a little time to a task.','muted'))
+        self.verify.toggled.connect(self.save_settings)
+        self.self_review.toggled.connect(self.save_settings)
         self.ask_commands.toggled.connect(self.save_settings)
         layout.addWidget(access)
+        layout.addWidget(quality)
         runtime=Card('Creation tools','Documents, spreadsheets & images','package')
         self.runtime_text=text('Checking the isolated creation runtime…','sub')
         runtime.body.addWidget(self.runtime_text)
@@ -374,6 +388,7 @@ class Work(QWidget):
 
     def save_settings(self,*_):
         self.settings.update(auto_edit=self.auto_edit.isChecked(),ask_commands=self.ask_commands.isChecked(),
+                             verify=self.verify.isChecked(),self_review=self.self_review.isChecked(),
                              image_model=self.image_model.text().strip(),image_size=int(self.image_size.currentText()),
                              image_steps=self.image_steps.value(),workspace=self.workspace)
         if not self.demo:
@@ -448,7 +463,9 @@ class Work(QWidget):
         if not messages:
             content=['# A workspace for the work ahead.\n\nRead and change a codebase. Turn notes into a report. Build a spreadsheet. Create an image.\n\n**Choose a folder, then describe the result you want.**\n\nYour local model works with real tools and saves the conversation so you can continue later.']
         for message in messages[-60:]:
-            if message['role'] in ('user','assistant') and message.get('content'):
+            if message.get('auto'):
+                content.append('### Quality check\n\n*'+message['content'].splitlines()[0][:300]+'*')
+            elif message['role'] in ('user','assistant') and message.get('content'):
                 content.append(('### You\n\n' if message['role']=='user' else '### DeckOS Work\n\n')+message['content'])
         if self.pending_prompt:
             content.append('### You\n\n'+self.pending_prompt)
@@ -469,6 +486,9 @@ class Work(QWidget):
             item=QListWidgetItem(artifact['name']+'\n'+artifact['kind'].upper())
             item.setData(Qt.UserRole,artifact['path'])
             self.artifact_list.addItem(item)
+        self.plan_list.clear()
+        for item in task.get('plan',[]):
+            self.plan_list.addItem({'done':'✓  ','active':'▸  '}.get(item['status'],'○  ')+item['step'])
         if task.get('changes'):
             self.change_list.setCurrentRow(len(task['changes'])-1)
 
@@ -605,6 +625,10 @@ class Work(QWidget):
             self.console.appendPlainText(data['text'][-6000:])
         elif event=='usage':
             self.status.setText(f"Local generation · {data['tokens_per_second']} tokens/s")
+        elif event=='plan':
+            if self.task:
+                self.task['plan']=data['plan']
+            self.refresh_panels()
         elif event=='change':
             if self.task:
                 self.task['changes'].append(data['change'])
@@ -674,7 +698,7 @@ class Work(QWidget):
             return
         self.save_settings()
         self.stack.setCurrentIndex(0)
-        self.tabs.setCurrentIndex(3)
+        self.tabs.setCurrentWidget(self.console)
         self.status.setText('Installing local tools. Image runtime downloads several GB; progress is in Activity.')
         self.run_process('setup',dict(images=images,device=['rocm','cuda','cpu'][self.device.currentIndex()]))
 
@@ -704,8 +728,12 @@ class Work(QWidget):
         self.task=dict(id='demo',title='Refine the benchmark report',workspace=self.workspace,changes=[],artifacts=[],messages=[
             {'role':'user','content':'Review the benchmark report layout, make it easier to scan, and write a short release brief.'},
             {'role':'assistant','content':'I’ll read the report renderer and its tests, then update the layout and create the brief.'},
+            {'role':'user','auto':True,'content':'You changed 1 file(s) since the last passing check. Verify with run_checks.'},
             {'role':'assistant','content':'## A clearer performance story\n\nThe report now leads with the measurements that matter, keeps uncertainty beside each score, and puts hardware details together.\n\n- Updated `bench/report.py` with clearer spacing and labels.\n- Checked the existing tests: **13 passed**.\n- Created [release-brief.docx](outputs/release-brief.docx).\n\nThe changes and the generated document are ready to review in the panel on the right.\n\n*Sample conversation · no tools were run.*'}])
         self.task['changes']=[dict(id='demo',path=self.workspace+'/bench/report.py',diff='--- report.py\n+++ report.py\n@@ -1,2 +1,3 @@\n-<h2>Results</h2>\n+<h2>Your performance, measured</h2>\n+<p>Every score includes its spread.</p>\n',undone=False)]
+        self.task['plan']=[dict(step='Read the report renderer and its tests',status='done'),
+                           dict(step='Make the layout easier to scan',status='done'),
+                           dict(step='Run the tests',status='done'),dict(step='Write the release brief',status='done')]
         self.task['artifacts']=[dict(name='release-brief.docx',kind='docx',path='outputs/release-brief.docx'),dict(name='benchmark-summary.xlsx',kind='xlsx',path='outputs/benchmark-summary.xlsx')]
         self.task_title.setText(self.task['title'])
         for name in ['Refine the benchmark report','Plan the next release','Explore a wallpaper concept']:

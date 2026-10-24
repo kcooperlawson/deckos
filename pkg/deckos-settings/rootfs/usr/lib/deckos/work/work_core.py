@@ -1,4 +1,5 @@
 """DeckOS Work persistence, workspace edits, commands and local creation tools. No Qt."""
+import ast
 import difflib
 import hashlib
 import html
@@ -33,7 +34,7 @@ def atomic_json(path, value):
 def preferences():
     defaults = {'model':conf('MODEL') or 'gpt-oss:20b', 'ask_commands':True, 'auto_edit':True,
                 'image_model':'stabilityai/stable-diffusion-xl-base-1.0', 'image_size':1024,
-                'image_steps':20, 'max_steps':40, 'context':16384}
+                'image_steps':20, 'max_steps':60, 'context':16384, 'verify':True, 'self_review':True}
     try:
         return defaults | json.loads((DATA/'preferences.json').read_text())
     except (OSError,ValueError,TypeError):
@@ -145,6 +146,91 @@ def undo_edit(store,task,change_id):
     return str(path)
 
 
+def fuzzy_replace(text,old,new):
+    """Replace old once, tolerating indentation and trailing-space drift. None unless exactly one match."""
+    if text.count(old)==1:
+        return text.replace(old,new,1)
+    if text.count(old)>1:
+        return None
+    lines,want=text.splitlines(True),[l.strip() for l in old.strip('\n').splitlines()]
+    if not want or not any(want):
+        return None
+    hits=[i for i in range(len(lines)-len(want)+1) if [l.strip() for l in lines[i:i+len(want)]]==want]
+    if len(hits)!=1:
+        return None
+    i=hits[0]
+    # Local models often lose leading indentation; re-indent the new block like the matched one.
+    have=lines[i][:len(lines[i])-len(lines[i].lstrip())]
+    gave=old.strip('\n').splitlines()[0]
+    gave=gave[:len(gave)-len(gave.lstrip())]
+    block=[(have+l[len(gave):] if l.startswith(gave) else have+l.lstrip()) if l.strip() else l
+           for l in new.strip('\n').splitlines()]
+    end=lines[i+len(want)-1]
+    tail='\n' if end.endswith('\n') else ''
+    return ''.join(lines[:i])+'\n'.join(block)+tail+''.join(lines[i+len(want):])
+
+
+def detect_checks(root):
+    """The project's own test command, from its files. None when nothing obvious exists."""
+    root=Path(root)
+    if (root/'package.json').is_file():
+        try:
+            if json.loads((root/'package.json').read_text()).get('scripts',{}).get('test'):
+                return 'npm test --silent'
+        except (OSError,ValueError):
+            pass
+    if (root/'Cargo.toml').is_file():
+        return 'cargo test'
+    if (root/'go.mod').is_file():
+        return 'go test ./...'
+    if (root/'Makefile').is_file() and re.search(r'^(test|check):',(root/'Makefile').read_text(errors='replace'),re.M):
+        return 'make test'
+    py=list(root.glob('*.py'))+list(root.glob('tests/*.py'))+list(root.glob('test/*.py'))
+    if py or (root/'pyproject.toml').is_file():
+        config=''.join(p.read_text(errors='replace') for p in (root/'pyproject.toml',root/'setup.cfg',root/'pytest.ini') if p.is_file())
+        tests=next((d for d in ('tests','test') if (root/d).is_dir()),None)
+        if 'pytest' in config or (root/'conftest.py').is_file():
+            return 'python3 -m pytest -q'
+        if tests:
+            return f'python3 -m unittest discover -s {tests} -q'
+        if list(root.glob('test_*.py')):
+            return 'python3 -m unittest discover -q'
+        return 'python3 -m py_compile '+' '.join(shlex.quote(p.name) for p in sorted(root.glob('*.py'))[:40])
+    return None
+
+
+DEFINITION=re.compile(r'^\s*(?:export\s+)?(?:pub\s+)?(?:async\s+)?(?:function|class|def|fn|func|interface|type|struct|enum|impl)\s+([A-Za-z_][\w.]*)',re.M)
+# Commands that exercise the code (a passing one counts as verifying the edits so far), not ls or cat.
+CHECK=re.compile(r'\b(test|tests|pytest|unittest|py_compile|compileall|build|make|cargo|go\s+(test|build|vet)|npm|npx|pnpm|yarn|node|python3?|bash\s+-n|shellcheck|tsc|eslint|ruff|mypy|gcc|g\+\+|clang|cmake|ninja|qmllint)\b')
+SOURCE=('.py','.js','.jsx','.ts','.tsx','.go','.rs','.c','.cc','.cpp','.h','.hpp','.java','.kt','.rb','.php','.sh','.qml','.lua','.swift','.cs')
+
+
+def outline(path):
+    """Top-level names in one source file: classes with their methods for Python, definitions elsewhere."""
+    text=path.read_text(errors='replace')
+    if path.suffix=='.py':
+        try:
+            tree=ast.parse(text)
+        except SyntaxError as error:
+            return [f'(syntax error line {error.lineno})']
+        names=[]
+        for node in tree.body:
+            if isinstance(node,ast.ClassDef):
+                methods=[n.name for n in node.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))]
+                names.append(f'class {node.name}:{node.lineno}'+(' ('+', '.join(methods[:25])+')' if methods else ''))
+            elif isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)):
+                names.append(f'def {node.name}:{node.lineno}')
+        return names
+    return [f'{m.group(1)}:{text.count(chr(10),0,m.start())+1}' for m in DEFINITION.finditer(text)][:40]
+
+
+TEST_NAME=re.compile(r'^\s*(?:async\s+)?(?:def|fn|func)\s+(test\w*)|^\s*(?:it|test)\(\s*[\'"]([^\'"]+)',re.M)
+
+
+def test_names(text):
+    return {a or b for a,b in TEST_NAME.findall(text)}
+
+
 def schema(name,description,properties,required=()):
     return {'type':'function','function':dict(name=name,description=description,
             parameters=dict(type='object',properties=properties,required=list(required))) }
@@ -152,12 +238,17 @@ def schema(name,description,properties,required=()):
 S={'type':'string'}
 SCHEMAS=[
  schema('list_files','List project files, excluding .git. Paths are relative to the selected workspace.',{'path':S},()),
+ schema('project_map','Overview of the project: every source file with its classes and functions and line numbers, plus the detected test command. Use first on code tasks.',{'path':S},()),
+ schema('update_plan','Write or update your checklist for a multi-step task. Send the whole list each time. Status is pending, active or done; keep one item active.',
+        {'items':{'type':'array','items':{'type':'object','properties':{'step':S,'status':S}}}},('items',)),
+ schema('run_checks','Run the project\'s tests or checks (detected automatically, or pass a command). The user approves it. Use after every code change.',
+        {'command':S},()),
  schema('read_file','Read text, code, PDF, Word, PowerPoint or spreadsheet content from the project.',
         {'path':S,'start_line':{'type':'integer'},'line_count':{'type':'integer'}},('path',)),
  schema('search_files','Search project file contents with ripgrep. Returns file names and line numbers.',{'query':S,'path':S},('query',)),
  schema('write_file','Create or replace a project text file. Existing content is backed up and a diff is recorded.',
         {'path':S,'content':S},('path','content')),
- schema('edit_file','Replace an exact text block in a project file. Fails unless old appears exactly once.',
+ schema('edit_file','Replace a text block in a project file. old must match one place (indentation differences are tolerated). Read the file first.',
         {'path':S,'old':S,'new':S},('path','old','new')),
  schema('run_command','Run a terminal command in the project. The user sees and approves commands. Use for builds, tests, git, or custom artifact scripts.',
         {'command':S,'reason':S,'cwd':S,'timeout':{'type':'integer'}},('command','reason')),
@@ -175,6 +266,9 @@ class Tools:
     def __init__(self,store,task,settings,emit,confirm,cancelled=lambda:False):
         self.store,self.task,self.settings,self.emit,self.confirm,self.cancelled=store,task,settings,emit,confirm,cancelled
         self.root=Path(task['workspace'])
+        self.verified=len(task.get('changes',[]))
+        self.checks=detect_checks(self.root)
+        self.request=''
 
     def call(self,name,args):
         if self.cancelled():
@@ -196,6 +290,16 @@ class Tools:
             raise PermissionError('The user declined this edit')
 
     def _write(self,path,data):
+        # Local models delete a failing test to get a pass. Refuse unless the user asked for tests to go.
+        if path.is_file() and not re.search(r'\b(remove|delete|drop)\b.{0,40}\btests?\b',self.request,re.I|re.S):
+            try:
+                gone=sorted(test_names(path.read_text())-test_names(data.decode()))
+            except UnicodeError:
+                gone=[]
+            if gone:
+                raise PermissionError(f'Refused: this edit would delete the existing test(s) {", ".join(gone)} in {path.name}. '
+                                      'Keep every existing test exactly as it is and change the code under test instead. '
+                                      'To add tests, insert them next to the existing ones (old = a nearby line, new = that line plus the new tests).')
         entry=save_edit(self.store,self.task,path,data)
         self.emit('change',change=entry)
         return 'Saved '+str(path)
@@ -214,6 +318,37 @@ class Tools:
                               capture_output=True,text=True,timeout=20)
         files=result.stdout.splitlines()
         return '\n'.join(str(Path(f).relative_to(self.root)) for f in files[:250]) or '(no files)'
+
+    def t_project_map(self,path='.'):
+        folder=scoped(self.root,path)
+        files=subprocess.run(['rg','--files','--hidden','-g','!.git','-g','!node_modules','-g','!.venv','-g','!dist','-g','!build',str(folder)],
+                             capture_output=True,text=True,timeout=20).stdout.splitlines()
+        lines,others=[],[]
+        for name in sorted(files):
+            file=Path(name)
+            rel=str(file.relative_to(self.root))
+            if file.suffix.lower() in SOURCE and file.stat().st_size<400_000:
+                lines.append(rel+'\n'+''.join('  '+n+'\n' for n in outline(file)))
+            else:
+                others.append(rel)
+        result=''.join(lines)+('\nOther files: '+', '.join(others[:150]) if others else '')
+        result+='\n\nTest command: '+(self.checks or 'none detected; find one in the README or ask')
+        return result[:24000] or '(no files)'
+
+    def t_update_plan(self,items):
+        plan=[dict(step=str(i.get('step','')).strip()[:200],status=i.get('status') if i.get('status') in ('pending','active','done') else 'pending')
+              for i in items if isinstance(i,dict) and str(i.get('step','')).strip()][:20]
+        self.task['plan']=plan
+        self.store.save(self.task)
+        self.emit('plan',plan=plan)
+        left=[i['step'] for i in plan if i['status']!='done']
+        return 'Plan saved. '+(f'{len(left)} left; next: {left[0]}' if left else 'Every item is done.')
+
+    def t_run_checks(self,command=''):
+        command=command.strip() or self.checks
+        if not command:
+            return 'No test command was detected. Run a relevant check with run_command (build, linter, or running the program), or explain why none exists.'
+        return self.t_run_command(command,'Check the changes: '+command,timeout=900)
 
     def t_read_file(self,path,start_line=1,line_count=200):
         path=scoped(self.root,path)
@@ -244,9 +379,10 @@ class Tools:
     def t_edit_file(self,path,old,new):
         path=scoped(self.root,path)
         text=path.read_text()
-        if not old or text.count(old)!=1:
-            raise ValueError('The old text must match exactly once. Read the file and choose a unique block.')
-        data=text.replace(old,new,1)
+        data=fuzzy_replace(text,old,new) if old else None
+        if data is None:
+            found=text.count(old) if old else 0
+            raise ValueError(f'The old text matched {found} places, not exactly one. Read the file again (read_file with line numbers) and copy a unique block exactly.')
         diff=''.join(difflib.unified_diff(text.splitlines(True),data.splitlines(True)))
         self._allow_edit(path,diff[:20000])
         return self._write(path,data.encode('utf-8'))
@@ -280,6 +416,8 @@ class Tools:
                     output=(output+text)[-50000:]
                     self.emit('console',text=text)
             code=process.wait(timeout=5)
+            if code==0 and CHECK.search(command):
+                self.verified=len(self.task['changes'])
             return f'exit {code}\n'+output[-16000:]
         finally:
             selector.close()
