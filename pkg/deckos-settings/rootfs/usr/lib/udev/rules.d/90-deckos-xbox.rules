@@ -1,0 +1,4 @@
+# Xbox wireless adapters (xone): USB autosuspend powers them down, they drop off the bus and come back,
+# over and over, until replugged. Keep them powered. 02e6: original adapter, 02fe: newer one, 02f9:
+# built into some PCs, 091e: the 2023 slim adapter.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02e6|02fe|02f9|091e", ATTR{power/control}="on"
