@@ -6,6 +6,7 @@ set -a
 # The desktop's gaming environment too (shader cache size, FSR 4 upgrade): Plasma gets these from
 # systemd's environment.d, this session doesn't go through it.
 for f in /usr/lib/environment.d/60-deckos-gaming.conf "$HOME/.config/environment.d/90-deckos-gaming.conf"; do
+  # shellcheck source=/dev/null
   [[ -r $f ]] && . "$f"
 done
 [[ -r /etc/deckos/gaming.conf ]] && . /etc/deckos/gaming.conf
