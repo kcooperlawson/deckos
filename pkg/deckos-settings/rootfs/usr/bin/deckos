@@ -980,6 +980,51 @@ auto_update_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ update channel
+#
+# Every DeckOS release goes to the "repo-testing" release first; "repo" (stable) only changes when a
+# tried release is promoted. A PC's channel is just the last part of the Server line in its
+# deckos-repo file (a backup= file, so updates keep it), which keeps forks' owner/repo as they are.
+
+REPO_CONF=/etc/pacman.d/deckos-repo
+
+channel_now() {
+  local release
+  release=$(sed -n 's|^Server *= *.*/releases/download/\([^/[:space:]]*\)[[:space:]]*$|\1|p' "$REPO_CONF" 2>/dev/null | head -n1)
+  case $release in
+    repo) echo stable ;;
+    repo-testing) echo testing ;;
+    '') echo none ;;
+    *) echo "custom ($release)" ;;
+  esac
+}
+
+channel_cmd() {
+  local want=${1:-status} now release url
+  now=$(channel_now)
+  case $want in
+    status) printf 'channel=%s\n' "$now"; return 0 ;;
+    stable) release=repo ;;
+    testing) release="repo-testing" ;;
+    *) err "usage: deckos channel [status|stable|testing]"; exit 2 ;;
+  esac
+  need_root channel "$want"
+  [[ $now == stable || $now == testing ]] \
+    || { err "$REPO_CONF doesn't point at a DeckOS release ($now): fix its Server line by hand"; exit 1; }
+  [[ $now != "$want" ]] || { ok "already on the $want channel"; return 0; }
+  url=$(sed -n 's|^Server *= *\(.*/releases/download/\)[^/[:space:]]*[[:space:]]*$|\1|p' "$REPO_CONF" | head -n1)$release
+  # Don't point pacman at a repo that isn't there: every update would fail on it.
+  curl -fsIL --max-time 20 -o /dev/null "$url/deckos.db" \
+    || { err "the $want channel isn't reachable ($url/deckos.db): nothing changed"; exit 1; }
+  sed -i "s|^\(Server *= *.*/releases/download/\)[^/[:space:]]*[[:space:]]*$|\1$release|" "$REPO_CONF"
+  ok "DeckOS updates now come from the $want channel"
+  if [[ $want == testing ]]; then
+    sub "New releases arrive here first. Run 'deckos update' to get the latest."
+  else
+    sub "Packages already newer than stable stay until stable catches up."
+  fi
+}
+
 # ------------------------------------------------------------------ workload modes
 #
 # A PC that games, builds and runs local AI has them fight over the same graphics memory and CPU.
@@ -1278,7 +1323,7 @@ doctor_cmd() {
   else ok "$snaps system snapshots ${C_SUB}(snapper -c root list)${C_0}"; fi
   home_status
   section "Updates"
-  if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on"
+  if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on: $(channel_now)"
   else warn "DeckOS update channel not set up (reinstall deckos-settings, or deckos dev-install)"; fi
   section "Gaming"
   local sch; sch=$(scheduler_status)
@@ -1316,6 +1361,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos gpu     [status|set K=V..|reset|overdrive on|off]  power limit, undervolt, fan curve
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
+  deckos channel [status|stable|testing]                where DeckOS updates come from (testing: new releases first)
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
@@ -1349,6 +1395,7 @@ case ${1:-} in
   gpu) shift; gpu_cmd "$@" ;;
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
+  channel) shift; channel_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
