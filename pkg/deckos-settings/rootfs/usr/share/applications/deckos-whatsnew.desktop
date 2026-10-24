@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=What's New in DeckOS
+Comment=What the latest DeckOS release brought
+Exec=deckos-whatsnew
+Icon=deckos
+Type=Application
+Categories=System;
+Keywords=deckos;release;notes;changelog;update;new;

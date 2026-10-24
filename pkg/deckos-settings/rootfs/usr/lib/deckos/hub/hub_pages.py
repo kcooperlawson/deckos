@@ -84,6 +84,8 @@ class HomePage(Page):
         part = "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
         self.title_label.setText(f"Good {part}")
         self.subtitle_label.setText(f"{self.hub.gpu.name}  ·  {sysinfo.cpu_name()}  ·  {sysinfo.deckos_version()}")
+        self.head_actions.addWidget(button("What's new", slot=lambda: QProcess.startDetached("deckos-whatsnew", []),
+                                           icon="star", tip="What the latest DeckOS release brought"))
         self.head_actions.addWidget(button("Gaming Mode", "primary", self.hub.to_gaming, icon="play"))
 
         stats = QGridLayout()
@@ -1068,6 +1070,9 @@ class SystemPage(Page):
         self.updating = None
         self.up_meter.set(1.0 if code == 0 else self.up_meter.value, None if code == 0 else S.DANGER)
         if code == 0:
+            # a new DeckOS release: its What's New, once (it checks the notes against the last one seen)
+            if any(p[0] == "deckos-settings" for p in self.pending[0]) and not sysinfo.DEMO:
+                QProcess.startDetached("deckos-whatsnew", ["--if-new"])
             self.notices = self.after_update(self.pending[0])
             needs = [k for k, _ in self.notices]
             self.hub.toast("Updated. Restart the PC to finish." if "reboot" in needs else

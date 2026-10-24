@@ -109,6 +109,9 @@ not die: a finished install must never be reported as failed.
 ## Versions and releases
 
 - `VERSION` is the DeckOS release: it names the ISO and sets `deckos-settings`' pkgver.
+- Feature releases (X.Y.0) bundle features and get release notes: `usr/share/deckos/releases/X.Y.0.toml` (+ images in
+  `X.Y.0/`), shown once by `deckos-whatsnew` (login autostart, after a Hub update, Hub > Home > What's new). Patch
+  releases (X.Y.Z) are fixes only, no notes file: they update quietly. Write the notes as the features land.
 - **Release**: bump `VERSION`, commit, `git tag -a vX.Y.Z -m …`, push `main` and the tag. CI checks the
   tag matches `VERSION`, signs `deckos-settings` and `deckos-theme-tmpikes` with the DeckOS key
   (fingerprint `F67E15FABF95D2DA72BE5D3F6322881773088C41`, secret `DECKOS_SIGNING_KEY`) and replaces the

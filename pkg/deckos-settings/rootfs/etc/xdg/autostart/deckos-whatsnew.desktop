@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DeckOS What's New
+Comment=Shows what a DeckOS feature release brought, once, at the first login after it
+Exec=deckos-whatsnew --autostart
+Icon=deckos
+Type=Application
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2

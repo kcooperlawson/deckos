@@ -1,0 +1,17 @@
+#!/bin/sh
+# What's New after a feature release. At login (--autostart) the check stays in shell, so the logins
+# with nothing new don't start Python: the newest release notes against the one this user last saw.
+if [ "${1:-}" = --autostart ] || [ "${1:-}" = --if-new ]; then
+  [ -d /run/archiso ] && exit 0
+  conf=${XDG_CONFIG_HOME:-$HOME/.config}/deckos
+  latest=$(ls /usr/share/deckos/releases/*.toml 2>/dev/null | sed 's|.*/||; s|\.toml$||' | sort -V | tail -n 1)
+  [ -n "$latest" ] || exit 0
+  if [ ! -e "$conf/whatsnew-seen" ] && [ ! -e "$conf/welcome-done" ]; then
+    # a new user: DeckOS Welcome shows them around instead; this release counts as seen
+    mkdir -p "$conf" && echo "$latest" > "$conf/whatsnew-seen"
+    exit 0
+  fi
+  [ "$(cat "$conf/whatsnew-seen" 2>/dev/null)" = "$latest" ] && exit 0
+  set -- --if-new
+fi
+exec python3 /usr/lib/deckos/whatsnew/deckos_whatsnew.py "$@"

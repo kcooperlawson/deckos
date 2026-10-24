@@ -1320,6 +1320,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME]                        desktop layout: dock, classic, topbar, minimal, big
+  deckos whatsnew                                       what the latest DeckOS release brought
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
@@ -1347,6 +1348,7 @@ case ${1:-} in
   auto-update) shift; auto_update_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
+  whatsnew) shift; exec deckos-whatsnew "$@" ;;
   ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;

@@ -1,0 +1,67 @@
+# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+# A highlight: title, text, a DeckOS line icon, an optional image (next to this file), and a "Try it"
+# button that runs `run`. Patch releases (0.4.1...) don't get a file; their fixes go in the next one.
+
+version = "0.4.0"
+name = "Make it yours"
+tagline = "Eight themes, a terminal and an assistant of its own, and games that get the whole graphics card."
+
+fixes = [
+    "Switching to Gaming Mode happens within a couple of seconds, and a second click can't cancel it any more.",
+    "DeckOS Files: drag and drop works again, in and out of the window, and Cut + Paste moves files.",
+    "deckos doctor counts snapshots correctly and warns when there are none.",
+    "A tidier panel: the tray no longer repeats what Quick Settings shows, and DeckOS Hub has its own icon.",
+    "The TMpikes theme uses the shield crest.",
+]
+
+[[highlights]]
+title = "Themes and wallpapers"
+text = """Six new themes: Midnight Violet, Ember, Aurora, Crimson, Graphite and Paper (a light one), \
+each with its own colours, folder icons and wallpaper, and 28 new wallpapers to mix and match."""
+icon = "appearance"
+image = "0.4.0/themes.png"
+try = "Pick a theme"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "Five desktop layouts"
+text = "Move the panels around in one click, and back again. Desktop icons and widgets stay where they are."
+icon = "panel-right"
+image = "0.4.0/layouts.png"
+try = "Choose a layout"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "DeckOS Assistant"
+text = """Press Meta+Space anywhere and ask: "install OBS and set it up for streaming", "why is my \
+Wi-Fi slow". It runs on your own graphics card, looks around on its own, and shows you every change \
+before it makes it. Also in DeckOS Menu, Quick Settings and DeckOS Terminal (Ctrl+Shift+A)."""
+icon = "ai"
+image = "0.4.0/assistant.png"
+try = "Ask something"
+run = ["deckos-assistant"]
+
+[[highlights]]
+title = "DeckOS Terminal"
+text = """The new default terminal. Tabs are named after the project you're in, with its git branch \
+and what's running; split with Ctrl+Shift+D, and select an error and press Ctrl+Shift+A to ask \
+the assistant about it."""
+icon = "terminal"
+image = "0.4.0/terminal.png"
+try = "Open DeckOS Terminal"
+run = ["deckos-terminal"]
+
+[[highlights]]
+title = "Games get the graphics card"
+text = """When a game starts, DeckOS moves the local AI model out of graphics memory, pauses Docker and \
+file indexing, and puts it all back when you quit. Quick Settings shows what it freed."""
+icon = "gaming"
+image = "0.4.0/modes.png"
+
+[[highlights]]
+title = "Claude Code saves tokens"
+text = """`deckos ai claude-link` lets Claude Code hand long logs and big files to the local model and \
+read back only the lines that matter."""
+icon = "external"
+try = "Open AI & Dev"
+run = ["deckos-hub", "--page", "aidev"]

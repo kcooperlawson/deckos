@@ -359,6 +359,12 @@ DeckOS's own packages (`deckos-settings` with the Hub, `deckos` tool, themes and
 `[deckos]` in `pacman.conf`, so `deckos update` and the Hub's Update button pick up new versions like
 any other package.
 
+**What's New:** a feature release (0.4.0, 0.5.0…) ships release notes in
+`pkg/deckos-settings/rootfs/usr/share/deckos/releases/X.Y.Z.toml`: a name, a tagline, highlights with a screenshot
+and a *Try it* button, and the fixes. After the update, DeckOS shows them once, at the next login or straight after
+updating from the Hub (`deckos whatsnew` any time). Someone who skipped a release sees everything since the last one
+they saw. Patch releases (0.4.1…) have no notes file, so they update quietly; their fixes go in the next notes.
+
 **To release:** bump `VERSION`, commit, then tag and push (`git tag v0.3.1 && git push origin v0.3.1`).
 CI checks that the tag matches `VERSION`, signs the packages with the DeckOS key (fingerprint
 `F67E15FABF95D2DA72BE5D3F6322881773088C41`, kept as the `DECKOS_SIGNING_KEY` secret) and replaces the

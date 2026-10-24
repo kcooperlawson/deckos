@@ -27,7 +27,7 @@ package() {
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
-            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant \
+            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew \
             "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,brand-os-release,plymouth-refresh} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
