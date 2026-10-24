@@ -46,6 +46,17 @@ boot's journal was unavailable. The crash report alone does not establish whethe
 the initial startup failure or a secondary failure during teardown. A real Gaming Mode login
 and return to Plasma must still be tested after applying the repair.
 
+What the reference machine's crash dumps showed (11:41 that day, deckos-settings 0.3.16): the Steam
+client profile was installed only at 13:14, so Gaming Mode had no client and gamescope aborted.
+Eight seconds later plasmashell (three times), ksplashqml, plasma-fallback, ksecretd, kdeconnectd
+and DrKonqi all aborted at once: their environment had `XDG_SESSION_TYPE=wayland` but neither
+`WAYLAND_DISPLAY` nor `DISPLAY`, so Qt fell back to xcb and found no display. That is the
+leftover-session state `gaming-cleanup` and the profile check now handle. A 13:31 attempt (still
+0.3.16) was stopped one second in and needed SIGKILL after the 10 s timeout, which fits the old
+Plasma session tearing down and taking it along (the `Conflicts=` above). A 13:54 return to the
+desktop exited cleanly. The repair shipped in 0.5.0; no Gaming Mode round trip had run on it yet.
+MangoHud's `Unknown option 'nis_steam_sharpness'` comes from Steam writing its own option; ignore it.
+
 ## Recover without rebooting
 
 If a graphical session is stuck, switch to a text console with Ctrl+Alt+F3 and log in as the
