@@ -69,12 +69,12 @@ PlasmoidItem {
     }
 
     readonly property Kicker.RecentUsageModel recentApps: Kicker.RecentUsageModel {
-        shownItems: 1  // OnlyApps
+        shownItems: Kicker.RecentUsageModel.OnlyApps  // a C++ enum: Qt 6 QML needs the name, not 1
         favoritesModel: deckMenu.rootModel.favoritesModel
     }
 
     readonly property Kicker.RecentUsageModel recentDocs: Kicker.RecentUsageModel {
-        shownItems: 2  // OnlyDocs
+        shownItems: Kicker.RecentUsageModel.OnlyDocs
         favoritesModel: deckMenu.rootModel.favoritesModel
     }
 

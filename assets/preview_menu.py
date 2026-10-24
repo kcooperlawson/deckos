@@ -8,9 +8,10 @@ import os
 import re
 import subprocess
 import sys
+from enum import IntEnum
 from pathlib import Path
 
-from PySide6.QtCore import qInstallMessageHandler, Property, QAbstractListModel, QModelIndex, QObject, QSize, Qt, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import qInstallMessageHandler, Property, QEnum, QAbstractListModel, QModelIndex, QObject, QSize, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QFont, QFontDatabase, QGuiApplication, QImage, QPainter
 from PySide6.QtQml import qmlRegisterType
 from PySide6.QtQuick import QQuickImageProvider, QQuickItem, QQuickView, QQuickWindow, QSGRendererInterface
@@ -183,6 +184,13 @@ class RunnerModel(type("RunnerBase", (Rows,), setting("appletInterface", "mergeR
 
 
 class RecentUsageModel(type("RecentBase", (Rows,), setting("favoritesModel", "ordering"))):
+    # Plasma's IncludeUsage enum: on real Plasma shownItems only takes these names, never a number.
+    @QEnum
+    class IncludeUsage(IntEnum):
+        AppsAndDocs = 0
+        OnlyApps = 1
+        OnlyDocs = 2
+
     def __init__(self, parent=None):
         super().__init__([], parent)
 
