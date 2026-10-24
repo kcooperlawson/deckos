@@ -17,6 +17,11 @@ _setup() {
   # has its own [deckos] section, pointing at the packages on the stick, and keeps it).
   pacman-key --populate deckos >/dev/null 2>&1 \
     || echo "DeckOS: run 'sudo pacman-key --populate deckos' so DeckOS updates are trusted"
+  # Snapshot first in every interactive bash (bash.bashrc has no drop-in folder)
+  if [ -f /etc/bash.bashrc ] && ! grep -q 'deckos/shell/snapshot-first.bash' /etc/bash.bashrc; then
+    printf '\n# DeckOS: offer a snapshot before big deletes (deckos snapshot-first off)\n[[ -r /usr/share/deckos/shell/snapshot-first.bash ]] && . /usr/share/deckos/shell/snapshot-first.bash\n' \
+      >> /etc/bash.bashrc
+  fi
   if ! grep -q '^\[deckos\]' /etc/pacman.conf; then
     printf '\n# DeckOS updates (the Hub, deckos tool, themes): see /etc/pacman.d/deckos-repo\n[deckos]\nInclude = /etc/pacman.d/deckos-repo\n' \
       >> /etc/pacman.conf

@@ -802,6 +802,38 @@ undo_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ snapshot first (the shell side)
+#
+# /usr/share/deckos/shell/snapshot-first.bash asks before rm -r of a big folder in /home and takes a
+# pre/post pair in the home config; `deckos restore N` puts back what changed between them (snapper
+# undochange, through snapperd: wheel may, ALLOW_GROUPS). No restart: it's only files.
+
+SHELL_CONF=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/shell.conf
+
+restore_cmd() {
+  local n=${1:-} post what
+  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos restore NUMBER [PATH...] (the number DeckOS printed)"; exit 2; }
+  shift
+  [[ -f /etc/snapper/configs/home ]] || { err "/home has no snapshots (sudo deckos home enable)"; exit 1; }
+  read -r post what < <(snapper --jsonout -c home list 2>/dev/null | jq -r --argjson n "$n" \
+    '.[keys[0]][] | select(.type == "post" and ."pre-number" == $n) | "\(.number) \(.description // "")"') || true
+  [[ -n $post ]] || { err "home snapshot $n has no 'after' snapshot: give the number DeckOS printed after the command"; exit 1; }
+  snapper -c home undochange "$n..$post" "$@" || { err "couldn't put the files back (snapper -c home undochange $n..$post)"; exit 1; }
+  ok "back as before: $what"
+}
+
+snapshot_first_cmd() {
+  case ${1:-status} in
+    status) grep -qs '^SNAPSHOT_FIRST=0' "$SHELL_CONF" && echo "snapshot-first=off" || echo "snapshot-first=on" ;;
+    on|off)
+      mkdir -p "${SHELL_CONF%/*}"
+      { grep -sv '^SNAPSHOT_FIRST=' "$SHELL_CONF" || true; echo "SNAPSHOT_FIRST=$([[ $1 == on ]] && echo 1 || echo 0)"; } > "$SHELL_CONF.new"
+      mv "$SHELL_CONF.new" "$SHELL_CONF"
+      ok "snapshot first $1 (new terminals and the next command in open ones)" ;;
+    *) err "usage: deckos snapshot-first [status|on|off]"; exit 2 ;;
+  esac
+}
+
 home_status() {
   section "Home"
   if [[ -f /etc/snapper/configs/home ]]; then
@@ -1453,6 +1485,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
   deckos update [--system]                              update everything (with snapshots)
   deckos undo    [list|NUMBER|clean]                   go back to before an update (restart to finish)
+  deckos restore NUMBER [PATH...]                       put back files from before a command (snapshot first)
+  deckos snapshot-first [status|on|off]                 the terminal offers a snapshot before big deletes
   deckos updates [--cached|--max-age S]                 how many updates are waiting (cached)
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
@@ -1499,6 +1533,8 @@ case ${1:-} in
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
   undo) shift; undo_cmd "$@" ;;
+  restore) shift; restore_cmd "$@" ;;
+  snapshot-first) shift; snapshot_first_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;

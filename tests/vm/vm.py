@@ -39,6 +39,7 @@ class VM:
         self.sock_path = os.path.join(self.work, 'serial.sock')
         self.log = open(os.path.join(self.work, 'serial.log'), 'w')
         self.buf = ''
+        self.ANSI = ANSI  # for steps files
         code = '/usr/share/OVMF/OVMF_CODE_4M.fd'
         self.qemu = subprocess.Popen([
             'qemu-system-x86_64', '-machine', 'q35', '-accel', 'kvm', '-cpu', 'host', '-smp', '4', '-m', '4G',

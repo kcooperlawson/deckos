@@ -18,7 +18,7 @@ and what the rest of the system is doing.
 4. **DeckOS look.** Slate surfaces, accent for the active pane, JetBrains Mono, a DeckOS colour scheme.
 
 Non-goals for v1: profiles, a settings window (sensible defaults, a config file later), SSH
-bookmarks, the Claude pane and "Snapshot first" (both next, below).
+bookmarks and the Claude pane (next, below).
 
 ## v1 features
 
@@ -48,9 +48,13 @@ than the mode to keep.
 
 ## Next
 
-- **Snapshot first:** before `sudo pacman -R…`, `rm -rf` under `$HOME` or `dd`, offer one click to
-  take a snapshot, and "Undo" afterwards (shell integration through an OSC 133 prompt marker, so
-  the terminal knows where a command starts).
+- **Snapshot first** (done, 0.6.0, in the shell rather than the terminal): a terminal can't stop a
+  command once Enter is pressed, but bash can. `/usr/share/deckos/shell/snapshot-first.bash`
+  (sourced from `/etc/bash.bashrc`) asks before `rm -r` of a big folder in /home (home itself, a folder
+  right inside it, a git repository) or `sudo rm -r` of system files, takes a snapper pre/post pair,
+  and prints the undo: `deckos restore N` (files, no restart) or `sudo deckos undo N` (system, restart).
+  Works in any terminal. pacman isn't covered here: snap-pac snapshots it already. Next for the
+  terminal itself: show that hint as a bar with an Undo button (the shell can send it as an OSC).
 - **Claude pane:** Claude Code in a split that sees the tab's folder; "Explain this error" sends the
   last command's output.
 - **Build mode:** the foreground command tells workload modes a build is running in a tab, so it can
