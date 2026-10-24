@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import string
 import subprocess
@@ -23,14 +24,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QLinearGradient, QPainter, QTextCursor
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QTextCursor
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
-                               QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSplitter, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFrame, QHBoxLayout,
+                               QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 HERE = Path(__file__).resolve().parent
 REPO_DIR = HERE.parent
+HUB = REPO_DIR / "pkg/deckos-settings/rootfs/usr/lib/deckos/hub"
+sys.path.insert(0, str(HUB))  # same look as DeckOS Hub: its palette, QSS, line icons and widgets
+
+import hub_style as S  # noqa: E402
+from hub_widgets import Card, Meter, RowItem, StatusTile, Toast, button, label, row  # noqa: E402
+
 BRANDING = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/branding"
 FONTS = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos"
 WORKFLOW = "build-iso.yml"
@@ -38,43 +44,31 @@ ARTIFACT = "deckos-iso"
 IS_WINDOWS = platform.system() == "Windows"
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0  # CREATE_NO_WINDOW: no console flashes on Windows
 
-BG, SURFACE, BORDER, HOVER, PRESSED = "#0F1115", "#171A21", "#262B36", "#2A2F3B", "#353B49"
-TEXT, SUBTEXT, MUTED = "#E8EAF0", "#8C94A6", "#5A6172"
-ACCENT, ACCENT_HOVER, GRAD_A, GRAD_B = "#4C8DFF", "#6AA2FF", "#4C8DFF", "#7A5CFF"
-SUCCESS, WARNING, DANGER = "#3DD68C", "#F5B84B", "#FF6B6B"
+SURFACE, BORDER, TEXT, SUBTEXT, MUTED = S.SURFACE, S.BORDER, S.TEXT, S.SUBTEXT, S.MUTED
+SUCCESS, WARNING, DANGER, ACCENT = S.SUCCESS, S.WARNING, S.DANGER, S.P.accent
+PKG_RE = re.compile(r"^(.+)-([^-]+)-([^-]+)-([^-]+)\.pkg\.tar\.zst$")  # name-ver-rel-arch
 
-QSS = f"""
-QWidget {{ background: transparent; color: {TEXT}; font-family: "Inter", "Inter Display", "Segoe UI"; font-size: 10pt; }}
-#root, QScrollArea, QScrollArea > QWidget > QWidget, QSplitter {{ background: {BG}; border: none; }}
-QLabel#title {{ font-family: "Inter Display", "Inter"; font-size: 16.5pt; font-weight: 600; }}
-QLabel#sub {{ color: {SUBTEXT}; }}
-QLabel#kicker {{ color: {SUBTEXT}; font-size: 8.5pt; font-weight: 600; }}
-QLabel#cardTitle {{ font-size: 11pt; font-weight: 600; }}
-QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 14pt; font-weight: 600; }}
-#card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
-#card QLabel, #card QCheckBox {{ background: transparent; }}
-#row {{ background: transparent; border-top: 1px solid {BORDER}; }}
-QPushButton {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 6px 12px; }}
-QPushButton:hover {{ background: {HOVER}; }}
-QPushButton:pressed {{ background: {PRESSED}; }}
-QPushButton:disabled {{ color: {MUTED}; }}
-QPushButton#primary {{ color: white; font-weight: 600; border: none; padding: 8px 18px;
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {GRAD_A}, stop:1 {GRAD_B}); }}
-QPushButton#primary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {ACCENT_HOVER}, stop:1 #8E75FF); }}
-QPushButton#primary:disabled {{ background: {BORDER}; color: {MUTED}; }}
-QPushButton#link {{ background: transparent; border: none; color: {ACCENT}; padding: 2px 4px; }}
-QPushButton#link:hover {{ color: {ACCENT_HOVER}; text-decoration: underline; }}
-QComboBox, QLineEdit {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 5px 10px; }}
-QComboBox QAbstractItemView {{ background: #22262F; border: 1px solid {BORDER}; selection-background-color: {ACCENT}; }}
-QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {PRESSED}; background: {SURFACE}; }}
-QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; }}
-QPlainTextEdit {{ background: #0B0D11; border: 1px solid {BORDER}; border-radius: 10px; padding: 8px;
-    font-family: "JetBrainsMono Nerd Font", "Cascadia Mono", "Consolas", monospace; font-size: 9pt; color: #C8CDD8; }}
-QScrollBar:vertical {{ width: 10px; background: transparent; }}
-QScrollBar::handle:vertical {{ background: {HOVER}; border-radius: 4px; margin: 2px; min-height: 30px; }}
-QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
-QToolTip {{ background: #22262F; color: {TEXT}; border: 1px solid {BORDER}; }}
-"""
+
+def git(*args, check=True):
+    r = subprocess.run(["git", "-C", str(REPO_DIR), *args], capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", creationflags=NO_WINDOW)
+    if check and r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip() or f"git {' '.join(args)} failed")
+    return r.stdout.strip()
+
+
+def read_version():
+    return (REPO_DIR / "VERSION").read_text().strip()
+
+
+def next_version(v):
+    parts = v.split(".")
+    parts[-1] = str(int(parts[-1]) + 1) if parts[-1].isdigit() else parts[-1]
+    return ".".join(parts)
+
+
+def vkey(v):
+    return [int(x) if x.isdigit() else 0 for x in v.split(".")]
 
 
 # ------------------------------------------------------------------ GitHub (via gh)
@@ -217,88 +211,58 @@ class Task(QRunnable):
 
 # ------------------------------------------------------------------ widgets
 
-class Meter(QWidget):
-    """Thin rounded bar with the brand gradient; value 0..1."""
-
-    def __init__(self, height=6):
-        super().__init__()
-        self.value = 0.0
-        self.setFixedHeight(height)
-
-    def set(self, v):
-        self.value = max(0.0, min(1.0, v))
-        self.update()
-
-    def paintEvent(self, _):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
-        r = self.rect()
-        rad = r.height() / 2
-        p.setBrush(QColor(BORDER))
-        p.drawRoundedRect(r, rad, rad)
-        if self.value > 0:
-            g = QLinearGradient(0, 0, r.width(), 0)
-            g.setColorAt(0, QColor(GRAD_A))
-            g.setColorAt(1, QColor(GRAD_B))
-            p.setBrush(g)
-            p.drawRoundedRect(0, 0, max(r.height(), int(r.width() * self.value)), r.height(), rad, rad)
-
-
-def label(text="", obj=None, wrap=True, rich=False):
-    l = QLabel(text)
-    l.setWordWrap(wrap)
-    if obj:
-        l.setObjectName(obj)
-    if rich:
-        l.setTextFormat(Qt.RichText)
-    return l
-
-
-def button(text, kind=None, slot=None, tip=None):
-    b = QPushButton(text)
-    b.setCursor(Qt.PointingHandCursor)
-    b.setFocusPolicy(Qt.NoFocus)
-    if kind:
-        b.setObjectName(kind)
-    if slot:
-        b.clicked.connect(slot)
-    if tip:
-        b.setToolTip(tip)
-    return b
-
-
 def pill(text, color):
     return (f'<span style="color:{color}; font-weight:600">●</span>&nbsp;'
             f'<span style="color:{color}; font-weight:600">{text}</span>')
 
 
-class Card(QFrame):
-    def __init__(self, kicker, title=None):
-        super().__init__()
-        self.setObjectName("card")
-        self.setAttribute(Qt.WA_StyledBackground, True)
-        self.body = QVBoxLayout(self)
-        self.body.setContentsMargins(18, 14, 18, 16)
-        self.body.setSpacing(8)
-        self.body.addWidget(label(kicker.upper(), "kicker"))
-        if title:
-            self.title = label(title, "cardTitle")
-            self.body.addWidget(self.title)
+def local_state():
+    """VERSION, the newest tag, and how many commits are past it / not pushed yet."""
+    st = {"version": read_version()}
+    try:
+        st["tag"] = git("describe", "--tags", "--abbrev=0", check=False)
+        st["ahead"] = int(git("rev-list", "--count", f"{st['tag']}..HEAD") or 0) if st["tag"] else 0
+        st["unpushed"] = int(git("rev-list", "--count", "@{u}..HEAD", check=False) or 0)
+        st["branch"] = git("rev-parse", "--abbrev-ref", "HEAD")
+    except (OSError, RuntimeError, ValueError):
+        pass
+    return st
 
 
-def hrow(*widgets, stretch_at=None):
-    w = QWidget()
-    h = QHBoxLayout(w)
-    h.setContentsMargins(0, 0, 0, 0)
-    h.setSpacing(6)
-    for i, x in enumerate(widgets):
-        if i == stretch_at:
-            h.addStretch(1)
-        h.addWidget(x)
-    if stretch_at is None or stretch_at >= len(widgets):
-        h.addStretch(1)
-    return w
+class ReleaseDialog(QDialog):
+    """Version + summary for a release; lists the commits it will publish."""
+
+    def __init__(self, parent, version, commits):
+        super().__init__(parent)
+        self.setObjectName("root")
+        self.setWindowTitle("Release DeckOS")
+        self.setMinimumWidth(520)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label("Release DeckOS", "title"))
+        v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and installed systems "
+                          "get the update about 10 minutes later. The ISO follows ~35 minutes after that.", "sub"))
+        self.version = QLineEdit(next_version(version))
+        self.summary = QLineEdit()
+        self.summary.setPlaceholderText("What changed, e.g. Hub opens again; thumbstick login splash")
+        v.addWidget(label("VERSION", "kicker"))
+        v.addWidget(self.version)
+        v.addWidget(label("SUMMARY", "kicker"))
+        v.addWidget(self.summary)
+        v.addWidget(label(f"{len(commits)} commit(s) since the last release" if commits else
+                          "No new commits since the last release", "kicker"))
+        log = QPlainTextEdit("\n".join(commits))
+        log.setReadOnly(True)
+        log.setFixedHeight(120)
+        v.addWidget(log)
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok = bb.button(QDialogButtonBox.Ok)
+        ok.setText("Release")
+        ok.setObjectName("primary")
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
 
 
 # ------------------------------------------------------------------ main window
@@ -309,11 +273,12 @@ class Builder(QWidget):
         self.setObjectName("root")
         self.setWindowTitle("DeckOS Builder")
         self.setWindowIcon(QIcon(str(BRANDING / "logo.svg")))
-        self.resize(1120, 840)
+        self.resize(1180, 920)
         self.setMinimumSize(760, 560)
         self.settings = QSettings("DeckOS", "Builder")
         self.pool = QThreadPool.globalInstance()
         self.runs, self.jobs, self.current, self.busy = [], [], None, False
+        self.assets, self.local = None, {}
         self._tasks = set()
         self.typical = self.settings.value("typical_iso_seconds", 1800, type=int)
         self.local_proc = None
@@ -322,6 +287,7 @@ class Builder(QWidget):
         outer.setContentsMargins(24, 20, 24, 16)
         outer.setSpacing(16)
         outer.addLayout(self.header())
+        outer.addWidget(self.tiles())
 
         split = QSplitter(Qt.Vertical)
         split.setHandleWidth(10)
@@ -335,18 +301,23 @@ class Builder(QWidget):
         left.addWidget(self.usb_card())
         left.addStretch(1)
         cols.addLayout(left, 5)
-        cols.addWidget(self.history_card(), 6)
+        right = QVBoxLayout()
+        right.setSpacing(14)
+        right.addWidget(self.history_card(), 3)
+        right.addWidget(self.repo_card(), 2)
+        cols.addLayout(right, 6)
         split.addWidget(top)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText("Build logs and messages appear here.")
         self.log.setMaximumBlockCount(5000)
         split.addWidget(self.log)
-        split.setSizes([620, 160])
+        split.setSizes([740, 110])
         outer.addWidget(split, 1)
         self.status = label("", "sub")
         outer.addWidget(self.status)
 
+        self.toast = Toast(self)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.tick = QTimer(self)
@@ -370,22 +341,61 @@ class Builder(QWidget):
         h.addLayout(t, 1)
         self.repo_box = QLineEdit(self.settings.value("repo", "") or "")
         self.repo_box.setPlaceholderText("owner/repo")
-        self.repo_box.setFixedWidth(220)
+        self.repo_box.setFixedWidth(200)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
         if not IS_WINDOWS and (shutil.which("pacman") or Path("/etc/arch-release").exists()):
-            h.addWidget(button("Build on this PC", slot=self.build_local, tip="Runs build.sh here (Arch/DeckOS only)"))
-        self.build_btn = button("Build ISO", "primary", self.start_build, "Starts the 'Build DeckOS ISO' workflow on GitHub")
+            h.addWidget(button("Build on this PC", slot=self.build_local, icon="terminal", tip="Runs build.sh here (Arch/DeckOS only)"))
+        self.release_btn = button("Release…", slot=self.release, icon="arrow-up",
+                                  tip="Bump VERSION, tag and push: installed systems get it about 10 minutes later")
+        h.addWidget(self.release_btn)
+        self.build_btn = button("Build ISO", "primary", self.start_build, "play", "Starts the 'Build DeckOS ISO' workflow on GitHub")
         h.addWidget(self.build_btn)
         return h
 
+    def tiles(self):
+        w = QWidget()
+        h = QHBoxLayout(w)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(14)
+        self.t_version = StatusTile("package", "This checkout")
+        self.t_repo = StatusTile("download", "Update repo")
+        self.t_build = StatusTile("snapshot", "Last ISO build")
+        self.t_usb = StatusTile("drives", "Ventoy USB")
+        self.t_version.clicked.connect(self.release)
+        self.t_repo.clicked.connect(lambda: webbrowser.open(f"https://github.com/{self.repo}/releases/tag/repo"))
+        self.t_build.clicked.connect(lambda: self.current and webbrowser.open(self.current["html_url"]))
+        self.t_usb.clicked.connect(self.scan_usb)
+        for t in (self.t_version, self.t_repo, self.t_build, self.t_usb):
+            h.addWidget(t, 1)
+        return w
+
+    def repo_card(self):
+        c = Card("Packages", "pacman repo (the \"repo\" release)", "package")
+        self.repo_open = button("Open", slot=lambda: webbrowser.open(f"https://github.com/{self.repo}/releases/tag/repo"),
+                                icon="external")
+        c.actions.addWidget(self.repo_open)
+        holder = QWidget()
+        self.pkgs = QVBoxLayout(holder)
+        self.pkgs.setContentsMargins(0, 0, 0, 0)
+        self.pkgs.setSpacing(6)
+        self.pkgs.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(holder)
+        scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
+        c.body.addWidget(scroll, 1)
+        return c
+
     def current_card(self):
-        c = Card("Current build")
-        self.cur_state = label("", rich=True)
+        c = Card("Current build", None, "snapshot")
+        self.cur_state = label("")
         self.cur_title = label("No builds yet", "big")
         self.cur_meta = label("", "sub")
         self.cur_meter = Meter(8)
-        self.cur_steps = label("", rich=True, wrap=False)
+        self.cur_steps = label("", wrap=False)
         self.cur_steps.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.cancel_btn = button("Cancel", slot=self.cancel_build)
         self.open_btn = button("Open on GitHub", slot=lambda: self.current and webbrowser.open(self.current["html_url"]))
@@ -396,11 +406,11 @@ class Builder(QWidget):
         c.body.addWidget(self.cur_meter)
         c.body.addSpacing(4)
         c.body.addWidget(self.cur_steps)
-        c.body.addWidget(hrow(self.cancel_btn, self.cur_log_btn, self.open_btn))
+        c.body.addWidget(row(self.cancel_btn, self.cur_log_btn, self.open_btn))
         return c
 
     def usb_card(self):
-        c = Card("USB", "Ventoy drive")
+        c = Card("USB", "Ventoy drive", "drives")
         self.usb_combo = QComboBox()
         self.usb_combo.setMinimumWidth(280)
         self.usb_info = label("", "sub")
@@ -410,15 +420,15 @@ class Builder(QWidget):
         self.usb_meter = Meter(6)
         self.usb_meter.hide()
         self.usb_btn = button("Copy newest ISO to USB", "primary", self.copy_to_usb)
-        c.body.addWidget(hrow(self.usb_combo, button("Rescan", slot=self.scan_usb)))
+        c.body.addWidget(row(self.usb_combo, button("Rescan", slot=self.scan_usb)))
         c.body.addWidget(self.usb_info)
         c.body.addWidget(self.remove_old)
         c.body.addWidget(self.usb_meter)
-        c.body.addWidget(hrow(self.usb_btn, button("Open ISO folder", slot=self.open_out)))
+        c.body.addWidget(row(self.usb_btn, button("Open ISO folder", slot=self.open_out)))
         return c
 
     def history_card(self):
-        c = Card("Builds", "Recent ISO builds")
+        c = Card("Builds", "Recent ISO builds", "list")
         holder = QWidget()
         self.hist = QVBoxLayout(holder)
         self.hist.setContentsMargins(0, 0, 0, 0)
@@ -535,7 +545,11 @@ class Builder(QWidget):
                     if j and j[0]["completed_at"]:
                         typical = (parse_ts(j[0]["completed_at"]) - parse_ts(r["run_started_at"])).total_seconds()
                     break
-            return runs, cur, jobs, typical
+            try:
+                assets = gh_json(f"repos/{repo}/releases/tags/repo")["assets"]
+            except RuntimeError:
+                assets = None  # no repo release yet
+            return runs, cur, jobs, typical, assets, local_state()
 
         def done(res, err):
             self.busy = False
@@ -544,12 +558,13 @@ class Builder(QWidget):
                 self.timer.start(60000)
                 return
             prev = self.current
-            self.runs, self.current, self.jobs, typical = res
+            self.runs, self.current, self.jobs, typical, self.assets, self.local = res
             if typical:
                 self.typical = int(typical)
                 self.settings.setValue("typical_iso_seconds", self.typical)
             self.render_current()
             self.render_history()
+            self.render_repo()
             active = self.current and self.current["status"] != "completed"
             self.timer.start(15000 if active else 60000)
             if prev and self.current and prev["id"] == self.current["id"] and prev["status"] != "completed" \
@@ -562,6 +577,8 @@ class Builder(QWidget):
         state, _ = run_state(run)
         QApplication.alert(self)
         self.say(f"Build #{run['run_number']} {state.lower()}")
+        self.toast.show_message(f"Build #{run['run_number']} {state.lower()}",
+                                {"Passed": "ok", "Failed": "bad"}.get(state, "info"))
         if state == "Failed":
             self.show_log(run, failed_only=True)
         elif state == "Passed" and self.settings.value("auto_download", True, type=bool):
@@ -622,6 +639,47 @@ class Builder(QWidget):
         # Rich-text labels under-report their height; size it from the line count instead.
         self.cur_steps.setMinimumHeight(len(lines) * self.cur_steps.fontMetrics().lineSpacing() + 6)
 
+    def render_tiles(self):
+        lo = self.local
+        if lo:
+            v = lo["version"]
+            if lo.get("ahead"):
+                self.t_version.set(v, f"{lo['ahead']} commit(s) not released yet: click to release", "warn")
+            elif lo.get("unpushed"):
+                self.t_version.set(v, f"{lo['unpushed']} commit(s) not pushed", "warn")
+            else:
+                self.t_version.set(v, f"Released as {lo.get('tag') or 'v' + v}", "ok")
+        if self.assets is None:
+            self.t_repo.set("No repo yet", "Push a version tag to publish packages", "off")
+        else:
+            vers = {m.group(1): m.group(2) for a in self.assets if (m := PKG_RE.match(a["name"]))}
+            pub = vers.get("deckos-settings", "?")
+            newest = max((parse_ts(a["updated_at"]) for a in self.assets), default=None)
+            when = f"published {fmt_ago(newest)}" if newest else ""
+            if lo and pub != lo["version"] and vkey(lo["version"]) > vkey(pub) and not lo.get("ahead"):
+                self.t_repo.set(pub, f"{lo['version']} is on its way · {when}", "info")
+            else:
+                self.t_repo.set(pub, f"deckos-settings · {when}", "ok")
+        if self.current:
+            state, _ = run_state(self.current)
+            self.t_build.set(f"#{self.current['run_number']} {state.lower()}", self.current["display_title"][:48],
+                             {"Passed": "ok", "Failed": "bad", "Cancelled": "off"}.get(state, "info"))
+
+    def render_repo(self):
+        self.render_tiles()
+        while self.pkgs.count() > 1:
+            w = self.pkgs.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        pkgs = sorted((a for a in self.assets or [] if PKG_RE.match(a["name"])), key=lambda a: a["name"])
+        if not pkgs:
+            self.pkgs.insertWidget(0, label("No packages published yet.", "sub"))
+        for a in pkgs:
+            name, ver, rel, _ = PKG_RE.match(a["name"]).groups()
+            self.pkgs.insertWidget(self.pkgs.count() - 1, RowItem(
+                "package", name, f"{ver}-{rel}  ·  {a['size'] / 1e6:.1f} MB  ·  {fmt_ago(parse_ts(a['updated_at']))}",
+                S.P.accent))
+
     def render_history(self):
         while self.hist.count() > 1:
             w = self.hist.takeAt(0).widget()
@@ -640,9 +698,9 @@ class Builder(QWidget):
                 msg = msg[:44].rstrip() + "…"
             text = QVBoxLayout()
             text.setSpacing(2)
-            text.addWidget(label(f'<b>{msg}</b>', rich=True, wrap=False))
+            text.addWidget(label(f'<b>{msg}</b>', wrap=False))
             text.addWidget(label(f'{pill(state, color)}&nbsp;&nbsp;<span style="color:{SUBTEXT}">#{run["run_number"]}  ·  '
-                                 f'{fmt_duration((end - started).total_seconds())}  ·  {fmt_ago(started)}</span>', rich=True, wrap=False))
+                                 f'{fmt_duration((end - started).total_seconds())}  ·  {fmt_ago(started)}</span>', wrap=False))
             g.addLayout(text, 1)
             if state == "Passed":
                 dl = button("Download ISO", slot=lambda _=False, r=run: self.download(r))
@@ -669,6 +727,48 @@ class Builder(QWidget):
             QTimer.singleShot(6000, self.refresh)
 
         self.bg(lambda _: gh("workflow", "run", WORKFLOW, "--repo", self.repo, "--ref", "main"), done)
+
+    def release(self):
+        lo = local_state()
+        if lo.get("branch") not in (None, "main"):
+            QMessageBox.warning(self, "DeckOS Builder", f"Releases go out from main; this checkout is on {lo['branch']}.")
+            return
+        tag = lo.get("tag")
+        commits = git("log", "--oneline", f"{tag}..HEAD" if tag else "-20", check=False).splitlines()
+        dlg = ReleaseDialog(self, lo["version"], commits)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        ver, summary = dlg.version.text().strip(), dlg.summary.text().strip()
+        if not re.fullmatch(r"\d+(\.\d+)+", ver) or vkey(ver) <= vkey(lo["version"]):
+            self.toast.show_message(f"Version must be newer than {lo['version']}", "bad")
+            return
+        if not summary:
+            self.toast.show_message("Add a short summary first", "bad")
+            return
+        self.release_btn.setEnabled(False)
+        self.say(f"Releasing DeckOS {ver}…")
+
+        def work(_):
+            if git("tag", "-l", f"v{ver}"):
+                raise RuntimeError(f"tag v{ver} already exists")
+            (REPO_DIR / "VERSION").write_text(ver + "\n")
+            msg = f"DeckOS {ver}: {summary}"
+            git("commit", "-m", msg, "--", "VERSION")
+            git("tag", "-a", f"v{ver}", "-m", msg)
+            git("push", "origin", "HEAD:main")
+            git("push", "origin", f"v{ver}")
+
+        def done(_, err):
+            self.release_btn.setEnabled(True)
+            if err:
+                self.say(f"Release failed: {err}")
+                self.toast.show_message("Release failed: see the log", "bad", 8000)
+                return
+            self.say(f"Released DeckOS {ver}: installed systems get it in about 10 minutes")
+            self.toast.show_message(f"DeckOS {ver} is on its way", "ok")
+            QTimer.singleShot(8000, self.refresh)
+
+        self.bg(work, done)
 
     def cancel_build(self):
         run = self.current
@@ -766,10 +866,12 @@ class Builder(QWidget):
                 self.usb_combo.addItem("No Ventoy USB found")
                 self.usb_info.setText("Plug in your Ventoy USB and press Rescan.")
                 self.usb_btn.setEnabled(False)
+                self.t_usb.set("Not plugged in", "Click to scan again", "off")
                 return
             for path, lab, free in drives:
                 self.usb_combo.addItem(f"{path}  ({lab}, {free / 1e9:.1f} GB free)", path)
             self.usb_btn.setEnabled(True)
+            self.t_usb.set(drives[0][0], f"{drives[0][2] / 1e9:.1f} GB free", "ok")
             path = drives[0][0]
             isos = sorted(Path(path).glob("deckos-*.iso"))
             self.usb_info.setText("On the USB: " + (", ".join(p.name for p in isos) if isos else "no DeckOS ISOs yet"))
@@ -859,7 +961,11 @@ def main():
     app.setDesktopFileName("deckos-builder")
     for f in FONTS.glob("*.otf"):
         QFontDatabase.addApplicationFont(str(f))
-    app.setStyleSheet(QSS)
+    app.setStyleSheet(S.qss() + f"""
+QLineEdit {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 6px 10px; }}
+QLineEdit:focus {{ border-color: {ACCENT}; }}
+#row {{ background: transparent; border-top: 1px solid {BORDER}; }}
+""")
     app.setFont(QFont("Inter Display" if IS_WINDOWS else "Inter", 10))
     w = Builder()
     w.show()
