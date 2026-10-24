@@ -175,6 +175,20 @@ live_keyring() {
   pacman-key --list-keys "$CACHYOS_KEY" >/dev/null 2>&1
 }
 
+# fat32_clusters DEV - the data cluster count of a FAT32 file system, empty for anything else. UEFI
+# firmware decides FAT12/16/32 from this count alone, so FAT32 under 65525 clusters (which Linux
+# mounts fine) is unreadable to it.
+fat32_clusters() {
+  local -a b
+  read -ra b < <(od -An -v -tu1 -N90 "$1" 2>/dev/null | tr -s ' \n' ' ')
+  [[ ${#b[@]} -eq 90 && ${b[*]:82:5} == "70 65 84 51 50" ]] || return 0  # "FAT32" at offset 82
+  local spc=${b[13]} reserved=$((b[14] + b[15] * 256)) fats=${b[16]}
+  local total=$((b[32] + b[33] * 256 + b[34] * 65536 + b[35] * 16777216))
+  local fatsz=$((b[36] + b[37] * 256 + b[38] * 65536 + b[39] * 16777216))
+  (( spc > 0 )) || return 0
+  echo $(((total - reserved - fats * fatsz) / spc))
+}
+
 # table NAME - the rows of installer/NAME.tsv, without comments.
 table() { grep -vE '^\s*(#|$)' "$SRC/installer/$1.tsv"; }
 
@@ -378,6 +392,9 @@ mount -o ro "$ESP" "$espprobe"
 esp_free=$(df -BM --output=avail "$espprobe" | tail -1 | tr -dc '0-9')
 umount "$espprobe"; rmdir "$espprobe"
 [[ $esp_free -ge 20 ]] || die "EFI partition $ESP has only ${esp_free} MB free (need 20 MB)."
+esp_clusters=$(fat32_clusters "$ESP")
+[[ -z $esp_clusters || $esp_clusters -ge 65525 ]] \
+  || die "EFI partition $ESP is formatted in a way the PC's firmware can't read (FAT32 with only $esp_clusters clusters), so DeckOS wouldn't start from it. Nothing was changed."
 good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found')"
 # Windows may boot from its own EFI partition on another disk; any Windows decides the clock below.
 WINDOWS=$WIN_BOOT
