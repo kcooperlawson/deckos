@@ -407,10 +407,16 @@ docs/                     the reference machine's setup
 ### Updates for installed systems
 
 DeckOS's own packages (`deckos-settings` with the Hub, `deckos` tool, themes and fixes, plus
-`deckos-theme-tmpikes`) are published as a signed pacman repo in this repo's
-[`repo` release](https://github.com/kcooperlawson/deckos/releases/tag/repo). Installed systems have it as
-`[deckos]` in `pacman.conf`, so `deckos update` and the Hub's Update button pick up new versions like
-any other package.
+`deckos-theme-tmpikes`) are published as a signed pacman repo, on two channels:
+
+- **Stable**, the [`repo` release](https://github.com/kcooperlawson/deckos/releases/tag/repo): where every
+  install starts. It only gets a release once that release has been tried on the testing channel.
+- **Testing**, the [`repo-testing` release](https://github.com/kcooperlawson/deckos/releases/tag/repo-testing):
+  every release, minutes after it's tagged. `sudo deckos channel testing` switches a PC to it,
+  `sudo deckos channel stable` back (`deckos channel` shows which one a PC is on).
+
+Installed systems have the repo as `[deckos]` in `pacman.conf`, so `deckos update` and the Hub's Update
+button pick up new versions like any other package.
 
 **What's New:** a feature release (0.4.0, 0.5.0…) ships release notes in
 `pkg/deckos-settings/rootfs/usr/share/deckos/releases/X.Y.Z.toml`: a name, a tagline, highlights with a screenshot
@@ -421,7 +427,9 @@ they saw. Patch releases (0.4.1…) have no notes file, so they update quietly; 
 **To release:** bump `VERSION`, commit, then tag and push (`git tag v0.3.1 && git push origin v0.3.1`).
 CI checks that the tag matches `VERSION`, signs the packages with the DeckOS key (fingerprint
 `F67E15FABF95D2DA72BE5D3F6322881773088C41`, kept as the `DECKOS_SIGNING_KEY` secret) and replaces the
-repo's contents. `deckos-theme-tmpikes` only updates on installed systems when its own `pkgver` goes up.
+testing repo's contents. Once it has run well on a testing PC, run **Promote to stable** from the Actions
+tab with that version: stable gets exactly the packages testing had. It refuses when testing holds a
+different version (a newer tag landed in between), so nothing reaches stable untried. `deckos-theme-tmpikes` only updates on installed systems when its own `pkgver` goes up.
 
 **Working on DeckOS from DeckOS:** clone the repo into your home folder (not a Windows drive: NTFS loses
 file permissions and symlinks), then `deckos dev-install` builds and installs your checkout. A later

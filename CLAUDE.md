@@ -127,8 +127,11 @@ not die: a finished install must never be reported as failed.
 - **Release**: bump `VERSION`, commit, `git tag -a vX.Y.Z -m …`, push `main` and the tag. CI checks the
   tag matches `VERSION`, signs `deckos-settings` and `deckos-theme-tmpikes` with the DeckOS key
   (fingerprint `F67E15FABF95D2DA72BE5D3F6322881773088C41`, secret `DECKOS_SIGNING_KEY`) and replaces the
-  pacman repo in the `repo` release; installed systems get it via `deckos update` about 5 minutes after
-  the tag. A tag only builds an ISO when the installer or live USB changed since the last tag (the
+  pacman repo in the `repo-testing` release (`.github/publish-repo`); PCs on the testing channel
+  (`deckos channel testing`, the reference machine) get it via `deckos update` about 5 minutes after
+  the tag. Stable (`repo`, where installs start) only changes when the maintainer runs the "Promote to
+  stable" workflow with that version, which refuses if testing holds a different one. Both jobs share
+  the `deckos-repo` concurrency group. A tag only builds an ISO when the installer or live USB changed since the last tag (the
   workflow's `plan` job: `build.sh`, `installer/`, `iso/`, `pkg/deckos-installer/`, the package lists, the
   workflow), or when the tag/commit message has `[iso]` (DeckOS Builder's "Build an ISO too");
   Build ISO (workflow_dispatch) always builds one. The squashfs is zstd: the ISO job takes ~12 minutes.
