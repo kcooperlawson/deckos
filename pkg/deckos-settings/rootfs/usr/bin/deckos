@@ -626,7 +626,10 @@ spotify_cmd() {
 
 dev_install() {
   [[ $EUID -ne 0 ]] || { err "run this as your user (makepkg won't build as root)"; exit 1; }
-  local root=${1:-} c p
+  local root="" downgrade=0 c p new installed
+  for c in "$@"; do
+    if [[ $c == --downgrade ]]; then downgrade=1; else root=$c; fi
+  done
   if [[ -z $root ]]; then
     root=$(git rev-parse --show-toplevel 2>/dev/null || true)
     for c in "$root" "$HOME/deckos" "$HOME/DeckOS" "$HOME/src/deckos" "$HOME/Projects/deckos"; do
@@ -634,7 +637,15 @@ dev_install() {
     done
   fi
   [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DeckOS checkout found: deckos dev-install PATH"; exit 2; }
-  section "Installing DeckOS $(tr -d '[:space:]' < "$root/VERSION") from $root"
+  new=$(tr -d '[:space:]' < "$root/VERSION")
+  # An old clone found by the search above once replaced a newer DeckOS with a months-old one.
+  installed=$(pacman -Q deckos-settings 2>/dev/null | awk '{print $2}' || true)
+  if [[ -n $installed && $downgrade == 0 ]] && (( $(vercmp "$new-1" "$installed") < 0 )); then
+    err "$root has DeckOS $new, older than the installed ${installed%-*}: nothing changed."
+    sub "Pick the right checkout (deckos dev-install PATH), or add --downgrade if you mean it."
+    exit 1
+  fi
+  section "Installing DeckOS $new from $root"
   for p in deckos-files deckos-terminal deckos-settings deckos-theme-tmpikes; do
     [[ -d $root/pkg/$p ]] || continue
     (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
@@ -1355,7 +1366,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
   deckos backup  [FOLDER]                               copy your home folder to another drive
-  deckos dev-install [CHECKOUT]                         build and install DeckOS from a repo checkout
+  deckos dev-install [CHECKOUT] [--downgrade]           build and install DeckOS from a repo checkout
   deckos spotify [theme|restore]                        the DeckOS look for Spotify (Spicetify)
   deckos scheduler [status|set lavd|bpfland|off [MODE]] gaming CPU scheduler (sched_ext)
   deckos gpu     [status|set K=V..|reset|overdrive on|off]  power limit, undervolt, fan curve
