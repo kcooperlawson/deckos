@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'pkg/deckos-settings/rootfs/usr/lib/deckos/work'))
 from unittest.mock import patch
-from work_core import Store, Tools, detect_checks, fuzzy_replace, save_edit, scoped, undo_edit
+from work_core import PublicRedirects, Store, Tools, detect_checks, fuzzy_replace, public_url, save_edit, scoped, undo_edit
 import work_agent
 
 
@@ -165,6 +165,21 @@ class WorkTests(unittest.TestCase):
         self.tools.call('edit_file',dict(path='m.py',old=' a\n-B1\n+b1',new=''))
         self.assertEqual(path.read_text(),'top\na\nb1\nB2\nc\n')
 
+
+    def test_fetch_url_reads_only_the_public_web(self):
+        def resolve(host,*_args,**_kw):
+            ip={'example.com':'93.184.215.14','router.lan':'192.168.1.1','v6.example':'fe80::1%eth0'}.get(host,host)
+            return [(None,None,None,'',(ip,0))]
+        with patch('work_core.socket.getaddrinfo',resolve):
+            self.assertEqual(public_url('https://example.com/a?b=1'),'https://example.com/a?b=1')
+            for url in ('http://127.0.0.1:11434/api/tags','http://router.lan/','http://169.254.169.254/latest/',
+                        'http://10.1.2.3/','http://[::1]/','http://v6.example/'):
+                with self.subTest(url=url):
+                    self.assertIn('Refused',self.tools.call('fetch_url',{'url':url}))
+            self.assertIn('HTTP(S)',self.tools.call('fetch_url',{'url':'file:///etc/passwd'}))
+            # a public page redirecting to this PC is stopped at the hop
+            with self.assertRaises(PermissionError):
+                PublicRedirects().redirect_request(None,None,302,'Found',{},'http://127.0.0.1/')
 
 if __name__=='__main__':
     unittest.main()

@@ -3,12 +3,14 @@ import ast
 import difflib
 import hashlib
 import html
+import ipaddress
 import json
 import os
 import re
 import selectors
 import shlex
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -87,6 +89,28 @@ def scoped(root, path):
     if path != root and root not in path.parents:
         raise ValueError('This path is outside the selected project folder. Choose that folder or approve a terminal command instead.')
     return path
+
+
+def public_url(url):
+    """fetch_url reads the public web only: not this PC, the home network or a cloud metadata address."""
+    parsed=urllib.parse.urlparse(url)
+    if parsed.scheme not in ('http','https') or not parsed.hostname:
+        raise ValueError('Use an HTTP(S) URL')
+    try:
+        infos=socket.getaddrinfo(parsed.hostname,parsed.port or (443 if parsed.scheme=='https' else 80),proto=socket.IPPROTO_TCP)
+    except (socket.gaierror,UnicodeError) as error:
+        raise ValueError(f"Couldn't find {parsed.hostname}") from error
+    for info in infos:
+        if not ipaddress.ip_address(info[4][0].split('%')[0]).is_global:
+            raise PermissionError(f'Refused: {parsed.hostname} is on this PC or the local network, not the public web')
+    return url
+
+
+class PublicRedirects(urllib.request.HTTPRedirectHandler):
+    # A public page could redirect to localhost or the router; check every hop.
+    def redirect_request(self,req,fp,code,msg,headers,newurl):
+        public_url(newurl)
+        return super().redirect_request(req,fp,code,msg,headers,newurl)
 
 
 def digest(data):
@@ -467,11 +491,8 @@ class Tools:
             self.emit('process',pid=process.pid,active=False)
 
     def t_fetch_url(self,url):
-        parsed=urllib.parse.urlparse(url)
-        if parsed.scheme not in ('http','https') or not parsed.hostname:
-            raise ValueError('Use an HTTP(S) URL')
-        request=urllib.request.Request(url,headers={'User-Agent':'DeckOSWork/0.1'})
-        with urllib.request.urlopen(request,timeout=30) as response:
+        request=urllib.request.Request(public_url(url),headers={'User-Agent':'DeckOSWork/0.1'})
+        with urllib.request.build_opener(PublicRedirects).open(request,timeout=30) as response:
             raw=response.read(1_000_000).decode(errors='replace')
         text=re.sub(r'<(script|style)\b[^>]*>.*?</\1>','',raw,flags=re.S|re.I)
         text=re.sub('<[^>]+>',' ',text)
