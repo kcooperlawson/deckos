@@ -3,7 +3,7 @@
 # Pick it in DeckOS Hub > Appearance (or System Settings > Global Theme). Sources and the
 # brand kit it was made from are kept outside the repo (personal/tmpikes/generate.py).
 pkgname=deckos-theme-tmpikes
-pkgver=1.0
+pkgver=1.1
 pkgrel=1
 pkgdesc="TMpikes theme for DeckOS: colours, wallpaper, Konsole profile and global theme"
 arch=(any)
