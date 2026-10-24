@@ -27,7 +27,7 @@ jobs:
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python
         run: |
-          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/hub/*.py pkg/deckos-settings/rootfs/usr/lib/deckos/store/*.py pkg/deckos-settings/rootfs/usr/lib/deckos/work/*.py builder/deckos_builder.py \
+          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/*/*.py builder/deckos_builder.py \
             pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py assets/*.py
 
   unit-tests:
@@ -176,7 +176,8 @@ jobs:
     # The DeckOS update channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal and the themes and
     # publish them as a pacman repo in the "repo" release. Installed systems pull from
     # https://github.com/<owner>/<repo>/releases/download/repo (see /etc/pacman.d/deckos-repo).
-    needs: [lint, package]
+    # Installed systems update from here within minutes, so failing unit tests stop the release.
+    needs: [lint, unit-tests, package]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     container: archlinux:latest
