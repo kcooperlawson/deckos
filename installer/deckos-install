@@ -151,6 +151,30 @@ EOF
   warn "Mirror ranking failed - using a standard mirror list"
 }
 
+# pacstrap checks package signatures with the live USB's keyring (/etc/pacman.d/gnupg), which
+# pacman-init.service fills at boot. That can fail or lag, for instance with the clock 4 hours off
+# from Windows keeping local time in the hardware clock, and then CachyOS's signed database can't be
+# read ("Public keyring not found", "keyring is not writable"). So check it, and rebuild it if needed.
+CACHYOS_KEY=F3B607488DB35A47
+live_keyring() {
+  # Give NTP a moment first: keys and signatures dated "in the future" are refused.
+  local i
+  for i in $(seq 1 20); do
+    [[ $(timedatectl show -p NTPSynchronized --value 2>/dev/null) == yes ]] && break
+    sleep 1
+  done
+  systemctl is-active --quiet pacman-init.service || timeout 120 systemctl start pacman-init.service 2>>"$LOG" || true
+  if ! pacman-key --list-keys "$CACHYOS_KEY" >/dev/null 2>&1; then
+    echo "### rebuilding the live keyring" >> "$LOG"
+    { pacman-key --init && pacman-key --populate; } >>"$LOG" 2>&1 || true
+  fi
+  if ! pacman-key --list-keys "$CACHYOS_KEY" >/dev/null 2>&1; then
+    { pacman-key --recv-keys "$CACHYOS_KEY" --keyserver keyserver.ubuntu.com \
+        && pacman-key --lsign-key "$CACHYOS_KEY"; } >>"$LOG" 2>&1 || true
+  fi
+  pacman-key --list-keys "$CACHYOS_KEY" >/dev/null 2>&1
+}
+
 # table NAME - the rows of installer/NAME.tsv, without comments.
 table() { grep -vE '^\s*(#|$)' "$SRC/installer/$1.tsv"; }
 
@@ -471,6 +495,9 @@ good "btrfs subvolumes: @ @home @snapshots @log @pkg"
 
 section "Base system"
 rank_mirrors
+note "Checking package signing keys..."
+if live_keyring; then good "package signing keys"
+else die "The package signing keys couldn't be set up (CachyOS key $CACHYOS_KEY). $(changed_note)"; fi
 
 spin "Installing Arch base" pacstrap -K "$MNT" base base-devel linux-firmware "$UCODE" btrfs-progs \
   gawk git sudo nano networkmanager grub efibootmgr os-prober curl jq
