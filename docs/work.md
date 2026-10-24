@@ -107,6 +107,10 @@ After packages and models are downloaded, chat, file tools, document work and im
 offline. Web search, URL fetching, package setup and initial model downloads need internet. Public
 web search uses DuckDuckGo HTML and may be blocked or unavailable; a known source URL can still
 be fetched. There is no browser automation, account integration or cloud-agent fallback in v1.
+`fetch_url` reads the public web only (never this PC, the home network or cloud metadata, on any
+redirect hop). It opens addresses from the request or from `web_search` results without asking; an
+address the model made up itself is asked first (Settings > Workspace access), since one could carry
+what it read to another site.
 
 ## Files and development
 

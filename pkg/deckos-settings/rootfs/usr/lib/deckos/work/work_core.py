@@ -34,7 +34,7 @@ def atomic_json(path, value):
 
 
 def preferences():
-    defaults = {'model':conf('MODEL') or 'gpt-oss:20b', 'ask_commands':True, 'auto_edit':True,
+    defaults = {'model':conf('MODEL') or 'gpt-oss:20b', 'ask_commands':True, 'auto_edit':True, 'ask_fetch':True,
                 'image_model':'stabilityai/stable-diffusion-xl-base-1.0', 'image_size':1024,
                 'image_steps':20, 'max_steps':100, 'context':16384, 'verify':True, 'self_review':True}
     try:
@@ -303,6 +303,7 @@ class Tools:
         self.verified=len(task.get('changes',[]))
         self.checks=detect_checks(self.root)
         self.request=''
+        self.found_urls=set()  # web_search results: addresses the model didn't make up
         self.misses={}
 
     def call(self,name,args):
@@ -491,7 +492,14 @@ class Tools:
             self.emit('process',pid=process.pid,active=False)
 
     def t_fetch_url(self,url):
-        request=urllib.request.Request(public_url(url),headers={'User-Agent':'DeckOSWork/0.1'})
+        public_url(url)
+        # An address the model put together can carry what it read (https://site/?q=<a file>), and a page
+        # it read can ask for exactly that. Ones from the request or a search run; the rest are asked.
+        if self.settings.get('ask_fetch',True) and url not in self.request and url not in self.found_urls:
+            if not self.confirm('Open this web page?',f'{url}\n\nThe task made this address itself (it isn\'t from your '
+                                'request or a web search). Anything in it is sent to that site.'):
+                return 'The user declined opening this page. Continue without it.'
+        request=urllib.request.Request(url,headers={'User-Agent':'DeckOSWork/0.1'})
         with urllib.request.build_opener(PublicRedirects).open(request,timeout=30) as response:
             raw=response.read(1_000_000).decode(errors='replace')
         text=re.sub(r'<(script|style)\b[^>]*>.*?</\1>','',raw,flags=re.S|re.I)
@@ -508,6 +516,7 @@ class Tools:
             parsed=urllib.parse.urlparse(html.unescape(href))
             target=urllib.parse.parse_qs(parsed.query).get('uddg',[href])[0]
             found.append(html.unescape(re.sub('<[^>]+>','',body))+'\n'+target)
+            self.found_urls.add(target)
         return '\n\n'.join(found[:8]) or 'The search service did not return usable results. Try a known source URL with fetch_url.'
 
     def _helper(self,action,data,timeout=900):
