@@ -460,6 +460,58 @@ software_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ spotify
+#
+# The DeckOS look for the official Spotify app, through Spicetify. Works with Arch's
+# spotify-launcher, the AUR package and the Flathub app. Spotify updates undo it: run it again.
+
+SPOTIFY_APPS=("$HOME/.local/share/spotify-launcher/install/usr/share/spotify" /opt/spotify /usr/share/spotify
+              /var/lib/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify
+              "$HOME/.local/share/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify")
+SPOTIFY_PREFS=("$HOME/.config/spotify/prefs" "$HOME/.var/app/com.spotify.Client/config/spotify/prefs")
+
+spotify_theme() {
+  [[ $EUID -ne 0 ]] || { err "run this as your user: Spicetify's settings live in your home folder"; exit 1; }
+  local app="" prefs="" c themes
+  for c in "${SPOTIFY_APPS[@]}"; do [[ -d $c/Apps ]] && { app=$c; break; }; done
+  [[ -n $app ]] || { err "Spotify isn't installed (get it from the DeckOS Store), or hasn't been opened yet"; exit 1; }
+  for c in "${SPOTIFY_PREFS[@]}"; do [[ -f $c ]] && { prefs=$c; break; }; done
+  [[ -n $prefs ]] || { err "open Spotify once and log in, close it, then run this again"; exit 1; }
+  section "DeckOS theme for Spotify"
+  sub "Spotify: $app"
+  if ! command -v spicetify >/dev/null; then
+    paru -S --needed spicetify-cli || { err "couldn't install Spicetify (spicetify-cli)"; exit 1; }
+  fi
+  # Spicetify patches Spotify's own files; the system-wide installs need to be writable for that.
+  if [[ ! -w $app || ! -w $app/Apps ]]; then
+    sudo chmod a+wr "$app" && sudo chmod -R a+wr "$app/Apps"
+  fi
+  themes=${XDG_CONFIG_HOME:-$HOME/.config}/spicetify/Themes/DeckOS
+  mkdir -p "$themes"
+  cp /usr/share/deckos/spicetify/DeckOS/* "$themes/"
+  spicetify config spotify_path "$app" prefs_path "$prefs" current_theme DeckOS color_scheme deckos \
+    inject_css 1 replace_colors 1 >/dev/null
+  if pgrep -x spotify >/dev/null; then warn "Spotify is open: it restarts to load the theme"; fi
+  # First time: back up the stock files. After a Spotify update: refresh that backup first.
+  spicetify backup apply >/dev/null 2>&1 || spicetify restore backup apply >/dev/null 2>&1 || spicetify apply \
+    || { err "Spicetify couldn't apply the theme (see above)"; exit 1; }
+  ok "Spotify now has the DeckOS look"
+  sub "After Spotify updates itself, run this again (or DeckOS Hub > Appearance > Spotify)."
+}
+
+spotify_restore() {
+  command -v spicetify >/dev/null || { ok "Spicetify isn't installed: Spotify is already stock"; return; }
+  spicetify restore && ok "Spotify is back to its own look"
+}
+
+spotify_cmd() {
+  case ${1:-theme} in
+    theme) spotify_theme ;;
+    restore) spotify_restore ;;
+    *) err "usage: deckos spotify [theme|restore]"; exit 2 ;;
+  esac
+}
+
 # ------------------------------------------------------------------ dev-install
 #
 # Builds the DeckOS packages from a checkout of the repo and installs them: the loop for working
@@ -629,6 +681,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
   deckos backup  [FOLDER]                               copy your home folder to another drive
   deckos dev-install [CHECKOUT]                         build and install DeckOS from a repo checkout
+  deckos spotify [theme|restore]                        the DeckOS look for Spotify (Spicetify)
   deckos doctor                                         health check
   deckos hub                                            open DeckOS Hub
 EOF
@@ -645,6 +698,7 @@ case ${1:-} in
   home) shift; home_cmd "$@" ;;
   backup) shift; backup_cmd "$@" ;;
   dev-install) shift; dev_install "$@" ;;
+  spotify) shift; spotify_cmd "$@" ;;
   doctor) doctor_cmd ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;

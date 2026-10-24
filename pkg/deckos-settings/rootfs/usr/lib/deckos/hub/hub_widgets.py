@@ -261,6 +261,171 @@ class RowItem(QFrame):
             h.addWidget(w)
 
 
+class Art:
+    """Album art from a file:// or https:// URL, cached; calls done(QPixmap)."""
+    _nam, _cache = None, {}
+
+    @classmethod
+    def load(cls, url, done):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QPixmap
+        if url in cls._cache:
+            done(cls._cache[url])
+            return
+        if url.startswith("file://"):
+            pm = QPixmap(QUrl(url).toLocalFile())
+            cls._cache[url] = pm
+            done(pm)
+            return
+        if not url.startswith("http"):
+            done(QPixmap())
+            return
+        from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+        if cls._nam is None:
+            cls._nam = QNetworkAccessManager()
+        reply = cls._nam.get(QNetworkRequest(QUrl(url)))
+
+        def finished():
+            pm = QPixmap()
+            if reply.error() == reply.NetworkError.NoError:
+                pm.loadFromData(bytes(reply.readAll()))
+            reply.deleteLater()
+            cls._cache[url] = pm
+            done(pm)
+        reply.finished.connect(finished)
+
+
+class SeekBar(Meter):
+    """A Meter you can click to jump to that point."""
+    seek = Signal(float)
+
+    def __init__(self):
+        super().__init__(6)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton and self.width():
+            self.seek.emit(max(0.0, min(1.0, e.position().x() / self.width())))
+
+
+def fmt_time(sec):
+    sec = int(max(0, sec))
+    return f"{sec // 3600}:{sec // 60 % 60:02d}:{sec % 60:02d}" if sec >= 3600 else f"{sec // 60}:{sec % 60:02d}"
+
+
+class NowPlaying(QFrame):
+    """What's playing in any MPRIS player (Spotify, Firefox, VLC…), with art, seek and controls."""
+
+    control = Signal(str)   # play-pause / next / previous
+    seek = Signal(float)    # 0..1
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("card")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.art_url = None
+        h = QHBoxLayout(self)
+        h.setContentsMargins(16, 14, 18, 14)
+        h.setSpacing(16)
+        self.art = QLabel()
+        self.art.setFixedSize(84, 84)
+        self.art.setAlignment(Qt.AlignCenter)
+        h.addWidget(self.art)
+        v = QVBoxLayout()
+        v.setSpacing(2)
+        self.kicker = label("NOW PLAYING", "kicker", wrap=False)
+        v.addWidget(self.kicker)
+        self.title = label("", "cardTitle", wrap=False)
+        v.addWidget(self.title)
+        self.sub = label("", "sub", wrap=False)
+        v.addWidget(self.sub)
+        v.addSpacing(6)
+        bar = QHBoxLayout()
+        bar.setSpacing(10)
+        self.pos = label("0:00", "muted", wrap=False)
+        self.bar = SeekBar()
+        self.bar.seek.connect(self.seek)
+        self.length = label("0:00", "muted", wrap=False)
+        bar.addWidget(self.pos)
+        bar.addWidget(self.bar, 1)
+        bar.addWidget(self.length)
+        self.bar_row = QWidget()
+        self.bar_row.setLayout(bar)
+        bar.setContentsMargins(0, 0, 0, 0)
+        v.addWidget(self.bar_row)
+        h.addLayout(v, 1)
+        self.buttons = {}
+        ctl = QHBoxLayout()
+        ctl.setSpacing(6)
+        for action, ic, big in (("previous", "previous", False), ("play-pause", "pause", True), ("next", "next", False)):
+            b = QPushButton()
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFocusPolicy(Qt.NoFocus)
+            size = 44 if big else 34
+            b.setFixedSize(size, size)
+            b.setIconSize(QSize(20 if big else 16, 20 if big else 16))
+            b.setObjectName("primary" if big else "")
+            b.setStyleSheet(f"QPushButton {{ border-radius: {size // 2}px; padding: 0; }}")
+            b.clicked.connect(lambda _c=False, a=action: self.control.emit(a))
+            self.buttons[action] = b
+            ctl.addWidget(b)
+        self.paint_buttons(False)
+        h.addLayout(ctl)
+        self.show_nothing()
+
+    def paint_buttons(self, playing):
+        self.buttons["previous"].setIcon(S.icon("previous", S.TEXT, 16))
+        self.buttons["next"].setIcon(S.icon("next", S.TEXT, 16))
+        self.buttons["play-pause"].setIcon(S.icon("pause" if playing else "play", "white", 20))
+
+    def show_nothing(self):
+        self.art_url = None
+        self.art.setPixmap(S.pixmap("music", S.MUTED, 34))
+        self.art.setStyleSheet(f"background: {S.RAISED}; border-radius: 12px;")
+        self.kicker.setText("NOW PLAYING")
+        self.title.setText("Nothing playing")
+        self.sub.setText("Music and videos from Spotify, Firefox and other players show up here.")
+        self.bar_row.hide()
+        for b in self.buttons.values():
+            b.hide()
+
+    def show_track(self, t, position):
+        self.kicker.setText(f"NOW PLAYING · {t['label'].upper()}")
+        self.title.setText(t["title"])
+        self.sub.setText(" — ".join(x for x in (t["artist"], t["album"]) if x))
+        self.bar_row.setVisible(t["length"] > 0)
+        self.bar.set(position / t["length"] if t["length"] else 0)
+        self.pos.setText(fmt_time(position))
+        self.length.setText(fmt_time(t["length"]))
+        for b in self.buttons.values():
+            b.show()
+        self.paint_buttons(t["status"] == "Playing")
+        if t["art"] != self.art_url:
+            self.art_url = t["art"]
+            self.art.setPixmap(S.pixmap("music", S.MUTED, 34))
+            Art.load(t["art"], lambda pm, url=t["art"]: self._set_art(pm, url))
+
+    def _set_art(self, pm, url):
+        if url != self.art_url or pm.isNull():
+            return
+        from PySide6.QtGui import QPainterPath, QPixmap
+        from PySide6.QtCore import QRectF
+        s = self.art.width() * 2
+        pm = pm.scaled(s, s, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        out = QPixmap(s, s)
+        out.fill(Qt.transparent)
+        p = QPainter(out)
+        p.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(0, 0, s, s), 22, 22)
+        p.setClipPath(path)
+        p.drawPixmap((s - pm.width()) // 2, (s - pm.height()) // 2, pm)
+        p.end()
+        out.setDevicePixelRatio(2)
+        self.art.setStyleSheet("background: transparent;")
+        self.art.setPixmap(out)
+
+
 class Toast(QFrame):
     """Short message in the bottom-right corner of its parent; fades out after a few seconds."""
 

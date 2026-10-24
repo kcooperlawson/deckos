@@ -137,13 +137,19 @@ The DeckOS Hub (in the panel, or `deckos hub`) is where DeckOS's own settings li
 
 | Page | What's there |
 |---|---|
-| **Home** | live GPU, VRAM, CPU and memory graphs; status of updates, snapshots, firewall, display fix, drives and software, each a click away |
+| **Home** | live GPU, VRAM, CPU and memory graphs; status of updates, snapshots, firewall, display fix, drives and software, each a click away; **Now Playing** with album art, seek and controls for Spotify, Firefox or any media player |
 | **Display** | the blackout fix ladder with the level recommended for your setup, your monitors, and the blackout watcher |
 | **Gaming** | Gaming Mode, its resolution, refresh rate, VRR and HDR, plus LACT, GOverlay, ProtonUp-Qt and the Steam-on-NTFS fix |
 | **Drives** | your Windows drives with how full they are, and help when one is read-only |
 | **AI & Dev** | Claude Code, Ollama (start/stop, your models) and which dev tools are installed |
 | **System** | updates with a progress bar (AUR apps in the terminal), system and home snapshots, backup to another drive, the firewall, and adding Gaming, Local AI or Development later |
-| **Appearance** | global theme (DeckOS, TMpikes), accent colour, wallpaper, Plasma style and icons |
+| **Appearance** | global theme (DeckOS, TMpikes), accent colour, wallpaper, Plasma style, icons, and the DeckOS look for Spotify |
+
+**Spotify in the DeckOS look:** install Spotify from the DeckOS Store, open it once and log in, then
+press *Apply DeckOS look* in **Hub › Appearance** (or run `deckos spotify theme`). It uses
+[Spicetify](https://spicetify.app) to restyle the official app with DeckOS colours, bordered panels and
+the gradient play buttons; everything Spotify does keeps working. Spotify updates undo it, so apply it
+again after one; `deckos spotify restore` puts the stock look back.
 
 ## DeckOS Store
 

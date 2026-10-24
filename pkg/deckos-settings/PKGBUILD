@@ -9,7 +9,7 @@ pkgdesc="DeckOS branding, theme, Hub, hardware fixes and the deckos tool"
 arch=(any)
 license=(MIT)
 depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit kdialog konsole
-         grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib
+         grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib playerctl
          papirus-icon-theme inter-font ttf-jetbrains-mono-nerd)
 makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'

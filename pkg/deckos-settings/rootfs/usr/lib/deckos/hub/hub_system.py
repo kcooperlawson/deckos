@@ -300,6 +300,40 @@ def service_active(name):
     return DEMO or run(["systemctl", "is-active", name]) == "active"
 
 
+# ------------------------------------------------------------------ now playing (MPRIS)
+
+PLAYERCTL_FORMAT = ("{{playerName}}\t{{status}}\t{{xesam:title}}\t{{xesam:artist}}\t{{xesam:album}}\t"
+                    "{{mpris:artUrl}}\t{{position}}\t{{mpris:length}}")
+
+
+def parse_players(out):
+    """Players from `playerctl -a metadata --format PLAYERCTL_FORMAT`: playing first, then paused."""
+    rows = []
+    for line in out.splitlines():
+        f = line.split("\t")
+        if len(f) < 8 or f[1] not in ("Playing", "Paused"):
+            continue
+        art = f[5].replace("https://open.spotify.com/image/", "https://i.scdn.co/image/")  # Spotify's dead art links
+        rows.append({"player": f[0], "status": f[1], "title": f[2] or "Unknown title", "artist": f[3],
+                     "album": f[4], "art": art, "position": int(f[6]) / 1e6 if f[6].isdigit() else 0.0,
+                     "length": int(f[7]) / 1e6 if f[7].isdigit() else 0.0})
+    return sorted(rows, key=lambda r: r["status"] != "Playing")
+
+
+def player_label(name):
+    base = name.split(".")[0]
+    return {"spotify": "Spotify", "firefox": "Firefox", "chromium": "Chromium", "vlc": "VLC", "elisa": "Elisa",
+            "mpv": "mpv", "brave": "Brave", "strawberry": "Strawberry"}.get(base, base.capitalize())
+
+
+def demo_playing():
+    """Now-playing output for --demo, advancing with the clock."""
+    import time
+    pos = time.time() % 214
+    art = (_PKG / "deckos-settings/rootfs/usr/share/deckos/branding/store-logo.svg").as_uri()
+    return (f"spotify\tPlaying\tMidnight City\tM83\tHurry Up, We're Dreaming\t{art}\t{int(pos * 1e6)}\t214000000", 0)
+
+
 # ------------------------------------------------------------------ updates, snapshots, firewall
 
 def parse_snapshots(out):

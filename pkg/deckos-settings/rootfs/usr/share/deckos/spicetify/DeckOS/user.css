@@ -1,0 +1,130 @@
+/* DeckOS for Spotify (Spicetify).
+ * Colours come from color.ini; this adds the DeckOS shape language from DeckOS Hub: bordered,
+ * rounded slate panels, Inter, the blue-violet gradient on play buttons and progress, slim
+ * scrollbars. Spotify renames its classes now and then, so selectors stick to the long-lived
+ * Root__ / main-* names and data-testid attributes; anything that stops matching just falls
+ * back to Spotify's own look in DeckOS colours. */
+
+:root {
+  --deckos-radius: 10px;
+  --deckos-border: 1px solid var(--spice-highlight-elevated);
+  --deckos-gradient: linear-gradient(135deg, #4c8dff 0%, #7a5cff 100%);
+}
+
+body, button, input, select, textarea, .encore-text {
+  font-family: "Inter", "Noto Sans", sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+h1, .main-entityHeader-title h1, .encore-text-headline-large, .encore-text-headline-medium {
+  font-family: "Inter Display", "Inter", sans-serif !important;
+  font-weight: 600 !important;
+}
+
+/* ---- panels: the sidebar, main view and right sidebar as bordered slate plates */
+
+.Root__top-container {
+  background-color: var(--spice-main) !important;
+  gap: 8px;
+}
+
+.Root__nav-bar, .Root__main-view, .Root__right-sidebar {
+  border: var(--deckos-border);
+  border-radius: var(--deckos-radius) !important;
+  overflow: hidden;
+}
+
+.Root__nav-bar, .Root__nav-bar > * {
+  background-color: var(--spice-sidebar) !important;
+}
+
+.Root__main-view, .main-view-container {
+  background-color: var(--spice-main) !important;
+}
+
+/* No big colour wash behind playlist and album headers: keep the slate. */
+.main-entityHeader-backgroundColor, .main-actionBarBackground-background, .main-home-homeHeader {
+  background-color: transparent !important;
+  background-image: linear-gradient(180deg, rgba(76, 141, 255, 0.10) 0%, transparent 100%) !important;
+}
+
+/* ---- now playing bar */
+
+.Root__now-playing-bar, footer[data-testid="now-playing-bar"] {
+  background-color: var(--spice-player) !important;
+  border-top: var(--deckos-border);
+}
+
+/* ---- cards (albums, playlists, artists) */
+
+.main-card-card {
+  background-color: var(--spice-card) !important;
+  border: var(--deckos-border);
+  border-radius: var(--deckos-radius) !important;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.main-card-card:hover {
+  background-color: var(--spice-main-elevated) !important;
+  border-color: var(--spice-highlight);
+}
+
+.main-image-image, .main-cardImage-image {
+  border-radius: 8px !important;
+}
+
+/* ---- play buttons: the DeckOS gradient */
+
+[data-testid="play-button"] > span,
+.main-playButton-PlayButton > button > span,
+.main-playPauseButton-button,
+button[data-testid="control-button-playpause"] {
+  background: var(--deckos-gradient) !important;
+  color: #ffffff !important;
+}
+
+/* ---- progress and volume bars */
+
+.progress-bar, .x-progressBar-progressBarBg {
+  --bg-color: var(--spice-highlight-elevated) !important;
+  --fg-color: var(--spice-button) !important;
+}
+
+.x-progressBar-fillColor, .progress-bar__fg {
+  background: var(--deckos-gradient) !important;
+}
+
+/* ---- rows, inputs, menus */
+
+.main-trackList-trackListRow {
+  border-radius: 8px;
+}
+
+.main-trackList-trackListRow:hover, .main-trackList-trackListRow:focus-within {
+  background-color: var(--spice-main-elevated) !important;
+}
+
+input[type="search"], .x-searchInput-searchInputInput, [data-testid="search-input"] {
+  background-color: var(--spice-main-elevated) !important;
+  border: var(--deckos-border) !important;
+  border-radius: 9px !important;
+  color: var(--spice-text) !important;
+}
+
+input[type="search"]:focus, [data-testid="search-input"]:focus {
+  border-color: var(--spice-button) !important;
+  box-shadow: none !important;
+}
+
+.main-contextMenu-menu, [role="menu"], .main-contextMenu-tippy {
+  background-color: #22262f !important;
+  border: var(--deckos-border);
+  border-radius: 9px !important;
+}
+
+/* ---- scrollbars */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: var(--spice-highlight); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--spice-misc); }

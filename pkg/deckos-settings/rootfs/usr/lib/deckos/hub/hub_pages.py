@@ -2,17 +2,19 @@
 two seconds while it's on screen."""
 import re
 import shlex
+import time
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, Qt
+from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                                QLabel, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
 import hub_style as S
 import hub_system as sysinfo
-from hub_widgets import (Card, Empty, Meter, RowItem, StatTile, StatusTile, button, icon_label, label, restyle,
+from hub_widgets import (Card, Empty, Meter, NowPlaying, RowItem, StatTile, StatusTile, button, icon_label, label,
+                         restyle,
                          row)
 
 DECKOS = sysinfo.DECKOS
@@ -110,6 +112,13 @@ class HomePage(Page):
             grid.setColumnStretch(c, 1)
         self.lay.addLayout(grid)
 
+        self.now = NowPlaying()
+        self.now.control.connect(self.player_control)
+        self.now.seek.connect(self.player_seek)
+        self.lay.addWidget(self.now)
+        self.np_busy, self.np_track, self.np_pos, self.np_last, self.np_status, self.np_key = \
+            False, None, 0.0, 0.0, "", None
+
         quick = Card("Quick actions", None, None)
         quick.body.addWidget(row(button("Get apps", slot=lambda: QProcess.startDetached("deckos-store", []),
                                         icon="store"),
@@ -122,6 +131,52 @@ class HomePage(Page):
     def tick(self, stats):
         for key, tile in self.tiles.items():
             tile.set(*stats.get(key, ("—", None)))
+        if self.isVisible():
+            self.poll_player()
+
+    # ---- now playing
+
+    def poll_player(self):
+        if self.np_busy:
+            return
+        if not sysinfo.have("playerctl"):
+            return
+        self.np_busy = True
+        sysinfo.Job(self, ["playerctl", "-a", "metadata", "--format", sysinfo.PLAYERCTL_FORMAT], self.show_player,
+                    demo=sysinfo.demo_playing())
+
+    def show_player(self, out, code):
+        self.np_busy = False
+        rows = sysinfo.parse_players(out) if code == 0 else []
+        if not rows:
+            self.np_track = None
+            self.now.show_nothing()
+            return
+        t = rows[0]
+        t["label"] = sysinfo.player_label(t["player"])
+        key, now = (t["player"], t["title"], t["artist"]), time.monotonic()
+        # Some players (Spotify among them) report position 0; then keep our own clock.
+        if t["position"] > 0 or key != self.np_key:
+            pos = t["position"]
+        else:
+            pos = self.np_pos + (now - self.np_last if t["status"] == self.np_status == "Playing" else 0)
+        self.np_pos = min(pos, t["length"]) if t["length"] else pos
+        self.np_last, self.np_status, self.np_key, self.np_track = now, t["status"], key, t
+        self.now.show_track(t, self.np_pos)
+
+    def player_control(self, action):
+        if self.np_track and not sysinfo.DEMO:
+            QProcess.startDetached("playerctl", ["-p", self.np_track["player"], action])
+        QTimer.singleShot(350, self.poll_player)
+
+    def player_seek(self, frac):
+        t = self.np_track
+        if not t or not t["length"]:
+            return
+        self.np_pos = frac * t["length"]
+        if not sysinfo.DEMO:
+            QProcess.startDetached("playerctl", ["-p", t["player"], "position", f"{self.np_pos:.1f}"])
+        self.now.show_track(t, self.np_pos)
 
     def show_snapshots(self, system):
         tile = self.status["snapshots"]
@@ -759,6 +814,16 @@ class AppearancePage(Page):
         style.body.addWidget(label("DeckOS icons are Papirus with folders in the DeckOS blue. The login screen uses the "
                                    "DeckOS theme.", "muted"))
         self.lay.addWidget(style)
+
+        spotify = Card("Spotify", "The DeckOS look for Spotify", "music")
+        spotify.body.addWidget(label("Restyles the official Spotify app with Spicetify: DeckOS colours, bordered panels "
+                                     "and the gradient play buttons. Spotify updates undo it; apply it again after one.",
+                                     "sub"))
+        spotify.body.addWidget(row(button("Apply DeckOS look", "primary", lambda: self.hub.terminal("deckos spotify theme"),
+                                          icon="appearance"),
+                                   button("Back to stock", slot=lambda: self.hub.terminal("deckos spotify restore"),
+                                          icon="refresh")))
+        self.lay.addWidget(spotify)
 
     def apply(self, cmd, done_text):
         if sysinfo.DEMO:
