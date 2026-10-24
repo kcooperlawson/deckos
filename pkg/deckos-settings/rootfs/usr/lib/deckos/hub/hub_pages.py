@@ -757,6 +757,18 @@ class AiDevPage(Page):
             button("Open terminal", slot=lambda: QProcess.startDetached("konsole", []), icon="terminal")))
         self.lay.addWidget(claude)
 
+        desk = Card("Claude Desktop", "Chat, Cowork and Claude Code in a window (beta)", "ai")
+        have = sysinfo.installed("claude-desktop")
+        desk.body.addWidget(label("Anthropic's Linux app is built for Ubuntu and Debian. On DeckOS it comes from the AUR "
+                                  "package <b>claude-desktop</b>, which repackages that official build. Sign-in is kept "
+                                  "in KDE Wallet.", "sub"))
+        desk.body.addWidget(row(
+            button("Open", "primary", lambda: QProcess.startDetached("claude-desktop", []), icon="external") if have else
+            button("Install", "primary", lambda: self.hub.terminal("paru -S --needed claude-desktop"), icon="download"),
+            *([button("Update", slot=lambda: self.hub.terminal("paru -S --needed claude-desktop"), icon="refresh")]
+              if have else [])))
+        self.lay.addWidget(desk)
+
         self.ollama_card = Card("Local AI", "Ollama on your graphics card", "ai")
         if ai:
             self.ollama_state = label("", "sub")
