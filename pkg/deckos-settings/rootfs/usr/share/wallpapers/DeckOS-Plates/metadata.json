@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Plates",
+        "License": "MIT",
+        "Name": "DeckOS Plates"
+    }
+}

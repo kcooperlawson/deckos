@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "A light theme: soft white with the DeckOS blue",
+        "Id": "org.deckos.paper",
+        "License": "MIT",
+        "Name": "DeckOS Paper",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

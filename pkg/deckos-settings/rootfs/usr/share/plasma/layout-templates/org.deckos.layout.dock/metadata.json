@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Description": "One floating dock in the middle: apps, Quick Settings, the clock (the DeckOS default)",
+        "Id": "org.deckos.layout.dock",
+        "License": "MIT",
+        "Name": "DeckOS: Dock"
+    },
+    "X-Plasma-ContainmentCategories": [
+        "panel"
+    ],
+    "X-Plasma-Shell": "org.kde.plasma.desktop"
+}

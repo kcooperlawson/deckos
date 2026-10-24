@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Description": "Large icons and a tall dock: easy from the couch, with a controller or a touchscreen",
+        "Id": "org.deckos.layout.big",
+        "License": "MIT",
+        "Name": "DeckOS: Big"
+    },
+    "X-Plasma-ContainmentCategories": [
+        "panel"
+    ],
+    "X-Plasma-Shell": "org.kde.plasma.desktop"
+}

@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "Neutral greys, a quiet silver accent",
+        "Id": "org.deckos.graphite",
+        "License": "MIT",
+        "Name": "DeckOS Graphite",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

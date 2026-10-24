@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Graphite-Waves",
+        "License": "MIT",
+        "Name": "DeckOS Graphite Waves"
+    }
+}

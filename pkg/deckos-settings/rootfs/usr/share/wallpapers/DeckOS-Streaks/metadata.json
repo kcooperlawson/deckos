@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Streaks",
+        "License": "MIT",
+        "Name": "DeckOS Streaks"
+    }
+}

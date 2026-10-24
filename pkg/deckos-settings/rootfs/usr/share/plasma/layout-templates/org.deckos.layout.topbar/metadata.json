@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Description": "A slim bar on top (menu, clock, Quick Settings) and an app dock below, like macOS",
+        "Id": "org.deckos.layout.topbar",
+        "License": "MIT",
+        "Name": "DeckOS: Top bar + dock"
+    },
+    "X-Plasma-ContainmentCategories": [
+        "panel"
+    ],
+    "X-Plasma-Shell": "org.kde.plasma.desktop"
+}

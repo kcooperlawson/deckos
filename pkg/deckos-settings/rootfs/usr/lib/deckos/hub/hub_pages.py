@@ -9,7 +9,7 @@ from pathlib import Path
 from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
+                               QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
                                QVBoxLayout, QWidget)
 
 import hub_style as S
@@ -1224,8 +1224,19 @@ class AppearancePage(Page):
         self.wall_grid = QGridLayout()
         self.wall_grid.setSpacing(10)
         walls.body.addLayout(self.wall_grid)
-        walls.body.addWidget(row(button("Choose an image…", slot=self.pick_wallpaper, icon="folder")))
+        self.walls_all = False
+        self.walls_more = button("Show all", slot=self.toggle_walls, icon="grid")
+        walls.body.addWidget(row(self.walls_more, button("Choose an image…", slot=self.pick_wallpaper, icon="folder")))
         self.lay.addWidget(walls)
+
+        layouts = Card("Desktop layout", "Where the panels go", "panel-right")
+        layouts.body.addWidget(label("Replaces your panels with the layout you pick. Desktop icons and widgets stay.",
+                                     "sub"))
+        self.layout_grid = QGridLayout()
+        self.layout_grid.setSpacing(10)
+        layouts.body.addLayout(self.layout_grid)
+        self.lay.addWidget(layouts)
+
 
         style = Card("Desktop style", "Panel, menus and icons", "display")
         grid = QGridLayout()
@@ -1281,13 +1292,34 @@ class AppearancePage(Page):
             self.theme_grid.addWidget(self.preview_tile(preview, name, desc, tid == current,
                                                         lambda t=tid, n=name: self.apply(
                                                             ["plasma-apply-lookandfeel", "--apply", t], f"Theme: {n}")),
-                                      0, i)
+                                      i // 4, i % 4)
         self.theme_grid.setColumnStretch(4, 1)
         self.clear(self.wall_grid)
-        for i, (path, name, preview) in enumerate(sysinfo.wallpapers()[:8]):
+        walls = sysinfo.wallpapers()
+        shown = walls if self.walls_all else walls[:12]
+        for i, (path, name, preview) in enumerate(shown):
             self.wall_grid.addWidget(self.preview_tile(preview, name, "", False, lambda p=path, n=name: self.apply(
                 ["plasma-apply-wallpaperimage", str(p)], f"Wallpaper: {n}"), small=True), i // 4, i % 4)
         self.wall_grid.setColumnStretch(4, 1)
+        self.walls_more.setVisible(len(walls) > 12)
+        self.walls_more.setText("Show fewer" if self.walls_all else f"Show all {len(walls)}")
+        self.clear(self.layout_grid)
+        for i, (key, name, desc, preview) in enumerate(sysinfo.desktop_layouts()):
+            self.layout_grid.addWidget(self.preview_tile(preview, name, desc, False,
+                                                         lambda k=key, n=name: self.set_layout(k, n), small=True),
+                                       i // 4, i % 4)
+        self.layout_grid.setColumnStretch(4, 1)
+
+    def toggle_walls(self):
+        self.walls_all = not self.walls_all
+        self.refresh()
+
+    def set_layout(self, key, name):
+        if QMessageBox.question(self, "Change the desktop layout?",
+                                f"Your panels will be replaced with the {name} layout. Desktop icons and widgets "
+                                "stay. You can switch back any time.") != QMessageBox.Yes:
+            return
+        self.apply(["deckos", "layout", "set", key], f"Desktop layout: {name}")
 
     @staticmethod
     def preview_tile(preview, name, desc, current, slot, small=False):

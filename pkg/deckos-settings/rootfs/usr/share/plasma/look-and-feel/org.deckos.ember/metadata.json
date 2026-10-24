@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "Warm carbon with racing orange",
+        "Id": "org.deckos.ember",
+        "License": "MIT",
+        "Name": "DeckOS Ember",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

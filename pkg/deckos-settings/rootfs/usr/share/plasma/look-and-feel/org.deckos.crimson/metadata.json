@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "Dark garnet with red and rose",
+        "Id": "org.deckos.crimson",
+        "License": "MIT",
+        "Name": "DeckOS Crimson",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

@@ -1203,6 +1203,33 @@ ai_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ desktop layouts
+#
+# The panel layouts in /usr/share/plasma/layout-templates/org.deckos.layout.* (assets/themes.py):
+# the current panels go and the template's take their place. Desktop icons and widgets stay.
+
+LAYOUTS_DIR=/usr/share/plasma/layout-templates
+
+layout_cmd() {
+  case ${1:-list} in
+    list)
+      local d
+      for d in "$LAYOUTS_DIR"/org.deckos.layout.*/; do
+        [[ -d $d ]] || continue
+        printf '  %-10s %s\n' "$(basename "$d" | sed 's/^org.deckos.layout.//')" \
+          "$(jq -r '.KPlugin.Description // ""' "$d/metadata.json" 2>/dev/null)"
+      done ;;
+    set)
+      local name=${2:-}
+      [[ $name =~ ^[a-z]+$ && -d $LAYOUTS_DIR/org.deckos.layout.$name ]] || { err "no layout called '$name' (deckos layout list)"; exit 2; }
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
+        "panels().forEach(function (p) { p.remove(); }); loadTemplate(\"org.deckos.layout.$name\");" >/dev/null
+      ok "desktop layout: $name" ;;
+    *) err "usage: deckos layout [list|set NAME]"; exit 2 ;;
+  esac
+}
+
 # ------------------------------------------------------------------ streaming and Decky
 
 streaming_setup() {  # Sunshine: stream games to a TV, phone or Steam Deck with Moonlight
@@ -1292,6 +1319,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
+  deckos layout  [list|set NAME]                        desktop layout: dock, classic, topbar, minimal, big
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
@@ -1318,6 +1346,7 @@ case ${1:-} in
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
+  layout) shift; layout_cmd "$@" ;;
   ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;

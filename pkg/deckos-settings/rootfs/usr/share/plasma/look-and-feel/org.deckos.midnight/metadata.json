@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Category": "",
+        "Description": "Ink-black with violet and magenta",
+        "Id": "org.deckos.midnight",
+        "License": "MIT",
+        "Name": "DeckOS Midnight Violet",
+        "Version": "1.0"
+    },
+    "X-Plasma-APIVersion": "2"
+}

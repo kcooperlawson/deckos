@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Ember-Waves",
+        "License": "MIT",
+        "Name": "DeckOS Ember Waves"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Ember-Streaks",
+        "License": "MIT",
+        "Name": "DeckOS Ember Streaks"
+    }
+}

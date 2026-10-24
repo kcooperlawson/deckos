@@ -74,6 +74,32 @@ package() {
     done
   } > "$it/index.theme"
 
+  # Theme packs (assets/themes.py): every wallpaper in every palette, and the DeckOS icons with
+  # folders in each theme's colour, made from Papirus-Dark the same way as the DeckOS ones above.
+  local svgw name
+  for svgw in "$pkgdir"/usr/share/deckos/wallpapers/*.svg; do
+    name=$(basename "$svgw" .svg)
+    install -d "$pkgdir/usr/share/wallpapers/$name/contents/images"
+    for size in 3840x2160 1920x1080; do
+      rsvg-convert -w "${size%x*}" -h "${size#*x}" "$svgw" -o "$pkgdir/usr/share/wallpapers/$name/contents/images/$size.png"
+    done
+    rsvg-convert -w 960 -h 540 "$svgw" -o "$pkgdir/usr/share/wallpapers/$name/contents/screenshot.png"
+  done
+  local vid vname folder back symbol vit
+  while IFS=$'\t' read -r vid vname folder back symbol; do
+    [[ -n $vid && $vid != \#* ]] || continue
+    vit=$pkgdir/usr/share/icons/$vid
+    for d in "${dirs[@]}"; do
+      install -d "$vit/$d"
+      cp "$it/$d/"*.svg "$vit/$d/"
+      sed -i "s/#4c8dff/$folder/gI; s/#4a5fe0/$back/gI; s/#16234d/$symbol/gI" "$vit/$d/"*.svg
+    done
+    sed -e "s/^Name=DeckOS$/Name=DeckOS $vname/" -e "s/^Comment=.*/Comment=Papirus Dark with $vname folders/" \
+      "$it/index.theme" > "$vit/index.theme"
+    # the light theme's other icons come from Papirus' light set
+    [[ $vid != DeckOS-Paper ]] || sed -i 's/^Inherits=Papirus-Dark,breeze-dark,/Inherits=Papirus,breeze,/' "$vit/index.theme"
+  done < "$pkgdir/usr/share/deckos/themes/icon-variants.tsv"
+
   # App icon (controller tile): Kickoff button, Hub, os-release LOGO, fastfetch.
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos.svg"
   for s in 16 24 32 48 64 128 256; do

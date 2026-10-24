@@ -463,7 +463,8 @@ def wallpaper_previews(name):
             if (base / name / f).exists():
                 yield base / name / f
     if DEMO:  # the PNGs are made when the package builds; the repo only has the SVG sources
-        src = {"DeckOS": "deckos/branding/wallpaper.svg", "TMpikes": "deckos/themes/tmpikes/wallpaper.svg"}.get(name)
+        src = {"DeckOS": "deckos/branding/wallpaper.svg", "TMpikes": "deckos/themes/tmpikes/wallpaper.svg"}.get(
+            name, f"deckos/wallpapers/{name}.svg")
         if src and _repo_share(src).exists():
             yield _repo_share(src)
 
@@ -481,8 +482,26 @@ def wallpapers():
                 name = json.loads(read(d / "metadata.json")).get("KPlugin", {}).get("Name", d.name)
             except ValueError:
                 name = d.name
-            out.append((d, name, preview))
+            if d.name not in [o[0].name for o in out]:  # the user's copy, or demo mode's repo copy, once
+                out.append((d, name, preview))
     return sorted(out, key=lambda w: (w[0].name not in ("DeckOS", "TMpikes"), w[1].lower()))
+
+
+def desktop_layouts():
+    """[(key, name, description, preview)] for the DeckOS panel layouts (deckos layout set KEY)."""
+    out = []
+    for base in _dirs("plasma/layout-templates"):
+        for d in sorted(base.glob("org.deckos.layout.*")):
+            try:
+                meta = json.loads(read(d / "metadata.json")).get("KPlugin", {})
+            except ValueError:
+                continue
+            key = d.name.rsplit(".", 1)[1]
+            preview = next((b / f"deckos/layouts/{key}.svg" for b in _dirs("") if (b / f"deckos/layouts/{key}.svg").exists()), None)
+            if key not in [o[0] for o in out]:
+                out.append((key, meta.get("Name", key).replace("DeckOS: ", ""), meta.get("Description", ""), preview))
+    order = ["dock", "classic", "topbar", "minimal", "big"]
+    return sorted(out, key=lambda o: order.index(o[0]) if o[0] in order else 99)
 
 
 def current_look():

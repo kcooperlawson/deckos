@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Id": "DeckOS-Paper-Plates",
+        "License": "MIT",
+        "Name": "DeckOS Paper Plates"
+    }
+}

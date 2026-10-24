@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DeckOS"
+            }
+        ],
+        "Description": "A full-width taskbar along the bottom with window names, like Windows",
+        "Id": "org.deckos.layout.classic",
+        "License": "MIT",
+        "Name": "DeckOS: Classic"
+    },
+    "X-Plasma-ContainmentCategories": [
+        "panel"
+    ],
+    "X-Plasma-Shell": "org.kde.plasma.desktop"
+}
