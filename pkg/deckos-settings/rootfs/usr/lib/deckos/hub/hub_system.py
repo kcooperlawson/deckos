@@ -384,7 +384,8 @@ def update_channel_on():
 
 # ------------------------------------------------------------------ appearance
 
-_PKG = Path(__file__).resolve().parents[6]  # pkg/ in the repo
+_HERE = Path(__file__).resolve()
+_PKG = _HERE.parents[6] if len(_HERE.parents) > 6 else Path("/nonexistent")  # pkg/ in the repo; absent once installed
 REPO_SHARES = [_PKG / "deckos-settings/rootfs/usr/share", _PKG / "deckos-theme-tmpikes/rootfs/usr/share"]
 
 
