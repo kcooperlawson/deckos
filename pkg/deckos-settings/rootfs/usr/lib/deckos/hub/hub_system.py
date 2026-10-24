@@ -382,6 +382,36 @@ def update_channel_on():
     return DEMO or "Include = /etc/pacman.d/deckos-repo" in read("/etc/pacman.conf")
 
 
+# DeckOS's own packages, from the signed DeckOS repo; everything else comes from Arch and CachyOS.
+DECKOS_PKGS = ("deckos-settings", "deckos-files", "deckos-theme-tmpikes")
+# Updates that only take effect after a restart: the kernel and what boots with it.
+REBOOT_RE = re.compile(r"linux(-cachyos[\w-]*|-zen|-lts)?(-headers)?$|linux-firmware.*|amd-ucode|systemd|mesa|"
+                       r"vulkan-radeon|nvidia.*")
+# Updates the running desktop keeps the old copy of until it restarts (the panel, Menu, Quick Settings).
+DESKTOP_RE = re.compile(r"deckos-settings|plasma-workspace|plasma-desktop|libplasma|kwin|qt6-declarative")
+
+DEMO_UPDATES = "\n".join([
+    "deckos-settings 0.3.10-1 -> 0.3.11-1", "deckos-files 0.3.10-1 -> 0.3.11-1",
+    "linux-cachyos 6.17.4-1 -> 6.17.5-1", "mesa 1:25.2.5-1 -> 1:25.2.6-1", "firefox 144.0-1 -> 144.0.1-1",
+    "plasma-workspace 6.5.0-1 -> 6.5.1-1", "kwin 6.5.0-1 -> 6.5.1-1", "pipewire 1:1.4.9-1 -> 1:1.4.9-2",
+    "steam 1.0.0.84-1 -> 1.0.0.85-1", "python 3.13.7-1 -> 3.13.8-1", "curl 8.16.0-1 -> 8.16.0-2"])
+
+
+def parse_updates(text):
+    """checkupdates / paru -Qua lines ("name old -> new") to [(name, old, new)]."""
+    out = []
+    for ln in text.splitlines():
+        p = ln.split()
+        if len(p) >= 4 and p[2] == "->" and "[ignored]" not in ln:
+            out.append((p[0], p[1], p[3]))
+    return out
+
+
+def plain_version(v):
+    """'1:25.2.6-1' -> '25.2.6': no epoch or package release, for showing people."""
+    return v.split(":", 1)[-1].rsplit("-", 1)[0]
+
+
 # ------------------------------------------------------------------ appearance
 
 _HERE = Path(__file__).resolve()

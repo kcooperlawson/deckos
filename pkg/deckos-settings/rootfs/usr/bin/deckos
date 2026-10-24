@@ -397,11 +397,19 @@ update_cmd() {
     ok "done"
     return
   fi
+  local before after
+  before=$(pacman -Q deckos-settings 2>/dev/null || true)
   section "Updating DeckOS"
   sub "snap-pac takes a btrfs snapshot before and after; roll back from the GRUB 'snapshots' menu."
   if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi
   command -v flatpak >/dev/null && flatpak update -y || true
   ok "done"
+  after=$(pacman -Q deckos-settings 2>/dev/null || true)
+  if [[ $after != "$before" ]]; then
+    # The panel, Menu and Quick Settings keep the old version until plasmashell restarts.
+    ok "DeckOS ${after#deckos-settings } installed"
+    sub "Restart the desktop to load it (open windows stay open): systemctl --user restart plasma-plasmashell"
+  fi
 }
 
 # How many updates are waiting (DeckOS Quick Settings shows it in the panel). Checking needs the

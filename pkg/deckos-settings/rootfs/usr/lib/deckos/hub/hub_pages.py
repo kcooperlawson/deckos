@@ -531,8 +531,15 @@ class SystemPage(Page):
         self.up_detail = label("", "sub")
         up.body.addWidget(self.up_state)
         up.body.addWidget(self.up_detail)
-        self.channel = label("", "muted")
-        up.body.addWidget(self.channel)
+        self.up_rows = QVBoxLayout()  # what's coming: DeckOS, system packages, AUR; after updating, what's next
+        self.up_rows.setSpacing(6)
+        up.body.addLayout(self.up_rows)
+        self.up_list = label("", "mono")
+        self.up_list.setTextFormat(Qt.PlainText)
+        self.up_list.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.up_list.hide()
+        up.body.addWidget(self.up_list)
+        self.pending, self.notices = ([], []), []
         self.up_meter = Meter(6)
         self.up_meter.hide()
         up.body.addWidget(self.up_meter)
@@ -543,7 +550,7 @@ class SystemPage(Page):
         self.up_log.hide()
         up.body.addWidget(self.up_log)
         self.up_btn = button("Update now", "primary", self.run_update, icon="update",
-                             tip="Arch, CachyOS and Flatpak apps; a snapshot is taken first")
+                             tip="DeckOS, Arch, CachyOS and Flatpak apps; a snapshot is taken first")
         self.up_btn.setEnabled(False)
         up.body.addWidget(row(self.up_btn,
                               button("Check again", slot=self.check_updates, icon="refresh"),
@@ -590,11 +597,6 @@ class SystemPage(Page):
 
     def refresh(self):
         self.check_updates()
-        self.channel.setText(
-            "DeckOS's own updates (the Hub, tools, themes) come from the signed DeckOS repo." if
-            sysinfo.update_channel_on() else
-            f"<span style='color:{S.WARNING}'>DeckOS's own updates aren't set up yet.</span> Run "
-            "<b>deckos dev-install</b> once from a DeckOS checkout, or install a newer deckos-settings.")
         self.hub.data.snapshots(self.show_snapshots)
         self.show_home()
         self.hub.data.firewall(self.show_firewall)
@@ -611,20 +613,83 @@ class SystemPage(Page):
         self.up_state.setText("Checking for updates…")
         self.up_detail.setText("")
         self.up_btn.setEnabled(False)
-        self.hub.data.updates(self.show_updates, fresh=True)
+        self.hub.data.update_list(self.show_updates, fresh=True)
 
-    def show_updates(self, n, aur, err):
+    DECKOS_PARTS = {"deckos-settings": "Hub, Menu, Quick Settings, deckos tool, themes",
+                    "deckos-files": "DeckOS Files", "deckos-theme-tmpikes": "TMpikes theme"}
+
+    def show_updates(self, repo, aur, err):
+        self.pending = (repo, aur)
+        self.clear(self.up_rows)
+        for _kind, make in self.notices:
+            self.up_rows.addWidget(make())
+        deck = [p for p in repo if p[0] in sysinfo.DECKOS_PKGS]
+        system = [p for p in repo if p[0] not in sysinfo.DECKOS_PKGS]
+        settings = next((p for p in deck if p[0] == "deckos-settings"), None)
+        total = len(repo) + len(aur)
         if err:
             self.up_state.setText("Couldn't check for updates")
             self.up_detail.setText(err)
-        elif n + aur == 0:
+        elif total == 0:
             self.up_state.setText("Everything is up to date")
-            self.up_detail.setText("Arch, CachyOS and AUR packages.")
+            self.up_detail.setText("DeckOS, Arch, CachyOS and AUR packages.")
         else:
-            self.up_state.setText(f"{n + aur} update{'s' if n + aur != 1 else ''} waiting")
-            self.up_detail.setText(f"{n} from Arch and CachyOS" + (f", {aur} from the AUR (update those in the "
-                                                                   "terminal)" if aur else "") + ".")
-        self.up_btn.setEnabled(n > 0 and not err)
+            self.up_state.setText(f"DeckOS {sysinfo.plain_version(settings[2])} is ready" if settings else
+                                  f"{total} update{'s' if total != 1 else ''} waiting")
+            self.up_detail.setText("Update now installs the DeckOS and system updates below. A snapshot is taken "
+                                   "first, so you can roll back." if repo else
+                                   "Only AUR apps: update them in the terminal.")
+
+        if not err:
+            if deck:
+                title = (f"DeckOS {sysinfo.plain_version(settings[1])} → {sysinfo.plain_version(settings[2])}"
+                         if settings else "DeckOS apps")
+                self.up_rows.addWidget(RowItem("update", title, "From the signed DeckOS repo: " + "; ".join(
+                    self.DECKOS_PARTS.get(p[0], p[0]) for p in deck), S.P.accent))
+            elif sysinfo.update_channel_on():
+                self.up_rows.addWidget(RowItem("check", sysinfo.deckos_version(),
+                                               "Up to date with the signed DeckOS repo", S.SUCCESS))
+            else:
+                self.up_rows.addWidget(RowItem("alert", "DeckOS's own updates aren't set up",
+                                               "Run deckos dev-install once from a DeckOS checkout, or install a "
+                                               "newer deckos-settings.", S.WARNING))
+            if system:
+                # Name what matters first: the kernel and desktop, then the rest.
+                key = sorted(system, key=lambda p: not (sysinfo.REBOOT_RE.fullmatch(p[0]) or
+                                                        sysinfo.DESKTOP_RE.fullmatch(p[0])))
+                names = ", ".join(p[0] for p in key[:4]) + (f" and {len(key) - 4} more" if len(key) > 4 else "")
+                restart = any(sysinfo.REBOOT_RE.fullmatch(p[0]) for p in system)
+                toggle = button("Hide" if self.up_list.isVisible() else "Show all", slot=self.toggle_up_list,
+                                icon="list")
+                self.up_rows.addWidget(RowItem("package", f"{len(system)} system package{'s' if len(system) != 1 else ''}",
+                                               f"Arch and CachyOS: {names}" + (" · needs a restart" if restart else ""),
+                                               S.SUBTEXT, [toggle]))
+            if aur:
+                self.up_rows.addWidget(RowItem("terminal", f"{len(aur)} AUR app{'s' if len(aur) != 1 else ''}",
+                                               ", ".join(p[0] for p in aur[:4]) + ": not in Update now, use Full "
+                                               "update in terminal", S.SUBTEXT))
+        width = max((len(p[0]) for p in repo + aur), default=0)
+        self.up_list.setText("\n".join(f"{n:<{width}}  {sysinfo.plain_version(o)} → {sysinfo.plain_version(v)}"
+                                       for n, o, v in deck + system + aur))
+        if not repo + aur:
+            self.up_list.hide()
+        self.up_btn.setEnabled(bool(repo) and not err)
+
+    def toggle_up_list(self):
+        self.up_list.setVisible(not self.up_list.isVisible())
+        b = self.sender()
+        if b:
+            b.setText("Hide" if self.up_list.isVisible() else "Show all")
+
+    def restart_desktop(self):
+        """The panel, Menu and Quick Settings are loaded once per login: restart plasmashell for the new ones.
+        Open windows stay open (KWin keeps them)."""
+        self.notices = [n for n in self.notices if n[0] != "desktop"]
+        self.show_updates(*self.pending, "")
+        if sysinfo.DEMO:
+            self.hub.toast("Restarting the desktop (demo).", "info")
+        elif not QProcess.startDetached("systemctl", ["--user", "restart", "plasma-plasmashell"]):
+            QProcess.startDetached("plasmashell", ["--replace"])
 
     def run_update(self):
         self.updating = QProcess(self)
@@ -657,7 +722,11 @@ class SystemPage(Page):
         self.updating = None
         self.up_meter.set(1.0 if code == 0 else self.up_meter.value, None if code == 0 else S.DANGER)
         if code == 0:
-            self.hub.toast("DeckOS is up to date. Restart if the kernel was updated.", "ok", 7000)
+            self.notices = self.after_update(self.pending[0])
+            needs = [k for k, _ in self.notices]
+            self.hub.toast("Updated. Restart the PC to finish." if "reboot" in needs else
+                           "Updated. Restart the desktop to load the new DeckOS." if "desktop" in needs else
+                           "DeckOS is up to date.", "ok", 7000)
         elif code in (126, 127):
             self.hub.toast("Update cancelled.", "warn")
         else:
@@ -665,6 +734,27 @@ class SystemPage(Page):
         self.hub.data.invalidate()
         self.check_updates()
         self.hub.data.snapshots(self.show_snapshots, fresh=True)
+
+    def after_update(self, done):
+        """What the update just installed needs next, as (kind, row factory) notices for the Updates card."""
+        notes = []
+        settings = next((p for p in done if p[0] == "deckos-settings"), None)
+        desktop = [p[0] for p in done if sysinfo.DESKTOP_RE.fullmatch(p[0])]
+        reboot = [p[0] for p in done if sysinfo.REBOOT_RE.fullmatch(p[0])]
+        if desktop and not reboot:  # a restart covers the desktop too
+            title = f"DeckOS {sysinfo.plain_version(settings[2])} installed" if settings else "Plasma updated"
+            notes.append(("desktop", lambda: RowItem(
+                "refresh", title, "The Menu, panel and Quick Settings switch to the new version when the desktop "
+                "restarts. Your open windows stay open.", S.SUCCESS,
+                [button("Restart desktop", "primary", self.restart_desktop, icon="refresh")])))
+        if reboot:
+            names = ", ".join(reboot[:3]) + (f" and {len(reboot) - 3} more" if len(reboot) > 3 else "")
+            notes.append(("reboot", lambda: RowItem(
+                "power", "Restart to finish", f"{names} load at the next start" +
+                (f"; so does DeckOS {sysinfo.plain_version(settings[2])}" if settings else "") + ".", S.WARNING,
+                [button("Restart now", slot=lambda: self.hub.toast("Restarting (demo).") if sysinfo.DEMO else
+                        QProcess.startDetached("systemctl", ["reboot"]), icon="power")])))
+        return notes
 
     def show_snapshots(self, snaps):
         self.clear(self.snap_list)

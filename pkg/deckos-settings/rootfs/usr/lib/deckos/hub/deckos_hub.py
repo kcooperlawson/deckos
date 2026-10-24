@@ -62,24 +62,26 @@ class HubData:
 
     def updates(self, cb, fresh=False):
         """cb(repo_count, aur_count, error_text)"""
+        self.update_list(lambda repo, aur, err: cb(len(repo), len(aur), err), fresh)
+
+    def update_list(self, cb, fresh=False):
+        """cb([(name, old, new)] from the repos, [(name, old, new)] from the AUR, error_text)"""
         def start(done):
             if not sysinfo.have("checkupdates"):
-                done(0, 0, "checkupdates isn't installed (pacman-contrib).")
+                done([], [], "checkupdates isn't installed (pacman-contrib).")
                 return
 
             def repo(out, code):
                 if code not in (0, 2):
-                    done(0, 0, "No connection to the package mirrors.")
+                    done([], [], "No connection to the package mirrors.")
                     return
-                n = len([ln for ln in out.splitlines() if ln.strip()])
+                pkgs = sysinfo.parse_updates(out)
                 if not sysinfo.have("paru"):
-                    done(n, 0, "")
+                    done(pkgs, [], "")
                     return
-                sysinfo.Job(self.owner, ["paru", "-Qua"], lambda o, _c: done(
-                    n, len([ln for ln in o.splitlines() if ln.strip() and "[ignored]" not in ln]), ""),
-                    demo=("r2modman-bin 3.1.50-1 -> 3.1.52-1", 0))
-            sysinfo.Job(self.owner, ["checkupdates"], repo,
-                        demo=("\n".join(f"pkg{i} 1.0-1 -> 1.1-1" for i in range(11)), 0))
+                sysinfo.Job(self.owner, ["paru", "-Qua"], lambda o, _c: done(pkgs, sysinfo.parse_updates(o), ""),
+                            demo=("r2modman-bin 3.1.50-1 -> 3.1.52-1", 0))
+            sysinfo.Job(self.owner, ["checkupdates"], repo, demo=(sysinfo.DEMO_UPDATES, 0))
         self._get("updates", fresh, cb, start)
 
     def snapshots(self, cb, fresh=False, config="root"):
