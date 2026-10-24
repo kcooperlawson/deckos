@@ -149,6 +149,35 @@ def run_state(run):
             "skipped": ("Skipped", MUTED)}.get(run["conclusion"], ("Failed", DANGER))
 
 
+def _job_state(job):
+    if not job:
+        return None
+    if job["status"] != "completed":
+        return "waiting" if job["status"] in ("queued", "waiting", "pending", "requested") else "running"
+    return job["conclusion"]
+
+
+def phases(run, jobs):
+    """A run's two results, each (text, colour): the update (packages in the pacman repo, which
+    installed systems get from `deckos update`) and the ISO. A version tag publishes the update
+    ~10 minutes in; the ISO takes ~35 more, so the update is usually live long before the ISO."""
+    by = {j["name"]: j for j in jobs}
+    pub = _job_state(by.get("publish"))
+    if not (run.get("event") == "push" and (run.get("head_branch") or "").startswith("v")):
+        update = ("No update (not a version tag)", MUTED)
+    elif pub == "success":
+        update = ("Live: deckos update installs it", SUCCESS)
+    elif pub == "running":
+        update = ("Publishing…", ACCENT)
+    elif pub in ("failure", "cancelled", "timed_out") or "failure" in (_job_state(by.get("lint")), _job_state(by.get("package"))):
+        update = ("Not published", DANGER)
+    else:
+        update = ("Building packages…", WARNING)
+    iso = {"success": ("ISO ready", SUCCESS), "running": ("ISO building", ACCENT), "waiting": ("ISO waiting", WARNING),
+           None: ("ISO waiting", WARNING), "skipped": ("No ISO", MUTED)}.get(_job_state(by.get("iso")), ("ISO failed", DANGER))
+    return update, iso
+
+
 # ------------------------------------------------------------------ USB (Ventoy)
 
 def ventoy_drives():
@@ -392,6 +421,7 @@ class Builder(QWidget):
     def current_card(self):
         c = Card("Current build", None, "snapshot")
         self.cur_state = label("")
+        self.cur_phases = label("", wrap=False)
         self.cur_title = label("No builds yet", "big")
         self.cur_meta = label("", "sub")
         self.cur_meter = Meter(8)
@@ -400,7 +430,7 @@ class Builder(QWidget):
         self.cancel_btn = button("Cancel", slot=self.cancel_build)
         self.open_btn = button("Open on GitHub", slot=lambda: self.current and webbrowser.open(self.current["html_url"]))
         self.cur_log_btn = button("Show log", slot=lambda: self.current and self.show_log(self.current))
-        for w in (self.cur_state, self.cur_title, self.cur_meta):
+        for w in (self.cur_state, self.cur_title, self.cur_meta, self.cur_phases):
             c.body.addWidget(w)
         c.body.addSpacing(4)
         c.body.addWidget(self.cur_meter)
@@ -557,8 +587,16 @@ class Builder(QWidget):
                 self.say(f"GitHub: {err}")
                 self.timer.start(60000)
                 return
-            prev = self.current
+            prev, prev_jobs = self.current, self.jobs
             self.runs, self.current, self.jobs, typical, self.assets, self.local = res
+            # The update goes live ~35 minutes before the ISO is done: say so the moment it does.
+            if prev and self.current and prev["id"] == self.current["id"]:
+                was, now = phases(prev, prev_jobs)[0][1], phases(self.current, self.jobs)[0][1]
+                if now == SUCCESS and was != SUCCESS:
+                    QApplication.alert(self)
+                    tag = self.current.get("head_branch", "")
+                    self.say(f"Update {tag} is live: deckos update installs it (the ISO is still building)")
+                    self.toast.show_message(f"Update {tag} is live: run deckos update", "ok", 9000)
             if typical:
                 self.typical = int(typical)
                 self.settings.setValue("typical_iso_seconds", self.typical)
@@ -595,6 +633,9 @@ class Builder(QWidget):
         end = parse_ts(run["updated_at"]) if run["status"] == "completed" else Clock.now()
         elapsed = (end - started).total_seconds()
         self.cur_state.setText(pill(state, color) + f'&nbsp;&nbsp;<span style="color:{SUBTEXT}">#{run["run_number"]}</span>')
+        (u_text, u_col), (i_text, i_col) = phases(run, self.jobs)
+        self.cur_phases.setText(f'<span style="color:{SUBTEXT}">Update</span>&nbsp; {pill(u_text, u_col)}'
+                                f'&nbsp;&nbsp;&nbsp;<span style="color:{SUBTEXT}">ISO</span>&nbsp; {pill(i_text, i_col)}')
         msg = (run.get("head_commit") or {}).get("message", run["display_title"]).splitlines()[0]
         self.cur_title.setText(msg)
         active = run["status"] != "completed"
@@ -662,8 +703,13 @@ class Builder(QWidget):
                 self.t_repo.set(pub, f"deckos-settings · {when}", "ok")
         if self.current:
             state, _ = run_state(self.current)
-            self.t_build.set(f"#{self.current['run_number']} {state.lower()}", self.current["display_title"][:48],
-                             {"Passed": "ok", "Failed": "bad", "Cancelled": "off"}.get(state, "info"))
+            (u_text, u_col), (i_text, _) = phases(self.current, self.jobs)
+            if u_col == SUCCESS and self.current["status"] != "completed":
+                # Tag build half done: the update is installable, the ISO isn't yet.
+                self.t_build.set("Update live", f"{i_text} · {self.current.get('head_branch', '')}", "ok")
+            else:
+                self.t_build.set(f"#{self.current['run_number']} {state.lower()}", self.current["display_title"][:48],
+                                 {"Passed": "ok", "Failed": "bad", "Cancelled": "off"}.get(state, "info"))
 
     def render_repo(self):
         self.render_tiles()
