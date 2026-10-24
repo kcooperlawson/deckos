@@ -69,8 +69,9 @@ def steam_games():
         apps = (vdf(_read(cfg)).get("userlocalconfigstore", {}).get("software", {}).get("valve", {})
                 .get("steam", {}).get("apps", {}))
         for appid, a in apps.items():
-            if isinstance(a, dict) and a.get("lastplayed", "0").isdigit():
-                last[appid] = max(last.get(appid, 0), int(a["lastplayed"]))
+            played = a.get("lastplayed", "0") if isinstance(a, dict) else "0"
+            if isinstance(played, str) and played.isdigit():  # absent for apps never played
+                last[appid] = max(last.get(appid, 0), int(played))
     games, cache = [], root / "appcache/librarycache"
     for lib in libs:
         for acf in (lib / "steamapps").glob("appmanifest_*.acf"):
