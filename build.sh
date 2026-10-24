@@ -12,11 +12,14 @@ OUT=${OUT:-$ROOT/out}
 WORK=${WORK:-/var/tmp/deckos-build}
 # A folder of DeckOS packages already built (CI's package job): used instead of building them again.
 PREBUILT=${PREBUILT:-}
+# zstd level for the live system's squashfs: 15 for releases, lower for quick local test builds
+# (DeckOS Builder's "Build on this PC" uses 6: a slightly bigger ISO, compressed in a fraction of the time).
+SQUASHFS_LEVEL=${SQUASHFS_LEVEL:-15}
 # Display blackout fix level 1 on the live USB only, so it never blacks out mid-install. The
 # installer picks the level for the installed system from the GPU and monitors it finds.
 LIVE_KERNEL_PARAMS="amdgpu.dcdebugmask=0x20000"
 
-if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK,PREBUILT "$0" "$@"; fi
+if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK,PREBUILT,SQUASHFS_LEVEL "$0" "$@"; fi
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
 nocomments() { grep -vE '^\s*(#|$)' "$1"; }
 # AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
@@ -109,7 +112,7 @@ sed -i -e 's/^iso_name=.*/iso_name="deckos"/' \
        -e 's|^iso_publisher=.*|iso_publisher="DeckOS"|' \
        -e 's|^iso_application=.*|iso_application="DeckOS live desktop and installer"|' \
        -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" \
-       -e "s|^airootfs_image_tool_options=.*|airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15' '-b' '1M')|" \
+       -e "s|^airootfs_image_tool_options=.*|airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '$SQUASHFS_LEVEL' '-b' '1M')|" \
        "$P/profiledef.sh"
 # zstd, not releng's xz: squashing the live system drops from ~25 to ~5 minutes on CI's 4 cores, for
 # an ISO about a tenth bigger. Boots the same (the kernel reads both).
@@ -136,6 +139,10 @@ grep -vxF -f <(nocomments "$ROOT/iso/packages.drop") "$P/packages.x86_64" > "$P/
 nocomments "$ROOT/iso/packages.live" >> "$P/packages.tmp"
 sort -u "$P/packages.tmp" > "$P/packages.x86_64"
 rm "$P/packages.tmp"
+
+# The live USB never needs manuals or docs: tens of thousands of files fewer to unpack, index (man-db)
+# and squash. Only the build's own pacman.conf; installed systems keep them.
+sed -i '/^\[options\]/a NoExtract = usr/share/man/* usr/share/info/* usr/share/doc/* usr/share/gtk-doc/* usr/share/help/*' "$P/pacman.conf"
 
 cat >> "$P/pacman.conf" <<EOF
 

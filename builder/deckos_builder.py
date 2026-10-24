@@ -42,6 +42,7 @@ FONTS = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos"
 WORKFLOW = "build-iso.yml"
 ARTIFACT = "deckos-iso"
 IS_WINDOWS = platform.system() == "Windows"
+CAN_BUILD_LOCAL = IS_WINDOWS or shutil.which("pacman") is not None or Path("/etc/arch-release").exists()
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0  # CREATE_NO_WINDOW: no console flashes on Windows
 
 SURFACE, BORDER, TEXT, SUBTEXT, MUTED = S.SURFACE, S.BORDER, S.TEXT, S.SUBTEXT, S.MUTED
@@ -83,6 +84,15 @@ def gh_path():
     return None
 
 
+# Local build stages: (key, name, share of the build time, log text that starts it). The live system's
+# package install is most of it; pacman's "( 812/1068)" lines move the meter through that stage.
+LOCAL_STAGES = [("tools", "Build tools", 0.05, "==> Build host"),
+                ("packages", "DeckOS packages", 0.10, "==> DeckOS packages"),
+                ("aur", "AUR apps", 0.05, "==> AUR apps"),
+                ("live", "Live system", 0.62, "Installing packages to"),
+                ("squash", "Compress", 0.13, "Creating SquashFS image"),
+                ("iso", "Write ISO", 0.05, "Creating ISO image")]
+LOCAL_SQUASH_LEVEL = "6"  # local builds are for testing: a slightly bigger ISO, compressed much faster
 WSL_DISTRO = "archlinux"  # Windows: local builds run build.sh in WSL's Arch Linux
 
 
@@ -349,12 +359,22 @@ class Builder(QWidget):
         cols = QHBoxLayout(top)
         cols.setContentsMargins(0, 0, 0, 0)
         cols.setSpacing(14)
-        left = QVBoxLayout()
+        # Three cards on the left: they scroll rather than squash when the window is short.
+        left_host = QWidget()
+        left = QVBoxLayout(left_host)
+        left.setContentsMargins(0, 0, 0, 0)
         left.setSpacing(14)
+        if CAN_BUILD_LOCAL:
+            left.addWidget(self.local_card())
         left.addWidget(self.current_card())
         left.addWidget(self.usb_card())
         left.addStretch(1)
-        cols.addLayout(left, 5)
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QFrame.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setWidget(left_host)
+        cols.addWidget(left_scroll, 5)
         right = QVBoxLayout()
         right.setSpacing(14)
         right.addWidget(self.history_card(), 3)
@@ -398,14 +418,11 @@ class Builder(QWidget):
         self.repo_box.setFixedWidth(200)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
-        if IS_WINDOWS or shutil.which("pacman") or Path("/etc/arch-release").exists():
-            self.local_btn = button("Build on this PC", slot=self.build_local, icon="terminal",
-                                    tip="Builds the ISO with this PC's CPU (in WSL on Windows): minutes, not a GitHub queue")
-            h.addWidget(self.local_btn)
         self.release_btn = button("Release…", slot=self.release, icon="arrow-up",
                                   tip="Bump VERSION, tag and push: installed systems get it about 10 minutes later")
         h.addWidget(self.release_btn)
-        self.build_btn = button("Build ISO", "primary", self.start_build, "play", "Starts the 'Build DeckOS ISO' workflow on GitHub")
+        self.build_btn = button("Build on GitHub", "primary", self.start_build, "play",
+                                "Starts the 'Build DeckOS ISO' workflow on GitHub (about 13 minutes)")
         h.addWidget(self.build_btn)
         return h
 
@@ -444,6 +461,65 @@ class Builder(QWidget):
         scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
         c.body.addWidget(scroll, 1)
         return c
+
+    def local_card(self):
+        c = Card("This PC", "Build the ISO here", "terminal")
+        self.lc_state = label("", "sub")
+        self.lc_stages = label("")
+        self.lc_meter = Meter(8)
+        self.lc_meter.hide()
+        self.lc_btn = button("Build ISO on this PC", "primary", self.build_local, "play",
+                             "Runs build.sh with this PC's CPU (WSL's Arch Linux on Windows). Nothing is published.")
+        self.lc_usb = button("Copy to USB", slot=self.copy_to_usb, icon="download")
+        self.lc_usb.hide()
+        for w in (self.lc_state, self.lc_meter, self.lc_stages):
+            c.body.addWidget(w)
+        c.body.addWidget(row(self.lc_btn, self.lc_usb, button("Open ISO folder", slot=self.open_out)))
+        self.local_idle()
+        return c
+
+    def local_idle(self):
+        last = self.settings.value("local_seconds", 0, type=int)
+        where = "in WSL (Arch Linux) on all your CPU cores" if IS_WINDOWS else "with all your CPU cores"
+        self.lc_state.setText(f"Builds {where}; nothing is published. " +
+                              (f"Last build took {fmt_duration(last)}." if last else "About 10 minutes the first time."))
+        self.lc_stages.setText("")
+
+    def local_progress(self, text):
+        """Moves the stages and meter along from build.sh's output."""
+        for i, (_key, _name, _share, marker) in enumerate(LOCAL_STAGES):
+            if marker in text and i > self.lc_stage:
+                self.lc_stage, self.lc_frac = i, 0.0
+        m = None
+        if LOCAL_STAGES[self.lc_stage][0] == "live":
+            for m in re.finditer(r"\(\s*(\d+)/(\d+)\) installing", text):
+                pass
+        if m:
+            self.lc_frac = int(m.group(1)) / max(int(m.group(2)), 1)
+            self.lc_detail = f"{m.group(1)} of {m.group(2)} packages"
+        elif self.lc_stage >= 0 and LOCAL_STAGES[self.lc_stage][0] != "live":
+            self.lc_detail = ""
+        self.render_local()
+
+    def render_local(self):
+        done = sum(st[2] for st in LOCAL_STAGES[:max(self.lc_stage, 0)])
+        cur = LOCAL_STAGES[self.lc_stage][2] * self.lc_frac if self.lc_stage >= 0 else 0
+        self.lc_meter.set(min(0.99, done + cur))
+        lines = []
+        for i, (_key, name, _share, _m) in enumerate(LOCAL_STAGES):
+            if i < self.lc_stage:
+                icon = f'<span style="color:{SUCCESS}">✓</span>'
+            elif i == self.lc_stage:
+                icon = f'<span style="color:{ACCENT}">●</span>'
+            else:
+                icon = f'<span style="color:{MUTED}">○</span>'
+            extra = f'&nbsp;<span style="color:{SUBTEXT}">{self.lc_detail}</span>' if i == self.lc_stage and self.lc_detail else ""
+            lines.append(f"<span style=\"white-space:nowrap\">{icon}&nbsp;{name}{extra}</span>")
+        self.lc_stages.setText("&nbsp;&nbsp;&nbsp; ".join(lines))
+        elapsed = time.time() - self.lc_started
+        last = self.settings.value("local_seconds", 0, type=int)
+        eta = f"  ·  about {fmt_duration(last - elapsed)} left" if last and last - elapsed > 30 else ""
+        self.lc_state.setText(f"Building on this PC  ·  {fmt_duration(elapsed)}{eta}")
 
     def current_card(self):
         c = Card("Current build", None, "snapshot")
@@ -1033,13 +1109,15 @@ class Builder(QWidget):
             if WSL_DISTRO not in distros:
                 self.setup_wsl(bool(distros))
                 return
-            ask = ("Build the ISO on this PC?\n\nIt runs in WSL (Arch Linux) on all your CPU cores, needs about 30 GB "
-                   "free on C: while it works and takes roughly 10 minutes. Nothing is published.")
+            ask = ("Build the ISO on this PC?\n\nIt runs in WSL (Arch Linux) on all your CPU cores and needs about "
+                   "30 GB free on C: while it works. Nothing is published.")
             cmd = ["wsl", "-d", WSL_DISTRO, "-u", "root", "--exec", "env", f"OUT={wsl_path(out)}",
-                   "WORK=/var/tmp/deckos-build", "bash", wsl_path(REPO_DIR / "build.sh")]
+                   "WORK=/var/tmp/deckos-build", f"SQUASHFS_LEVEL={LOCAL_SQUASH_LEVEL}", "bash",
+                   wsl_path(REPO_DIR / "build.sh")]
         else:
             ask = "Build the ISO on this PC? It needs about 30 GB free and asks for your password."
-            cmd = ["pkexec", "env", f"OUT={out}", "bash", str(REPO_DIR / "build.sh")]
+            cmd = ["pkexec", "env", f"OUT={out}", f"SQUASHFS_LEVEL={LOCAL_SQUASH_LEVEL}", "bash",
+                   str(REPO_DIR / "build.sh")]
         if QMessageBox.question(self, "DeckOS Builder", ask) != QMessageBox.Yes:
             return
         self.log.clear()
@@ -1047,28 +1125,49 @@ class Builder(QWidget):
         p.setProcessChannelMode(QProcess.MergedChannels)
         p.setWorkingDirectory(str(REPO_DIR))
         ansi = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-        p.readyReadStandardOutput.connect(lambda: self.append_log(
-            ansi.sub("", bytes(p.readAllStandardOutput()).decode("utf-8", "replace")).rstrip()))
-        started = time.time()
+        def output():
+            text = ansi.sub("", bytes(p.readAllStandardOutput()).decode("utf-8", "replace")).rstrip()
+            self.append_log(text)
+            self.local_progress(text)
+
+        p.readyReadStandardOutput.connect(output)
+        started = self.lc_started = time.time()
+        self.lc_stage, self.lc_frac, self.lc_detail = -1, 0.0, ""
+        self.lc_meter.set(0, None)
+        self.lc_meter.show()
+        self.lc_usb.hide()
+        tick = QTimer(self, interval=1000, timeout=self.render_local)  # elapsed time keeps moving between lines
+        tick.start()
 
         def finished(code, _status):
-            took = fmt_duration(time.time() - started)
-            self.local_btn.setText("Build on this PC")
+            tick.stop()
+            secs = time.time() - started
+            took = fmt_duration(secs)
+            self.lc_btn.setText("Build ISO on this PC")
             QApplication.alert(self)
             if code == 0:
+                self.lc_stage, self.lc_frac, self.lc_detail = len(LOCAL_STAGES), 0.0, ""
+                self.render_local()
+                self.lc_meter.set(1.0)
+                self.settings.setValue("local_seconds", int(secs))
                 iso = self.newest_iso()
                 if iso:
                     self.settings.setValue("last_iso", str(iso))
+                self.lc_state.setText(f"Built in {took}" + (f": <b>{iso.name}</b>" if iso else ""))
+                self.lc_usb.show()
                 self.say(f"Local build finished in {took}" + (f": {iso.name}" if iso else ""))
                 self.toast.show_message(f"ISO built on this PC in {took}", "ok", 8000)
             else:
+                self.lc_meter.set(self.lc_meter.value, DANGER)
+                self.lc_state.setText(f"<span style='color:{DANGER}'>Stopped after {took}</span> (exit {code}): the log "
+                                      "below shows where.")
                 self.say(f"Local build stopped (exit {code}) after {took}: see the log")
                 self.toast.show_message("Local build failed: see the log", "bad", 8000)
 
         p.finished.connect(finished)
         p.start(cmd[0], cmd[1:])
         self.local_proc = p
-        self.local_btn.setText("Stop local build")
+        self.lc_btn.setText("Stop")
         self.say("Local build started" + (" in WSL" if IS_WINDOWS else ""))
 
     def stop_local(self):
