@@ -1,0 +1,12 @@
+[Unit]
+Description=DeckOS graphics card tuning (power limit, undervolt, fan curve)
+After=systemd-modules-load.service deckos-display.service
+ConditionPathExists=/etc/deckos/gpu.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/deckos gpu apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

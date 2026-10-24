@@ -1,0 +1,2 @@
+# NTSYNC for Wine/Proton: games run as you, so the device has to be usable by everyone.
+KERNEL=="ntsync", MODE="0666"

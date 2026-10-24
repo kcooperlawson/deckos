@@ -1,7 +1,14 @@
 _setup() {
   /usr/lib/deckos/brand-os-release
   plymouth-set-default-theme deckos >/dev/null 2>&1 || true
-  systemctl enable deckos-display.service >/dev/null 2>&1 || true
+  systemctl enable deckos-display.service deckos-gpu.service >/dev/null 2>&1 || true
+  # The gaming CPU scheduler (scx_lavd, Gaming mode), once: after that it's the Hub's switch.
+  if [ ! -e /var/lib/deckos/scheduler-default ] && [ -e /usr/lib/systemd/system/scx_loader.service ]; then
+    [ -e /etc/scx_loader.toml ] || printf '# DeckOS default (DeckOS Hub > Gaming > Performance)\ndefault_sched = "scx_lavd"\ndefault_mode = "Gaming"\n' \
+      > /etc/scx_loader.toml
+    systemctl enable scx_loader.service >/dev/null 2>&1 || true
+    mkdir -p /var/lib/deckos && touch /var/lib/deckos/scheduler-default
+  fi
   # DeckOS updates: trust the DeckOS signing key and add the [deckos] repo (the live USB already
   # has its own [deckos] section, pointing at the packages on the stick, and keeps it).
   pacman-key --populate deckos >/dev/null 2>&1 \

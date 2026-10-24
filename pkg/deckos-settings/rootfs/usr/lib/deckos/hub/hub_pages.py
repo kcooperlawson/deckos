@@ -8,8 +8,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
-                               QLabel, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
+                               QHBoxLayout, QLabel, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
+                               QVBoxLayout, QWidget)
 
 import hub_style as S
 import hub_system as sysinfo
@@ -306,6 +307,36 @@ class DisplayPage(Page):
 
 # ------------------------------------------------------------------ gaming
 
+class TryDialog(QDialog):
+    """"Keep this?" with a 15-second countdown; anything but Keep (closing, waiting it out) reverts."""
+
+    def __init__(self, parent, what, screen):
+        super().__init__(parent)
+        self.setObjectName("root")
+        self.setWindowTitle(f"Try {what}")
+        self.left = 15
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label(f"{what} is on for {screen}", "cardTitle"))
+        v.addWidget(label("Watch the screen for a few seconds: flicker, blinking or black frames mean it's not for "
+                          "this monitor.", "sub"))
+        self.count = label("", "muted")
+        v.addWidget(self.count)
+        keep = button(f"Keep {what}", "primary", self.accept, icon="check")
+        v.addWidget(row(keep, button("Turn it off", slot=self.reject, icon="undo")))
+        self.timer = QTimer(self, interval=1000, timeout=self.tick)
+        self.timer.start()
+        self.tick()
+
+    def tick(self):
+        if self.left <= 0:
+            self.reject()
+            return
+        self.count.setText(f"Turning it off in {self.left} s unless you keep it.")
+        self.left -= 1
+
+
 RESOLUTIONS = ["3840x2160", "3440x1440", "2560x1440", "2560x1080", "1920x1080"]
 RATES = ["60", "100", "120", "144", "165", "240"]
 
@@ -352,11 +383,19 @@ class GamingPage(Page):
         self.hdr = QCheckBox("HDR (turn it on in the monitor's menu too)")
         self.hdr.setChecked(conf.get("ENABLE_GAMESCOPE_HDR") == "1")
         self.hdr.toggled.connect(lambda on: self.save("ENABLE_GAMESCOPE_HDR", "1" if on else "0"))
-        settings.body.addWidget(self.vrr)
-        settings.body.addWidget(self.hdr)
-        settings.body.addWidget(label("If a screen flickers with VRR on, turn it off; some monitors (the Samsung "
-                                      "Odyssey G7 among them) blink with it.", "muted"))
+        settings.body.addWidget(row(self.vrr, button("Try it first", slot=lambda: self.try_display("vrr"),
+                                                     tip="Turns VRR on for the desktop for 15 seconds")))
+        settings.body.addWidget(row(self.hdr, button("Try it first", slot=lambda: self.try_display("hdr"),
+                                                     tip="Turns HDR on for the desktop for 15 seconds")))
+        settings.body.addWidget(label("Some monitors (the Samsung Odyssey G7 among them) flicker with VRR. Try it "
+                                      "first switches it on for the desktop and back off by itself unless you keep "
+                                      "it.", "muted"))
         self.lay.addWidget(settings)
+
+        self.build_performance()
+        self.build_gpu()
+        self.build_controllers()
+        self.build_extras()
 
         tools = Card("Tools", "Game helpers", "gaming")
         for title, detail, ic, cmd, launch in (
@@ -372,6 +411,254 @@ class GamingPage(Page):
             b.setEnabled(cmd is None or sysinfo.installed(cmd))
             tools.body.addWidget(RowItem(ic, title, detail, right=[b]))
         self.lay.addWidget(tools)
+
+    # ---- performance: CPU scheduler, FSR 4, shader cache, NTSYNC
+
+    SCHEDULERS = [("Gaming (lavd)", "lavd", "Gaming"), ("Power saving (lavd)", "lavd", "PowerSave"),
+                  ("Low latency (bpfland)", "bpfland", "Auto"), ("Off: the kernel's own", "off", "Auto")]
+
+    def build_performance(self):
+        perf = Card("Performance", "Smoother games", "cpu")
+        self.sched = QComboBox()
+        self.sched.addItems([s[0] for s in self.SCHEDULERS])
+        self.sched_state = label("", "muted", wrap=False)
+        self.sched.activated.connect(self.set_scheduler)
+        perf.body.addWidget(RowItem("cpu", "CPU scheduler", "lavd keeps frame times steady while Discord, OBS or a "
+                                    "browser run next to the game", right=[self.sched_state, self.sched]))
+        self.fsr4 = QCheckBox()
+        self.fsr4.setChecked(sysinfo.gaming_env().get("PROTON_FSR4_UPGRADE") == "1")
+        self.fsr4.toggled.connect(self.set_fsr4)
+        perf.body.addWidget(RowItem("display", "FSR 4 in FSR 3.1 games", "RX 9000 cards: sharper upscaling at the same "
+                                    "frame rate (proton-cachyos). Restart Steam after changing it", right=[self.fsr4]))
+        size = sysinfo.shader_cache_size()
+        perf.body.addWidget(RowItem("drives", "Shader cache", f"Up to {size.replace('G', ' GB')} of compiled shaders, so "
+                                    "big games don't stutter rebuilding them" if size else "Mesa's default (1 GB)",
+                                    S.SUCCESS if size else S.SUBTEXT))
+        on = sysinfo.ntsync()
+        perf.body.addWidget(RowItem("check" if on else "alert", "NTSYNC", "Windows-style sync for Proton games: fewer "
+                                    "hitches" if on else "Not available in this kernel: Proton uses fsync instead",
+                                    S.SUCCESS if on else S.WARNING))
+        self.lay.addWidget(perf)
+
+    def set_scheduler(self, i):
+        _, sched, mode = self.SCHEDULERS[i]
+        self.hub.privileged(["scheduler", "set", sched, mode], lambda ok: (
+            self.hub.toast(f"CPU scheduler: {self.SCHEDULERS[i][0]}." if ok else "Couldn't change the scheduler.",
+                           "ok" if ok else "bad"), self.refresh()))
+
+    def set_fsr4(self, on):
+        sysinfo.write_gaming_env({"PROTON_FSR4_UPGRADE": "1" if on else None})
+        self.hub.toast("FSR 4 upgrade " + ("on" if on else "off") + ". Restart Steam (or log out and in) to apply.", "ok")
+
+    # ---- graphics card: power limit, undervolt, fan curve (deckos gpu)
+
+    GPU_PRESETS = [("Stock", 100, 0, "stock", "As AMD ships it"),
+                   ("Quiet", 90, -50, "quiet", "Less power and noise, nearly the same speed"),
+                   ("Cool", 100, -50, "cool", "Same power, lower voltage, fans earlier"),
+                   ("Performance", 110, -60, "cool", "Higher power limit and a mild undervolt")]
+
+    def build_gpu(self):
+        if not self.hub.gpu.amd:
+            return
+        card = Card("Graphics card", "Power, voltage and fans", "gpu")
+        self.gpu_state = label("Reading the card…", "sub")
+        card.body.addWidget(self.gpu_state)
+        self.gpu_presets = QButtonGroup(self)
+        self.gpu_presets.setExclusive(True)
+        prow = []
+        for i, (name, *_rest, tip) in enumerate(self.GPU_PRESETS):
+            b = button(name, tip=tip)
+            b.setCheckable(True)
+            self.gpu_presets.addButton(b, i)
+            prow.append(b)
+        self.gpu_presets.idClicked.connect(self.pick_gpu_preset)
+        card.body.addWidget(row(*prow))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(6)
+        self.power = QSlider(Qt.Horizontal)
+        self.power.setRange(50, 110)
+        self.power_val = label("", "value", wrap=False)
+        self.power.valueChanged.connect(self.show_gpu_values)
+        self.volt = QSlider(Qt.Horizontal)
+        self.volt.setRange(-150, 0)
+        self.volt.setSingleStep(5)
+        self.volt.setPageStep(10)
+        self.volt_val = label("", "value", wrap=False)
+        self.volt.valueChanged.connect(self.show_gpu_values)
+        self.fan = QComboBox()
+        self.fan.addItems(["Stock", "Quiet", "Cool"])
+        for r, (name, w, val) in enumerate((("Power limit", self.power, self.power_val),
+                                            ("Voltage offset", self.volt, self.volt_val),
+                                            ("Fan curve", self.fan, None))):
+            grid.addWidget(label(name, "sub", wrap=False), r, 0)
+            grid.addWidget(w, r, 1)
+            if val:
+                grid.addWidget(val, r, 2)
+        grid.setColumnStretch(1, 1)
+        card.body.addLayout(grid)
+        self.gpu_apply = button("Apply", "primary", self.apply_gpu, icon="check")
+        self.od_btn = button("Turn on overdrive", slot=self.enable_overdrive, icon="power",
+                             tip="Lets DeckOS undervolt and set fan curves (amdgpu.ppfeaturemask); needs a restart")
+        card.body.addWidget(row(self.gpu_apply, button("Reset to stock", slot=lambda: self.pick_gpu_preset(0, apply=True),
+                                                       icon="undo"), self.od_btn))
+        self.gpu_note = label("", "muted")
+        card.body.addWidget(self.gpu_note)
+        self.lay.addWidget(card)
+        self.gpu_info = {}
+
+    def show_gpu(self, info):
+        self.gpu_info = info
+        if not info.get("card"):
+            self.gpu_state.setText("No AMD graphics card found.")
+            return
+        cap, default, top = (int(info.get(k) or 0) for k in ("cap", "cap_default", "cap_max"))
+        od, lact = info.get("od") == "1", info.get("lact") == "1"
+        self.power.setMaximum(max(100, top * 100 // default) if default else 110)
+        for w, key in ((self.power, "power_percent"), (self.volt, "voltage_offset")):
+            w.blockSignals(True)
+            w.setValue(int(info.get(key) or (100 if w is self.power else 0)))
+            w.blockSignals(False)
+        self.fan.setCurrentText(info.get("fan", "stock").capitalize())
+        self.show_gpu_values()
+        match = next((i for i, p in enumerate(self.GPU_PRESETS) if (p[1], p[2], p[3]) ==
+                      (self.power.value(), self.volt.value(), info.get("fan", "stock"))), -1)
+        for b in self.gpu_presets.buttons():
+            b.setChecked(self.gpu_presets.id(b) == match)
+        self.gpu_state.setText(f"{self.hub.gpu.name}  ·  power limit <b>{cap} W</b> (stock {default} W, up to {top} W)")
+        self.volt.setEnabled(od and not lact)
+        self.fan.setEnabled(od and not lact and info.get("fan_curve") == "1")
+        for w in (self.power, self.gpu_apply, *self.gpu_presets.buttons()):
+            w.setEnabled(not lact)
+        self.od_btn.setVisible(not od and not lact)
+        self.gpu_note.setText(
+            "LACT is managing this card, so DeckOS leaves it alone. Stop LACT's service (lactd) to tune it here." if lact
+            else "Undervolting and fan curves need overdrive: turn it on, then restart." if not od
+            else "Each card undervolts differently. If games crash, step back toward 0 mV or pick Stock. If DeckOS ever "
+                 "fails to start, press e in the boot menu and add deckos.gpu=stock to the linux line.")
+
+    def show_gpu_values(self):
+        default = int(self.gpu_info.get("cap_default") or 0)
+        self.power_val.setText(f"{self.power.value()}%" + (f"  ·  {default * self.power.value() // 100} W" if default else ""))
+        self.volt_val.setText(f"{self.volt.value()} mV")
+
+    def pick_gpu_preset(self, i, apply=False):
+        _, power, volt, fan, _tip = self.GPU_PRESETS[i]
+        od = self.gpu_info.get("od") == "1" or sysinfo.DEMO
+        self.power.setValue(min(power, self.power.maximum()))
+        self.volt.setValue(volt if od else 0)
+        self.fan.setCurrentText(fan.capitalize() if od else "Stock")
+        if apply:
+            self.apply_gpu()
+
+    def apply_gpu(self):
+        args = ["gpu", "set", f"POWER_PERCENT={self.power.value()}", f"VOLTAGE_OFFSET={self.volt.value()}",
+                f"FAN={self.fan.currentText().lower()}"]
+        self.hub.privileged(args, lambda ok: (
+            self.hub.toast("Graphics card settings applied; they come back after every restart." if ok else
+                           "The card didn't take those settings.", "ok" if ok else "bad", 6000),
+            self.refresh()))
+
+    def enable_overdrive(self):
+        self.hub.privileged(["gpu", "overdrive", "on"], lambda ok: self.hub.toast(
+            "Overdrive turns on at the next restart." if ok else "Couldn't turn on overdrive.", "ok" if ok else "bad"))
+
+    # ---- controllers
+
+    def build_controllers(self):
+        card = Card("Controllers", "Batteries and pairing", "gaming")
+        self.pad_list = QVBoxLayout()
+        self.pad_list.setSpacing(6)
+        card.body.addLayout(self.pad_list)
+        self.pair_btn = button("Pair an Xbox controller", slot=self.pair_xbox, icon="plus",
+                               tip="Puts the Xbox wireless dongle in pairing mode for 30 seconds")
+        card.body.addWidget(row(self.pair_btn, button("Refresh", slot=self.show_controllers, icon="refresh"),
+                                button("Bluetooth", slot=lambda: QProcess.startDetached("systemsettings", ["kcm_bluetooth"]),
+                                       icon="bluetooth", tip="Pair PlayStation, Switch and Bluetooth Xbox controllers")))
+        self.lay.addWidget(card)
+
+    def show_controllers(self):
+        self.clear(self.pad_list)
+        devs = sysinfo.battery_devices()
+        for name, pct, status in devs:
+            col = S.DANGER if pct is not None and pct <= 20 else S.SUCCESS if status == "Charging" else S.SUBTEXT
+            text = f"{pct}%" if pct is not None else status or "connected"
+            self.pad_list.addWidget(RowItem("gaming", name, status if pct is not None else "", col,
+                                            [label(f"<b>{text}</b>", wrap=False)]))
+        if not devs:
+            self.pad_list.addWidget(label("No wireless controllers connected. Wired ones work without setup.", "sub"))
+        self.pair_btn.setVisible(sysinfo.xone_dongle())
+
+    def pair_xbox(self):
+        self.hub.privileged(["controllers", "pair"], lambda ok: self.hub.toast(
+            "Pairing for 30 seconds: hold the pair button on the controller until the Xbox logo flashes fast." if ok
+            else "No Xbox wireless dongle found.", "info" if ok else "bad", 8000))
+
+    # ---- extras: Decky Loader, Sunshine
+
+    def build_extras(self):
+        card = Card("Extras", "Plugins and streaming", "plus")
+        self.extras = QVBoxLayout()
+        self.extras.setSpacing(6)
+        card.body.addLayout(self.extras)
+        self.lay.addWidget(card)
+
+    def show_extras(self):
+        self.clear(self.extras)
+        decky = sysinfo.decky_installed()
+        self.extras.addWidget(RowItem(
+            "gaming", "Decky Loader", "Steam Deck plugins in Gaming Mode: per-game frame limits, ProtonDB badges, themes",
+            S.SUCCESS if decky else S.SUBTEXT,
+            [label(f"<span style='color:{S.SUCCESS}'>Installed</span>", wrap=False)] if decky else
+            [button("Install", slot=lambda: self.hub.terminal("deckos decky install"), icon="download")]))
+        sun = sysinfo.installed("sunshine")
+        self.extras.addWidget(RowItem(
+            "display", "Game streaming (Sunshine)", "Play on a TV, phone or Steam Deck with Moonlight",
+            S.SUCCESS if sun else S.SUBTEXT,
+            [button("Pair a device", slot=lambda: QProcess.startDetached("xdg-open", ["https://localhost:47990"]),
+                    icon="external")] if sun else
+            [button("Set up", slot=lambda: self.hub.terminal("deckos streaming setup"), icon="download")]))
+
+    # ---- safe VRR/HDR test on the desktop
+
+    def try_display(self, what):
+        outs = [o for o in sysinfo.outputs() if (o[3] if what == "vrr" else o[4])]
+        if not outs:
+            self.hub.toast(f"No screen here reports {'VRR' if what == 'vrr' else 'HDR'} support.", "warn")
+            return
+        name, vrr, hdr, *_ = outs[0]
+        on, off = ((f"output.{name}.vrrpolicy.automatic", f"output.{name}.vrrpolicy." +
+                    {0: "never", 1: "always", 2: "automatic"}.get(vrr, "never")) if what == "vrr" else
+                   (f"output.{name}.hdr.enable", f"output.{name}.hdr.{'enable' if hdr else 'disable'}"))
+        if not sysinfo.DEMO:
+            QProcess.execute("kscreen-doctor", [on])
+        keep = TryDialog(self, "VRR" if what == "vrr" else "HDR", name).exec()
+        if not keep:
+            if not sysinfo.DEMO:
+                QProcess.execute("kscreen-doctor", [off])
+            self.hub.toast("Back to how it was.", "info")
+            return
+        (self.vrr if what == "vrr" else self.hdr).setChecked(True)  # saves it for Gaming Mode too
+        self.hub.toast(f"{'VRR' if what == 'vrr' else 'HDR'} kept on the desktop and for Gaming Mode.", "ok")
+
+    def refresh(self):
+        if not hasattr(self, "sched"):
+            return
+        sysinfo.Job(self, [DECKOS, "scheduler", "status"], lambda out, _c: self.show_scheduler(sysinfo.kv(out)),
+                    demo=(sysinfo.DEMO_SCHEDULER, 0))
+        if hasattr(self, "gpu_state"):
+            sysinfo.Job(self, [DECKOS, "gpu", "status"], lambda out, _c: self.show_gpu(sysinfo.kv(out)),
+                        demo=(sysinfo.DEMO_GPU, 0))
+        self.show_controllers()
+        self.show_extras()
+
+    def show_scheduler(self, st):
+        i = next((i for i, s in enumerate(self.SCHEDULERS) if (s[1], s[2]) == (st.get("sched"), st.get("mode"))),
+                 3 if st.get("sched") == "off" else 0)
+        self.sched.setCurrentIndex(i)
+        running = st.get("state") == "enabled" and st.get("running")
+        self.sched_state.setText(f"<span style='color:{S.SUCCESS}'>● {st['running']}</span>" if running else
+                                 "not supported" if st.get("state") == "unsupported" else "")
 
     def save(self, key, value):
         self.hub.write_gaming({key: value})
@@ -556,6 +843,11 @@ class SystemPage(Page):
                               button("Check again", slot=self.check_updates, icon="refresh"),
                               button("Full update in terminal", slot=lambda: self.hub.terminal("deckos update"),
                                      icon="terminal", tip="Includes AUR apps (paru)")))
+        self.auto = QCheckBox("Update automatically overnight (4 AM; skipped while a game or Gaming Mode runs)")
+        self.auto.clicked.connect(self.set_auto_update)
+        self.auto_state = label("", "muted")
+        up.body.addWidget(self.auto)
+        up.body.addWidget(self.auto_state)
         self.lay.addWidget(up)
 
         snaps = Card("System snapshots", "Roll back a bad update", "snapshot")
@@ -597,6 +889,8 @@ class SystemPage(Page):
 
     def refresh(self):
         self.check_updates()
+        sysinfo.Job(self, [DECKOS, "auto-update", "status"], lambda out, _c: self.show_auto_update(sysinfo.kv(out)),
+                    demo=(sysinfo.DEMO_AUTO_UPDATE, 0))
         self.hub.data.snapshots(self.show_snapshots)
         self.show_home()
         self.hub.data.firewall(self.show_firewall)
@@ -674,6 +968,25 @@ class SystemPage(Page):
         if not repo + aur:
             self.up_list.hide()
         self.up_btn.setEnabled(bool(repo) and not err)
+
+    def show_auto_update(self, st):
+        self.auto.setChecked(st.get("enabled") == "1")
+        when = st.get("when", "")
+        if not when.isdigit():
+            self.auto_state.setText("")
+            return
+        at = datetime.fromtimestamp(int(when)).strftime("%a %d %b, %H:%M")
+        self.auto_state.setText({
+            "ok": f"Last overnight update: {at}, {st.get('count', '0')} packages.",
+            "skipped": f"Skipped on {at}: {st.get('why', '')}.",
+        }.get(st.get("result"), f"<span style='color:{S.WARNING}'>Overnight update on {at} didn't finish:</span> "
+                                f"{st.get('why', '')}"))
+
+    def set_auto_update(self, on):
+        self.hub.privileged(["auto-update", "on" if on else "off"], lambda ok: (
+            self.hub.toast(("Overnight updates on." if on else "Overnight updates off.") if ok else
+                           "Couldn't change overnight updates.", "ok" if ok else "bad"),
+            ok or self.auto.setChecked(not on)))
 
     def toggle_up_list(self):
         self.up_list.setVisible(not self.up_list.isVisible())

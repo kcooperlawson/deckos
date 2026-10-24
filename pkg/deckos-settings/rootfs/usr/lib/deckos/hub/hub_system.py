@@ -486,3 +486,81 @@ def current_icons():
 
 def current_plasma_style():
     return kconfig("plasmarc", "Theme", "name", "deckos")
+
+
+# ------------------------------------------------------------------ gaming tuning
+
+GAMING_ENV = Path.home() / ".config/environment.d/90-deckos-gaming.conf"
+DEMO_SCHEDULER = "state=enabled\nrunning=lavd\nsched=lavd\nmode=Gaming"
+DEMO_GPU = ("card=card1\ncap=304\ncap_default=304\ncap_min=213\ncap_max=334\nod=0\nfan_curve=1\n"
+            "power_percent=100\nvoltage_offset=0\nfan=stock\nlact=0")
+DEMO_AUTO_UPDATE = "enabled=1\nwhen=1793163600\nresult=ok\ncount=14\nwhy="
+
+
+def kv(text):
+    """key=value lines (deckos status commands) to a dict."""
+    return dict(ln.split("=", 1) for ln in text.splitlines() if "=" in ln)
+
+
+def gaming_env():
+    """The desktop + Gaming Mode environment DeckOS Hub manages (FSR 4 upgrade and friends)."""
+    return conf(GAMING_ENV)
+
+
+def write_gaming_env(values):
+    """Merges values into GAMING_ENV; None removes a key. Steam picks it up after logging in again."""
+    env = {k: v for k, v in {**gaming_env(), **values}.items() if v is not None}
+    if DEMO:
+        return
+    GAMING_ENV.parent.mkdir(parents=True, exist_ok=True)
+    GAMING_ENV.write_text("# Written by DeckOS Hub (Gaming > Performance). Gaming Mode reads it too.\n" +
+                          "".join(f"{k}={v}\n" for k, v in env.items()))
+
+
+def ntsync():
+    return DEMO or Path("/dev/ntsync").exists()
+
+
+def shader_cache_size():
+    return "10G" if DEMO else conf("/usr/lib/environment.d/60-deckos-gaming.conf").get("MESA_SHADER_CACHE_MAX_SIZE", "")
+
+
+def battery_devices():
+    """[(name, percent or None, status)] for controllers and other wireless devices with a battery."""
+    if DEMO:
+        return [("Xbox Wireless Controller", 80, "Discharging"), ("DualSense Wireless Controller", 35, "Charging")]
+    out = []
+    for ps in sorted(Path("/sys/class/power_supply").glob("*")):
+        if read(ps / "scope") != "Device":  # the PC's own battery/UPS has scope System
+            continue
+        cap = read(ps / "capacity")
+        out.append((read(ps / "model_name") or ps.name, int(cap) if cap.isdigit() else None,
+                    read(ps / "status") or read(ps / "capacity_level")))
+    return out
+
+
+def xone_dongle():
+    """An Xbox wireless dongle (xone) is plugged in."""
+    return DEMO or any(Path("/sys/bus/usb/drivers/xone-dongle").glob("*/pairing"))
+
+
+def decky_installed():
+    return (Path.home() / "homebrew/services/PluginLoader").exists() and not DEMO
+
+
+def outputs():
+    """[(name, vrr_policy, hdr_on, can_vrr, can_hdr)] for enabled screens, from kscreen-doctor.
+    vrr_policy: 0 never, 1 always, 2 automatic."""
+    if DEMO:
+        return [("DP-1", 0, False, True, True)]
+    try:
+        data = json.loads(run(["kscreen-doctor", "-j"]) or "{}")
+    except ValueError:
+        return []
+    out = []
+    for o in data.get("outputs", []):
+        if not (o.get("connected") and o.get("enabled")):
+            continue
+        caps = o.get("capabilities", 0)
+        out.append((o["name"], o.get("vrrPolicy", 0), bool(o.get("hdr")), bool(caps & 0x2), bool(caps & 0x8)))
+    return out

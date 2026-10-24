@@ -82,6 +82,7 @@ QLabel#mono {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospa
 QPushButton {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 6px 12px; }}
 QPushButton:hover {{ background: {HOVER}; }}
 QPushButton:pressed {{ background: {PRESSED}; }}
+QPushButton:checked {{ background: {P.tint}; border-color: {P.accent}; color: {TEXT}; }}
 QPushButton:disabled {{ color: {MUTED}; background: #13161C; border-color: #1E222A; }}
 QPushButton#primary {{ color: white; font-weight: 600; border: none; padding: 7px 15px;
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {P.accent}, stop:1 {P.grad_b}); }}

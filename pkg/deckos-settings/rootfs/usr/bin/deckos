@@ -714,6 +714,251 @@ EOF
   printf 'DEST=%s\nLAST=%s\n' "$dest" "$(date '+%Y-%m-%d %H:%M')" > "$conf"
 }
 
+# ------------------------------------------------------------------ scheduler
+#
+# sched_ext CPU schedulers (scx-tools) through scx_loader: lavd keeps frame times steady when the
+# game shares the CPU with Discord, OBS or a browser. DeckOS starts on lavd in Gaming mode.
+
+SCX_CONF=/etc/scx_loader.toml
+
+scheduler_status() {  # key=value, no root: what's running now and what's configured
+  local state ops sched mode
+  state=$(cat /sys/kernel/sched_ext/state 2>/dev/null || echo unsupported)
+  ops=$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null || true)
+  sched=$(sed -n 's/^default_sched *= *"scx_\(.*\)"/\1/p' "$SCX_CONF" 2>/dev/null)
+  mode=$(sed -n 's/^default_mode *= *"\(.*\)"/\1/p' "$SCX_CONF" 2>/dev/null)
+  systemctl is-enabled --quiet scx_loader.service 2>/dev/null || sched=off
+  printf 'state=%s\nrunning=%s\nsched=%s\nmode=%s\n' "$state" "${ops%%_*}" "${sched:-off}" "${mode:-Auto}"
+}
+
+scheduler_set() {  # scheduler_set lavd|bpfland|rusty|off [Gaming|PowerSave|LowLatency|Auto]
+  need_root scheduler set
+  local sched=$1 mode=${2:-Gaming}
+  [[ $sched =~ ^(lavd|bpfland|rusty|off)$ ]] || { err "scheduler: lavd, bpfland, rusty or off"; exit 2; }
+  [[ $mode =~ ^(Gaming|PowerSave|LowLatency|Auto)$ ]] || { err "mode: Gaming, PowerSave, LowLatency or Auto"; exit 2; }
+  if [[ $sched == off ]]; then
+    systemctl disable --now scx_loader.service >/dev/null 2>&1 || true
+    ok "CPU scheduler: the kernel's own (BORE)"
+    return
+  fi
+  systemctl cat scx_loader.service >/dev/null 2>&1 || { err "scx_loader isn't installed (pacman -S scx-tools)"; exit 1; }
+  printf '# Written by deckos scheduler (DeckOS Hub > Gaming > Performance)\ndefault_sched = "scx_%s"\ndefault_mode = "%s"\n' \
+    "$sched" "$mode" > "$SCX_CONF"
+  systemctl enable scx_loader.service >/dev/null 2>&1
+  systemctl restart scx_loader.service
+  ok "CPU scheduler: $sched ($mode)"
+}
+
+scheduler_cmd() {
+  case ${1:-status} in
+    status) scheduler_status ;;
+    set) shift; scheduler_set "${1:-lavd}" "${2:-Gaming}" ;;
+    *) err "usage: deckos scheduler [status|set lavd|bpfland|rusty|off [MODE]]"; exit 2 ;;
+  esac
+}
+
+# ------------------------------------------------------------------ gpu
+#
+# Graphics card tuning from /etc/deckos/gpu.conf, applied at boot by deckos-gpu.service: power limit,
+# undervolt (voltage offset) and fan curve, straight through amdgpu's sysfs. The undervolt and fan
+# curve need amdgpu overdrive (ppfeaturemask). Boot with deckos.gpu=stock to skip all of it. When LACT's
+# daemon runs, it owns the card and DeckOS stays out of its way.
+
+GPU_CONF=$CONF_DIR/gpu.conf
+OD_MASK=0xffffffff
+
+gpu_conf() {
+  POWER_PERCENT=100 VOLTAGE_OFFSET=0 FAN=stock
+  # shellcheck source=/dev/null
+  [[ -r $GPU_CONF ]] && . "$GPU_CONF"
+}
+
+gpu_hwmon() { local h; for h in "$1"/device/hwmon/hwmon*; do [[ -d $h ]] && { echo "$h"; return 0; }; done; return 1; }
+gpu_od_on() { (( $(cat /sys/module/amdgpu/parameters/ppfeaturemask 2>/dev/null || echo 0) & 0x4000 )); }
+
+gpu_status() {  # key=value, no root
+  local card hw dev
+  card=$(dgpu_card) || { echo "card="; return 0; }
+  dev=$card/device; hw=$(gpu_hwmon "$card") || hw=""
+  gpu_conf
+  w() { local v; v=$(cat "$hw/$1" 2>/dev/null) && echo $((v / 1000000)) || echo 0; }
+  printf 'card=%s\n' "$(basename "$card")"
+  printf 'cap=%s\ncap_default=%s\ncap_min=%s\ncap_max=%s\n' "$(w power1_cap)" "$(w power1_cap_default)" "$(w power1_cap_min)" "$(w power1_cap_max)"
+  printf 'od=%s\nfan_curve=%s\n' "$(gpu_od_on && echo 1 || echo 0)" "$([[ -e $dev/gpu_od/fan_ctrl/fan_curve ]] && echo 1 || echo 0)"
+  printf 'power_percent=%s\nvoltage_offset=%s\nfan=%s\n' "$POWER_PERCENT" "$VOLTAGE_OFFSET" "$FAN"
+  printf 'lact=%s\n' "$(systemctl is-active --quiet lactd 2>/dev/null && echo 1 || echo 0)"
+}
+
+gpu_fan_curve() {  # gpu_fan_curve DEV stock|quiet|cool
+  local f=$1/gpu_od/fan_ctrl/fan_curve preset=$2 tmin=25 tmax=100 smin=15 smax=100 i t s
+  [[ -w $f ]] || return 0
+  if [[ $preset == stock ]]; then echo r > "$f" 2>/dev/null; echo c > "$f" 2>/dev/null || true; return 0; fi
+  # Clamp to the card's own limits ("FAN_CURVE(hotspot temp): 25C 100C", "FAN_CURVE(fan speed): 15% 100%").
+  read -r tmin tmax < <(sed -n 's/.*FAN_CURVE(hotspot temp): *\([0-9]*\)C *\([0-9]*\)C.*/\1 \2/p' "$f") || true
+  read -r smin smax < <(sed -n 's/.*FAN_CURVE(fan speed): *\([0-9]*\)% *\([0-9]*\)%.*/\1 \2/p' "$f") || true
+  local -a temps=(45 60 70 80 90) speeds
+  case $preset in
+    quiet) speeds=(15 25 40 60 85) ;;
+    cool)  speeds=(30 45 60 80 100) ;;
+    *) warn "unknown fan preset $preset"; return 0 ;;
+  esac
+  for i in 0 1 2 3 4; do
+    t=$(( temps[i] < ${tmin:-25} ? ${tmin:-25} : temps[i] > ${tmax:-100} ? ${tmax:-100} : temps[i] ))
+    s=$(( speeds[i] < ${smin:-15} ? ${smin:-15} : speeds[i] > ${smax:-100} ? ${smax:-100} : speeds[i] ))
+    echo "$i $t $s" > "$f" 2>/dev/null || { warn "the card refused fan point $i ($t°C, $s%)"; return 0; }
+  done
+  echo c > "$f" 2>/dev/null || warn "the card refused the fan curve"
+}
+
+gpu_apply() {
+  need_root gpu apply
+  grep -qw 'deckos.gpu=stock' /proc/cmdline && { warn "deckos.gpu=stock: leaving the card at stock"; return 0; }
+  systemctl is-active --quiet lactd 2>/dev/null && { sub "LACT manages the graphics card; DeckOS tuning skipped"; return 0; }
+  local card dev hw def min max cap
+  card=$(dgpu_card) || { warn "no AMD graphics card found"; return 0; }
+  dev=$card/device
+  gpu_conf
+  if hw=$(gpu_hwmon "$card") && [[ -w $hw/power1_cap ]]; then
+    def=$(cat "$hw/power1_cap_default"); min=$(cat "$hw/power1_cap_min" 2>/dev/null || echo 0); max=$(cat "$hw/power1_cap_max")
+    cap=$(( def / 100 * POWER_PERCENT ))
+    (( cap < min )) && cap=$min; (( cap > max )) && cap=$max
+    echo "$cap" > "$hw/power1_cap" && ok "power limit $((cap / 1000000)) W"
+  fi
+  if [[ $VOLTAGE_OFFSET != 0 ]] || [[ -w $dev/pp_od_clk_voltage ]]; then
+    if gpu_od_on && [[ -w $dev/pp_od_clk_voltage ]]; then
+      { echo "vo $VOLTAGE_OFFSET" > "$dev/pp_od_clk_voltage" && echo c > "$dev/pp_od_clk_voltage"; } 2>/dev/null \
+        && ok "voltage offset ${VOLTAGE_OFFSET} mV" || warn "the card refused a ${VOLTAGE_OFFSET} mV offset"
+    elif [[ $VOLTAGE_OFFSET != 0 ]]; then
+      warn "undervolting needs overdrive: deckos gpu overdrive on, then restart"
+    fi
+  fi
+  gpu_od_on && gpu_fan_curve "$dev" "$FAN"
+  [[ $FAN != stock ]] && ! gpu_od_on && warn "fan curves need overdrive: deckos gpu overdrive on, then restart"
+  return 0
+}
+
+gpu_set() {  # gpu_set KEY=VALUE... (POWER_PERCENT, VOLTAGE_OFFSET, FAN)
+  need_root gpu set
+  gpu_conf
+  local kv
+  for kv in "$@"; do
+    case $kv in
+      POWER_PERCENT=*) POWER_PERCENT=${kv#*=}; [[ $POWER_PERCENT =~ ^[0-9]+$ ]] && (( POWER_PERCENT >= 50 && POWER_PERCENT <= 130 )) \
+                         || { err "POWER_PERCENT is 50-130"; exit 2; } ;;
+      VOLTAGE_OFFSET=*) VOLTAGE_OFFSET=${kv#*=}; [[ $VOLTAGE_OFFSET =~ ^-?[0-9]+$ ]] && (( VOLTAGE_OFFSET >= -150 && VOLTAGE_OFFSET <= 0 )) \
+                         || { err "VOLTAGE_OFFSET is -150 to 0 (mV)"; exit 2; } ;;
+      FAN=*) FAN=${kv#*=}; [[ $FAN =~ ^(stock|quiet|cool)$ ]] || { err "FAN is stock, quiet or cool"; exit 2; } ;;
+      *) err "unknown setting $kv"; exit 2 ;;
+    esac
+  done
+  mkdir -p "$CONF_DIR"
+  cat > "$GPU_CONF" <<EOF
+# DeckOS graphics card tuning (DeckOS Hub > Gaming > Graphics card). Applied at boot by
+# deckos-gpu.service. Boot with deckos.gpu=stock (press e in GRUB) to skip it once.
+POWER_PERCENT=$POWER_PERCENT
+VOLTAGE_OFFSET=$VOLTAGE_OFFSET
+FAN=$FAN
+EOF
+  gpu_apply
+}
+
+gpu_overdrive() {  # on|off: amdgpu.ppfeaturemask on the kernel command line (needs a restart)
+  need_root gpu overdrive
+  [[ -f $GRUB_DEFAULT ]] || { err "$GRUB_DEFAULT not found"; exit 1; }
+  local cur kept=() tok
+  cur=$(sed -n 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/\1/p' "$GRUB_DEFAULT")
+  for tok in $cur; do [[ $tok == amdgpu.ppfeaturemask=* ]] || kept+=("$tok"); done
+  [[ $1 == on ]] && kept+=("amdgpu.ppfeaturemask=$OD_MASK")
+  sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"${kept[*]}\"|" "$GRUB_DEFAULT"
+  grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
+  ok "overdrive $1 from the next start"
+}
+
+gpu_cmd() {
+  case ${1:-status} in
+    status) gpu_status ;;
+    apply) gpu_apply ;;
+    set) shift; gpu_set "$@" ;;
+    reset) gpu_set POWER_PERCENT=100 VOLTAGE_OFFSET=0 FAN=stock ;;
+    overdrive) [[ ${2:-} =~ ^(on|off)$ ]] || { err "usage: deckos gpu overdrive on|off"; exit 2; }; gpu_overdrive "$2" ;;
+    *) err "usage: deckos gpu [status|apply|set KEY=VALUE...|reset|overdrive on|off]"; exit 2 ;;
+  esac
+}
+
+# ------------------------------------------------------------------ controllers
+
+controllers_pair() {  # put every Xbox wireless dongle (xone) into pairing mode for 30 seconds
+  need_root controllers pair
+  local p n=0
+  for p in /sys/bus/usb/drivers/xone-dongle/*/pairing; do
+    [[ -w $p ]] || continue
+    echo 1 > "$p" && n=$((n + 1))
+  done
+  (( n )) && ok "pairing: press the pair button on the controller now" || { err "no Xbox wireless dongle found"; exit 1; }
+}
+
+# ------------------------------------------------------------------ auto-update
+#
+# Overnight updates (deckos-auto-update.timer, 04:00): skipped while a game runs. Snapshots before and
+# after, like any update. The result goes to /var/lib/deckos/auto-update for DeckOS Hub.
+
+AUTO_STATE=/var/lib/deckos/auto-update
+
+auto_update_run() {
+  need_root auto-update run
+  mkdir -p "${AUTO_STATE%/*}"
+  if pgrep -f '/steamapps/common/|SteamLaunch|gamescope-session' >/dev/null; then
+    printf 'when=%s\nresult=skipped\nwhy=a game or Gaming Mode was running\n' "$(date +%s)" > "$AUTO_STATE"
+    return 0
+  fi
+  local n rc=0
+  n=$( (checkupdates 2>/dev/null || true) | grep -c . || true)
+  pacman -Syu --noconfirm --noprogressbar >> /var/log/deckos-auto-update.log 2>&1 || rc=$?
+  if command -v flatpak >/dev/null; then flatpak update -y --noninteractive >> /var/log/deckos-auto-update.log 2>&1 || true; fi
+  printf 'when=%s\nresult=%s\ncount=%s\nwhy=%s\n' "$(date +%s)" "$([[ $rc == 0 ]] && echo ok || echo failed)" "$n" \
+    "$([[ $rc == 0 ]] || echo "pacman stopped (see /var/log/deckos-auto-update.log)")" > "$AUTO_STATE"
+  return "$rc"
+}
+
+auto_update_cmd() {
+  case ${1:-status} in
+    status)
+      printf 'enabled=%s\n' "$(systemctl is-enabled --quiet deckos-auto-update.timer 2>/dev/null && echo 1 || echo 0)"
+      cat "$AUTO_STATE" 2>/dev/null || true ;;
+    on) need_root auto-update on; systemctl enable --now deckos-auto-update.timer >/dev/null 2>&1; ok "overnight updates on (04:00)" ;;
+    off) need_root auto-update off; systemctl disable --now deckos-auto-update.timer >/dev/null 2>&1; ok "overnight updates off" ;;
+    run) auto_update_run ;;
+    *) err "usage: deckos auto-update [status|on|off|run]"; exit 2 ;;
+  esac
+}
+
+# ------------------------------------------------------------------ streaming and Decky
+
+streaming_setup() {  # Sunshine: stream games to a TV, phone or Steam Deck with Moonlight
+  [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+  section "Game streaming (Sunshine)"
+  if ! command -v sunshine >/dev/null; then
+    if command -v paru >/dev/null; then paru -S --needed --noconfirm sunshine; else sudo pacman -S --needed sunshine; fi
+  fi
+  # Capturing the screen on Wayland/KMS needs this capability on the binary.
+  sudo setcap cap_sys_admin+p "$(readlink -f "$(command -v sunshine)")"
+  if command -v firewall-cmd >/dev/null && sudo firewall-cmd --state >/dev/null 2>&1; then
+    sudo firewall-cmd --permanent --add-port=47984-47990/tcp --add-port=48010/tcp --add-port=47998-48000/udp >/dev/null
+    sudo firewall-cmd --reload >/dev/null && ok "firewall: Sunshine's ports open"
+  fi
+  systemctl --user enable --now sunshine >/dev/null 2>&1 || systemctl --user enable --now app-dev.lizardbyte.app.Sunshine >/dev/null 2>&1 || true
+  ok "Sunshine running"
+  sub "Pair a device: open https://localhost:47990, then add this PC in Moonlight."
+}
+
+decky_install() {  # Decky Loader: Steam Deck plugins inside Gaming Mode
+  [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+  section "Decky Loader"
+  sub "The official installer from github.com/SteamDeckHomebrew; it asks for your password."
+  curl -fsSL https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh
+  ok "done: open Gaming Mode and press the ... button for the Decky menu"
+}
+
 doctor_cmd() {
   section "DeckOS $VERSION"
   say "  Kernel  $(uname -r)"
@@ -732,6 +977,11 @@ doctor_cmd() {
   section "Updates"
   if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on"
   else warn "DeckOS update channel not set up (reinstall deckos-settings, or deckos dev-install)"; fi
+  section "Gaming"
+  local sch; sch=$(scheduler_status)
+  [[ $sch == *state=enabled* ]] && ok "CPU scheduler: $(sed -n 's/^running=//p' <<<"$sch")" || sub "CPU scheduler: the kernel's own (deckos scheduler set lavd)"
+  [[ -e /dev/ntsync ]] && ok "NTSYNC available" || warn "NTSYNC missing (/dev/ntsync): Proton falls back to fsync"
+  gpu_od_on && ok "GPU overdrive on" || sub "GPU overdrive off (deckos gpu overdrive on, for undervolting)"
   section "AI"
   systemctl is-active --quiet ollama && ok "ollama running" || sub "ollama stopped (systemctl start ollama)"
   command -v claude >/dev/null || [[ -x $HOME/.local/bin/claude ]] && ok "Claude Code installed" || sub "Claude Code not installed (curl -fsSL https://claude.ai/install.sh | bash)"
@@ -754,6 +1004,12 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos backup  [FOLDER]                               copy your home folder to another drive
   deckos dev-install [CHECKOUT]                         build and install DeckOS from a repo checkout
   deckos spotify [theme|restore]                        the DeckOS look for Spotify (Spicetify)
+  deckos scheduler [status|set lavd|bpfland|off [MODE]] gaming CPU scheduler (sched_ext)
+  deckos gpu     [status|set K=V..|reset|overdrive on|off]  power limit, undervolt, fan curve
+  deckos controllers pair                               Xbox wireless dongle pairing mode
+  deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
+  deckos streaming setup                                Sunshine game streaming (Moonlight)
+  deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
   deckos hub                                            open DeckOS Hub
 EOF
@@ -773,6 +1029,12 @@ case ${1:-} in
   backup) shift; backup_cmd "$@" ;;
   dev-install) shift; dev_install "$@" ;;
   spotify) shift; spotify_cmd "$@" ;;
+  scheduler) shift; scheduler_cmd "$@" ;;
+  gpu) shift; gpu_cmd "$@" ;;
+  controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
+  auto-update) shift; auto_update_cmd "$@" ;;
+  streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;
+  decky) shift; [[ ${1:-install} == install ]] && decky_install ;;
   doctor) doctor_cmd ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;

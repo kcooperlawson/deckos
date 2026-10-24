@@ -24,6 +24,14 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
   suggestions come from `usr/lib/deckos/store/store_find.py` (no Qt, a slim index the Store writes).
   Preview it with `assets/preview_menu.py` (stand-in Plasma modules in `assets/preview_menu/`). JS names
   like `escape` or `get` break QML method/signal declarations.
+- Gaming tuning: `deckos scheduler` (scx_loader; lavd Gaming is the one-time default from the .install),
+  `deckos gpu` (power limit, voltage offset, fan curve via amdgpu sysfs from `/etc/deckos/gpu.conf`,
+  re-applied by `deckos-gpu.service`; boot with `deckos.gpu=stock` to skip; stands aside when LACT's
+  `lactd` runs), `deckos auto-update` (04:00 timer, skipped mid-game). Shader cache size is in
+  `usr/lib/environment.d/60-deckos-gaming.conf`; the Hub writes the FSR 4 upgrade to
+  `~/.config/environment.d/90-deckos-gaming.conf`; `gaming-session` sources both, since Gaming Mode
+  doesn't go through environment.d. The Hub's Games page (`hub/hub_games.py`) reads Steam, Heroic and
+  Lutris libraries from their files and caches ProtonDB tiers for a week.
 - `pkg/deckos-settings/rootfs/usr/share/plasma/plasmoids/org.deckos.quicksettings/`: DeckOS Quick Settings,
   the panel popup (native QML). Plasma services through their own QML modules (plasma-nm, bluedevil,
   plasma-pa, powerdevil, KWin over `org.kde.plasma.workspace.dbus`), each in its own Loader so a missing

@@ -22,10 +22,12 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, 
 
 import hub_style as S
 import hub_system as sysinfo
+from hub_games import GamesPage
 from hub_pages import AiDevPage, AppearancePage, DisplayPage, DrivesPage, GamingPage, HomePage, SystemPage
 from hub_widgets import Toast, label
 
-PAGES = [("home", "Home", "home", HomePage), ("display", "Display", "display", DisplayPage),
+PAGES = [("home", "Home", "home", HomePage), ("games", "Games", "grid", GamesPage),
+         ("display", "Display", "display", DisplayPage),
          ("gaming", "Gaming", "gaming", GamingPage), ("drives", "Drives", "drives", DrivesPage),
          ("aidev", "AI & Dev", "ai", AiDevPage), ("system", "System", "system", SystemPage),
          ("appearance", "Appearance", "appearance", AppearancePage)]

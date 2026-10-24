@@ -1,0 +1,10 @@
+[Unit]
+Description=DeckOS overnight update (04:00; skipped while a game runs)
+
+[Timer]
+OnCalendar=*-*-* 04:00
+RandomizedDelaySec=20min
+# Not Persistent: a missed night waits for the next one instead of updating right after you log in.
+
+[Install]
+WantedBy=timers.target

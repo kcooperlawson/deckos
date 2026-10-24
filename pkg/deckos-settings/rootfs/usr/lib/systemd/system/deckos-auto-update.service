@@ -1,0 +1,10 @@
+[Unit]
+Description=DeckOS overnight update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/deckos auto-update run
+Nice=10
+IOSchedulingClass=idle
