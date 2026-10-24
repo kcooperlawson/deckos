@@ -187,6 +187,21 @@ The sliders button in the panel opens **DeckOS Quick Settings**, the everyday co
 It uses Plasma's own services for Wi-Fi, sound and the rest, so it opens instantly and does nothing
 while it's closed. On an existing install, add it with right-click on the panel › *Add or Manage Widgets*.
 
+## Workload modes
+
+A PC that games, builds code and runs local AI has them fighting over the same graphics card. When a
+game starts (Steam, Lutris, or Gaming Mode), DeckOS gets out of its way:
+
+- **Ollama's models leave graphics memory**, so the game gets all of it. Ollama loads them again the
+  next time something asks for one.
+- **Docker containers pause**, and carry on where they were when the game ends. Label a container
+  `deckos.keep=true` (a game server, say) to keep it running.
+- **File indexing pauses** until the game ends.
+
+A notification says what was freed, and Quick Settings shows it while you play. `deckos mode off` turns
+it off (`deckos mode on` brings it back). To keep one part running, set `OLLAMA=keep`,
+`DOCKER=leave` or `BALOO=leave` in `~/.config/deckos/modes.conf`.
+
 ## DeckOS Menu
 
 The app launcher at the left of the dock (or press **Meta**) is DeckOS Menu. Start typing right away:

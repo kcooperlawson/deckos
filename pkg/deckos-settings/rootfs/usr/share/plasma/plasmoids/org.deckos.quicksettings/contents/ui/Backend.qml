@@ -20,6 +20,14 @@ Item {
     property bool gamingAvailable: false
     property bool firewallInstalled: true
 
+    // Workload modes (deckos-modes.service)
+    property bool modeAuto: true
+    property string mode: "normal"
+    property string modeGame: ""
+    property double modeVram: 0  // bytes freed from graphics memory
+    property int modeContainers: 0
+    property bool modeIndexing: false
+
     readonly property int checkEvery: 3 * 3600  // seconds between background update checks
 
     readonly property string updatesText: {
@@ -72,6 +80,14 @@ Item {
         if ("display" in v) displayLevel = parseInt(v.display);
         if ("gaming" in v) gamingAvailable = v.gaming === "1";
         if ("firewall" in v) firewallInstalled = v.firewall === "1";
+        if ("mode" in v) {
+            modeAuto = v.auto !== "0";
+            mode = v.mode;
+            modeGame = v.game || "";
+            modeVram = parseFloat(v.vram) || 0;
+            modeContainers = (v.docker || "").split(" ").filter(s => s).length;
+            modeIndexing = v.baloo === "1";
+        }
         if ("checked" in v) {
             repoUpdates = parseInt(v.repo);
             aurUpdates = parseInt(v.aur) || 0;
@@ -90,6 +106,11 @@ Item {
             checking = false;
             parse(out);
         });
+    }
+
+    function setModes(on: bool): void {
+        modeAuto = on;
+        run("deckos mode " + (on ? "on" : "off"), () => refresh());
     }
 
     function refresh(): void {

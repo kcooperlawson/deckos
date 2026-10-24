@@ -35,7 +35,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `lactd` runs), `deckos auto-update` (04:00 timer, skipped mid-game). Shader cache size is in
   `usr/lib/environment.d/60-deckos-gaming.conf`; the Hub writes the FSR 4 upgrade to
   `~/.config/environment.d/90-deckos-gaming.conf`; `gaming-session` sources both, since Gaming Mode
-  doesn't go through environment.d. The Hub's Games page (`hub/hub_games.py`) reads Steam, Heroic and
+  doesn't go through environment.d. Workload modes: `deckos mode watch` (user unit
+  `deckos-modes.service`, enabled with `systemctl --global` from the .install) finds a game with an
+  anchored `pgrep` every 5 s (Steam's reaper, lutris-wrapper, gamescope-session), then unloads Ollama
+  models, pauses Docker and suspends Baloo, and records what to put back in `$XDG_RUNTIME_DIR/deckos-mode`
+  (also what `quick-status` passes to Quick Settings' ModeRow). The Hub's Games page (`hub/hub_games.py`) reads Steam, Heroic and
   Lutris libraries from their files and caches ProtonDB tiers for a week.
 - `pkg/deckos-settings/rootfs/usr/share/plasma/plasmoids/org.deckos.quicksettings/`: DeckOS Quick Settings,
   the panel popup (native QML). Plasma services through their own QML modules (plasma-nm, bluedevil,

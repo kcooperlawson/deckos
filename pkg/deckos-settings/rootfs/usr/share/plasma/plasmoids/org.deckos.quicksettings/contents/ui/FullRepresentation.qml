@@ -124,6 +124,10 @@ Item {
                 backend: full.backend
             }
             Piece { id: power; file: "PowerRow.qml" }
+            ModeRow {
+                Layout.fillWidth: true
+                backend: full.backend
+            }
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: 1

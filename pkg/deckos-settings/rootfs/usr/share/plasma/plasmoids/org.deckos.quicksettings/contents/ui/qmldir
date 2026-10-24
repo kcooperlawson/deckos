@@ -19,4 +19,5 @@ BrightnessSection 1.0 BrightnessSection.qml
 MediaCard 1.0 MediaCard.qml
 PowerRow 1.0 PowerRow.qml
 UpdatesRow 1.0 UpdatesRow.qml
+ModeRow 1.0 ModeRow.qml
 DisplayPicker 1.0 DisplayPicker.qml

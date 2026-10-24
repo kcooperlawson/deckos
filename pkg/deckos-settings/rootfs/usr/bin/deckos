@@ -500,6 +500,7 @@ quick_status() {
   printf 'display=%s\n' "$(display_level)"
   if command -v gamescope-session-plus >/dev/null; then echo gaming=1; else echo gaming=0; fi
   if command -v firewall-cmd >/dev/null; then echo firewall=1; else echo firewall=0; fi
+  mode_status
   if [[ -r $UPDATES_CACHE ]]; then
     cat "$UPDATES_CACHE"
     if [[ /var/lib/pacman/local -nt $UPDATES_CACHE ]]; then echo stale=1; fi
@@ -979,6 +980,147 @@ auto_update_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ workload modes
+#
+# A PC that games, builds and runs local AI has them fight over the same graphics memory and CPU.
+# deckos-modes.service (a user service) watches for a game and, while one runs, unloads Ollama's
+# models from graphics memory, pauses Docker containers and suspends file indexing; it puts back what
+# it paused when the game ends. Settings in ~/.config/deckos/modes.conf; the state in
+# $XDG_RUNTIME_DIR/deckos-mode is what Quick Settings shows.
+
+MODES_CONF=$HOME/.config/deckos/modes.conf
+MODE_STATE=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/deckos-mode
+
+mode_conf() {  # mode_conf KEY DEFAULT
+  local v
+  v=$(sed -n "s/^$1=//p" "$MODES_CONF" 2>/dev/null | tail -n1)
+  echo "${v:-$2}"
+}
+
+mode_conf_set() {  # mode_conf_set KEY VALUE
+  mkdir -p "${MODES_CONF%/*}"
+  touch "$MODES_CONF"
+  sed -i "/^$1=/d" "$MODES_CONF"
+  echo "$1=$2" >> "$MODES_CONF"
+}
+
+steam_game_name() {  # steam_game_name APPID: the name from its app manifest, in any Steam library
+  local steam=$HOME/.local/share/Steam lib m
+  while IFS= read -r lib; do
+    m=$lib/steamapps/appmanifest_$1.acf
+    [[ -r $m ]] && { sed -n 's/^\s*"name"\s*"\(.*\)"/\1/p' "$m" | head -n1; return; }
+  done < <(sed -n 's/^\s*"path"\s*"\(.*\)"/\1/p' "$steam/steamapps/libraryfolders.vdf" 2>/dev/null || true; echo "$steam")
+}
+
+mode_game() {  # the game running now, or nothing: Steam games (reaper), Lutris, Gaming Mode
+  local line id name
+  # Anchored on the program itself, so a shell or editor whose command line mentions one doesn't count
+  line=$(pgrep -a -u "$(id -u)" -f \
+    '^[^ ]*reaper SteamLaunch AppId=[0-9]+|^[^ ]*lutris-wrapper |^([^ ]*sh )?[^ ]*gamescope-session' | head -n1 || true)
+  [[ -n $line ]] || return 0
+  case $line in
+    *"SteamLaunch AppId="*)
+      id=${line#*AppId=}; id=${id%% *}
+      name=$(steam_game_name "$id")
+      [[ -n $name ]] || { [[ $line == */steamapps/common/* ]] && name=${line#*/steamapps/common/} && name=${name%%/*}; }
+      echo "${name:-a Steam game}" ;;
+    *lutris-wrapper*) name=${line#*lutris-wrapper }; echo "${name%% /*}" ;;
+    *) echo "Gaming Mode" ;;
+  esac
+}
+
+ollama_url() {
+  local h=${OLLAMA_HOST:-127.0.0.1:11434}
+  [[ $h == http* ]] || h=http://$h
+  echo "$h"
+}
+
+mode_enter() {  # mode_enter GAME: free what the game needs, remember what to put back
+  local game=$1 url ps names="" vram=0 ids="" keep did=()
+  url=$(ollama_url)
+  if [[ $(mode_conf OLLAMA unload) == unload ]] && ps=$(curl -fsS -m 3 "$url/api/ps" 2>/dev/null); then
+    local name size
+    while IFS=$'\t' read -r name size; do
+      [[ -n $name ]] || continue
+      curl -fsS -m 15 "$url/api/generate" -d "$(jq -cn --arg m "$name" '{model: $m, keep_alive: 0}')" >/dev/null 2>&1 \
+        && { names+="${names:+ }$name"; vram=$((vram + size)); }
+    done < <(jq -r '.models[]? | [.name, (.size_vram // 0)] | @tsv' <<<"$ps" 2>/dev/null || true)
+    [[ -n $names ]] && did+=("unloaded $names from graphics memory ($(awk -v b="$vram" 'BEGIN { printf "%.1f GB", b / 1e9 }'))")
+  fi
+  # Containers labelled deckos.keep=true (a game server, say) keep running.
+  if [[ $(mode_conf DOCKER pause) == pause ]] && command -v docker >/dev/null \
+     && ids=$(timeout 5 docker ps -q --filter status=running 2>/dev/null); then
+    keep=$(timeout 5 docker ps -q --filter label=deckos.keep=true 2>/dev/null || true)
+    ids=$(grep -vxF -f <(echo "$keep") <<<"$ids" | grep . | tr '\n' ' ' || true)
+    ids=${ids% }
+    if [[ -n $ids ]]; then
+      # shellcheck disable=SC2086  # one id per word
+      if timeout 20 docker pause $ids >/dev/null 2>&1; then did+=("paused $(wc -w <<<"$ids") Docker container(s)"); else ids=""; fi
+    fi
+  fi
+  local baloo=0
+  if [[ $(mode_conf BALOO suspend) == suspend ]] && command -v balooctl6 >/dev/null \
+     && balooctl6 status 2>/dev/null | grep -qi 'is running'; then
+    balooctl6 suspend >/dev/null 2>&1 && baloo=1 && did+=("paused file indexing")
+  fi
+  printf 'mode=gaming\ngame=%s\nsince=%s\nollama=%s\nvram=%s\ndocker=%s\nbaloo=%s\n' \
+    "$game" "$(date +%s)" "$names" "$vram" "$ids" "$baloo" > "$MODE_STATE.tmp"
+  mv "$MODE_STATE.tmp" "$MODE_STATE"
+  if (( ${#did[@]} )) && command -v notify-send >/dev/null; then
+    timeout 5 notify-send -a "DeckOS" -i deckos-hub "Ready for $game" "$(printf '%s\n' "${did[@]^}")" >/dev/null 2>&1 || true
+  fi
+}
+
+mode_leave() {  # put back what mode_enter paused (Ollama loads models again on its own, when asked)
+  [[ -r $MODE_STATE ]] || return 0
+  local ids baloo
+  ids=$(sed -n 's/^docker=//p' "$MODE_STATE")
+  baloo=$(sed -n 's/^baloo=//p' "$MODE_STATE")
+  # shellcheck disable=SC2086
+  [[ -n $ids ]] && { timeout 20 docker unpause $ids >/dev/null 2>&1 || true; }
+  [[ $baloo == 1 ]] && { balooctl6 resume >/dev/null 2>&1 || true; }
+  printf 'mode=normal\n' > "$MODE_STATE"
+}
+
+mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, no polling of anything else)
+  [[ $(mode_conf AUTO 1) == 1 ]] || exit 0
+  local game misses=0 gaming=0
+  [[ $(sed -n 's/^mode=//p' "$MODE_STATE" 2>/dev/null) == gaming ]] && gaming=1  # a watcher that didn't get to finish
+  trap 'mode_leave; exit 0' TERM INT
+  while :; do
+    game=$(mode_game)
+    if [[ -n $game ]]; then
+      misses=0
+      (( gaming )) || { mode_enter "$game"; gaming=1; }
+    elif (( gaming )) && (( ++misses >= 2 )); then  # a launcher that restarts the game isn't the end of it
+      mode_leave; gaming=0; misses=0
+    fi
+    sleep 5 & wait $!
+  done
+}
+
+mode_status() {  # key=value, no root: for Quick Settings and the Hub
+  printf 'auto=%s\n' "$(mode_conf AUTO 1)"
+  if [[ -r $MODE_STATE ]]; then cat "$MODE_STATE"; else echo mode=normal; fi
+}
+
+mode_cmd() {
+  case ${1:-} in
+    "")
+      section "Workload modes"
+      local s; s=$(mode_status)
+      if [[ $(sed -n 's/^auto=//p' <<<"$s") != 1 ]]; then warn "off (deckos mode on)"
+      elif [[ $(sed -n 's/^mode=//p' <<<"$s") == gaming ]]; then ok "gaming: $(sed -n 's/^game=//p' <<<"$s")"
+      else ok "on: waiting for a game"; fi
+      sub "Settings: $MODES_CONF (OLLAMA=unload|keep, DOCKER=pause|leave, BALOO=suspend|leave)" ;;
+    status) mode_status ;;
+    on) mode_conf_set AUTO 1; systemctl --user start deckos-modes.service 2>/dev/null || true; ok "workload modes on" ;;
+    off) mode_conf_set AUTO 0; systemctl --user stop deckos-modes.service 2>/dev/null || true; ok "workload modes off" ;;
+    watch) mode_watch ;;
+    *) err "usage: deckos mode [status|on|off]"; exit 2 ;;
+  esac
+}
+
 # ------------------------------------------------------------------ streaming and Decky
 
 streaming_setup() {  # Sunshine: stream games to a TV, phone or Steam Deck with Moonlight
@@ -1036,6 +1178,9 @@ doctor_cmd() {
   if dgpu_card >/dev/null; then
     gpu_od_on && ok "GPU overdrive on" || sub "GPU overdrive off (deckos gpu overdrive on, for undervolting)"
   fi
+  if [[ $(mode_conf AUTO 1) != 1 ]]; then sub "workload modes off (deckos mode on)"
+  elif systemctl --user is-active --quiet deckos-modes.service 2>/dev/null; then ok "workload modes on: games get the GPU to themselves"
+  else warn "workload modes on, but its service isn't running (systemctl --user start deckos-modes)"; fi
   section "AI"
   systemctl is-active --quiet ollama && ok "ollama running" || sub "ollama stopped (systemctl start ollama)"
   command -v claude >/dev/null || [[ -x $HOME/.local/bin/claude ]] && ok "Claude Code installed" || sub "Claude Code not installed (curl -fsSL https://claude.ai/install.sh | bash)"
@@ -1062,6 +1207,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos gpu     [status|set K=V..|reset|overdrive on|off]  power limit, undervolt, fan curve
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
+  deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
@@ -1087,6 +1233,7 @@ case ${1:-} in
   gpu) shift; gpu_cmd "$@" ;;
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
+  mode) shift; mode_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;
   decky) shift; [[ ${1:-install} == install ]] && decky_install ;;
   doctor) doctor_cmd ;;
