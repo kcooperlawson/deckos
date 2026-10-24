@@ -9,7 +9,7 @@ from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE.parent/'hub'))
-from PySide6.QtCore import QDir, QProcess, Qt, QTimer, QUrl
+from PySide6.QtCore import QDir, QEvent, QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont, QFontDatabase, QIcon, QKeySequence, QPixmap, QShortcut, QTextCursor, QPalette, QColor
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFileSystemModel,
     QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QPlainTextEdit,
@@ -29,7 +29,7 @@ def text(value='',kind=None):
 def qss():
     return S.qss()+f'''
 QLineEdit,QSpinBox {{ background:{S.SURFACE};border:1px solid {S.BORDER};border-radius:7px;padding:8px; }}
-QTextBrowser {{ background:{S.BG};border:none;padding:12px; }}
+QTextBrowser {{ background:{S.BG};color:{S.TEXT};border:none;padding:12px; }}
 QListWidget,QTreeView {{ background:transparent;border:none;outline:none; }}
 QListWidget::item {{ padding:11px 8px;border-radius:6px;color:{S.SUBTEXT}; }}
 QListWidget::item:selected {{ background:#1A2A43;color:{S.TEXT}; }}
@@ -120,6 +120,15 @@ class Work(QWidget):
         self.attached=[]
         self.streaming=''
         self.pending_prompt=''
+        # Qt's Markdown importer stamps the application palette's text and link colours into the document,
+        # and Plasma's palette can be dark text: without this every message is dark on dark.
+        app=QApplication.instance()
+        palette=app.palette()
+        for group in (QPalette.Active,QPalette.Inactive,QPalette.Disabled):
+            for role,colour in ((QPalette.Text,S.TEXT),(QPalette.WindowText,S.TEXT),(QPalette.Base,S.BG),
+                                (QPalette.Window,S.BG),(QPalette.Link,S.P.accent)):
+                palette.setColor(group,role,QColor(colour))
+        app.setPalette(palette)
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground,True)
         self.setWindowTitle('DeckOS Work'+(' — Demo' if demo else ''))
@@ -197,7 +206,11 @@ class Work(QWidget):
         cv.setContentsMargins(0,0,12,0)
         self.chat=QTextBrowser()
         self.chat.setOpenExternalLinks(False)
-        palette=self.chat.palette()
+        palette=self.chat.palette()  # Markdown text takes the palette, not the stylesheet; Plasma's is dark-on-dark here
+        for group in (QPalette.Active,QPalette.Inactive,QPalette.Disabled):
+            palette.setColor(group,QPalette.Text,QColor(S.TEXT))
+            palette.setColor(group,QPalette.WindowText,QColor(S.TEXT))
+            palette.setColor(group,QPalette.Base,QColor(S.BG))
         palette.setColor(QPalette.Link,QColor(S.P.accent))
         self.chat.setPalette(palette)
         self.chat.anchorClicked.connect(self.open_link)
@@ -221,7 +234,8 @@ class Work(QWidget):
         compose=QVBoxLayout(composer)
         compose.setContentsMargins(12,10,12,10)
         self.input=QPlainTextEdit()
-        self.input.setPlaceholderText('Describe the work. Read a project, fix code, make a report, create an image…')
+        self.input.installEventFilter(self)
+        self.input.setPlaceholderText('Describe the work. Read a project, fix code, make a report, create an image… (Shift+Enter for a new line)')
         self.input.setFixedHeight(83)
         compose.addWidget(self.input)
         controls=QHBoxLayout()
@@ -285,6 +299,14 @@ class Work(QWidget):
         split.setSizes([780,360])
         layout.addWidget(split,1)
         self.stack.addWidget(page)
+
+    def eventFilter(self,watched,event):
+        # Enter sends, Shift+Enter starts a new line, like other chat apps.
+        if watched is self.input and event.type()==QEvent.KeyPress and event.key() in (Qt.Key_Return,Qt.Key_Enter) \
+                and not event.modifiers() & Qt.ShiftModifier:
+            self.send()
+            return True
+        return super().eventFilter(watched,event)
 
     def build_images(self):
         page=QWidget()
@@ -777,9 +799,6 @@ def main():
         QFontDatabase.addApplicationFont(str(font))
     app.setFont(QFont('Inter',10))
     app.setStyleSheet(qss())
-    palette=app.palette()  # Markdown links take their colour from the application palette
-    palette.setColor(QPalette.Link,QColor(S.P.accent))
-    app.setPalette(palette)
     window=Work(args.demo,args.workspace)
     window.show()
     if args.screenshot:

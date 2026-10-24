@@ -61,6 +61,20 @@ class WorkUiTests(unittest.TestCase):
         QTest.mouseClick(self.window.send_button,Qt.LeftButton)
         self.assertIn('Demo mode',self.window.status.text())
 
+    def test_enter_sends_and_shift_enter_adds_a_line(self):
+        sent=[]
+        self.window.send=lambda:sent.append(self.window.input.toPlainText())
+        self.window.input.setPlainText('hi')
+        QTest.keyClick(self.window.input,Qt.Key_Return,Qt.ShiftModifier)
+        self.assertEqual(sent,[])
+        self.assertIn('\n',self.window.input.toPlainText())
+        QTest.keyClick(self.window.input,Qt.Key_Return)
+        self.assertEqual(len(sent),1)
+
+    def test_chat_text_is_light_whatever_the_desktop_palette(self):
+        from PySide6.QtGui import QColor
+        self.assertGreater(QApplication.instance().palette().text().color().lightness(),180)
+
 
 if __name__=='__main__':
     unittest.main()
