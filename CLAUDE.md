@@ -35,7 +35,13 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `lactd` runs), `deckos auto-update` (04:00 timer, skipped mid-game). Shader cache size is in
   `usr/lib/environment.d/60-deckos-gaming.conf`; the Hub writes the FSR 4 upgrade to
   `~/.config/environment.d/90-deckos-gaming.conf`; `gaming-session` sources both, since Gaming Mode
-  doesn't go through environment.d. Workload modes: `deckos mode watch` (user unit
+  doesn't go through environment.d. Gaming Mode's SDDM wrapper (`gaming-session`) checks for both
+  gamescope-session-git and the gamescope-session-steam-git client profile before switching. The
+  Steam service drop-in runs `gaming-service` to load DeckOS settings in the actual service process;
+  `gaming-cleanup` removes shared display/portal environment and stops the graphical session target
+  after failure/exit. Treat ADAPTIVE_SYNC=0 as unset for upstream (nonempty means enabled).
+  Session changes need `tests/test_gaming_session.py`; never test by logging out the developer
+  without coordinating first. Workload modes: `deckos mode watch` (user unit
   `deckos-modes.service`, enabled with `systemctl --global` from the .install) finds a game with an
   anchored `pgrep` every 5 s (Steam's reaper, lutris-wrapper, gamescope-session), then unloads Ollama
   models, pauses Docker and suspends Baloo, and records what to put back in `$XDG_RUNTIME_DIR/deckos-mode`
@@ -64,6 +70,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   server (`deckos ai claude-link`). Read-only pipelines (every part read-only) run without asking. Changes always go through `Tools.confirm`.
   Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
   chat instead. `DECKOS_AI_DIR` points `deckos ask`/`deckos ai` at a checkout for testing.
+- Game Doctor: `usr/lib/deckos/gamedoctor/`. `steamfiles.py` reads and writes Steam's KeyValues files
+  (round-trips must stay exact; writes keep `.deckos-bak`; Steam must be closed: it rewrites them on exit),
+  `gamedoctor.py` finds quick exits in `logs/console_log.txt`, takes the game's output from
+  `logs/console-linux.txt`, matches `RULES`, and applies/undoes fixes (state per game in
+  `~/.local/state/deckos/gamedoctor/`). `gamedoctor_watch.py` is the user service (tail -F, no polling).
+  Tests: `tests/test_gamedoctor.py` (a fake Steam root via `DECKOS_STEAM_ROOT`; never the real one).
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).
@@ -156,6 +168,17 @@ not die: a finished install must never be reported as failed.
   Python. `welcome-startup` is the "Show at startup" opt-in. Welcome reuses the Hub's
   `Hub.terminal`/`privileged`/`write_gaming` and `HubData`, and the Store's `Jobs`/`Installed`: changing
   those changes it too.
+
+## DeckOS Bench
+
+`usr/lib/deckos/bench/` has the plain-Python engine, runners, reports and the PySide6 native app.
+`deckos-bench` opens the app; `deckos bench` remains the terminal interface. The Hub's System page
+has a Benchmarks shortcut. `bench_worker.py` uses JSON-line events so probing and benchmarks run
+outside the GUI thread; it creates a process group for cancellation. `bench_data.py` validates
+history and filters failed/incompatible results out of trends and comparison verdicts.
+`bench_app.py --demo --screenshot DIR` renders all four pages with sample data. Tests and remaining
+hardware validation are documented in `docs/bench.md`; do not present BeamNG, fio or vkmark as
+validated on hardware yet. Nothing in Bench should silently change system tuning settings.
 
 ## Open work
 

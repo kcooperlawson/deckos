@@ -498,7 +498,7 @@ updates_cmd() {
 # Everything DeckOS Quick Settings shows from the deckos side, in one quick call: no network, no root.
 quick_status() {
   printf 'display=%s\n' "$(display_level)"
-  if command -v gamescope-session-plus >/dev/null; then echo gaming=1; else echo gaming=0; fi
+  if /usr/lib/deckos/gaming-session --check >/dev/null 2>&1; then echo gaming=1; else echo gaming=0; fi
   if command -v firewall-cmd >/dev/null; then echo firewall=1; else echo firewall=0; fi
   mode_status
   if [[ -r $UPDATES_CACHE ]]; then
@@ -1321,6 +1321,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME]                        desktop layout: dock, classic, topbar, minimal, big
   deckos whatsnew                                       what the latest DeckOS release brought
+  deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
+  deckos bench   [system|games|run KEYS|compare A B]    DeckOS Bench: benchmarks with confidence ranges
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
@@ -1349,7 +1351,14 @@ case ${1:-} in
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
+  game)
+    shift
+    case ${1:-} in
+      doctor) shift; if [[ ${1:-last} == last ]]; then exec deckos-gamedoctor; else exec deckos-gamedoctor --appid "$1"; fi ;;
+      *) err "usage: deckos game doctor [last|APPID]"; exit 2 ;;
+    esac ;;
   ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
+  bench) shift; exec python3 "${DECKOS_BENCH_DIR:-/usr/lib/deckos/bench}/deckos_bench.py" "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;
   decky) shift; [[ ${1:-install} == install ]] && decky_install ;;

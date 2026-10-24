@@ -209,6 +209,7 @@ def terminal_logo():
 
 HUB_LOGO = OUT.parent / "branding/hub-logo.svg"
 ASSISTANT_LOGO = OUT.parent / "branding/assistant-logo.svg"
+BENCH_LOGO = OUT.parent / "branding/bench-logo.svg"
 
 
 def hub_logo():
@@ -221,8 +222,15 @@ def assistant_logo():
     return store_logo().replace(ICONS["store"], ICONS["ai"]).replace('fill="#000"', 'fill="#fff"')
 
 
+def bench_logo():
+    """Bench uses the brand tile with ascending performance bars."""
+    bars = '<path d="M5 19V13M12 19V8M19 19V4M3 21h18"/><path d="M4 8l7-5 4 1"/>'
+    return store_logo().replace(ICONS["store"], bars).replace('fill="#000"', 'fill="#fff"')
+
+
 def write():
     OUT.mkdir(parents=True, exist_ok=True)
+    BENCH_LOGO.write_text(bench_logo(), newline="\n")
     ASSISTANT_LOGO.write_text(assistant_logo(), newline="\n")
     STORE_LOGO.write_text(store_logo(), newline="\n")
     HUB_LOGO.write_text(hub_logo(), newline="\n")

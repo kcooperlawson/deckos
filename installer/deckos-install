@@ -629,6 +629,12 @@ else
   spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-settings && makepkg -si --noconfirm"
 fi
+# deckos-settings added its [deckos] update repo. Until pacman has downloaded and verified that repo's
+# database (the first `deckos update`), it refuses every other transaction, so the TMpikes theme and the
+# AUR apps (pacman -U from the USB, paru) would all fail. The rest of the install leaves the repo out;
+# it's put back before the end.
+inchroot sed -i -e 's|^\[deckos\]$|#DECKOS-INSTALL# [deckos]|' \
+  -e 's|^Include = /etc/pacman.d/deckos-repo$|#DECKOS-INSTALL# &|' /etc/pacman.conf
 # Extra themes, to pick in DeckOS Hub > Appearance. Optional: a USB without them is fine.
 if pkgfile=$(usb_pkg deckos-theme-tmpikes); then
   if inchroot pacman -U --needed --noconfirm "$pkgfile" >>"$LOG" 2>&1; then good "TMpikes theme"
@@ -670,6 +676,9 @@ else
   warn "Claude Code install failed - DeckOS Hub has a button to retry"; FAILED+=("claude-code")
 fi
 rm -f "$MNT/etc/sudoers.d/00-deckos-install"
+# The [deckos] update repo back on (left out while the AUR apps went in, above)
+inchroot sed -i 's|^#DECKOS-INSTALL# ||' /etc/pacman.conf \
+  || warn "Turn DeckOS updates on in /etc/pacman.conf (remove the #DECKOS-INSTALL# marks)"
 
 # ------------------------------------------------------------------ drives
 

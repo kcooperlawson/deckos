@@ -10,10 +10,12 @@ arch=(any)
 license=(MIT)
 depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit kdialog konsole
          grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib playerctl
-         papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal)
+         papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal
+         7zip fio vkmark)  # DeckOS Bench's CPU, disk and graphics tests
 makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
-            'lact: GPU clock/fan control GUI')
+            'lact: GPU clock/fan control GUI'
+            'gcc: DeckOS Bench memory benchmark (compiled on first use)')
 backup=(etc/deckos/display.conf
         etc/deckos/gaming.conf
         etc/pacman.d/deckos-repo
@@ -27,8 +29,8 @@ package() {
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
-            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew \
-            "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,brand-os-release,plymouth-refresh} \
+            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew "$pkgdir"/usr/bin/deckos-gamedoctor "$pkgdir"/usr/bin/deckos-bench \
+            "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,gaming-service,gaming-cleanup,brand-os-release,plymouth-refresh} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
   chmod 440 "$pkgdir/etc/sudoers.d/deckos"
@@ -111,7 +113,7 @@ package() {
 
   # DeckOS Store, Hub and Assistant app icons.
   local app
-  for app in store hub assistant; do
+  for app in store hub assistant bench; do
     install -Dm644 "$b/$app-logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos-$app.svg"
     for s in 16 24 32 48 64 128 256; do
       rsvg-convert -w "$s" -h "$s" "$b/$app-logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos-$app.png"

@@ -239,6 +239,8 @@ class GamesPage(Page):
         self.sort.currentIndexChanged.connect(self.layout_tiles)
         for w in (self.search, self.source, self.sort):
             self.head_actions.addWidget(w)
+        self.head_actions.addWidget(button("Game Doctor", slot=lambda: QProcess.startDetached("deckos-gamedoctor", []),
+                                           icon="alert", tip="Why the last game that closed right after starting did"))
         self.head_actions.addWidget(button("", slot=self.reload, icon="refresh", tip="Look for games again"))
         host = QWidget()
         self.grid = QGridLayout(host)

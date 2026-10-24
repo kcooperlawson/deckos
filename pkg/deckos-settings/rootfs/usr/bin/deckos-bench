@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 "${DECKOS_BENCH_DIR:-/usr/lib/deckos/bench}/bench_app.py" "$@"

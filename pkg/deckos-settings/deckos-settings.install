@@ -4,6 +4,8 @@ _setup() {
   systemctl enable deckos-display.service deckos-gpu.service >/dev/null 2>&1 || true
   # Workload modes, for every user from their next login (`deckos mode off` turns it off for one)
   systemctl --global enable deckos-modes.service >/dev/null 2>&1 || true
+  # Game Doctor's watcher: offers help when a game closes right after starting
+  systemctl --global enable deckos-gamedoctor.service >/dev/null 2>&1 || true
   # The gaming CPU scheduler (scx_lavd, Gaming mode), once: after that it's the Hub's switch.
   if [ ! -e /var/lib/deckos/scheduler-default ] && [ -e /usr/lib/systemd/system/scx_loader.service ]; then
     [ -e /etc/scx_loader.toml ] || printf '# DeckOS default (DeckOS Hub > Gaming > Performance)\ndefault_sched = "scx_lavd"\ndefault_mode = "Gaming"\n' \

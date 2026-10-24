@@ -1,0 +1,38 @@
+# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.5.0"
+name = "Know your machine"
+tagline = "Benchmarks you can trust, and games that tell you why they won't start."
+
+fixes = [
+    "Gaming Mode checks it's ready before closing the desktop, cleans up after itself, and VRR off now means off.",
+    "A fresh install from the USB installs the TMpikes theme and the AUR apps again.",
+    "DeckOS Bench: the disk test measures the drive on btrfs, the graphics test runs on Radeon, and AI prompt speed is measured fresh every run.",
+]
+
+[[highlights]]
+title = "Game Doctor"
+text = """When a game closes right after starting, DeckOS offers to look into it: it reads what the game \
+printed, says in plain words what went wrong, and offers fixes you can undo: another Proton version, \
+the OpenGL path, a fresh Proton prefix, or checking the game files."""
+icon = "alert"
+try = "Open Game Doctor"
+run = ["deckos-gamedoctor"]
+
+[[highlights]]
+title = "DeckOS Bench"
+text = """Your CPU, memory, disk, graphics card and local AI, measured the same way every time, with the \
+spread of every result and a history to look back on. Compare two runs and it tells you whether a \
+difference is real or just noise."""
+icon = "gauge"
+try = "Open DeckOS Bench"
+run = ["deckos-bench"]
+
+[[highlights]]
+title = "Experiments"
+text = """Does a setting actually help? Bench runs your tests both ways, taking turns (A B B A) so \
+warming up can't favour one side, puts your setting back, and gives a verdict. Start with the power \
+profile, or the local AI model loaded against unloaded."""
+icon = "flask"
+try = "Run an experiment"
+run = ["deckos-bench", "--page", "run"]

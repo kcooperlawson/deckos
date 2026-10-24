@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=DeckOS Bench
+GenericName=Performance benchmarks
+Comment=Run benchmarks, explore performance history and compare results
+Exec=deckos-bench
+Icon=deckos-bench
+Type=Application
+Categories=System;
+Keywords=deckos;benchmark;performance;cpu;gpu;memory;history;stats;
+StartupNotify=true

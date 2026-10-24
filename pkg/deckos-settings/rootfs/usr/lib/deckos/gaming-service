@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Load DeckOS configuration inside the user service, where gamescope actually runs.
+set -Eeuo pipefail
+set -a
+for f in /usr/lib/environment.d/60-deckos-gaming.conf /etc/deckos/gaming.conf \
+         "$HOME/.config/environment.d/90-deckos-gaming.conf" "$HOME/.config/deckos/gaming.conf"; do
+  # shellcheck source=/dev/null
+  [[ ! -r $f ]] || . "$f"
+done
+if [[ -z ${OUTPUT_CONNECTOR:-} ]]; then
+  OUTPUT_CONNECTOR=$(/usr/bin/deckos gaming detect 2>/dev/null) || OUTPUT_CONNECTOR=
+fi
+# The upstream session uses a nonempty-string check, so ADAPTIVE_SYNC=0 turns VRR ON.
+if [[ ${ADAPTIVE_SYNC:-0} != 1 ]]; then unset ADAPTIVE_SYNC; fi
+set +a
+exec /usr/share/gamescope-session-plus/gamescope-session-plus steam

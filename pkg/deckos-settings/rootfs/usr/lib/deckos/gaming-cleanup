@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Also runs after failure/termination of the upstream Steam session from SDDM.
+set -Eeuo pipefail
+systemctl --user unset-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_DESKTOP_PORTAL_DIR \
+  GAMESCOPE_WAYLAND_DISPLAY GAMESCOPE_STATS || true
+# Queue this instead of waiting: the target is bound to the service running ExecStopPost.
+systemctl --user --no-block stop graphical-session.target || true

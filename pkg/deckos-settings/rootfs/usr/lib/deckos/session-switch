@@ -19,6 +19,12 @@ user=${SUDO_USER:-}
 [[ -n $user && $user != root ]] || { echo "run via sudo from your user account" >&2; exit 1; }
 id -nG "$user" | tr ' ' '\n' | grep -qx wheel || { echo "$user is not in wheel" >&2; exit 1; }
 
+# Reject incomplete installations before closing the user's desktop.
+if [[ $session == deckos-gaming.desktop ]]; then
+  /usr/lib/deckos/gaming-session --check
+fi
+[[ -f /usr/share/wayland-sessions/$session ]] || { echo "session file is missing: $session" >&2; exit 1; }
+
 # A switch already on its way: a second click must not restart SDDM again, which would kill the
 # session the first one just started.
 if systemctl is-active --quiet deckos-session-switch.timer deckos-session-switch.service; then
@@ -31,5 +37,9 @@ printf '# One-shot session switch written by DeckOS; removed on next login.\n[Au
   "$user" "$session" > "$CONF"
 # AccuracySec: timers default to 1 minute of slack, so "in 1 s" could take up to a minute, and people
 # click again. A fixed unit name makes a second schedule fail instead of stacking a second restart.
-systemd-run --quiet --collect --unit=deckos-session-switch --on-active="${delay}s" \
-  --timer-property=AccuracySec=100ms /usr/bin/systemctl restart sddm.service
+if ! systemd-run --quiet --collect --unit=deckos-session-switch --on-active="${delay}s" \
+     --timer-property=AccuracySec=100ms /usr/bin/systemctl restart sddm.service; then
+  rm -f "$CONF"
+  echo "Could not schedule the session switch; autologin was cleared." >&2
+  exit 1
+fi

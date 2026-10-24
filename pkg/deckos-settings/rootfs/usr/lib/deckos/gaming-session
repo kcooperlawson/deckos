@@ -1,20 +1,63 @@
 #!/usr/bin/env bash
-# DeckOS Gaming Mode: Steam Big Picture inside gamescope, on the 9070 XT, on the Samsung G7.
-sudo -n /usr/lib/deckos/session-switch --clear 2>/dev/null || true
+# SDDM entry point. Keep the user manager clean when Gaming Mode exits or fails.
+set -Eeuo pipefail
 
-set -a
-# The desktop's gaming environment too (shader cache size, FSR 4 upgrade): Plasma gets these from
-# systemd's environment.d, this session doesn't go through it.
-for f in /usr/lib/environment.d/60-deckos-gaming.conf "$HOME/.config/environment.d/90-deckos-gaming.conf"; do
-  # shellcheck source=/dev/null
-  [[ -r $f ]] && . "$f"
-done
-[[ -r /etc/deckos/gaming.conf ]] && . /etc/deckos/gaming.conf
-[[ -r $HOME/.config/deckos/gaming.conf ]] && . "$HOME/.config/deckos/gaming.conf"
-set +a
+check() {
+  local command missing=0
+  for command in steam gamescope gamescope-session-plus steamos-session-select; do
+    if ! command -v "$command" >/dev/null; then
+      echo "Gaming Mode needs $command." >&2
+      missing=1
+    fi
+  done
+  if [[ ! -r /usr/share/gamescope-session-plus/sessions.d/steam ]]; then
+    echo "Gaming Mode needs the Steam session profile (gamescope-session-steam-git)." >&2
+    missing=1
+  fi
+  if (( missing )); then
+    echo "Install the missing Gaming Mode components before switching sessions." >&2
+    return 1
+  fi
+}
 
-if [[ -z ${OUTPUT_CONNECTOR:-} ]]; then
-  conn=$(/usr/bin/deckos gaming detect 2>/dev/null) && [[ -n $conn ]] && export OUTPUT_CONNECTOR="$conn"
+if [[ ${1:-} == --check ]]; then check; exit; fi
+# This launcher takes over a login session; running it inside Plasma would stop that desktop.
+if [[ ${DESKTOP_SESSION:-} != deckos-gaming && ${XDG_CURRENT_DESKTOP:-} != gamescope ]]; then
+  echo "Start Gaming Mode from the login screen or deckos session gaming." >&2
+  exit 2
 fi
 
-exec gamescope-session-plus steam
+sudo -n /usr/lib/deckos/session-switch --clear 2>/dev/null || true
+check
+
+state=${XDG_STATE_HOME:-$HOME/.local/state}/deckos
+mkdir -p "$state"
+log=$state/gaming-session.log
+# Keep the previous attempt without unbounded log growth.
+[[ ! -f $log ]] || mv -f "$log" "$log.previous"
+exec >>"$log" 2>&1
+printf '\nDeckOS Gaming Mode: %s\n' "$(date --iso-8601=seconds)"
+started=$(date '+%Y-%m-%d %H:%M:%S')
+
+cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  # The framework backgrounds Steam/gamescope in a user unit; logging out of SDDM alone
+  # does not stop those processes or the graphical-session target in the persistent manager.
+  systemctl --user stop gamescope-session-plus@steam.service || true
+  systemctl --user stop graphical-session.target || true
+  systemctl --user unset-environment DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_DESKTOP_PORTAL_DIR \
+    GAMESCOPE_WAYLAND_DISPLAY GAMESCOPE_STATS || true
+  systemctl --user reset-failed gamescope-session-plus@steam.service || true
+  journalctl --user -u gamescope-session-plus@steam.service --since "$started" -n 100 --no-pager || true
+  printf 'Gaming Mode ended (status %s). Session resources cleared.\n' "$status"
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Do not exec: the EXIT trap must run after both a normal exit and a startup failure.
+gamescope-session-plus steam &
+wait "$!"

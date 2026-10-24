@@ -236,6 +236,12 @@ class Hub(QWidget):
         self.toast("Installing in a terminal. Reopen the Hub when it's done.", "info", 7000)
 
     def to_gaming(self):
+        sysinfo.Job(self, ["/usr/lib/deckos/gaming-session", "--check"], self.gaming_checked, demo=("", 0))
+
+    def gaming_checked(self, out, code):
+        if code != 0:
+            QMessageBox.warning(self, "Gaming Mode isn't ready", out.strip() or "Gaming Mode's session files are missing.")
+            return
         if QMessageBox.question(self, "Gaming Mode", "Switch to Gaming Mode?\n\nOpen apps will close, so save your "
                                 "work first.") == QMessageBox.Yes and not sysinfo.DEMO:
             QProcess.startDetached("sudo", ["-n", "/usr/lib/deckos/session-switch", "gaming", "--delay", "1"])

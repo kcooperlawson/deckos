@@ -360,7 +360,7 @@ class GamingPage(Page):
     subtitle = "Steam Gaming Mode: Big Picture full screen, like a Steam Deck."
 
     def build(self):
-        if not sysinfo.installed("gamescope-session-plus"):
+        if not all(sysinfo.installed(cmd) for cmd in ("gamescope-session-plus", "steam", "gamescope", "steamos-session-select")):
             self.lay.addWidget(Empty("gaming", "Gaming isn't installed",
                                      "Add Steam, Gaming Mode, Proton, Lutris, Heroic, MangoHud and the rest.",
                                      button("Add Gaming", "primary", lambda: self.hub.add_group("gaming"), icon="plus")))
@@ -847,6 +847,8 @@ class SystemPage(Page):
     def build(self):
         self.head_actions.addWidget(button("Health check", slot=lambda: self.hub.terminal("deckos doctor"),
                                            icon="check"))
+        self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
+                                           icon="gauge"))
         up = Card("Updates", "Keep DeckOS current", "update")
         self.up_state = label("Checking…", "cardTitle")
         self.up_detail = label("", "sub")
@@ -1241,7 +1243,6 @@ class AppearancePage(Page):
         self.layout_grid.setSpacing(10)
         layouts.body.addLayout(self.layout_grid)
         self.lay.addWidget(layouts)
-
 
         style = Card("Desktop style", "Panel, menus and icons", "display")
         grid = QGridLayout()

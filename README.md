@@ -1,11 +1,34 @@
 # DeckOS
 
-**DeckOS** is an Arch-based, CachyOS-accelerated distro for gaming and local AI. It boots into a
-KDE Plasma desktop or a console-style Steam **Gaming Mode**, keeps itself recoverable with btrfs
-snapshots, and installs next to Windows without touching your Windows drives.
+**DeckOS is a Linux distribution for people who game and build things on the same PC.** It's Arch Linux
+with CachyOS's optimised packages, a KDE Plasma desktop that boots or switches into a console-style Steam
+**Gaming Mode**, a local AI assistant that runs on your own graphics card, and a set of tools of its own
+that make the gaming, development and AI sides work together instead of fighting over the hardware.
 
-It's tuned on a Ryzen 7 7800X3D + Radeon RX 9070 XT machine (see [Reference machine](#reference-machine)),
-and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
+**Who it's for:** PC gamers on AMD Radeon who also code, stream, or run local AI models; anyone moving
+from Windows who wants Steam, their games and their Windows drives to just work; people who want a fast,
+recoverable Arch system without assembling it by hand.
+
+### What only DeckOS has
+
+| | |
+|---|---|
+| **Game Doctor** | When a game closes right after starting, DeckOS reads why and offers fixes you can undo |
+| **DeckOS Bench** | Benchmarks for CPU, memory, disk, graphics, local AI and games, with confidence ranges, history and A/B experiments |
+| **Workload modes** | When a game starts, the AI model leaves graphics memory and background work pauses; it all comes back after |
+| **DeckOS Assistant** | Meta+Space: ask your PC to install or set something up, in plain words, on your own GPU; every change shown first |
+| **DeckOS Terminal** | Tabs named after your project and git branch, splits, and the assistant one shortcut away |
+| **DeckOS Files, Hub, Store, Menu, Quick Settings, Welcome, What's New** | DeckOS's own apps for files, settings, software, the launcher and updates |
+| **Its own installer** | Installs next to Windows without touching Windows drives; tested by installing itself in a VM on every release |
+| **Boot and recovery** | The DeckOS boot splash and boot menu, with btrfs snapshots you can boot into after a bad update |
+| **The display fix ladder** | Fixes the RX 9000 DisplayPort blackouts on high-refresh monitors, one level at a time |
+| **Eight themes, 28 wallpapers, five layouts** | A dock, a classic taskbar, a top bar, a hidden dock or a big one for the couch |
+
+### How it's made
+
+DeckOS is designed and maintained by one person, **kcooperlawson**, building with AI assistance: the
+apps, installer, themes and tools in this repository were written together with Claude (Anthropic's AI,
+through Claude Code) and ChatGPT, then tested on real hardware and in CI. Commits made with AI help say so.
 
 | | |
 |---|---|
@@ -18,6 +41,29 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 | **Development** (optional) | Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
 | **Disks** | btrfs with snapshots: boot an older snapshot from GRUB after a bad update. Existing NTFS drives stay NTFS and are mounted read/write |
 | **Fixes** | Display blackout fix ladder for Radeon cards (`deckos display`), Windows dual-boot clock, Steam libraries on NTFS |
+
+## DeckOS Bench
+
+DeckOS Bench is a native app for running system and game benchmarks, browsing historical
+performance charts, and comparing saved sessions. Open `deckos-bench` for the interface or use
+`deckos bench` in a terminal. Reports export as self-contained HTML files. See [Bench usage and validation status](docs/bench.md).
+
+## Game Doctor
+
+When a game closes within 45 seconds of starting, a notification offers to look into it. **Game Doctor**
+reads what the game printed in Steam's log (its Proton and Wine output), tells you in plain words what
+went wrong (the local model explains it, and known problems are matched: anti-cheat, a missing Windows
+library, the DirectX-to-Vulkan layer failing, a crash, sync problems, .NET, memory) and offers fixes that
+fit, each one click and each undoable:
+
+- run the game with another Proton version (DeckOS's Proton-CachyOS, or Proton Experimental)
+- the OpenGL path (`PROTON_USE_WINED3D=1`) or no fast sync (`PROTON_NO_FSYNC=1 PROTON_NO_NTSYNC=1`)
+- a fresh Proton prefix (the old one is kept and can come back)
+- Steam checking the game files
+
+Fixes that change Steam's settings close Steam for a moment (it rewrites those files when it exits) and
+reopen it. Open it any time from Hub › Games › Game Doctor, or `deckos game doctor [APPID]`. Anti-cheat
+that blocks Linux is said plainly: no setting on the PC changes that.
 
 ## Requirements
 

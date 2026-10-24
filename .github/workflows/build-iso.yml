@@ -19,6 +19,8 @@ jobs:
             pkg/deckos-settings/rootfs/usr/bin/deckos \
             pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
             pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-session \
+            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-service \
+            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-cleanup \
             pkg/deckos-settings/rootfs/usr/lib/os-session-select \
             pkg/deckos-installer/rootfs/usr/bin/deckos-installer
           shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
