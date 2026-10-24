@@ -1,0 +1,22 @@
+#!/bin/sh
+# Rebuilds the boot images when the DeckOS boot splash changed: Plymouth loads the splash from the
+# initramfs, so new splash files only show once it's rebuilt. Run by a pacman hook on upgrades;
+# a checksum means ordinary updates (splash unchanged) cost nothing.
+#   plymouth-refresh            rebuild if the splash changed since last time
+#   plymouth-refresh --record   just remember the current splash (first install)
+theme=/usr/share/plymouth/themes/deckos
+state=/var/lib/deckos/plymouth-theme.sha256
+[ -d "$theme" ] || exit 0
+sum=$(cat "$theme"/* 2>/dev/null | sha256sum | cut -d' ' -f1)
+remember() { mkdir -p "${state%/*}" && echo "$sum" > "$state"; }
+[ "$1" = "--record" ] && { remember; exit 0; }
+[ "$sum" = "$(cat "$state" 2>/dev/null)" ] && exit 0
+command -v mkinitcpio >/dev/null || exit 0
+# Only when the DeckOS splash is the one in use.
+plymouth-set-default-theme 2>/dev/null | grep -qx deckos || { remember; exit 0; }
+if mkinitcpio -P >/dev/null 2>&1; then
+  remember
+else
+  echo "DeckOS: couldn't rebuild the boot images for the new splash; run 'sudo mkinitcpio -P'"
+fi
+exit 0

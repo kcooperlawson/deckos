@@ -1,0 +1,9 @@
+[Trigger]
+Operation = Upgrade
+Type = Path
+Target = usr/share/plymouth/themes/deckos/*
+
+[Action]
+Description = Updating the DeckOS boot splash...
+When = PostTransaction
+Exec = /usr/lib/deckos/plymouth-refresh
