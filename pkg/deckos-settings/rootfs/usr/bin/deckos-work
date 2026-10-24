@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 "${DECKOS_WORK_DIR:-/usr/lib/deckos/work}/work_app.py" "$@"

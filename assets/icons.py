@@ -210,6 +210,7 @@ def terminal_logo():
 HUB_LOGO = OUT.parent / "branding/hub-logo.svg"
 ASSISTANT_LOGO = OUT.parent / "branding/assistant-logo.svg"
 BENCH_LOGO = OUT.parent / "branding/bench-logo.svg"
+WORK_LOGO = OUT.parent / "branding/work-logo.svg"
 
 
 def hub_logo():
@@ -231,6 +232,7 @@ def bench_logo():
 def write():
     OUT.mkdir(parents=True, exist_ok=True)
     BENCH_LOGO.write_text(bench_logo(), newline="\n")
+    WORK_LOGO.write_text(store_logo().replace(ICONS["store"], ICONS["code"]), newline="\n")
     ASSISTANT_LOGO.write_text(assistant_logo(), newline="\n")
     STORE_LOGO.write_text(store_logo(), newline="\n")
     HUB_LOGO.write_text(hub_logo(), newline="\n")

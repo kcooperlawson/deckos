@@ -2,7 +2,7 @@
 
 version = "0.5.0"
 name = "Know your machine"
-tagline = "Benchmarks you can trust, and games that tell you why they won't start."
+tagline = "Benchmarks you can trust, games that tell you why they won't start, and a local AI workspace."
 
 fixes = [
     "Gaming Mode checks it's ready before closing the desktop, cleans up after itself, and VRR off now means off.",
@@ -36,3 +36,12 @@ profile, or the local AI model loaded against unloaded."""
 icon = "flask"
 try = "Run an experiment"
 run = ["deckos-bench", "--page", "run"]
+
+[[highlights]]
+title = "DeckOS Work (preview)"
+text = """A workspace for bigger jobs with the local AI models you already have: saved project chats, \
+code changes you can undo, terminal commands you approve, Word, PDF, PowerPoint and spreadsheet files, \
+and images made on your graphics card. No API key, and your files stay on this PC."""
+icon = "code"
+try = "Open DeckOS Work"
+run = ["deckos-work"]

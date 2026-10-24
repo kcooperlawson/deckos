@@ -109,12 +109,18 @@ class Disk(Runner):
         # btrfs (DeckOS's /home) compresses and copies on write: fio would measure zstd and the page cache,
         # not the drive. A no-copy-on-write folder gets neither, and its new files inherit that.
         if run_text(["stat", "-f", "-c", "%T", self.work.name]) == "btrfs":
-            subprocess.run(["chattr", "+C", self.work.name], capture_output=True)
+            call(["chattr", "+C", self.work.name])
         self.filename = Path(self.work.name) / "deckos-bench.fio"
+    def fill(self, say):
+        # Random writes remap the file on the SSD. Refill before every repetition so later
+        # sequential reads do not measure a different layout from the first repetition.
         say("  filling the test file before measuring reads")
-        call(["fio", "--name=prepare", f"--filename={self.filename}", "--size=2G",
+        out = call(["fio", "--name=prepare", f"--filename={self.filename}", "--size=2G",
               "--rw=write", "--bs=1M", "--ioengine=io_uring", "--direct=1",
-              "--end_fsync=1", "--output-format=json"], timeout=300)
+              "--iodepth=16", "--end_fsync=1", "--output-format=json"], timeout=300)
+        jobs = json.loads(out[out.index("{"):])["jobs"]
+        if not jobs or any(job.get("error", 0) for job in jobs):
+            raise RuntimeError("fio could not initialize the test file")
 
     def job(self, name, rw, bs, depth):
         out = call(["fio", f"--name={name}", f"--filename={self.filename}", "--size=2G",
@@ -128,6 +134,8 @@ class Disk(Runner):
         return side["bw_bytes"] / 1e6, side["iops"]
 
     def run(self, result, say):
+        self.fill(say)
+        result.notes.append("Test file initialized sequentially before each repetition; direct I/O, no CoW on btrfs.")
         mb, _ = self.job("seq-read", "read", "1M", 16)
         result.add("seq_read", "Sequential read", "MB/s", mb)
         mb, _ = self.job("seq-write", "write", "1M", 16)

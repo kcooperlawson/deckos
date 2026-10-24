@@ -58,12 +58,16 @@ class BenchTests(unittest.TestCase):
                 self.assertEqual(error.exception.code, 2)
 
     def test_disk_owns_only_its_temporary_file(self):
-        with tempfile.TemporaryDirectory() as folder, patch.object(runners, 'call', return_value='{}') as call:
+        with tempfile.TemporaryDirectory() as folder, patch.object(runners, 'call', return_value='{"jobs":[{"error":0}]}') as call:
             existing = Path(folder) / 'deckos-bench.fio'
             existing.write_text('keep me')
             disk = runners.Disk(folder)
             disk.prepare(lambda _: None)
             self.assertNotEqual(disk.filename, existing)
+            with patch.object(disk, 'job', return_value=(1, 1)):
+                disk.run(core.Result('disk', 'Disk', 'disk'), lambda _: None)
+                disk.run(core.Result('disk', 'Disk', 'disk'), lambda _: None)
+            self.assertEqual(sum('--name=prepare' in c.args[0] for c in call.call_args_list), 2)
             self.assertIn('--rw=write', call.call_args.args[0])
             work = disk.filename.parent
             disk.finish(lambda _: None)

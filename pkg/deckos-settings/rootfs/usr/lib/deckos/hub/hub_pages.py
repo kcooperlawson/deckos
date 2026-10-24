@@ -129,6 +129,8 @@ class HomePage(Page):
                                  button("Terminal", slot=lambda: QProcess.startDetached("deckos-terminal", []), icon="terminal"),
                                  button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
+                                 button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
+                                        tip="DeckOS Work: code, documents and images with your local AI"),
                                  button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
                                         icon="star", tip="DeckOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
@@ -796,6 +798,13 @@ class AiDevPage(Page):
                                                          icon="plus")))
         self.lay.addWidget(self.ollama_card)
 
+        work = Card("DeckOS Work", "A local workspace for bigger jobs", "code")
+        work.body.addWidget(label("Saved project chats with your local models: read and change code, run approved "
+                                  "commands, make Word, PDF, PowerPoint and spreadsheet files, and create images on "
+                                  "your graphics card. No API key, nothing leaves this PC.", "sub"))
+        work.body.addWidget(row(button("Open DeckOS Work", "primary", lambda: QProcess.startDetached("deckos-work", []),
+                                       icon="code")))
+        self.lay.addWidget(work)
         tools = Card("Tools", "What's installed", "code")
         grid = QGridLayout()
         grid.setSpacing(8)

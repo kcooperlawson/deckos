@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=DeckOS Work
+GenericName=Local AI workspace
+Comment=Code, documents and image creation with your local models
+Exec=deckos-work
+Icon=deckos-work
+Type=Application
+Categories=Development;
+Keywords=deckos;ai;local;coding;documents;images;assistant;work;
+StartupNotify=true

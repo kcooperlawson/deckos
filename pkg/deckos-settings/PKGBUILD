@@ -15,7 +15,8 @@ depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit k
 makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
             'lact: GPU clock/fan control GUI'
-            'gcc: DeckOS Bench memory benchmark (compiled on first use)')
+            'gcc: DeckOS Bench memory benchmark (compiled on first use)'
+            'uv: DeckOS Work local document and image runtime setup')
 backup=(etc/deckos/display.conf
         etc/deckos/gaming.conf
         etc/pacman.d/deckos-repo
@@ -29,7 +30,7 @@ package() {
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
-            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew "$pkgdir"/usr/bin/deckos-gamedoctor "$pkgdir"/usr/bin/deckos-bench \
+            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew "$pkgdir"/usr/bin/deckos-gamedoctor "$pkgdir"/usr/bin/deckos-bench "$pkgdir"/usr/bin/deckos-work \
             "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,gaming-service,gaming-cleanup,brand-os-release,plymouth-refresh} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
@@ -113,7 +114,7 @@ package() {
 
   # DeckOS Store, Hub and Assistant app icons.
   local app
-  for app in store hub assistant bench; do
+  for app in store hub assistant bench work; do
     install -Dm644 "$b/$app-logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos-$app.svg"
     for s in 16 24 32 48 64 128 256; do
       rsvg-convert -w "$s" -h "$s" "$b/$app-logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos-$app.png"

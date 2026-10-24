@@ -180,6 +180,17 @@ history and filters failed/incompatible results out of trends and comparison ver
 hardware validation are documented in `docs/bench.md`; do not present BeamNG, fio or vkmark as
 validated on hardware yet. Nothing in Bench should silently change system tuning settings.
 
+## DeckOS Work — active development
+
+Read `docs/work-handoff.md` before continuing. The user redirected the pending 0.5.0 release work
+into a dedicated local coworking/coding/image application and is low on usage. Source is in
+`usr/lib/deckos/work/`; UI/agent/core/runtime/artifacts are separate modules. Uses existing Ollama
+models; documents and images run in an isolated optional uv environment. No paid APIs. Never claim
+frontier-model parity, a shell sandbox, or finished hardware validation without evidence.
+Work's default model is the Assistant's `MODEL` (`/etc/deckos/ai.conf`, user override) until picked in
+Work. Entry points: the Hub's AI & Dev card and Home quick action, the Assistant header's code button,
+`deckos work`, the app menu. `work_app.py --demo --screenshot DIR` renders its three pages.
+
 ## Open work
 
 Hub "Controllers" card for xone (Xbox wireless dongle); an NVIDIA and an Intel test install (the chwd

@@ -17,7 +17,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
 
-from PySide6.QtCore import QObject, QSize, Qt, QThread, QTimer, Signal  # noqa: E402
+from PySide6.QtCore import QObject, QProcess, QSize, QThread, QTimer, Qt, Signal  # noqa: E402
 from PySide6.QtGui import QFont, QKeyEvent  # noqa: E402
 from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,  # noqa: E402
@@ -253,7 +253,9 @@ class ChatBox(QWidget):
         self.model_label = label("", "muted")
         names.addWidget(self.model_label)
         h.addLayout(names, 1)
-        for name, tip, slot in (("refresh", "New chat", self.new_chat), ("close", "Hide (Esc). Meta+Space brings it back", self.hide)):
+        for name, tip, slot in (("code", "Bigger job? Open DeckOS Work for code, documents and images",
+                                 lambda: QProcess.startDetached("deckos-work", [])),
+                                ("refresh", "New chat", self.new_chat), ("close", "Hide (Esc). Meta+Space brings it back", self.hide)):
             b = QPushButton()
             b.setObjectName("flat")
             b.setIcon(S.icon(name, S.SUBTEXT, 18))
