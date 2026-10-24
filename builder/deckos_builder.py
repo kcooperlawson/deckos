@@ -938,11 +938,12 @@ class Builder(QWidget):
         self.bg(work, done, lambda f, t: (self.dl_meter.set(f), self.dl_label.setText(t)))
 
     def newest_iso(self):
-        last = self.settings.value("last_iso", "")
-        if last and Path(last).exists():
-            return Path(last)
-        isos = sorted(self.out_dir().glob("*.iso"), key=lambda p: p.stat().st_mtime, reverse=True)
-        return isos[0] if isos else None
+        """The most recently made ISO: downloaded or built on this PC, whichever came last."""
+        isos = list(self.out_dir().glob("*.iso"))
+        last = Path(self.settings.value("last_iso", "") or "")
+        if last.name and last.exists():
+            isos.append(last)  # a download kept outside the ISO folder
+        return max(isos, key=lambda p: p.stat().st_mtime, default=None)
 
     def scan_usb(self):
         def done(drives, err):
@@ -1056,6 +1057,8 @@ class Builder(QWidget):
             QApplication.alert(self)
             if code == 0:
                 iso = self.newest_iso()
+                if iso:
+                    self.settings.setValue("last_iso", str(iso))
                 self.say(f"Local build finished in {took}" + (f": {iso.name}" if iso else ""))
                 self.toast.show_message(f"ISO built on this PC in {took}", "ok", 8000)
             else:
