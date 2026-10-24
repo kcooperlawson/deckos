@@ -46,9 +46,32 @@ model follow a fixed routine and checks it before accepting an answer:
 - **Tolerant edits.** `edit_file` accepts a block whose indentation drifted, as long as it matches
   exactly one place, and re-indents the replacement.
 
+- **Line edits.** `replace_lines` edits by the line numbers `read_file` shows. Small models find
+  this far easier than quoting a block exactly; diff-shaped `edit_file` calls (`-old`/`+new`) are
+  accepted too, and repeated misses point the model at `replace_lines`.
+- **Malformed tool calls** that Ollama can't parse are sent back to the model to retry instead of
+  ending the task.
+
 These prompts appear in the chat as *Quality check* lines. Both checks can be turned off under
 Models & tools › Quality. They make tasks slower and catch many mistakes, but not all of them:
 review the **Changes** tab before relying on a result.
+
+### Measured (October 2026, RX 9070 XT)
+
+Two graded tasks, checked by a separate script through the program's behaviour, not the model's own
+tests. A: fix `median` and add empty-list errors with tests (7 checks). B: fix repeating ids in a
+to-do app, add `done ID`, `[x]`/`[ ]` in `list` and `list --pending`, with tests (8 checks).
+
+| Model | A | B | Speed |
+|---|---|---|---|
+| gpt-oss:20b, before the quality loop | deleted the failing test to pass | — | ~100 tokens/s |
+| gpt-oss:20b, before `replace_lines` | 7/7 | 3/8 (26 failed edits, ran out of steps) | ~100 tokens/s |
+| gpt-oss:20b, now | 7/7 | 8/8 | ~100 tokens/s |
+| qwen3-coder:30b, now | 7/7 (65 s) | 8/8 (203 s) | ~46 tokens/s |
+
+Both are good choices for code. gpt-oss:20b is faster and better for documents and general work;
+qwen3-coder:30b plans more and reads less but runs at about half the speed (it doesn't fit fully in
+16 GB of VRAM). Two small tasks are evidence the loop works, not a guarantee: review **Changes**.
 
 ## Permissions
 

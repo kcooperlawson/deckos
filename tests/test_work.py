@@ -154,6 +154,17 @@ class WorkTests(unittest.TestCase):
         with patch.object(work_agent,'emit'):
             self.assertIn('test_hard',work_agent.follow_up(self.task,self.tools,0,'req',{'verify':False,'self_review':False},state))
 
+    def test_line_edits_and_diff_shaped_edits(self):
+        path=self.project/'m.py'
+        path.write_text('a\nb\nc\n')
+        self.assertIn('Saved',self.tools.call('replace_lines',dict(path='m.py',start_line=2,end_line=2,new='B1\nB2')))
+        self.assertEqual(path.read_text(),'a\nB1\nB2\nc\n')
+        self.tools.call('replace_lines',dict(path='m.py',start_line=1,end_line=0,new='top'))
+        self.assertEqual(path.read_text(),'top\na\nB1\nB2\nc\n')
+        self.assertTrue(self.tools.call('replace_lines',dict(path='m.py',start_line=9,end_line=9,new='x')).startswith('Error'))
+        self.tools.call('edit_file',dict(path='m.py',old=' a\n-B1\n+b1',new=''))
+        self.assertEqual(path.read_text(),'top\na\nb1\nB2\nc\n')
+
 
 if __name__=='__main__':
     unittest.main()

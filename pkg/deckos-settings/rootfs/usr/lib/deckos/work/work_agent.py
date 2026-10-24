@@ -34,7 +34,8 @@ How to work (follow this; it is what makes the result correct):
    file you have not read in this task.
 2. Plan. For anything with more than two steps call update_plan with a short checklist, then do one item
    at a time and mark it done as you finish it. Revise the plan when you learn something new.
-3. Change. Make small, focused edits with edit_file. Copy the old block exactly from read_file output.
+3. Change. Make small, focused edits: replace_lines with line numbers from a fresh read_file is the most
+   reliable; edit_file needs the old block copied exactly. Re-read a file after editing it: numbers shift.
 4. Verify. After changing code call run_checks (or run the program). If it fails, read the error, fix the
    cause and run it again. Repeat until it passes. Never say something works unless a check showed it.
 5. Finish. Only answer without a tool call when every plan item is done and checks pass, or when you
@@ -250,9 +251,19 @@ def ask(request):
     store.save(task)
     emit('task',task=task)
     try:
-        for step in range(min(150,max(1,int(settings.get('max_steps',60))))):
+        for step in range(min(200,max(1,int(settings.get('max_steps',100))))):
             emit('status',text=f"{settings['model']} · working locally · step {step+1}")
-            message=streamed_chat(settings['model'],context(task,settings),settings)
+            for attempt in range(3):
+                try:
+                    message=streamed_chat(settings['model'],context(task,settings),settings)
+                    break
+                except RuntimeError as error:
+                    # Ollama rejects a tool call it can't parse; the model usually gets it right when told.
+                    if attempt==2 or not re.search(r'pars|syntax|xml|json|unexpected|invalid',str(error),re.I):
+                        raise
+                    emit('console',text=f'\nThe model sent a malformed tool call ({error}); asking again.\n')
+                    task['messages'].append({'role':'user','auto':True,'content':
+                        'Your last tool call could not be parsed ('+str(error)[:200]+'). Send it again as a valid tool call, one at a time.'})
             task['messages'].append(message)
             store.save(task)
             emit('message',message={k:v for k,v in message.items() if k!='thinking'})
