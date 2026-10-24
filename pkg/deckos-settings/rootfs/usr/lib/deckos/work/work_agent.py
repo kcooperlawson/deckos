@@ -302,6 +302,11 @@ def ask(request):
     finally:
         store.save(task)
         emit('task',task=task)
+        # Between steps the model stays loaded; once the task ends give the graphics memory back soon.
+        try:
+            api('/api/generate',{'model':settings['model'],'keep_alive':'1m'},timeout=15)
+        except OSError:
+            pass
 
 
 def main():

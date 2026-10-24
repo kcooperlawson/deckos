@@ -193,6 +193,8 @@ Work. Entry points: the Hub's AI & Dev card and Home quick action, the Assistant
 Quality loop (docs/work.md): `work_agent.follow_up` sends the model back for unfinished plan items,
 unverified edits and self-review findings; `Tools._write` refuses edits that delete existing tests.
 Measured on gpt-oss:20b: without the test guard it deleted a failing test to get a pass.
+Ollama drop-in `ollama.service.d/10-deckos.conf` keeps 2 GiB of VRAM free (`LLAMA_ARG_FIT_TARGET`: the
+llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Work unloads 1 min after a task.
 
 ## Open work
 
