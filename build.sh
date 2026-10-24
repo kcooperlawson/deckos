@@ -10,11 +10,13 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 OUT=${OUT:-$ROOT/out}
 WORK=${WORK:-/var/tmp/deckos-build}
+# A folder of DeckOS packages already built (CI's package job): used instead of building them again.
+PREBUILT=${PREBUILT:-}
 # Display blackout fix level 1 on the live USB only, so it never blacks out mid-install. The
 # installer picks the level for the installed system from the GPU and monitors it finds.
 LIVE_KERNEL_PARAMS="amdgpu.dcdebugmask=0x20000"
 
-if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK "$0" "$@"; fi
+if [[ $EUID -ne 0 ]]; then exec sudo --preserve-env=OUT,WORK,PREBUILT "$0" "$@"; fi
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
 nocomments() { grep -vE '^\s*(#|$)' "$1"; }
 # AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
@@ -65,10 +67,15 @@ as_builder() { sudo -u builder -H env PKGDEST="$REPO" "$@"; }
 
 # ------------------------------------------------------------------ packages
 step "DeckOS packages"
-# DeckOS Files is compiled (Qt/KDE): its build dependencies come from the repos.
-as_builder bash -c "cd '$BUILD/pkg/deckos-files' && makepkg --syncdeps --noconfirm --clean --force"
-for p in deckos-settings deckos-theme-tmpikes deckos-installer; do
-  as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"
+for p in deckos-files deckos-settings deckos-theme-tmpikes deckos-installer; do
+  if [[ -n $PREBUILT ]] && pkgs=$(find "$PREBUILT" -name "$p-[0-9]*.pkg.tar.zst" -print -quit) && [[ -n $pkgs ]]; then
+    cp "$pkgs" "$REPO/" && echo "$p: prebuilt ${pkgs##*/}"
+  elif [[ $p == deckos-files ]]; then
+    # DeckOS Files is compiled (Qt/KDE): its build dependencies come from the repos.
+    as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --syncdeps --noconfirm --clean --force"
+  else
+    as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"
+  fi
 done
 
 step "AUR apps for the on-USB repo"
@@ -88,7 +95,12 @@ sed -i -e 's/^iso_name=.*/iso_name="deckos"/' \
        -e 's/^iso_label="ARCH_/iso_label="DECKOS_/' \
        -e 's|^iso_publisher=.*|iso_publisher="DeckOS"|' \
        -e 's|^iso_application=.*|iso_application="DeckOS live desktop and installer"|' \
-       -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" "$P/profiledef.sh"
+       -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" \
+       -e "s|^airootfs_image_tool_options=.*|airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15' '-b' '1M')|" \
+       "$P/profiledef.sh"
+# zstd, not releng's xz: squashing the live system drops from ~25 to ~5 minutes on CI's 4 cores, for
+# an ISO about a tenth bigger. Boots the same (the kernel reads both).
+grep -q "'-comp' 'zstd'" "$P/profiledef.sh" || echo "warning: couldn't switch the squashfs to zstd; using releng's default"
 sed -i '/^file_permissions=(/a\
   ["/etc/gshadow"]="0:0:400"\
   ["/etc/sudoers.d"]="0:0:750"\

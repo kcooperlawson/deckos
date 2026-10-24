@@ -52,17 +52,17 @@ package() {
   # DeckOS icon theme: Papirus-Dark, with every places icon that uses Papirus' folder blue
   # (folders, home, desktop...) recoloured to the DeckOS blue, a violet-leaning back tab and
   # navy symbols. Everything else is inherited from Papirus-Dark.
-  local it=$pkgdir/usr/share/icons/DeckOS dirs=() d f real sz
+  local it=$pkgdir/usr/share/icons/DeckOS dirs=() d sz hits
   for d in /usr/share/icons/Papirus-Dark/*/places; do
     sz=$(basename "$(dirname "$d")")
     [[ -d $d && $sz =~ ^[0-9]+x[0-9]+(@2x)?$ ]] || continue  # sized folders only, not symbolic/
+    # One grep, one copy and one sed per size, not three processes per icon (thousands of them).
+    mapfile -t hits < <(grep -lis '#5294e2' "$d"/*.svg || true)
+    [[ ${#hits[@]} -gt 0 ]] || continue
     install -d "$it/$sz/places"
-    for f in "$d"/*.svg; do
-      real=$(readlink -f "$f")
-      grep -qi '#5294e2' "$real" || continue
-      sed 's/#5294e2/#4c8dff/gI; s/#4877b1/#4a5fe0/gI; s/#1d344f/#16234d/gI' "$real" > "$it/$sz/places/${f##*/}"
-    done
-    if compgen -G "$it/$sz/places/*.svg" >/dev/null; then dirs+=("$sz/places"); else rmdir "$it/$sz/places" "$it/$sz"; fi
+    cp -L "${hits[@]}" "$it/$sz/places/"  # -L: the files Papirus' symlinks point at, under the link names
+    sed -i 's/#5294e2/#4c8dff/gI; s/#4877b1/#4a5fe0/gI; s/#1d344f/#16234d/gI' "$it/$sz/places/"*.svg
+    dirs+=("$sz/places")
   done
   [[ ${#dirs[@]} -gt 0 ]] || { echo "papirus-icon-theme is needed to build the DeckOS icons" >&2; return 1; }
   {

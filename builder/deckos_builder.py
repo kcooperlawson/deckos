@@ -271,7 +271,8 @@ class ReleaseDialog(QDialog):
         v.setSpacing(10)
         v.addWidget(label("Release DeckOS", "title"))
         v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and installed systems "
-                          "get the update about 10 minutes later. The ISO follows ~35 minutes after that.", "sub"))
+                          "get the update about 5 minutes later. An ISO is only built when the installer or live "
+                          "USB changed since the last release.", "sub"))
         self.version = QLineEdit(next_version(version))
         self.summary = QLineEdit()
         self.summary.setPlaceholderText("What changed, e.g. Hub opens again; thumbstick login splash")
@@ -285,6 +286,8 @@ class ReleaseDialog(QDialog):
         log.setReadOnly(True)
         log.setFixedHeight(120)
         v.addWidget(log)
+        self.iso = QCheckBox("Build an ISO too, even if the installer and live USB didn't change")
+        v.addWidget(self.iso)
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         ok = bb.button(QDialogButtonBox.Ok)
         ok.setText("Release")
@@ -310,6 +313,7 @@ class Builder(QWidget):
         self.assets, self.local = None, {}
         self._tasks = set()
         self.typical = self.settings.value("typical_iso_seconds", 1800, type=int)
+        self.iso_runs = {}  # finished run id -> seconds to a built ISO, or 0 when it built none
         self.local_proc = None
 
         outer = QVBoxLayout(self)
@@ -389,7 +393,7 @@ class Builder(QWidget):
         h.setSpacing(14)
         self.t_version = StatusTile("package", "This checkout")
         self.t_repo = StatusTile("download", "Update repo")
-        self.t_build = StatusTile("snapshot", "Last ISO build")
+        self.t_build = StatusTile("snapshot", "Last build")
         self.t_usb = StatusTile("drives", "Ventoy USB")
         self.t_version.clicked.connect(self.release)
         self.t_repo.clicked.connect(lambda: webbrowser.open(f"https://github.com/{self.repo}/releases/tag/repo"))
@@ -458,7 +462,7 @@ class Builder(QWidget):
         return c
 
     def history_card(self):
-        c = Card("Builds", "Recent ISO builds", "list")
+        c = Card("Builds", "Recent builds", "list")
         holder = QWidget()
         self.hist = QVBoxLayout(holder)
         self.hist.setContentsMargins(0, 0, 0, 0)
@@ -562,24 +566,25 @@ class Builder(QWidget):
             return
         self.busy = True
         repo = self.repo
+        known = dict(self.iso_runs)
 
         def work(_):
             runs = gh_json(f"repos/{repo}/actions/workflows/{WORKFLOW}/runs?per_page=12")["workflow_runs"]
             cur = runs[0] if runs else None
             jobs = gh_json(f"repos/{repo}/actions/runs/{cur['id']}/jobs")["jobs"] if cur else []
-            # Typical ISO build time = last successful iso job.
-            typical = None
+            # Which finished runs built an ISO (update-only tags don't): asked once per run, then remembered.
             for r in runs:
-                if r["conclusion"] == "success":
-                    j = [x for x in gh_json(f"repos/{repo}/actions/runs/{r['id']}/jobs")["jobs"] if x["name"] == "iso"]
-                    if j and j[0]["completed_at"]:
-                        typical = (parse_ts(j[0]["completed_at"]) - parse_ts(r["run_started_at"])).total_seconds()
-                    break
+                if r["status"] == "completed" and r["id"] not in known:
+                    rj = jobs if r is cur else gh_json(f"repos/{repo}/actions/runs/{r['id']}/jobs")["jobs"]
+                    j = next((x for x in rj if x["name"] == "iso"), None)
+                    known[r["id"]] = (parse_ts(j["completed_at"]) - parse_ts(r["run_started_at"])).total_seconds()                         if j and j["conclusion"] == "success" and j["completed_at"] else 0
+            # Typical ISO build time = the newest run that built one.
+            typical = next((known[r["id"]] for r in runs if known.get(r["id"])), None)
             try:
                 assets = gh_json(f"repos/{repo}/releases/tags/repo")["assets"]
             except RuntimeError:
                 assets = None  # no repo release yet
-            return runs, cur, jobs, typical, assets, local_state()
+            return runs, cur, jobs, typical, assets, local_state(), known
 
         def done(res, err):
             self.busy = False
@@ -588,14 +593,16 @@ class Builder(QWidget):
                 self.timer.start(60000)
                 return
             prev, prev_jobs = self.current, self.jobs
-            self.runs, self.current, self.jobs, typical, self.assets, self.local = res
+            self.runs, self.current, self.jobs, typical, self.assets, self.local, self.iso_runs = res
             # The update goes live ~35 minutes before the ISO is done: say so the moment it does.
             if prev and self.current and prev["id"] == self.current["id"]:
                 was, now = phases(prev, prev_jobs)[0][1], phases(self.current, self.jobs)[0][1]
                 if now == SUCCESS and was != SUCCESS:
                     QApplication.alert(self)
                     tag = self.current.get("head_branch", "")
-                    self.say(f"Update {tag} is live: deckos update installs it (the ISO is still building)")
+                    iso = phases(self.current, self.jobs)[1][0]
+                    self.say(f"Update {tag} is live: deckos update installs it" +
+                             (" (no ISO needed this time)" if iso == "No ISO" else " (the ISO is still building)"))
                     self.toast.show_message(f"Update {tag} is live: run deckos update", "ok", 9000)
             if typical:
                 self.typical = int(typical)
@@ -619,7 +626,7 @@ class Builder(QWidget):
                                 {"Passed": "ok", "Failed": "bad"}.get(state, "info"))
         if state == "Failed":
             self.show_log(run, failed_only=True)
-        elif state == "Passed" and self.settings.value("auto_download", True, type=bool):
+        elif state == "Passed" and self.settings.value("auto_download", True, type=bool)                 and phases(run, self.jobs)[1][0] == "ISO ready":  # update-only tags have no ISO to fetch
             self.download(run)
 
     # ---- rendering
@@ -639,7 +646,10 @@ class Builder(QWidget):
         msg = (run.get("head_commit") or {}).get("message", run["display_title"]).splitlines()[0]
         self.cur_title.setText(msg)
         active = run["status"] != "completed"
-        if active:
+        if active and i_text == "No ISO":
+            self.cur_meta.setText(f"Running {fmt_duration(elapsed)}  ·  update only, no ISO this time")
+            self.cur_meter.set(min(0.97, elapsed / 400))
+        elif active:
             left = self.typical - elapsed
             if left > 60:
                 eta = f"about {fmt_duration(left)} left (last build took {fmt_duration(self.typical)})"
@@ -654,8 +664,10 @@ class Builder(QWidget):
         lines = []
         done_jobs = [j for j in self.jobs if j["status"] == "completed" and j["conclusion"] in ("success", "skipped")]
         if done_jobs:
-            lines.append("&nbsp;&nbsp;".join(f'<span style="color:{SUCCESS}">✓</span> <span style="color:{SUBTEXT}">{j["name"]}</span>'
-                                             for j in done_jobs))
+            lines.append("&nbsp;&nbsp;".join(
+                f'<span style="color:{SUCCESS}">✓</span> <span style="color:{SUBTEXT}">{j["name"]}</span>'
+                if j["conclusion"] == "success" else
+                f'<span style="color:{MUTED}">– {j["name"]} skipped</span>' for j in done_jobs))
         for j in self.jobs:
             if j in done_jobs:
                 continue
@@ -707,6 +719,8 @@ class Builder(QWidget):
             if u_col == SUCCESS and self.current["status"] != "completed":
                 # Tag build half done: the update is installable, the ISO isn't yet.
                 self.t_build.set("Update live", f"{i_text} · {self.current.get('head_branch', '')}", "ok")
+            elif state == "Passed" and i_text == "No ISO":
+                self.t_build.set("Update only", f"No ISO needed · {self.current.get('head_branch', '')}", "ok")
             else:
                 self.t_build.set(f"#{self.current['run_number']} {state.lower()}", self.current["display_title"][:48],
                                  {"Passed": "ok", "Failed": "bad", "Cancelled": "off"}.get(state, "info"))
@@ -748,10 +762,12 @@ class Builder(QWidget):
             text.addWidget(label(f'{pill(state, color)}&nbsp;&nbsp;<span style="color:{SUBTEXT}">#{run["run_number"]}  ·  '
                                  f'{fmt_duration((end - started).total_seconds())}  ·  {fmt_ago(started)}</span>', wrap=False))
             g.addLayout(text, 1)
-            if state == "Passed":
+            if state == "Passed" and self.iso_runs.get(run["id"]):
                 dl = button("Download ISO", slot=lambda _=False, r=run: self.download(r))
                 dl.setMinimumWidth(dl.sizeHint().width())
                 g.addWidget(dl)
+            elif state == "Passed" and run["id"] in self.iso_runs:
+                g.addWidget(label(f'<span style="color:{MUTED}">update only</span>', wrap=False))
             g.addWidget(button("Log", slot=lambda _=False, r=run: self.show_log(r, failed_only=run_state(r)[0] == "Failed")))
             self.hist.insertWidget(self.hist.count() - 1, row)
 
@@ -784,7 +800,7 @@ class Builder(QWidget):
         dlg = ReleaseDialog(self, lo["version"], commits)
         if dlg.exec() != QDialog.Accepted:
             return
-        ver, summary = dlg.version.text().strip(), dlg.summary.text().strip()
+        ver, summary, want_iso = dlg.version.text().strip(), dlg.summary.text().strip(), dlg.iso.isChecked()
         if not re.fullmatch(r"\d+(\.\d+)+", ver) or vkey(ver) <= vkey(lo["version"]):
             self.toast.show_message(f"Version must be newer than {lo['version']}", "bad")
             return
@@ -800,7 +816,7 @@ class Builder(QWidget):
             (REPO_DIR / "VERSION").write_text(ver + "\n")
             msg = f"DeckOS {ver}: {summary}"
             git("commit", "-m", msg, "--", "VERSION")
-            git("tag", "-a", f"v{ver}", "-m", msg)
+            git("tag", "-a", f"v{ver}", "-m", msg + (" [iso]" if want_iso else ""))  # [iso]: CI's plan job builds one
             git("push", "origin", "HEAD:main")
             git("push", "origin", f"v{ver}")
 
@@ -810,7 +826,7 @@ class Builder(QWidget):
                 self.say(f"Release failed: {err}")
                 self.toast.show_message("Release failed: see the log", "bad", 8000)
                 return
-            self.say(f"Released DeckOS {ver}: installed systems get it in about 10 minutes")
+            self.say(f"Released DeckOS {ver}: installed systems get it in about 5 minutes")
             self.toast.show_message(f"DeckOS {ver} is on its way", "ok")
             QTimer.singleShot(8000, self.refresh)
 
