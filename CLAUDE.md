@@ -203,7 +203,7 @@ llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Wo
 
 ## Open work
 
-Hub "Controllers" card for xone (Xbox wireless dongle); an NVIDIA and an Intel test install (the chwd
+An NVIDIA and an Intel test install (the chwd
 path has only been checked with `bash -n`/shellcheck); free-space
 and whole-disk install modes; why NTFS drives weren't detected on
 the reference machine (likely BitLocker); a `LICENSE` file.
