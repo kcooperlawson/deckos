@@ -197,7 +197,12 @@ jobs:
         run: |
           gh release view repo >/dev/null 2>&1 || gh release create repo --prerelease --title "DeckOS package repo" \
             --notes "pacman repository for DeckOS's own packages, updated on every version tag. Not a download for people."
-          gh release upload repo repo/* --clobber
+          # Packages first, the database and its signature last and together: release assets are replaced
+          # one at a time, and a pacman -Sy between a new deckos.db and its old .sig fails with "invalid or
+          # corrupted database" (and takes paru down with it). This keeps that window to a second or two.
+          gh release upload repo repo/*.pkg.tar.zst repo/*.pkg.tar.zst.sig --clobber
+          gh release upload repo repo/deckos.db repo/deckos.db.sig repo/deckos.files repo/deckos.files.sig \
+            repo/deckos.db.tar.gz repo/deckos.db.tar.gz.sig repo/deckos.files.tar.gz repo/deckos.files.tar.gz.sig --clobber
           # Drop packages from older versions (the database only lists the current ones).
           keep=" $(cd repo && echo *) "
           gh release view repo --json assets --jq '.assets[].name' | while read -r a; do
