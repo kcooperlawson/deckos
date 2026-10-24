@@ -31,11 +31,15 @@ noto-fonts
 noto-fonts-emoji
 noto-fonts-cjk
 ttf-liberation
-# Graphics (AMD; every install, not just gaming)
+# Graphics, every install (not just gaming). The second column is the GPU vendor a line is for;
+# NVIDIA's driver comes from the installer's chwd step (it depends on the card's generation).
 mesa
 lib32-mesa
-vulkan-radeon
-lib32-vulkan-radeon
+vulkan-radeon       amd
+lib32-vulkan-radeon amd
+vulkan-intel        intel
+lib32-vulkan-intel  intel
+intel-media-driver  intel
 vulkan-tools
 mesa-utils
 libva-utils

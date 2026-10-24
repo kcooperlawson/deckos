@@ -8,7 +8,7 @@ and develops DeckOS from DeckOS. User-facing docs are in README.md; read it befo
 **Positioning:** tuned for the reference machine, but the repo and UI must read as installable by
 anyone. Personal specifics (drive letters, BIOS paths, that PC's partition) go in
 docs/reference-machine.md, not the README or UI text. Be honest about limitations (README's "Known
-limitations") rather than implying support that isn't there (Intel/NVIDIA drivers, whole-disk installs).
+limitations") rather than implying support that isn't there (untested NVIDIA/Intel, whole-disk installs).
 
 ## Layout
 
@@ -18,12 +18,17 @@ limitations") rather than implying support that isn't there (Intel/NVIDIA driver
 - `pkg/deckos-settings/`: the main package; `rootfs/` mirrors `/`. Holds the `deckos` tool
   (`usr/bin/deckos`), DeckOS Hub (`usr/lib/deckos/hub/`), DeckOS Store (`usr/lib/deckos/store/`), DeckOS
   Welcome (`usr/lib/deckos/welcome/`, the first-login tour), the package lists per group
-  (`usr/share/deckos/packages/*.txt`, shared by the installer and `deckos software add`), themes, icons,
+  (`usr/share/deckos/packages/*.txt`, shared by the installer and `deckos software add`; an optional
+  second column limits a line to one GPU vendor, `amd`/`nvidia`/`intel`, from `deckos display vendors`), themes, icons,
   SDDM and Plasma styles, the signing public key. DeckOS Menu, the launcher, is a QML plasmoid
   (`usr/share/plasma/plasmoids/org.deckos.menu/`) on Plasma's kicker models and KRunner; its Store
   suggestions come from `usr/lib/deckos/store/store_find.py` (no Qt, a slim index the Store writes).
   Preview it with `assets/preview_menu.py` (stand-in Plasma modules in `assets/preview_menu/`). JS names
   like `escape` or `get` break QML method/signal declarations.
+- Graphics: AMD is the tested path. The installer runs CachyOS's `chwd -a` only when an NVIDIA or Intel
+  GPU is present (AMD-only PCs keep desktop.txt's Radeon packages) and falls back to NVIDIA's open driver
+  if chwd fails. The display ladder, `deckos gpu` and the Hub's Graphics card / FSR 4 rows are
+  amdgpu-only and step aside on other cards; the Hub demo takes `--demo-gpu=nvidia|intel` to check that.
 - Gaming tuning: `deckos scheduler` (scx_loader; lavd Gaming is the one-time default from the .install),
   `deckos gpu` (power limit, voltage offset, fan curve via amdgpu sysfs from `/etc/deckos/gpu.conf`,
   re-applied by `deckos-gpu.service`; boot with `deckos.gpu=stock` to skip; stands aside when LACT's
@@ -103,6 +108,13 @@ not die: a finished install must never be reported as failed.
 - **On DeckOS**: `deckos dev-install` builds and installs your checkout (Hub/Store/tool changes), then
   restart the app. `sudo ./build.sh` builds an ISO locally (work dir and `out/` are btrfs subvolumes, so
   snapshots don't keep them). Test installs in a VM (QEMU + OVMF) before real disks.
+- **Install test (CI)**: the `install-test` job runs `tests/install-test.sh` on every ISO the workflow
+  builds: QEMU + OVMF (KVM), a blank disk with an EFI partition and an empty one, the live kernel booted
+  with `deckos.autoinstall`, then a first boot of the installed system until graphical.target with SDDM.
+  Serial consoles are in the log and the `install-test-logs` artifact; runs locally on Arch too
+  (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
+  `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a
+  disk with the serial `deckos-autotest`. Keep all four checks; the target is never taken from the answers.
 - Things verified only on real hardware so far are worth re-checking after touching them: SDDM theme,
   Plasma style, Store with the real AppStream catalogs, Spicetify theme, pkexec flows.
 
@@ -125,6 +137,7 @@ not die: a finished install must never be reported as failed.
 
 ## Open work
 
-Hub "Controllers" card for xone (Xbox wireless dongle); Intel/NVIDIA via CachyOS `chwd`; free-space
-and whole-disk install modes; an automated QEMU install test in CI; why NTFS drives weren't detected on
+Hub "Controllers" card for xone (Xbox wireless dongle); an NVIDIA and an Intel test install (the chwd
+path has only been checked with `bash -n`/shellcheck); free-space
+and whole-disk install modes; why NTFS drives weren't detected on
 the reference machine (likely BitLocker); a `LICENSE` file.

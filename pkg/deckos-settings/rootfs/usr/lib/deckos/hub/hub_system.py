@@ -14,6 +14,8 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QProcess
 
 DEMO = "--demo" in sys.argv
+# --demo-gpu=nvidia|intel: the demo on a non-AMD card, to check those layouts.
+DEMO_VENDOR = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--demo-gpu=")), "amd")
 DECKOS = "/usr/bin/deckos"
 
 
@@ -115,13 +117,18 @@ def pci_name(vendor, device):
 
 
 class Gpu:
-    """The main graphics card: an AMD card with the most VRAM, else the boot display card."""
+    """The main graphics card: an AMD card with the most VRAM, else the boot display card.
+
+    A Ryzen's built-in graphics (well under 2 GB of VRAM) only counts when it drives the screens, so
+    a PC with an NVIDIA or Intel card next to it reports that card."""
 
     def __init__(self):
         self.dev = self.hwmon = None
-        self.name, self.vendor, self.amd = "No graphics card found", "", False
+        self.name, self.vendor = "No graphics card found", ""
         if DEMO:
-            self.name, self.vendor, self.amd = "Radeon RX 9070 XT", "0x1002", True
+            self.name, self.vendor = {"nvidia": ("GeForce RTX 4070", "0x10de"),
+                                      "intel": ("Arc A770", "0x8086")}.get(DEMO_VENDOR, ("Radeon RX 9070 XT", "0x1002"))
+            self.amd, self.nvidia = self.vendor == "0x1002", self.vendor == "0x10de"
             return
         best, best_vram = None, -1
         for card in sorted(Path("/sys/class/drm").glob("card[0-9]*")):
@@ -130,14 +137,15 @@ class Gpu:
             dev = card / "device"
             vendor = read(dev / "vendor")
             vram = int(read(dev / "mem_info_vram_total") or 0)
-            score = vram if vendor == "0x1002" else (0 if read(dev / "boot_vga") == "1" else -1)
+            score = (vram if vendor == "0x1002" and vram >= 2 << 30
+                     else 0 if read(dev / "boot_vga") == "1" else -1)
             if score > best_vram:
                 best, best_vram = dev, score
         if best:
             self.dev, self.vendor = best, read(best / "vendor")
             self.name = pci_name(self.vendor, read(best / "device")) or "Graphics card"
             self.hwmon = next(iter(sorted((best / "hwmon").glob("hwmon*"))), None)
-        self.amd = self.vendor == "0x1002"
+        self.amd, self.nvidia = self.vendor == "0x1002", self.vendor == "0x10de"
 
 
 class Stats:
@@ -271,14 +279,15 @@ def size(n):
 GROUPS = [
     ("gaming", "Gaming", "Steam with Gaming Mode, Proton, Lutris, Heroic, MangoHud, Discord, OBS", "gaming",
      "gamescope-session-plus"),
-    ("ai", "Local AI", "Ollama with ROCm, for running models on a Radeon RX 7000 / 9000", "ai", "ollama"),
+    ("ai", "Local AI", "Ollama, for running models on a Radeon RX 7000 / 9000 (ROCm) or an NVIDIA card (CUDA)", "ai",
+     "ollama"),
     ("dev", "Development", "Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java", "code",
      "docker"),
 ]
 
 TOOLS = [  # AI & Dev page: name, command, what it is
     ("Claude Code", "claude", "AI coding agent in your terminal"),
-    ("Ollama", "ollama", "Local models (ROCm)"),
+    ("Ollama", "ollama", "Local models on your GPU"),
     ("VS Code", "code", "Editor"),
     ("JetBrains Toolbox", "jetbrains-toolbox", "IDE manager"),
     ("Docker", "docker", "Containers"),

@@ -27,7 +27,20 @@ need_root() { [[ $EUID -eq 0 ]] || { err "this needs root: sudo deckos $*"; exit
 
 # ---------------------------------------------------------------- GPU helpers
 
-# Prints the /sys/class/drm/cardN path of the gaming GPU.
+# Graphics vendors in this PC, one per line (amd, nvidia, intel), from PCI display devices so it
+# works before any driver is loaded. The installer and the package lists' vendor column use it.
+gpu_vendors() {
+  local d
+  for d in /sys/bus/pci/devices/*; do
+    [[ $(cat "$d/class" 2>/dev/null) == 0x03* ]] || continue
+    case $(cat "$d/vendor" 2>/dev/null) in
+      0x1002) echo amd ;; 0x10de) echo nvidia ;; 0x8086) echo intel ;;
+    esac
+  done | sort -u
+}
+
+# Prints the /sys/class/drm/cardN path of the AMD gaming GPU. The display ladder and deckos gpu are
+# amdgpu-only; on other cards they say so and do nothing.
 dgpu_card() {
   local c fallback=""
   for c in /sys/class/drm/card[0-9]*; do
@@ -53,9 +66,19 @@ for off in (54, 72, 90, 108):
 PY
 }
 
-# "CONNECTOR<TAB>MONITOR" for every connected output on the gaming GPU.
+# The card driving the screens: the AMD gaming GPU, else the boot display card.
+display_card() {
+  dgpu_card && return 0
+  local c
+  for c in /sys/class/drm/card[0-9]*; do
+    [[ $c =~ card[0-9]+$ && $(cat "$c/device/boot_vga" 2>/dev/null) == 1 ]] && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+# "CONNECTOR<TAB>MONITOR" for every connected output on the main card.
 monitors() {
-  local card; card=$(dgpu_card) || return 0
+  local card; card=$(display_card) || return 0
   local base; base=$(basename "$card")
   local o
   for o in /sys/class/drm/"$base"-*; do
@@ -100,7 +123,10 @@ display_level() {
 # screen. Everything else starts at stock and can climb the ladder if it ever blacks out.
 display_recommend() {
   local card n=0 odyssey=0 conn name
-  if ! card=$(dgpu_card) || [[ " $DGPU_IDS " != *" $(cat "$card/device/device" 2>/dev/null) "* ]]; then
+  if ! card=$(dgpu_card); then
+    printf '0\tno AMD graphics card (the fix is for Radeon cards)\n'; return 0
+  fi
+  if [[ " $DGPU_IDS " != *" $(cat "$card/device/device" 2>/dev/null) "* ]]; then
     printf '0\tno RX 9070-series card\n'; return 0
   fi
   while IFS=$'\t' read -r conn name; do
@@ -131,7 +157,7 @@ grub_set_amdgpu_args() {
 display_apply() {
   need_root display apply
   local level card; level=$(display_level)
-  card=$(dgpu_card) || { warn "no AMD GPU found"; return 0; }
+  card=$(dgpu_card) || { sub "no AMD graphics card: nothing to apply"; return 0; }
   local dev=$card/device
   # Older or non-amdgpu cards (and other PCs booting the live USB) have no power controls.
   [[ -w $dev/power_dpm_force_performance_level ]] || { warn "$(basename "$card") has no amdgpu power controls"; return 0; }
@@ -163,7 +189,7 @@ display_status() {
     ok "GPU: $(basename "$card") ($(cat "$card/device/device")) perf=$(cat "$card/device/power_dpm_force_performance_level")"
     sub "VRAM clock now: $(grep '\*' "$card/device/pp_dpm_mclk" 2>/dev/null | tr -s ' ' || echo '?')"
   else
-    warn "no AMD GPU detected"
+    sub "No AMD graphics card: the fix levels are for Radeon cards and change nothing here"
   fi
   section "Monitors"
   while IFS=$'\t' read -r conn name; do
@@ -175,7 +201,7 @@ display_status() {
 # the moment the screen blacks out to drop a marker; the log shows what happened around it.
 display_watch() {
   local log=${HOME}/deckos-display-watch.log card
-  card=$(dgpu_card) || { err "no AMD GPU found"; exit 1; }
+  card=$(dgpu_card) || { err "this watches an AMD card's memory clock; there's no AMD graphics card here"; exit 1; }
   say "${C_B}Watching for blackouts.${C_0} Press ${C_B}Enter${C_0} the moment the screen goes black; Ctrl+C to stop."
   say "${C_SUB}Log: $log${C_0}"
   : > "$log"
@@ -200,6 +226,8 @@ display_set() {
   need_root display set
   local n=${1:-}
   [[ $n =~ ^[0-4]$ ]] || { err "level must be 0-4"; printf '  %s\n' "${LEVEL_DESC[@]}"; exit 2; }
+  # The levels are amdgpu kernel flags and clocks: without an AMD card only 0 (stock) applies.
+  [[ $n == 0 ]] || dgpu_card >/dev/null || { err "the fix levels are for AMD Radeon cards; this PC has none"; exit 1; }
   mkdir -p "$CONF_DIR"
   printf '# Managed by deckos display set\nLEVEL=%s\n' "$n" > "$DISPLAY_CONF"
   grub_set_amdgpu_args "$(level_cmdline "$n")"
@@ -219,6 +247,7 @@ display_cmd() {
     monitors) monitors ;;
     recommend) display_recommend ;;
     flags) level_cmdline "${2:-}" ;;  # kernel flags for level N (used by the installer)
+    vendors) gpu_vendors ;;  # amd/nvidia/intel, one per line (used by the installer)
     *) err "usage: deckos display [status|levels|set N|watch|monitors|recommend]"; exit 2 ;;
   esac
 }
@@ -483,7 +512,11 @@ quick_status() {
 PACKAGES=/usr/share/deckos/packages
 SOFTWARE_GROUPS=(gaming ai dev)
 
-pkg_list() { grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk '{print $1}'; }
+# A second column names the graphics vendor a package is for (amd, nvidia, intel).
+pkg_list() {
+  grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk -v gpus=" $(gpu_vendors | tr '\n' ' ') " \
+    'NF == 1 || index(gpus, " " $2 " ") {print $1}'
+}
 aur_list() { grep -vE '^\s*(#|$)' "$PACKAGES/aur.txt" | awk -v g="$1" '$2 == g {print $1}'; }
 
 software_list() {
@@ -815,7 +848,7 @@ gpu_apply() {
   grep -qw 'deckos.gpu=stock' /proc/cmdline && { warn "deckos.gpu=stock: leaving the card at stock"; return 0; }
   systemctl is-active --quiet lactd 2>/dev/null && { sub "LACT manages the graphics card; DeckOS tuning skipped"; return 0; }
   local card dev hw def min max cap
-  card=$(dgpu_card) || { warn "no AMD graphics card found"; return 0; }
+  card=$(dgpu_card) || { sub "no AMD graphics card: DeckOS tuning is for Radeon cards (LACT handles others)"; return 0; }
   dev=$card/device
   gpu_conf
   if hw=$(gpu_hwmon "$card") && [[ -w $hw/power1_cap ]]; then
@@ -864,6 +897,7 @@ EOF
 
 gpu_overdrive() {  # on|off: amdgpu.ppfeaturemask on the kernel command line (needs a restart)
   need_root gpu overdrive
+  [[ $1 == off ]] || dgpu_card >/dev/null || { err "overdrive is an AMD setting; this PC has no AMD graphics card"; exit 1; }
   [[ -f $GRUB_DEFAULT ]] || { err "$GRUB_DEFAULT not found"; exit 1; }
   local cur kept=() tok
   cur=$(sed -n 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/\1/p' "$GRUB_DEFAULT")
@@ -963,7 +997,8 @@ doctor_cmd() {
   section "DeckOS $VERSION"
   say "  Kernel  $(uname -r)"
   say "  Mesa    $(pacman -Q mesa 2>/dev/null | cut -d' ' -f2)"
-  say "  Boot    $(cat /proc/cmdline | tr ' ' '\n' | grep -E 'amdgpu|zswap|splash' | tr '\n' ' ')"
+  say "  GPUs    $(gpu_vendors | tr '\n' ' ')"
+  say "  Boot    $(tr ' ' '\n' < /proc/cmdline | grep -E 'amdgpu|nvidia|zswap|splash' | tr '\n' ' ')"
   if [[ -d /sys/firmware/efi ]]; then
     local sb; sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ')
     [[ $sb == 1 ]] && warn "Secure Boot is ON" || ok "Secure Boot off"
@@ -981,7 +1016,9 @@ doctor_cmd() {
   local sch; sch=$(scheduler_status)
   [[ $sch == *state=enabled* ]] && ok "CPU scheduler: $(sed -n 's/^running=//p' <<<"$sch")" || sub "CPU scheduler: the kernel's own (deckos scheduler set lavd)"
   [[ -e /dev/ntsync ]] && ok "NTSYNC available" || warn "NTSYNC missing (/dev/ntsync): Proton falls back to fsync"
-  gpu_od_on && ok "GPU overdrive on" || sub "GPU overdrive off (deckos gpu overdrive on, for undervolting)"
+  if dgpu_card >/dev/null; then
+    gpu_od_on && ok "GPU overdrive on" || sub "GPU overdrive off (deckos gpu overdrive on, for undervolting)"
+  fi
   section "AI"
   systemctl is-active --quiet ollama && ok "ollama running" || sub "ollama stopped (systemctl start ollama)"
   command -v claude >/dev/null || [[ -x $HOME/.local/bin/claude ]] && ok "Claude Code installed" || sub "Claude Code not installed (curl -fsSL https://claude.ai/install.sh | bash)"

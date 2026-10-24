@@ -34,7 +34,7 @@ FAILED=()
 OPTIONAL_GROUPS=(gaming ai dev)
 declare -A GROUP_DESC=(
   [gaming]="Gaming: Steam + Gaming Mode, Proton, Lutris, Heroic, MangoHud, Discord, OBS"
-  [ai]="Local AI: Ollama + ROCm on a Radeon RX 7000/9000 (a large download)"
+  [ai]="Local AI: Ollama on a Radeon RX 7000/9000 (ROCm) or an NVIDIA card (CUDA); a large download"
   [dev]="Development: Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java"
 )
 # DECKOS_GUI=1: driven by the graphical installer. Nothing is asked; the answers come from
@@ -92,7 +92,12 @@ spin() {
 }
 inchroot() { arch-chroot "$MNT" "$@"; }
 
-list_pkgs() { grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk '{print $1}'; }
+# A second column names the graphics vendor a package is for (amd, nvidia, intel; GPU_VENDORS).
+list_pkgs() {
+  grep -vE '^\s*(#|$)' "$PACKAGES/$1.txt" | awk -v gpus=" ${GPU_VENDORS[*]} " \
+    'NF == 1 || index(gpus, " " $2 " ") {print $1}'
+}
+gpu_has() { [[ " ${GPU_VENDORS[*]} " == *" $1 "* ]]; }
 chosen() { [[ " ${CHOSEN[*]} " == *" $1 "* ]]; }
 # AUR packages for the chosen groups (aur.txt's second column; none = always).
 list_aur() {
@@ -250,6 +255,13 @@ if [[ $sb == 1 ]]; then warn "Secure Boot is ON - turn it off in the BIOS (Secur
 else good "Secure Boot off"; fi
 timedatectl set-ntp true >/dev/null 2>&1 || true
 
+# Graphics: amd, nvidia and/or intel. Picks the drivers below and the vendor lines in the package lists.
+mapfile -t GPU_VENDORS < <(bash "$DECKOS_TOOL" display vendors 2>>"$LOG" || true)
+if [[ ${#GPU_VENDORS[@]} -gt 0 ]]; then good "Graphics: ${GPU_VENDORS[*]}"
+else warn "No AMD, NVIDIA or Intel graphics found - DeckOS installs the basic Mesa drivers"; fi
+gpu_has nvidia && note "NVIDIA drivers come from CachyOS's hardware detection (chwd) later on"
+if grep -qw GenuineIntel /proc/cpuinfo; then UCODE=intel-ucode; else UCODE=amd-ucode; fi
+
 # Display blackout fix: DECKOS_DISPLAY_LEVEL if given, else what deckos recommends for this GPU
 # and these monitors (the live session runs on the same hardware DeckOS is going on).
 if [[ ${DECKOS_DISPLAY_LEVEL:-} =~ ^[0-4]$ ]]; then
@@ -259,7 +271,9 @@ else
   DISPLAY_LEVEL=${rec%%$'\t'*} display_why=${rec#*$'\t'}
   [[ $DISPLAY_LEVEL =~ ^[0-4]$ ]] || { DISPLAY_LEVEL=0; display_why="couldn't check the GPU"; }
 fi
-if [[ $DISPLAY_LEVEL == 0 ]]; then good "Display: stock AMD settings ($display_why)"
+# The levels are amdgpu flags; they'd do nothing on other cards.
+gpu_has amd || { DISPLAY_LEVEL=0 display_why="no AMD graphics card"; }
+if [[ $DISPLAY_LEVEL == 0 ]]; then good "Display: stock settings ($display_why)"
 else good "Display: blackout fix level $DISPLAY_LEVEL ($display_why)"; fi
 
 # ------------------------------------------------------------------ target partition
@@ -458,7 +472,7 @@ good "btrfs subvolumes: @ @home @snapshots @log @pkg"
 section "Base system"
 rank_mirrors
 
-spin "Installing Arch base" pacstrap -K "$MNT" base base-devel linux-firmware amd-ucode btrfs-progs \
+spin "Installing Arch base" pacstrap -K "$MNT" base base-devel linux-firmware "$UCODE" btrfs-progs \
   gawk git sudo nano networkmanager grub efibootmgr os-prober curl jq
 genfstab -U "$MNT" | sed -E 's/,subvolid=[0-9]+//; s/subvolid=[0-9]+,//' > "$MNT/etc/fstab"
 
@@ -501,7 +515,34 @@ grep -q '^\[cachyos-znver4\]' "$MNT/etc/pacman.conf" && good "znver4 repos enabl
 # ------------------------------------------------------------------ software
 
 section "Software"
-for g in base desktop "${CHOSEN[@]}"; do install_group "$g"; done
+for g in base desktop; do install_group "$g"; done
+
+# NVIDIA and Intel drivers come from CachyOS's chwd: it picks the branch for the card (nvidia-open
+# with its prebuilt CachyOS kernel modules, the legacy 580xx/470xx drivers, Intel's media driver)
+# and sets up laptops with two GPUs. AMD-only PCs skip it: desktop.txt is the tested Radeon path.
+if gpu_has nvidia || gpu_has intel; then
+  if inchroot pacman -S --needed --noconfirm chwd >>"$LOG" 2>&1 \
+     && busy "Picking graphics drivers (chwd)" bash -c 'arch-chroot "$0" chwd -a >>"$LOG" 2>&1' "$MNT"; then
+    good "graphics drivers (chwd)"
+  elif gpu_has nvidia; then
+    # What chwd's nvidia-open profile installs on a modern card; older cards are left on nouveau.
+    warn "chwd didn't finish - installing NVIDIA's open driver directly"
+    nv=(nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver opencl-nvidia lib32-opencl-nvidia)
+    for k in linux-cachyos linux-cachyos-lts; do inchroot pacman -Q "$k" >/dev/null 2>&1 && nv+=("$k-nvidia-open"); done
+    if inchroot pacman -S --needed --noconfirm "${nv[@]}" >>"$LOG" 2>&1; then
+      # As chwd does: no kms hook, so nouveau isn't loaded before the NVIDIA driver.
+      mkdir -p "$MNT/etc/mkinitcpio.conf.d"
+      printf '%s\n' "# Written by deckos-install (chwd's nvidia setting)" 'HOOKS=(${HOOKS[@]/kms/})' \
+        > "$MNT/etc/mkinitcpio.conf.d/10-chwd-kms.conf"
+      good "NVIDIA open driver"
+    else
+      warn "NVIDIA driver didn't install - DeckOS starts on nouveau; run 'sudo chwd -a' after first boot"
+    fi
+  else
+    warn "chwd didn't finish - Intel graphics use the Mesa drivers from desktop.txt"
+  fi
+fi
+for g in "${CHOSEN[@]}"; do install_group "$g"; done
 # Flathub for the DeckOS Store (apps that aren't in the Arch repos, like Spotify and Bottles).
 if inchroot flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >>"$LOG" 2>&1; then
   good "Flathub"
@@ -615,7 +656,10 @@ fi
 # ------------------------------------------------------------------ boot
 
 section "Boot"
-sed -i -E 's/^MODULES=.*/MODULES=(amdgpu)/' "$MNT/etc/mkinitcpio.conf"
+# amdgpu early so the boot splash and display flags apply from the start; NVIDIA's open modules
+# load from the root file system (chwd's mkinitcpio.conf.d drop-in drops kms for them).
+if gpu_has amd; then modules=amdgpu; else modules=""; fi
+sed -i -E "s/^MODULES=.*/MODULES=($modules)/" "$MNT/etc/mkinitcpio.conf"
 sed -i -E 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block filesystems grub-btrfs-overlayfs)/' "$MNT/etc/mkinitcpio.conf"
 inchroot plymouth-set-default-theme deckos >>"$LOG" 2>&1 || warn "plymouth theme not set"
 spin "Building initramfs" arch-chroot "$MNT" mkinitcpio -P

@@ -94,8 +94,8 @@ WELCOME, WHERE, YOU, SOFTWARE, CONFIRM, INSTALL, DONE = range(len(STEPS))
 # Optional software groups: deckos-install's DECKOS_GROUPS names, title, what's in it.
 GROUPS = [
     ("gaming", "Gaming", "Steam with Gaming Mode, Proton, Lutris, Heroic, MangoHud, GameMode, LACT, Discord and OBS."),
-    ("ai", "Local AI", "Ollama with ROCm, for running models on your graphics card. Needs a Radeon RX 7000 or "
-                       "9000 series card, and it's a large download."),
+    ("ai", "Local AI", "Ollama, for running models on your graphics card: ROCm on a Radeon RX 7000 or 9000 "
+                       "series card, CUDA on an NVIDIA card. It's a large download."),
     ("dev", "Development", "Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python, .NET, Java and the "
                            "GitHub CLI."),
 ]
@@ -362,7 +362,7 @@ class Installer(QWidget):
         p = Page("Choose your software",
                  "DeckOS always installs the CachyOS kernel, the KDE Plasma desktop, Firefox, graphics drivers and "
                  "snapshots. Add any of these now; you can install them later too.")
-        radeon = DEMO or self.has_radeon()
+        ai_gpu = DEMO or self.has_ai_gpu()
         self.group_boxes = {}
         for key, title, desc in GROUPS:
             card = QFrame()
@@ -376,12 +376,12 @@ class Installer(QWidget):
             info.setSpacing(2)
             info.addWidget(label(title, "cardTitle"))
             info.addWidget(label(desc, "sub"))
-            if key == "ai" and not radeon:
-                info.addWidget(label(f"<span style='color:{WARNING}'>No Radeon RX 7000/9000 card found, so this "
-                                     f"starts unticked.</span>"))
+            if key == "ai" and not ai_gpu:
+                info.addWidget(label(f"<span style='color:{WARNING}'>No Radeon RX 7000/9000 or NVIDIA card found, so "
+                                     f"this starts unticked.</span>"))
             h.addLayout(info, 1)
             box.toggled.connect(lambda on, c=card: self.set_picked(c, on))
-            box.setChecked(key != "ai" or radeon)
+            box.setChecked(key != "ai" or ai_gpu)
             self.set_picked(card, box.isChecked())
             card.mousePressEvent = lambda _e, b=box: b.toggle()
             self.group_boxes[key] = box
@@ -396,8 +396,14 @@ class Installer(QWidget):
         card.style().polish(card)
 
     @staticmethod
-    def has_radeon():
-        """An AMD card with more than 4 GB of VRAM: a Radeon, not a Ryzen's built-in graphics."""
+    def has_ai_gpu():
+        """An NVIDIA card, or an AMD card with more than 4 GB of VRAM (a Radeon, not a Ryzen's built-in graphics)."""
+        for dev in Path("/sys/bus/pci/devices").glob("*"):
+            try:
+                if (dev / "class").read_text().startswith("0x03") and (dev / "vendor").read_text().strip() == "0x10de":
+                    return True
+            except OSError:
+                pass
         for vram in Path("/sys/class/drm").glob("card*/device/mem_info_vram_total"):
             try:
                 if (vram.parent / "vendor").read_text().strip() == "0x1002" and int(vram.read_text()) > 4 << 30:

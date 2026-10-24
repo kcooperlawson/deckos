@@ -222,6 +222,14 @@ class DisplayPage(Page):
     subtitle = "Fixes for monitors that blink black for a second or two on Radeon cards."
 
     def build(self):
+        if not self.hub.gpu.amd:
+            # The levels are amdgpu flags and clocks: nothing to pick on other cards.
+            card = Card("Blackout fix", "For AMD Radeon cards", "display")
+            card.body.addWidget(label(f"This fix is for AMD Radeon cards. Your {self.hub.gpu.name} doesn't need it.",
+                                      "sub"))
+            self.lay.addWidget(card)
+            self.build_graphics()
+            return
         self.recommended, self.why = sysinfo.display_recommend()
         card = Card("Blackout fix", "Pick a level", "display")
         card.body.addWidget(label("Each level removes another source of the memory-clock switches that can drop "
@@ -263,17 +271,20 @@ class DisplayPage(Page):
         self.note = label("", "muted", wrap=False)
         card.body.addWidget(row(self.apply_btn, self.note, spacing=12))
         self.lay.addWidget(card)
+        self.build_graphics()
 
+    def build_graphics(self):
         gpu = Card("Graphics", self.hub.gpu.name, "gpu")
         self.gpu_live = label("", "mono")
         gpu.body.addWidget(self.gpu_live)
         self.monitor_box = QVBoxLayout()
         self.monitor_box.setSpacing(6)
         gpu.body.addLayout(self.monitor_box)
-        gpu.body.addWidget(row(button("Watch for blackouts", slot=lambda: self.hub.terminal("deckos display watch"),
-                                      icon="eye", tip="Logs clock and display events; press Enter when it blinks"),
-                               button("Display status", slot=lambda: self.hub.terminal("deckos display status"),
-                                      icon="info")))
+        buttons = [button("Display status", slot=lambda: self.hub.terminal("deckos display status"), icon="info")]
+        if self.hub.gpu.amd:  # it follows amdgpu's memory clock
+            buttons.insert(0, button("Watch for blackouts", slot=lambda: self.hub.terminal("deckos display watch"),
+                                     icon="eye", tip="Logs clock and display events; press Enter when it blinks"))
+        gpu.body.addWidget(row(*buttons))
         self.lay.addWidget(gpu)
 
     def picked(self, i, on):
@@ -293,8 +304,9 @@ class DisplayPage(Page):
                             if ok else self.hub.toast("Display fix not changed.", "warn"))
 
     def refresh(self):
-        self.group.button(sysinfo.display_level()).setChecked(True)
-        self.picked(self.group.checkedId(), True)
+        if hasattr(self, "group"):
+            self.group.button(sysinfo.display_level()).setChecked(True)
+            self.picked(self.group.checkedId(), True)
         self.clear(self.monitor_box)
         for conn, name in sysinfo.monitors() or [("", "No monitors detected on this card")]:
             self.monitor_box.addWidget(RowItem("display", name or "Unknown monitor", conn))
@@ -425,11 +437,13 @@ class GamingPage(Page):
         self.sched.activated.connect(self.set_scheduler)
         perf.body.addWidget(RowItem("cpu", "CPU scheduler", "lavd keeps frame times steady while Discord, OBS or a "
                                     "browser run next to the game", right=[self.sched_state, self.sched]))
-        self.fsr4 = QCheckBox()
-        self.fsr4.setChecked(sysinfo.gaming_env().get("PROTON_FSR4_UPGRADE") == "1")
-        self.fsr4.toggled.connect(self.set_fsr4)
-        perf.body.addWidget(RowItem("display", "FSR 4 in FSR 3.1 games", "RX 9000 cards: sharper upscaling at the same "
-                                    "frame rate (proton-cachyos). Restart Steam after changing it", right=[self.fsr4]))
+        if self.hub.gpu.amd:  # FSR 4 runs on Radeon RX 9000 cards only
+            self.fsr4 = QCheckBox()
+            self.fsr4.setChecked(sysinfo.gaming_env().get("PROTON_FSR4_UPGRADE") == "1")
+            self.fsr4.toggled.connect(self.set_fsr4)
+            perf.body.addWidget(RowItem("display", "FSR 4 in FSR 3.1 games", "RX 9000 cards: sharper upscaling at the "
+                                        "same frame rate (proton-cachyos). Restart Steam after changing it",
+                                        right=[self.fsr4]))
         size = sysinfo.shader_cache_size()
         perf.body.addWidget(RowItem("drives", "Shader cache", f"Up to {size.replace('G', ' GB')} of compiled shaders, so "
                                     "big games don't stutter rebuilding them" if size else "Mesa's default (1 GB)",
@@ -754,10 +768,12 @@ class AiDevPage(Page):
             self.ollama_card.body.addWidget(row(
                 self.toggle, button("Try a model", slot=lambda: self.hub.terminal("ollama run qwen3"), icon="ai"),
                 button("GPU compute check", slot=lambda: self.hub.terminal(
-                    "rocminfo | grep -E 'Marketing|gfx' | head -n 6"), icon="gpu")))
+                    "nvidia-smi" if self.hub.gpu.nvidia else "rocminfo | grep -E 'Marketing|gfx' | head -n 6"),
+                    icon="gpu")))
         else:
             self.ollama_card.body.addWidget(Empty("ai", "Local AI isn't installed",
-                                                  "Ollama with ROCm runs models on a Radeon RX 7000 / 9000.",
+                                                  "Ollama runs models on a Radeon RX 7000 / 9000 (ROCm) or an "
+                                                  "NVIDIA card (CUDA).",
                                                   button("Add Local AI", "primary", lambda: self.hub.add_group("ai"),
                                                          icon="plus")))
         self.lay.addWidget(self.ollama_card)

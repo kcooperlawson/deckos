@@ -1,7 +1,10 @@
-# Optional "ai" group: local models on the GPU. ROCm supports Radeon RX 7000 / 9000 cards
-# (the RX 9070 XT is gfx1201).
-ollama-rocm
-rocm-hip-runtime
-rocm-opencl-runtime
-rocminfo
-rocm-smi-lib
+# Optional "ai" group: local models on the GPU. Second column: the GPU vendor a line is for.
+# ROCm supports Radeon RX 7000 / 9000 cards (the RX 9070 XT is gfx1201); NVIDIA uses CUDA and
+# Intel runs models on the CPU.
+ollama-rocm         amd
+rocm-hip-runtime    amd
+rocm-opencl-runtime amd
+rocminfo            amd
+rocm-smi-lib        amd
+ollama-cuda         nvidia
+ollama              intel

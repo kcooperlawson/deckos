@@ -14,7 +14,7 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 | **DeckOS Hub** | one app for live stats, the display fix, Gaming Mode, drives, AI and dev tools, updates, snapshots, the firewall, adding software and changing the look |
 | **DeckOS Store** | one app store for the Arch and CachyOS repos, Flathub and the AUR: browse, search and install with a click |
 | **Gaming** (optional) | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync, Discord, OBS |
-| **Local AI** (optional) | Ollama + ROCm for running models on a Radeon |
+| **Local AI** (optional) | Ollama for running models on your graphics card: ROCm on a Radeon, CUDA on NVIDIA |
 | **Development** (optional) | Claude Code, VS Code, JetBrains Toolbox, Docker, Node, Python/uv, .NET, Java, gh |
 | **Disks** | btrfs with snapshots: boot an older snapshot from GRUB after a bad update. Existing NTFS drives stay NTFS and are mounted read/write |
 | **Fixes** | Display blackout fix ladder for Radeon cards (`deckos display`), Windows dual-boot clock, Steam libraries on NTFS |
@@ -24,7 +24,7 @@ and installs on any 64-bit UEFI PC that meets the [requirements](#requirements).
 | | |
 |---|---|
 | **CPU** | Any 64-bit x86 CPU. Packages are optimised for whatever level your CPU supports |
-| **GPU** | **AMD Radeon** recommended. Local AI (ROCm) needs an RX 7000 / 9000 series card. Intel and NVIDIA GPUs aren't set up by the installer yet ([limitations](#known-limitations)) |
+| **GPU** | **AMD Radeon** recommended: it's what DeckOS is tested on. NVIDIA and Intel drivers are picked by CachyOS's hardware detection (`chwd`) but are untested so far ([limitations](#known-limitations)). Local AI needs a Radeon RX 7000 / 9000 (ROCm) or an NVIDIA card (CUDA) |
 | **Firmware** | UEFI with **Secure Boot off** |
 | **Disk** | A partition of **64 GB or more** (150 GB+ if games go on it too), created beforehand, plus an existing EFI partition (any PC with Windows has one) |
 | **Memory** | 8 GB minimum, 16 GB recommended |
@@ -80,7 +80,8 @@ first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
    desktop switches to your keyboard layout right away, so the password you type is the one that works
    at login.
 4. **Software**: tick Gaming, Local AI and/or Development. The desktop, kernel, graphics drivers and
-   snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 is found.
+   snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 or NVIDIA card is
+   found.
 5. **Confirm**: read the summary, tick the box, *Erase and install*.
 6. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
@@ -228,7 +229,7 @@ catalogs Arch and Flathub publish; repo installs ask for your password, Flathub 
 | `deckos backup /mnt/BIG` | copy your home folder (minus caches, Steam games, ISOs) to another drive; remembered for next time |
 | `deckos doctor` | health check: kernel, display fix, drives, snapshots, AI |
 | `claude` | Claude Code, installed for your user (`~/.local/bin`) |
-| `ollama run qwen3` | local models on your Radeon via ROCm |
+| `ollama run qwen3` | local models on your graphics card (ROCm on Radeon, CUDA on NVIDIA) |
 
 **Gaming Mode resolution:** it defaults to 3840×2160 at up to 144 Hz. For a different screen, pick yours in
 **DeckOS Hub › Gaming** (it's saved in `~/.config/deckos/gaming.conf`; system defaults are in
@@ -238,9 +239,16 @@ catalogs Arch and Flathub publish; repo installs ask for your password, Flathub 
 
 DeckOS is early, and these are on the list:
 
-- **Intel and NVIDIA GPUs:** the installer only sets up AMD graphics drivers. On an Intel CPU, add
-  microcode after installing: `sudo pacman -S intel-ucode` then
-  `sudo grub-mkconfig -o /boot/grub/grub.cfg`.
+- **NVIDIA and Intel GPUs are untested.** The installer hands them to CachyOS's `chwd`, which picks
+  the driver for the card (NVIDIA's open driver on GTX 16 / RTX 20 and newer, the legacy drivers or
+  nouveau on older cards, Mesa and Intel's media driver on Intel), but nobody has installed DeckOS on
+  that hardware yet. If the NVIDIA driver didn't go in, DeckOS starts on nouveau: run `sudo chwd -a` and
+  restart. Gaming Mode (gamescope) is less mature on NVIDIA than on AMD.
+- **AMD-only extras:** the display blackout fix and DeckOS Hub's *Graphics card* tuning (power limit,
+  undervolt, fan curve) work through `amdgpu` and are hidden or do nothing on other cards; LACT covers
+  NVIDIA and Intel tuning. The FSR 4 upgrade needs a Radeon RX 9000. Local AI on Intel graphics runs on
+  the CPU.
+- **The live USB** is set up for AMD graphics; on NVIDIA it runs on nouveau, which is enough to install.
 - **Disk layout:** DeckOS installs onto one existing partition and reuses an existing EFI partition.
   Installing to free space or an empty disk isn't supported yet.
 - **Secure Boot** has to stay off.
