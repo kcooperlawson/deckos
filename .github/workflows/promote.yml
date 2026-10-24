@@ -1,0 +1,42 @@
+name: Promote to stable
+
+# Moves a release from the testing channel (the "repo-testing" release, which every version tag
+# publishes to) to stable (the "repo" release most installed PCs update from). Run it from the
+# Actions tab once the release has been tried on a testing PC. Nothing is rebuilt or re-signed:
+# stable gets exactly the packages and signed database testing had.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "DeckOS version to promote (the one now on testing, e.g. 0.5.6)"
+        required: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    concurrency: deckos-repo  # shared with the tag's publish job: never copy half an upload
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the testing repo
+        run: |
+          [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$VERSION' isn't a version like 0.5.6"; exit 1; }
+          mkdir testing
+          gh release download repo-testing -D testing
+          ls -l testing
+      - name: Testing holds exactly this version
+        run: |
+          # A newer tag may have reached testing since this one was tried; promoting would ship that one untested.
+          on_testing=$(tar -xzOf testing/deckos.db.tar.gz --wildcards '*/desc' \
+            | awk '/^%NAME%$/ {getline n} /^%VERSION%$/ {getline v; if (n == "deckos-settings") print v}')
+          echo "testing has deckos-settings $on_testing"
+          [[ ${on_testing%-*} == "$VERSION" ]] \
+            || { echo "::error::testing has deckos-settings $on_testing, not $VERSION: promote what's there, or tag again"; exit 1; }
+      - name: Publish to the "repo" release
+        run: bash .github/publish-repo repo testing
+      - run: echo "DeckOS $VERSION is on stable" >> "$GITHUB_STEP_SUMMARY"

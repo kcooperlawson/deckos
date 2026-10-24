@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# publish-repo RELEASE DIR - replace the pacman repo in GitHub release RELEASE with the signed packages
+# and database in DIR. Used by "Build DeckOS ISO" (tags go to repo-testing) and "Promote to stable"
+# (repo-testing's contents go to repo). Needs gh with GH_TOKEN and GH_REPO.
+set -Eeuo pipefail
+
+release=${1:?usage: publish-repo RELEASE DIR}
+dir=${2:?usage: publish-repo RELEASE DIR}
+cd "$dir"
+compgen -G 'deckos-settings-*.pkg.tar.zst' >/dev/null || { echo "no deckos-settings package in $dir"; exit 1; }
+for f in deckos.db deckos.db.sig deckos.files deckos.files.sig; do
+  [[ -f $f && ! -L $f ]] || { echo "$dir/$f missing (or a symlink: release assets can't be)"; exit 1; }
+done
+
+case $release in
+  repo-testing) title="DeckOS package repo (testing)"
+    notes="pacman repository for DeckOS's own packages, updated on every version tag. PCs on the testing channel (deckos channel testing) update from here. Not a download for people." ;;
+  *) title="DeckOS package repo"
+    notes="pacman repository for DeckOS's own packages: the stable channel, updated when a tested release is promoted. Not a download for people." ;;
+esac
+gh release view "$release" >/dev/null 2>&1 || gh release create "$release" --prerelease --title "$title" --notes "$notes"
+
+# Packages first, the database and its signature last and together: release assets are replaced
+# one at a time, and a pacman -Sy between a new deckos.db and its old .sig fails with "invalid or
+# corrupted database" (and takes paru down with it). This keeps that window to a second or two.
+gh release upload "$release" ./*.pkg.tar.zst ./*.pkg.tar.zst.sig --clobber
+gh release upload "$release" deckos.db deckos.db.sig deckos.files deckos.files.sig \
+  deckos.db.tar.gz deckos.db.tar.gz.sig deckos.files.tar.gz deckos.files.tar.gz.sig --clobber
+
+# Drop packages from older versions (the database only lists the current ones).
+keep=" $(echo *) "
+while read -r a; do
+  case "$keep" in *" $a "*) ;; *) gh release delete-asset "$release" "$a" --yes ;; esac
+done < <(gh release view "$release" --json assets --jq '.assets[].name')

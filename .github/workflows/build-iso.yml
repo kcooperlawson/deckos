@@ -14,7 +14,7 @@ jobs:
       - name: shellcheck
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -S warning -s bash build.sh installer/deckos-install tests/install-test.sh \
+          shellcheck -S warning -s bash build.sh installer/deckos-install tests/install-test.sh .github/publish-repo \
             iso/airootfs/usr/local/bin/deckos-autoinstall \
             pkg/deckos-settings/rootfs/usr/bin/deckos \
             pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
@@ -173,13 +173,14 @@ jobs:
           retention-days: 14
 
   publish:
-    # The DeckOS update channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal and the themes and
-    # publish them as a pacman repo in the "repo" release. Installed systems pull from
-    # https://github.com/<owner>/<repo>/releases/download/repo (see /etc/pacman.d/deckos-repo).
-    # Installed systems update from here within minutes, so failing unit tests stop the release.
+    # The DeckOS testing channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal and the
+    # themes and publish them as a pacman repo in the "repo-testing" release. PCs on the testing channel
+    # (deckos channel testing) pull from https://github.com/<owner>/<repo>/releases/download/repo-testing within minutes,
+    # so failing unit tests stop the release. Stable ("repo") only changes through the "Promote to stable" workflow.
     needs: [lint, unit-tests, package]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    concurrency: deckos-repo  # never upload while Promote to stable is copying, or the other way round
     container: archlinux:latest
     permissions:
       contents: write
@@ -213,18 +214,5 @@ jobs:
           # Release assets can't be symlinks: give pacman real deckos.db / deckos.files.
           for f in deckos.db deckos.files deckos.db.sig deckos.files.sig; do cp --remove-destination "$(readlink -f "$f")" "$f"; done
           ls -l
-      - name: Publish to the "repo" release
-        run: |
-          gh release view repo >/dev/null 2>&1 || gh release create repo --prerelease --title "DeckOS package repo" \
-            --notes "pacman repository for DeckOS's own packages, updated on every version tag. Not a download for people."
-          # Packages first, the database and its signature last and together: release assets are replaced
-          # one at a time, and a pacman -Sy between a new deckos.db and its old .sig fails with "invalid or
-          # corrupted database" (and takes paru down with it). This keeps that window to a second or two.
-          gh release upload repo repo/*.pkg.tar.zst repo/*.pkg.tar.zst.sig --clobber
-          gh release upload repo repo/deckos.db repo/deckos.db.sig repo/deckos.files repo/deckos.files.sig \
-            repo/deckos.db.tar.gz repo/deckos.db.tar.gz.sig repo/deckos.files.tar.gz repo/deckos.files.tar.gz.sig --clobber
-          # Drop packages from older versions (the database only lists the current ones).
-          keep=" $(cd repo && echo *) "
-          gh release view repo --json assets --jq '.assets[].name' | while read -r a; do
-            case "$keep" in *" $a "*) ;; *) gh release delete-asset repo "$a" --yes ;; esac
-          done
+      - name: Publish to the "repo-testing" release
+        run: bash .github/publish-repo repo-testing repo
