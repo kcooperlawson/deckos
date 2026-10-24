@@ -16,7 +16,7 @@ library=org.kde.breeze
 theme=Breeze
 
 [KSplash]
-Theme=None
+Theme=org.deckos.desktop
 
 [Wallpaper]
 Image=TMpikes

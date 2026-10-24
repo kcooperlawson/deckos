@@ -1,4 +1,4 @@
 [KSplash]
-# The boot splash already showed the gear; skip the second splash for a faster login.
-Engine=none
-Theme=None
+# The login splash continues the boot splash's thumbstick animation (look-and-feel splash/Splash.qml).
+Engine=KSplashQML
+Theme=org.deckos.desktop

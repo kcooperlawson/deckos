@@ -1,0 +1,4 @@
+[General]
+# DeckOS Welcome handles first login; never show KDE's welcome or "what's new" pages.
+ShowUpdatePage=false
+LastSeenVersion=99.0.0
