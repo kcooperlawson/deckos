@@ -14,7 +14,8 @@ jobs:
       - name: shellcheck
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -S warning -s bash build.sh installer/deckos-install \
+          shellcheck -S warning -s bash build.sh installer/deckos-install tests/install-test.sh \
+            iso/airootfs/usr/local/bin/deckos-autoinstall \
             pkg/deckos-settings/rootfs/usr/bin/deckos \
             pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
             pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-session \
@@ -105,6 +106,37 @@ jobs:
           name: deckos-iso
           path: out/*.iso
           compression-level: 0
+          retention-days: 14
+
+  install-test:
+    # Installs the new ISO onto a blank virtual disk in QEMU (OVMF, KVM), boots the installed system
+    # and waits for its login screen. Fails with both serial consoles in the log and as an artifact.
+    needs: iso
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deckos-iso
+          path: out
+      - name: QEMU + OVMF
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends qemu-system-x86 qemu-utils ovmf libarchive-tools dosfstools fdisk jq
+          # GitHub's runners have KVM; let the runner user open it.
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          fi
+          ls -l /dev/kvm || true
+      - name: Install and first boot
+        run: bash tests/install-test.sh out/*.iso install-test
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-test-logs
+          path: install-test/*.log
           retention-days: 14
 
   publish:

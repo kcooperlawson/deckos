@@ -115,6 +115,13 @@ not die: a finished install must never be reported as failed.
   (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
   `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a
   disk with the serial `deckos-autotest`. Keep all four checks; the target is never taken from the answers.
+- **Install test (CI)**: the `install-test` job runs `tests/install-test.sh` on every ISO the workflow
+  builds: QEMU + OVMF (KVM), a blank disk with an EFI partition and an empty one, the live kernel booted
+  with `deckos.autoinstall`, then a first boot of the installed system until graphical.target with SDDM.
+  Serial consoles are in the log and the `install-test-logs` artifact; runs locally on Arch too
+  (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
+  `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a
+  disk with the serial `deckos-autotest`. Keep all four checks; the target is never taken from the answers.
 - Things verified only on real hardware so far are worth re-checking after touching them: SDDM theme,
   Plasma style, Store with the real AppStream catalogs, Spicetify theme, pkexec flows.
 

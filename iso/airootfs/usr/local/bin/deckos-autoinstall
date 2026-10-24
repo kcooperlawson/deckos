@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# deckos-autoinstall - CI's install test (tests/install-test.sh): runs deckos-install unattended
+# in a QEMU VM. It must never run on a real PC, so it does nothing unless ALL of these hold:
+#   - the kernel command line has deckos.autoinstall (no boot menu entry has it),
+#   - this is the live USB, inside a virtual machine,
+#   - QEMU was given the answers through fw_cfg (opt/deckos/autoinstall; real firmware has no fw_cfg),
+#   - the disk to install on has the test's serial (virtio, serial deckos-autotest).
+# The answers are DECKOS_* lines (see deckos-install); the target is never taken from them.
+set -Eeuo pipefail
+
+FW_CFG=/sys/firmware/qemu_fw_cfg/by_name/opt/deckos/autoinstall/raw
+DISK=/dev/disk/by-id/virtio-deckos-autotest
+# Lines the test harness waits for on the serial console.
+say() { echo "DECKOS-AUTOINSTALL: $*"; }
+refuse() { say "not starting: $*"; exit 0; }
+
+[[ " $(</proc/cmdline) " == *" deckos.autoinstall "* ]] || exit 0
+[[ -d /run/archiso ]] || refuse "not the live USB"
+systemd-detect-virt --vm -q || refuse "not a virtual machine"
+modprobe qemu_fw_cfg 2>/dev/null || true
+[[ -r $FW_CFG ]] || refuse "no answers from QEMU (fw_cfg $FW_CFG)"
+udevadm settle || true
+[[ -b $DISK ]] || refuse "no test disk ($DISK)"
+disk=$(readlink -f "$DISK")
+# The harness makes partition 1 the EFI partition and leaves 2 empty for DeckOS.
+target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
+[[ -b $target ]] || refuse "the test disk $disk has no second partition"
+
+# Only DECKOS_* answers are read, as data: nothing from fw_cfg is ever run.
+pwfile=$(mktemp)
+declare -A ans=()
+while IFS='=' read -r k v; do
+  case $k in
+    DECKOS_HOSTNAME|DECKOS_USER|DECKOS_TZ|DECKOS_LOCALE|DECKOS_KEYMAP|DECKOS_GROUPS|DECKOS_DISPLAY_LEVEL) ans[$k]=$v ;;
+    DECKOS_PASSWORD) printf '%s' "$v" > "$pwfile" ;;
+  esac
+done < <(tr -d '\r' < "$FW_CFG"; echo)
+envs=()
+for k in "${!ans[@]}"; do envs+=("$k=${ans[$k]}"); done
+
+say "installing to $target (disk $disk)"
+rc=0
+env DECKOS_GUI=1 DECKOS_CONFIRM=ERASE DECKOS_TARGET="$target" DECKOS_PASSWORD_FILE="$pwfile" "${envs[@]}" \
+  /usr/local/bin/deckos-install || rc=$?
+rm -f "$pwfile"
+if [[ $rc -ne 0 ]]; then
+  say "install log (last 150 lines):"
+  tail -n 150 /var/log/deckos-install.log 2>/dev/null | sed 's/^/  | /' || true
+  say "FAIL (deckos-install exited $rc)"
+  poweroff
+  exit 0
+fi
+
+# Test-only changes to the new system, so its boot shows on the serial console: no quiet/splash,
+# console on ttyS0 (which also gives a login prompt there), and a line once graphical.target is up.
+mnt=$(mktemp -d)
+if mount -o subvol=@ "$target" "$mnt"; then
+  sed -i -E '/^\s*linux\s/ { s/ (quiet|splash|loglevel=3)\b//g; s/$/ console=tty0 console=ttyS0,115200/ }' "$mnt/boot/grub/grub.cfg"
+  cat > "$mnt/etc/systemd/system/deckos-autotest-report.service" <<'EOF'
+[Unit]
+Description=DeckOS install test: report that the desktop target was reached
+After=graphical.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo "DECKOS-AUTOTEST: graphical.target reached, sddm $(systemctl is-active sddm)" > /dev/ttyS0'
+ExecStart=/bin/sh -c 'systemctl --failed --no-legend --plain | sed "s/^/DECKOS-AUTOTEST: failed unit: /" > /dev/ttyS0'
+
+[Install]
+WantedBy=graphical.target
+EOF
+  mkdir -p "$mnt/etc/systemd/system/graphical.target.wants"
+  ln -sf ../deckos-autotest-report.service "$mnt/etc/systemd/system/graphical.target.wants/"
+  sync
+  umount "$mnt"
+  say "PASS"
+else
+  say "FAIL (the installed system doesn't mount: subvol=@ on $target)"
+fi
+rmdir "$mnt"
+poweroff

@@ -120,7 +120,8 @@ sed -i '/^file_permissions=(/a\
   ["/etc/sudoers.d/00-live"]="0:0:440"\
   ["/home/liveuser/Desktop/deckos-install.desktop"]="1000:1000:755"\
   ["/home/liveuser/Desktop/deckos-hub.desktop"]="1000:1000:755"\
-  ["/usr/local/bin/deckos-install"]="0:0:755"' "$P/profiledef.sh"
+  ["/usr/local/bin/deckos-install"]="0:0:755"\
+  ["/usr/local/bin/deckos-autoinstall"]="0:0:755"' "$P/profiledef.sh"
 
 # Boot menus: DeckOS titles, the CachyOS kernel, the Samsung fix from the first boot.
 boot_cfgs=("$P/efiboot" "$P/grub" "$P/syslinux")
@@ -174,6 +175,8 @@ ln -sf /usr/lib/systemd/system/NetworkManager-dispatcher.service "$S/dbus-org.fr
 ln -sf /usr/lib/systemd/system/bluetooth.service "$S/bluetooth.target.wants/bluetooth.service"
 ln -sf /usr/lib/systemd/system/bluetooth.service "$S/dbus-org.bluez.service"
 ln -sf /usr/lib/systemd/system/power-profiles-daemon.service "$S/multi-user.target.wants/power-profiles-daemon.service"
+# CI's install test; it stays idle unless booted in a QEMU test VM (see iso/airootfs/usr/local/bin/deckos-autoinstall).
+ln -sf ../deckos-autoinstall.service "$S/multi-user.target.wants/deckos-autoinstall.service"
 # DNS through systemd-resolved (NetworkManager feeds it); without this file nothing resolves.
 ln -sf /run/systemd/resolve/stub-resolv.conf "$A/etc/resolv.conf"
 

@@ -1,0 +1,16 @@
+# CI's install test only: see /usr/local/bin/deckos-autoinstall for the checks that keep it off real PCs.
+[Unit]
+Description=DeckOS unattended install (CI test VMs only)
+ConditionKernelCommandLine=deckos.autoinstall
+Wants=network-online.target
+After=network-online.target NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/deckos-autoinstall
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target
