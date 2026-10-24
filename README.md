@@ -202,6 +202,30 @@ A notification says what was freed, and Quick Settings shows it while you play. 
 it off (`deckos mode on` brings it back). To keep one part running, set `OLLAMA=keep`,
 `DOCKER=leave` or `BALOO=leave` in `~/.config/deckos/modes.conf`.
 
+## DeckOS Assistant (local AI)
+
+Ask your PC to install or set something up, in plain words. It runs on your own graphics card with
+Ollama: no account, nothing leaves the PC.
+
+**Press Meta+Space anywhere** for the chat box. It's also in DeckOS Menu (type a question, then *Ask
+DeckOS Assistant*), the ✦ button in Quick Settings, DeckOS Hub › AI & Dev, and DeckOS Terminal (select
+an error, press Ctrl+Shift+A). Esc hides it and the conversation stays; ↻ starts a new one. In a
+terminal, `deckos ask "install OBS and set it up for streaming"` does the same, and `deckos ask` on its
+own starts a conversation. It looks around by itself (what's installed, your
+hardware, logs, `deckos doctor`), installs from the same places as DeckOS Store (repos first, then
+Flathub, then the AUR), and adds DeckOS's Gaming, Local AI and Development groups. **Every change is
+shown to you first** with the exact command (in the chat box, a card with *Do it* / *Not now*), and only runs if you say yes; root still asks for your
+password. Wiping disks or home folders is refused outright.
+
+First time (after adding Local AI): `sudo deckos ai setup` downloads the model (gpt-oss:20b, 13 GB:
+the one that handled DeckOS's tools best on a 16 GB card; gemma4:12b is the lighter choice) and keeps
+models out of system snapshots. `deckos ai` shows what's running; `deckos ai model gemma4:12b` switches.
+
+**With Claude Code:** `deckos ai claude-link` gives Claude Code a `deckos-local` tool that hands long
+logs, build output and big files to the local model and gets back only the lines that matter, so
+those cost Claude a few hundred tokens instead of the whole file. While a game runs, the model stays
+unloaded and Claude reads things itself.
+
 ## DeckOS Menu
 
 The app launcher at the left of the dock (or press **Meta**) is DeckOS Menu. Start typing right away:
@@ -240,6 +264,7 @@ while a game runs a chip in the corner says what workload modes freed for it.
 | Ctrl+Shift+D / Ctrl+Shift+E | split right / split down; Alt+arrows move between the panes |
 | Ctrl+PgUp/PgDn, Alt+1…9 | switch tabs |
 | Ctrl+Shift+C / V / F | copy / paste / find |
+| Ctrl+Shift+A | ask DeckOS Assistant about the selected text (an error, a command) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | bigger / smaller / normal text |
 
 Konsole stays installed for anyone who prefers it (System Settings › Default Applications › Terminal).

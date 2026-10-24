@@ -58,6 +58,13 @@ Item {
             DeckButton {
                 round: true
                 flat: true
+                icon: "ai"
+                tip: "Ask DeckOS Assistant (Meta+Space)"
+                onClicked: full.backend.launch("deckos-assistant")  // the popup closes as the chat box takes focus
+            }
+            DeckButton {
+                round: true
+                flat: true
                 icon: "system"
                 tip: "Open DeckOS Hub"
                 onClicked: full.backend.openHub("home", false)

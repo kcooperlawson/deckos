@@ -27,7 +27,7 @@ package() {
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
-            "$pkgdir"/usr/bin/deckos-welcome \
+            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant \
             "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,brand-os-release,plymouth-refresh} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
@@ -83,9 +83,9 @@ package() {
   rsvg-convert -w 256 -h 256 "$b/logo.svg" -o "$b/logo-256.png"
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
 
-  # DeckOS Store and Hub app icons.
+  # DeckOS Store, Hub and Assistant app icons.
   local app
-  for app in store hub; do
+  for app in store hub assistant; do
     install -Dm644 "$b/$app-logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos-$app.svg"
     for s in 16 24 32 48 64 128 256; do
       rsvg-convert -w "$s" -h "$s" "$b/$app-logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos-$app.png"

@@ -1,6 +1,6 @@
 // Search results while typing: KRunner's matches grouped by kind (apps, settings, files,
-// calculator, commands…), then apps from the DeckOS Store that aren't installed, then a row that
-// opens the Store on the search. The search field keeps the keyboard: Up/Down move `cursor` over all
+// calculator, commands…), then apps from the DeckOS Store that aren't installed, then rows that ask
+// DeckOS Assistant the search and open the Store on it. The search field keeps the keyboard: Up/Down move `cursor` over all
 // of them, Enter runs the one it's on.
 import QtQuick
 import org.kde.kirigami as Kirigami
@@ -9,7 +9,7 @@ Item {
     id: page
 
     readonly property int matches: results.count
-    readonly property int total: matches + deckMenu.storeResults.length + 1
+    readonly property int total: matches + deckMenu.storeResults.length + 2
     property int cursor: 0
 
     function move(by) {
@@ -28,6 +28,8 @@ Item {
             deckMenu.activate(results.model, cursor);
         } else if (cursor < matches + deckMenu.storeResults.length) {
             deckMenu.openInStore(deckMenu.storeResults[cursor - matches].key);
+        } else if (cursor === total - 2) {
+            deckMenu.askAssistant(deckMenu.query.trim());
         } else {
             deckMenu.searchStore(deckMenu.query.trim());
         }
@@ -104,6 +106,16 @@ Item {
                     cursor: page.cursor === page.matches + index
                     onChosen: deckMenu.openInStore(modelData.key)
                 }
+            }
+
+            // First of the two, so a question that matches nothing goes to the assistant on Enter
+            StoreRow {
+                width: results.width
+                app: ({ name: "Ask DeckOS Assistant: “" + deckMenu.query.trim() + "”",
+                        summary: "Install, set up or find out anything, on this PC", icon: "" })
+                line: "ai"
+                cursor: page.cursor === page.total - 2
+                onChosen: deckMenu.askAssistant(deckMenu.query.trim())
             }
 
             StoreRow {

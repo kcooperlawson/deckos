@@ -55,6 +55,15 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `org.deckos.Mode.Changed`, which `deckos mode` emits with `busctl`. `--hold -e CMD` is what the Hub's
   terminal steps use. In Qt 6 `quit()` asks windows to close, and a running command makes the window
   ask: the screenshot mode uses `exit(0)`.
+- Local AI: `usr/lib/deckos/assistant/` (plain Python, no Qt). `assistant.py` has the Ollama client, the
+  tools and their safety rules (`is_read_only`, `BLOCKED`: keep both tested), `Session` (the agent loop)
+  and `summarize` (chunked, for deckos-local). `deckos_ask.py` is `deckos ask`; `deckos_assistant.py` is the chat box
+  (`deckos-assistant`, Meta+Space via X-KDE-Shortcuts, one instance over a QLocalSocket, `--ask TEXT`,
+  `--demo --screenshot DIR`; worker signals connect to bound methods: a lambda would run in the worker
+  thread and build widgets there, which crashes); `deckos_local_mcp.py` is a hand-written MCP stdio
+  server (`deckos ai claude-link`). Read-only pipelines (every part read-only) run without asking. Changes always go through `Tools.confirm`.
+  Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
+  chat instead. `DECKOS_AI_DIR` points `deckos ask`/`deckos ai` at a checkout for testing.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).

@@ -168,6 +168,11 @@ PlasmoidItem {
         launch("deckos-store --search " + quote(term));
     }
 
+    // DeckOS Assistant's chat box, asked the search as a question ("install obs", "why is my wifi slow")
+    function askAssistant(text) {
+        launch("deckos-assistant --ask " + quote(text));
+    }
+
     function startGamingMode() {
         launch("deckos session gaming --ask");
     }

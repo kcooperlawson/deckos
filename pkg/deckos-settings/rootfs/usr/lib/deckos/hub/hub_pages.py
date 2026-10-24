@@ -778,7 +778,11 @@ class AiDevPage(Page):
             self.ollama_card.body.addLayout(self.models)
             self.toggle = button("Start", slot=self.toggle_ollama, icon="play")
             self.ollama_card.body.addWidget(row(
-                self.toggle, button("Try a model", slot=lambda: self.hub.terminal("ollama run qwen3"), icon="ai"),
+                button("Ask DeckOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
+                       tip="Install and set things up by asking (Meta+Space anywhere)"),
+                self.toggle,
+                button("Link Claude Code", slot=lambda: self.hub.terminal("deckos ai claude-link"), icon="external",
+                       tip="Claude Code hands long logs and files to the local model, which saves tokens"),
                 button("GPU compute check", slot=lambda: self.hub.terminal(
                     "nvidia-smi" if self.hub.gpu.nvidia else "rocminfo | grep -E 'Marketing|gfx' | head -n 6"),
                     icon="gpu")))

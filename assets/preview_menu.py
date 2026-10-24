@@ -229,9 +229,11 @@ class Icons(QQuickImageProvider):
 
     def requestImage(self, ident, size, req):
         name, _, color = ident.partition("?")
-        data = (SHARE / f"deckos/icons/{name}.svg").read_text().replace("#000", color or "#8C94A6")
         img = QImage(req if req.isValid() and req.width() > 0 else QSize(48, 48), QImage.Format_ARGB32_Premultiplied)
         img.fill(Qt.transparent)
+        if not name:  # an icon asked for before its name is bound: blank, as Plasma draws it
+            return img
+        data = (SHARE / f"deckos/icons/{name}.svg").read_text().replace("#000", color or "#8C94A6")
         p = QPainter(img)
         QSvgRenderer(data.encode()).render(p)
         p.end()
@@ -311,7 +313,7 @@ def main():
         view.show()
         search = popup.findChild(QObject, "search")
         if m == "search":
-            search.setProperty("text", "video")
+            search.setProperty("text", os.environ.get("DECKOS_MENU_QUERY", "video"))
         elif m == "apps":
             popup.setProperty("page", 1)
         img = []

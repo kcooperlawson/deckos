@@ -1129,6 +1129,80 @@ mode_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ local AI
+#
+# DeckOS Assistant (`deckos ask`) and deckos-local (the local model as a Claude Code MCP server) run on
+# Ollama. The model comes from ~/.config/deckos/ai.conf, then /etc/deckos/ai.conf, then the first of
+# gpt-oss:20b and gemma4:12b that's downloaded (tested on a 16 GB card: gpt-oss:20b follows the tools
+# best). Models are many GB, so /var/lib/ollama becomes a subvolume: system snapshots skip it.
+
+AI_DIR=${DECKOS_AI_DIR:-/usr/lib/deckos/assistant}  # a checkout's, for testing
+AI_CONF=$CONF_DIR/ai.conf
+AI_DEFAULT=gpt-oss:20b
+
+ai_model() { python3 -c "import sys; sys.path.insert(0, '$AI_DIR'); from assistant import pick_model; print(pick_model() or '')"; }
+
+ai_status() {
+  section "Local AI"
+  if ! systemctl is-active --quiet ollama; then warn "Ollama isn't running (systemctl start ollama, or deckos software add ai)"; return; fi
+  local model; model=$(ai_model)
+  if [[ -n $model ]]; then ok "model: $model"; else warn "no model downloaded (sudo deckos ai setup)"; fi
+  sub "downloaded: $(ollama list 2>/dev/null | awk 'NR > 1 {printf "%s%s", sep, $1; sep=", "}')"
+  local loaded; loaded=$(ollama ps 2>/dev/null | awk 'NR > 1 {print $1}' | paste -sd, -)
+  sub "loaded now: ${loaded:-nothing}"
+  if [[ -d /var/lib/ollama ]] && [[ $(stat -f -c %T /var/lib/ollama) == btrfs ]]; then
+    if [[ $(stat -c %i /var/lib/ollama) == 256 ]]; then ok "models are left out of system snapshots"
+    else warn "models are in system snapshots (sudo deckos ai setup makes them a subvolume)"; fi
+  fi
+  local claude; claude=$(command -v claude || echo "$HOME/.local/bin/claude")
+  if [[ -x $claude ]]; then
+    if "$claude" mcp get deckos-local >/dev/null 2>&1; then ok "Claude Code can use it (deckos-local)"
+    else sub "Claude Code isn't linked (deckos ai claude-link)"; fi
+  fi
+}
+
+ai_setup() {  # sudo deckos ai setup [MODEL]: models out of snapshots, the default model downloaded
+  need_root ai setup
+  local model=${1:-$AI_DEFAULT}
+  systemctl is-active --quiet ollama || { err "Ollama isn't running (deckos software add ai)"; exit 1; }
+  if [[ $(stat -f -c %T /var/lib/ollama 2>/dev/null) == btrfs ]] && [[ $(stat -c %i /var/lib/ollama) != 256 ]]; then
+    systemctl stop ollama
+    as_subvolume /var/lib/ollama ollama
+    systemctl start ollama
+    ok "models are left out of system snapshots now"
+  fi
+  local i  # a restarted Ollama takes a moment before it answers
+  for i in $(seq 30); do ollama list >/dev/null 2>&1 && break; sleep 1; done
+  [[ -f $AI_CONF ]] || printf '# DeckOS Assistant and deckos-local (deckos ai model NAME sets yours)\nMODEL=%s\n' "$model" > "$AI_CONF"
+  ollama pull "$model"
+  ok "$model is ready: deckos ask \"…\""
+}
+
+ai_cmd() {
+  case ${1:-status} in
+    status) ai_status ;;
+    setup) shift; ai_setup "$@" ;;
+    model)
+      [[ -n ${2:-} ]] || { ai_model; return; }
+      mkdir -p "$HOME/.config/deckos"
+      touch "$HOME/.config/deckos/ai.conf"
+      sed -i '/^MODEL=/d' "$HOME/.config/deckos/ai.conf"
+      echo "MODEL=$2" >> "$HOME/.config/deckos/ai.conf"
+      ok "DeckOS Assistant uses $2" ;;
+    claude-link)
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      local claude; claude=$(command -v claude || echo "$HOME/.local/bin/claude")
+      [[ -x $claude ]] || { err "Claude Code isn't installed"; exit 1; }
+      "$claude" mcp remove --scope user deckos-local >/dev/null 2>&1 || true
+      "$claude" mcp add --scope user deckos-local -- python3 "$AI_DIR/deckos_local_mcp.py"
+      ok "Claude Code can hand long logs and files to the local model (deckos-local)" ;;
+    claude-unlink)
+      "$(command -v claude || echo "$HOME/.local/bin/claude")" mcp remove --scope user deckos-local
+      ok "deckos-local removed from Claude Code" ;;
+    *) err "usage: deckos ai [status|setup [MODEL]|model [NAME]|claude-link|claude-unlink]"; exit 2 ;;
+  esac
+}
+
 # ------------------------------------------------------------------ streaming and Decky
 
 streaming_setup() {  # Sunshine: stream games to a TV, phone or Steam Deck with Moonlight
@@ -1216,6 +1290,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
+  deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
+  deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check
@@ -1242,6 +1318,8 @@ case ${1:-} in
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
+  ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
+  ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;
   decky) shift; [[ ${1:-install} == install ]] && decky_install ;;
   doctor) doctor_cmd ;;
