@@ -83,6 +83,27 @@ def gh_path():
     return None
 
 
+WSL_DISTRO = "archlinux"  # Windows: local builds run build.sh in WSL's Arch Linux
+
+
+def wsl_distros():
+    """Installed WSL distributions, lower-case; [] when WSL isn't set up."""
+    try:
+        r = subprocess.run(["wsl", "-l", "-q"], capture_output=True, creationflags=NO_WINDOW, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if r.returncode:
+        return []
+    text = r.stdout.decode("utf-16-le", "ignore") if b"\x00" in r.stdout else r.stdout.decode("utf-8", "ignore")
+    return [ln.strip().lower() for ln in text.splitlines() if ln.strip()]
+
+
+def wsl_path(path):
+    """C:/Users/me/x (or with backslashes) -> /mnt/c/Users/me/x"""
+    p = Path(path).resolve()
+    return f"/mnt/{p.drive[0].lower()}{p.as_posix()[2:]}"
+
+
 def gh(*args, check=True):
     exe = gh_path()
     if not exe:
@@ -377,8 +398,10 @@ class Builder(QWidget):
         self.repo_box.setFixedWidth(200)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
-        if not IS_WINDOWS and (shutil.which("pacman") or Path("/etc/arch-release").exists()):
-            h.addWidget(button("Build on this PC", slot=self.build_local, icon="terminal", tip="Runs build.sh here (Arch/DeckOS only)"))
+        if IS_WINDOWS or shutil.which("pacman") or Path("/etc/arch-release").exists():
+            self.local_btn = button("Build on this PC", slot=self.build_local, icon="terminal",
+                                    tip="Builds the ISO with this PC's CPU (in WSL on Windows): minutes, not a GitHub queue")
+            h.addWidget(self.local_btn)
         self.release_btn = button("Release…", slot=self.release, icon="arrow-up",
                                   tip="Bump VERSION, tag and push: installed systems get it about 10 minutes later")
         h.addWidget(self.release_btn)
@@ -997,24 +1020,81 @@ class Builder(QWidget):
             QProcess.startDetached("xdg-open", [path])
 
     def build_local(self):
-        """Linux (Arch/DeckOS): run build.sh here, streaming its output into the log panel."""
+        """Run build.sh on this PC: directly on Arch/DeckOS, in WSL's Arch Linux on Windows. Output streams
+        into the log panel; the ISO lands in the ISO folder, ready for Copy newest ISO to USB."""
         if self.local_proc and self.local_proc.state() != QProcess.NotRunning:
-            self.say("A local build is already running")
+            self.stop_local()
             return
-        if QMessageBox.question(self, "DeckOS Builder", "Build the ISO on this PC? It needs about 30 GB free and asks for your password.") != QMessageBox.Yes:
+        out = self.out_dir()
+        out.mkdir(parents=True, exist_ok=True)
+        if IS_WINDOWS:
+            distros = wsl_distros()
+            if WSL_DISTRO not in distros:
+                self.setup_wsl(bool(distros))
+                return
+            ask = ("Build the ISO on this PC?\n\nIt runs in WSL (Arch Linux) on all your CPU cores, needs about 30 GB "
+                   "free on C: while it works and takes roughly 10 minutes. Nothing is published.")
+            cmd = ["wsl", "-d", WSL_DISTRO, "-u", "root", "--exec", "env", f"OUT={wsl_path(out)}",
+                   "WORK=/var/tmp/deckos-build", "bash", wsl_path(REPO_DIR / "build.sh")]
+        else:
+            ask = "Build the ISO on this PC? It needs about 30 GB free and asks for your password."
+            cmd = ["pkexec", "env", f"OUT={out}", "bash", str(REPO_DIR / "build.sh")]
+        if QMessageBox.question(self, "DeckOS Builder", ask) != QMessageBox.Yes:
             return
         self.log.clear()
         p = QProcess(self)
         p.setProcessChannelMode(QProcess.MergedChannels)
         p.setWorkingDirectory(str(REPO_DIR))
-        p.readyReadStandardOutput.connect(lambda: self.append_log(bytes(p.readAllStandardOutput()).decode("utf-8", "replace").rstrip()))
-        p.finished.connect(lambda code, _s: self.say("Local build finished" if code == 0 else f"Local build failed (exit {code})"))
-        env = p.processEnvironment()
-        env.insert("OUT", str(self.out_dir()))
-        p.setProcessEnvironment(env)
-        p.start("pkexec", ["env", f"OUT={self.out_dir()}", "bash", str(REPO_DIR / "build.sh")])
+        ansi = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+        p.readyReadStandardOutput.connect(lambda: self.append_log(
+            ansi.sub("", bytes(p.readAllStandardOutput()).decode("utf-8", "replace")).rstrip()))
+        started = time.time()
+
+        def finished(code, _status):
+            took = fmt_duration(time.time() - started)
+            self.local_btn.setText("Build on this PC")
+            QApplication.alert(self)
+            if code == 0:
+                iso = self.newest_iso()
+                self.say(f"Local build finished in {took}" + (f": {iso.name}" if iso else ""))
+                self.toast.show_message(f"ISO built on this PC in {took}", "ok", 8000)
+            else:
+                self.say(f"Local build stopped (exit {code}) after {took}: see the log")
+                self.toast.show_message("Local build failed: see the log", "bad", 8000)
+
+        p.finished.connect(finished)
+        p.start(cmd[0], cmd[1:])
         self.local_proc = p
-        self.say("Local build started")
+        self.local_btn.setText("Stop local build")
+        self.say("Local build started" + (" in WSL" if IS_WINDOWS else ""))
+
+    def stop_local(self):
+        if QMessageBox.question(self, "DeckOS Builder", "Stop the local build?") != QMessageBox.Yes:
+            return
+        if IS_WINDOWS:
+            # Ending wsl.exe leaves build.sh running inside; shutting the distro down stops all of it.
+            subprocess.run(["wsl", "--terminate", WSL_DISTRO], creationflags=NO_WINDOW)
+        else:
+            self.local_proc.terminate()
+
+    def setup_wsl(self, have_wsl):
+        """One-time: WSL (if missing) and its Arch Linux, which local builds on Windows run in."""
+        box = QMessageBox(self)
+        box.setWindowTitle("DeckOS Builder")
+        box.setText("Building on Windows needs WSL with Arch Linux")
+        box.setInformativeText(
+            ("WSL is set up; this adds Arch Linux to it (a few minutes). " if have_wsl else
+             "Windows installs WSL and Arch Linux (a few minutes; asks for admin, and may need a restart). ") +
+            "When the Arch Linux window finishes and shows a prompt, close it and click Build on this PC again.")
+        go = box.addButton("Set up WSL", QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        if box.clickedButton() is not go:
+            return
+        subprocess.Popen(["powershell", "-NoProfile", "-Command",
+                          f"Start-Process powershell -Verb RunAs -ArgumentList '-NoExit','-Command','wsl --install {WSL_DISTRO}'"],
+                         creationflags=NO_WINDOW)
+        self.say("Setting up WSL with Arch Linux in a new window…")
 
 
 def main():

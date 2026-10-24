@@ -54,6 +54,19 @@ if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
 fi
 pacman -Syu --noconfirm --needed archiso git base-devel librsvg grub papirus-icon-theme cachyos-keyring
 
+# WSL building a checkout on the Windows drive (DeckOS Builder's "Build on this PC" on Windows): every
+# file there reads as 777 and the drive is slow, so build from a Linux copy with git's file modes.
+if [[ $(findmnt -no FSTYPE -T "$ROOT" 2>/dev/null) =~ ^(9p|drvfs|v9fs)$ ]]; then
+  step "Copying the checkout off the Windows drive"
+  src=$WORK/src
+  mkdir -p "$src"
+  tar -C "$ROOT" -cf - apps pkg iso installer VERSION build.sh | tar -C "$src" -xf -
+  chmod -R a-x,u+rwX,go+rX,go-w "$src"
+  git -c safe.directory='*' -C "$ROOT" ls-files -s | awk -F'\t' '$1 ~ /^100755 / {print $2}' \
+    | (cd "$src" && xargs -d '\n' -r chmod 755 2>/dev/null || true)
+  ROOT=$src
+fi
+
 id builder >/dev/null 2>&1 || useradd -m builder
 echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-deckos-builder
 chmod 440 /etc/sudoers.d/90-deckos-builder
