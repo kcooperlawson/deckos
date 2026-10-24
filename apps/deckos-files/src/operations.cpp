@@ -87,8 +87,14 @@ void paste(const QUrl &dest, QWidget *window)
     const bool cut = KIO::isClipboardDataCut(mime);
     KIO::Job *job = KIO::paste(mime, dest);
     KJobWidgets::setWindow(job, window);
+    autoErrors(job);
+    // The job reads the clipboard once it runs: clearing it straight away left a cut nothing to move.
+    // After a move the files are gone from where the clipboard points, so it's cleared then.
     if (cut)
-        QApplication::clipboard()->clear();
+        QObject::connect(job, &KJob::result, [](KJob *j) {
+            if (!j->error())
+                QApplication::clipboard()->clear();
+        });
 }
 
 void trash(const QList<QUrl> &list, QWidget *window)

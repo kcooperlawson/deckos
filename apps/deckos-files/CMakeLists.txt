@@ -58,3 +58,16 @@ install(FILES data/deckos-files.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/h
 install(FILES data/org.deckos.files.FileManager1.service DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/services)
 # Folders open in DeckOS Files from every app (a user's own choice in mimeapps.list still wins).
 install(FILES data/mimeapps.list DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg)
+
+# Offscreen checks of copy/paste and drops through the real window (not built by the PKGBUILD).
+option(DECKOS_FILES_TESTS "Build the DeckOS Files tests" OFF)
+if(DECKOS_FILES_TESTS)
+  add_executable(clipboard_test tests/clipboard_test.cpp
+    src/style.cpp src/foldermodel.cpp src/itemdelegate.cpp src/folderview.cpp src/folderpane.cpp
+    src/sidebar.cpp src/operations.cpp src/mainwindow.cpp)
+  target_include_directories(clipboard_test PRIVATE src)
+  get_target_property(_defs deckos-files COMPILE_DEFINITIONS)
+  target_compile_definitions(clipboard_test PRIVATE ${_defs})
+  get_target_property(_libs deckos-files LINK_LIBRARIES)
+  target_link_libraries(clipboard_test PRIVATE ${_libs})
+endif()

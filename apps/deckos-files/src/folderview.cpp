@@ -226,6 +226,11 @@ public:
     {
         setViewMode(QListView::ListMode);  // list mode's uniform-size layout is far cheaper than icon mode
         setMovement(QListView::Static);
+        // Static movement means "icons can't be rearranged", and QListView takes it as "no drag and
+        // drop" too: it switches dragging off and the viewport's drops off. Files are still dragged.
+        setDragEnabled(true);
+        viewport()->setAcceptDrops(true);
+        setDragDropMode(QAbstractItemView::DragDrop);
         setResizeMode(QListView::Adjust);
         setUniformItemSizes(true);
         setWrapping(true);
