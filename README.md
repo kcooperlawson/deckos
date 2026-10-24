@@ -20,7 +20,7 @@ recoverable Arch system without assembling it by hand.
 | **DeckOS Terminal** | Tabs named after your project and git branch, splits, and the assistant one shortcut away |
 | **DeckOS Files, Hub, Store, Menu, Quick Settings, Welcome, What's New** | DeckOS's own apps for files, settings, software, the launcher and updates |
 | **Its own installer** | Installs next to Windows without touching Windows drives; tested by installing itself in a VM on every release |
-| **Boot and recovery** | The DeckOS boot splash and boot menu, with btrfs snapshots you can boot into after a bad update |
+| **Boot and recovery** | The DeckOS boot splash and boot menu, btrfs snapshots before every update, and one-click Undo for an update that broke something (DeckOS Hub or `deckos undo`) |
 | **The display fix ladder** | Fixes the RX 9000 DisplayPort blackouts on high-refresh monitors, one level at a time |
 | **Eight themes, 28 wallpapers, five layouts** | A dock, a classic taskbar, a top bar, a hidden dock or a big one for the couch |
 

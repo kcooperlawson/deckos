@@ -895,14 +895,18 @@ class SystemPage(Page):
         up.body.addWidget(self.auto_state)
         self.lay.addWidget(up)
 
-        snaps = Card("System snapshots", "Roll back a bad update", "snapshot")
-        snaps.body.addWidget(label("A snapshot is taken before and after every update. To go back, restart and pick "
-                                   "<b>DeckOS snapshots</b> in the boot menu, then the one from before the problem.",
-                                   "sub"))
+        snaps = Card("Undo an update", "If something broke after updating", "undo")
+        snaps.body.addWidget(label("DeckOS takes a snapshot before every update. Undo one and the system goes back to "
+                                   "how it was before it, from the next restart. Your files and settings in your home "
+                                   "folder stay as they are.", "sub"))
+        self.undo_note = QVBoxLayout()  # restart to finish, or delete the system an undo replaced
+        self.undo_note.setSpacing(6)
+        snaps.body.addLayout(self.undo_note)
         self.snap_list = QVBoxLayout()
         self.snap_list.setSpacing(6)
         snaps.body.addLayout(self.snap_list)
         self.lay.addWidget(snaps)
+        self.undo_pending = None  # (date, what) once an undo waits for the restart
 
         home = Card("Your files", "Home snapshots and backup", "folder")
         home.body.addWidget(label("Snapshots bring back a file you deleted or broke, from the last hours or days. A "
@@ -936,7 +940,7 @@ class SystemPage(Page):
         self.check_updates()
         sysinfo.Job(self, [DECKOS, "auto-update", "status"], lambda out, _c: self.show_auto_update(sysinfo.kv(out)),
                     demo=(sysinfo.DEMO_AUTO_UPDATE, 0))
-        self.hub.data.snapshots(self.show_snapshots)
+        self.hub.data.undoable(self.show_undoable)
         self.show_home()
         self.hub.data.firewall(self.show_firewall)
         self.clear(self.sw_list)
@@ -1095,7 +1099,7 @@ class SystemPage(Page):
             self.hub.toast("The update stopped with an error; see the log.", "bad", 7000)
         self.hub.data.invalidate()
         self.check_updates()
-        self.hub.data.snapshots(self.show_snapshots, fresh=True)
+        self.hub.data.undoable(self.show_undoable, fresh=True)
 
     def after_update(self, done):
         """What the update just installed needs next, as (kind, row factory) notices for the Updates card."""
@@ -1118,18 +1122,66 @@ class SystemPage(Page):
                         QProcess.startDetached("systemctl", ["reboot"]), icon="power")])))
         return notes
 
-    def show_snapshots(self, snaps):
+    def show_undoable(self, rows):
+        self.show_undo_note()
         self.clear(self.snap_list)
-        if snaps is None:
+        if rows is None:
             self.snap_list.addWidget(label("Couldn't read the snapshot list (snapper).", "muted"))
             return
-        if not snaps:
-            self.snap_list.addWidget(label("No snapshots yet.", "muted"))
-        for num, date, desc, important in snaps[:8]:
-            right = [label(f"<span style='color:{S.P.accent}'>kept</span>", wrap=False)] if important else []
-            self.snap_list.addWidget(RowItem("snapshot", desc or "Snapshot", f"#{num}  ·  {date}", right=right))
-        if len(snaps) > 8:
-            self.snap_list.addWidget(label(f"…and {len(snaps) - 8} older.", "muted"))
+        if not rows:
+            self.snap_list.addWidget(label("Nothing to undo yet: the next update is the first one you can take back.",
+                                           "muted"))
+        for pre, date, what in rows[:6]:
+            undo = button("Undo", slot=lambda _=False, p=pre, d=date, w=what: self.undo_update(p, d, w), icon="undo",
+                          tip=f"Go back to snapshot #{pre}, from just before this update")
+            undo.setEnabled(self.undo_pending is None)
+            self.snap_list.addWidget(RowItem("package", what or "Update", f"{date}  ·  snapshot #{pre}", right=[undo]))
+        if len(rows) > 6:
+            self.snap_list.addWidget(label(f"…and {len(rows) - 6} older: deckos undo list shows them all.", "muted"))
+
+    def show_undo_note(self):
+        self.clear(self.undo_note)
+        last = sysinfo.last_undo()
+        if self.undo_pending:
+            date, what = self.undo_pending
+            self.undo_note.addWidget(RowItem(
+                "power", "Restart to finish the undo", f"DeckOS goes back to before {what} ({date}).", S.WARNING,
+                [button("Restart now", "primary", slot=lambda: self.hub.toast("Restarting (demo).") if sysinfo.DEMO else
+                        QProcess.startDetached("systemctl", ["reboot"]), icon="power")]))
+        elif last and not last.get("cleaned"):
+            self.undo_note.addWidget(RowItem(
+                "check", f"Went back to before {last.get('what') or 'an update'}",
+                "The system it replaced is kept, in case you change your mind. Delete it once everything works.",
+                S.SUCCESS, [button("Delete old system", slot=self.clean_undo, icon="trash",
+                                   tip="Frees the space it takes; this can't be undone")]))
+
+    def undo_update(self, pre, date, what):
+        if QMessageBox.question(
+                self, "Undo this update?",
+                f"DeckOS goes back to how it was before {what} ({date}).\n\n"
+                "This happens when you restart; until then nothing changes. Apps and system settings changed since "
+                "then go back too. Your files and settings in your home folder stay as they are.\n\n"
+                "The system as it is now is kept, so you can change your mind.") != QMessageBox.Yes:
+            return
+
+        def done(ok):
+            if not ok:
+                self.hub.toast("The update couldn't be undone. Run 'sudo deckos undo' in a terminal to see why.",
+                               "bad", 8000)
+                return
+            self.undo_pending = (date, what)
+            self.hub.toast("Done: restart to go back.", "ok", 6000)
+            self.hub.data.undoable(self.show_undoable, fresh=True)
+        self.hub.privileged(["undo", str(pre)], done)
+
+    def clean_undo(self):
+        if QMessageBox.question(self, "Delete the old system?",
+                                "The system an undo replaced is deleted for good. Only do this once everything "
+                                "works.") != QMessageBox.Yes:
+            return
+        self.hub.privileged(["undo", "clean"], lambda ok: (
+            self.hub.toast("Deleted." if ok else "Couldn't delete it: run 'sudo deckos undo clean' to see why.",
+                           "ok" if ok else "bad", 6000), self.show_undo_note()))
 
     def show_home(self):
         self.clear(self.home_box)

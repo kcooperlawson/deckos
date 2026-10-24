@@ -375,6 +375,28 @@ DEMO_HOME_SNAPSHOTS = json.dumps({"home": [{"number": 0, "description": "current
     for n, h in zip(range(31, 43), range(8, 20))]})
 
 
+def parse_undoable(out):
+    """[(pre_number, date, what)] newest first, from `deckos undo --tsv`."""
+    rows = []
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0].isdigit():
+            rows.append((int(parts[0]), parts[1], parts[2]))
+    return rows
+
+
+DEMO_UNDOABLE = ("42\t2026-10-28 18:12\tlutris python-moddb\n"
+                 "38\t2026-10-26 21:40\tlinux-cachyos mesa vulkan-radeon steam and 41 more\n"
+                 "30\t2026-10-24 19:02\tdeckos-settings\n")
+
+
+def last_undo():
+    """What `deckos undo` last went back to: {snapshot, date, what, kept, cleaned?}, or None."""
+    text = read(Path("/var/lib/deckos/undo")) if not DEMO else ""
+    info = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+    return info if info.get("snapshot") else None
+
+
 def home_snapshots_on():
     return DEMO or Path("/etc/snapper/configs/home").exists()
 

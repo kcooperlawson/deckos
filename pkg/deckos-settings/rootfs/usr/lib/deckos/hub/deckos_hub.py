@@ -38,7 +38,7 @@ class HubData:
     """Slow lookups (updates, snapshots, firewall) run in the background and are cached, so pages
     can ask freely; callers queue while a lookup is running."""
 
-    TTL = {"updates": 900, "snapshots": 60, "firewall": 30}
+    TTL = {"updates": 900, "snapshots": 60, "undo": 60, "firewall": 30}
 
     def __init__(self, owner):
         self.owner = owner
@@ -92,6 +92,13 @@ class HubData:
             self.owner, ["snapper", "--jsonout", "-c", config, "list"],
             lambda out, code: done(sysinfo.parse_snapshots(out) if code == 0 else None),
             demo=(sysinfo.DEMO_SNAPSHOTS if config == "root" else sysinfo.DEMO_HOME_SNAPSHOTS, 0)))
+
+    def undoable(self, cb, fresh=False):
+        """cb([(pre_number, date, what)] newest first, or None): updates `deckos undo` can take back."""
+        self._get("undo", fresh, cb, lambda done: sysinfo.Job(
+            self.owner, [sysinfo.DECKOS, "undo", "--tsv"],
+            lambda out, code: done(sysinfo.parse_undoable(out) if code == 0 else None),
+            demo=(sysinfo.DEMO_UNDOABLE, 0)))
 
     def firewall(self, cb, fresh=False):
         """cb(running, [open services])"""

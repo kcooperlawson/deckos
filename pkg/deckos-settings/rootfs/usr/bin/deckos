@@ -431,7 +431,7 @@ update_cmd() {
   local before after
   before=$(pacman -Q deckos-settings 2>/dev/null || true)
   section "Updating DeckOS"
-  sub "snap-pac takes a btrfs snapshot before and after; roll back from the GRUB 'snapshots' menu."
+  sub "snap-pac takes a btrfs snapshot before and after; 'deckos undo' goes back if it goes wrong."
   if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi
   command -v flatpak >/dev/null && flatpak update -y || true
   ok "done"
@@ -710,6 +710,96 @@ snapshot_count() {
   local nums
   nums=$(snapper --csvout --no-headers -c "$1" list --columns number 2>/dev/null) || return 1
   grep -cvx '0' <<<"$nums" || true
+}
+
+# ------------------------------------------------------------------ undo an update
+#
+# snap-pac snapshots / before ("pre") and after every pacman transaction. Undoing one puts a writable
+# copy of its pre snapshot in place of @ and keeps the current @ as @.undone-DATE, so the undo can be
+# undone too. /boot is inside @, so kernels, modules, GRUB's menu and pacman's database all go back
+# together; /home, /var/log and the package cache are their own subvolumes and stay as they are.
+
+UNDO_STATE=/var/lib/deckos/undo
+
+undo_list() {  # the last updates that can be undone: PRE<TAB>DATE<TAB>WHAT (WHAT from the post snapshot)
+  local json
+  json=$(snapper --jsonout -c root list 2>/dev/null) || { err "couldn't read system snapshots (snapper -c root list)"; exit 1; }
+  jq -r '(.root // []) as $s | [$s[] | select(.type == "pre")] | sort_by(-.number) | .[:20][] | . as $p
+    | ([$s[] | select(.type == "post" and ."pre-number" == $p.number)][0].description // "") as $what
+    | [($p.number | tostring), ($p.date // "" | .[:16]), (if $what != "" then $what else $p.description end)] | @tsv' <<<"$json"
+}
+
+undo_to() {
+  local n=$1 row type date what dev top kept stamp
+  need_root undo "$n"
+  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos undo NUMBER (see deckos undo list)"; exit 2; }
+  [[ ! -e /var/lib/pacman/db.lck ]] || { err "an update is running right now: try again when it's done"; exit 1; }
+  row=$(snapper --jsonout -c root list 2>/dev/null | jq -r --argjson n "$n" \
+    '.root[] | select(.number == $n) | [.type, (.date // "" | .[:16]), (.description // "")] | @tsv') || true
+  IFS=$'\t' read -r type date what <<<"$row"
+  [[ $type == pre ]] || { err "snapshot $n isn't the 'before' snapshot of an update (deckos undo list shows those)"; exit 1; }
+  # The packages it changed (from the post snapshot) say more than the pacman command line
+  row=$(undo_list | awk -F'\t' -v n="$n" '$1 == n {print $3; exit}')
+  what=${row:-$what}
+  [[ $(findmnt -no FSTYPE /) == btrfs && $(findmnt -no FSROOT /) == /@ && $(findmnt -no FSROOT /.snapshots) == /@snapshots ]] \
+    || { err "/ isn't DeckOS's btrfs layout (@ and @snapshots), so it can't be swapped safely: use GRUB's snapshots menu"; exit 1; }
+  dev=$(findmnt -no SOURCE /); dev=${dev%%\[*}
+  top=$(mktemp -d)
+  mount -o subvolid=5 "$dev" "$top"
+  # shellcheck disable=SC2064  # expand now: $top is local
+  trap "umount '$top' 2>/dev/null; rmdir '$top' 2>/dev/null" EXIT
+  [[ -d $top/@ && -d $top/@snapshots/$n/snapshot ]] || { err "snapshot $n's files are missing ($top/@snapshots/$n/snapshot)"; exit 1; }
+  stamp=$(date +%Y%m%d-%H%M%S) kept=@.undone-$stamp
+  [[ ! -e $top/@.undo-new ]] || btrfs subvolume delete "$top/@.undo-new" >/dev/null
+  btrfs subvolume snapshot "$top/@snapshots/$n/snapshot" "$top/@.undo-new" >/dev/null
+  mkdir -p "$top/@.undo-new${UNDO_STATE%/*}"
+  printf 'when=%s\nsnapshot=%s\ndate=%s\nwhat=%s\nkept=%s\n' "$(date +%s)" "$n" "$date" "$what" "$kept" \
+    > "$top/@.undo-new$UNDO_STATE"
+  # Two renames on one file system; if the second fails, put the first back so there's always an @.
+  mv "$top/@" "$top/$kept"
+  if ! mv "$top/@.undo-new" "$top/@"; then
+    mv "$top/$kept" "$top/@"
+    err "couldn't put the snapshot in place: nothing changed"; exit 1
+  fi
+  sync
+  ok "DeckOS goes back to before \"$what\" ($date) when you restart"
+  sub "Until then nothing changes. /home, your files and settings aren't touched."
+  sub "The system as it is now is kept as $kept: 'sudo deckos undo clean' deletes it once you're happy."
+}
+
+undo_clean() {  # delete the systems kept by earlier undos (never the running one)
+  local dev top s n=0
+  need_root undo clean
+  dev=$(findmnt -no SOURCE /); dev=${dev%%\[*}
+  top=$(mktemp -d)
+  mount -o subvolid=5 "$dev" "$top"
+  # shellcheck disable=SC2064
+  trap "umount '$top' 2>/dev/null; rmdir '$top' 2>/dev/null" EXIT
+  for s in "$top"/@.undone-*; do
+    [[ -d $s ]] || continue
+    # --recursive: nested subvolumes (docker's, systemd-machined's) would block a plain delete.
+    btrfs subvolume delete --recursive "$s" >/dev/null && n=$((n + 1))
+  done
+  # DeckOS Hub stops offering to delete what's gone
+  if (( n )) && [[ -f $UNDO_STATE ]] && ! grep -q '^cleaned=' "$UNDO_STATE"; then echo "cleaned=$(date +%s)" >> "$UNDO_STATE"; fi
+  (( n )) && ok "deleted $n kept system(s)" || ok "nothing to clean"
+}
+
+undo_cmd() {
+  case ${1:-list} in
+    list)
+      local rows
+      rows=$(undo_list)
+      if [[ -z $rows ]]; then say "No updates to undo yet: snapshots are taken from the next update on."; return; fi
+      section "Updates you can undo (sudo deckos undo NUMBER)"
+      while IFS=$'\t' read -r n when what; do printf '  %s%5s%s  %s  %s\n' "$C_B" "$n" "$C_0" "$when" "$what"; done <<<"$rows"
+      if [[ -r $UNDO_STATE ]]; then
+        sub "Last undo: back to snapshot $(sed -n 's/^snapshot=//p' "$UNDO_STATE") ($(sed -n 's/^what=//p' "$UNDO_STATE"))"
+      fi ;;
+    --tsv) undo_list ;;
+    clean) undo_clean ;;
+    *) undo_to "$1" ;;
+  esac
 }
 
 home_status() {
@@ -1362,6 +1452,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos gaming detect                                  which output Gaming Mode uses
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
   deckos update [--system]                              update everything (with snapshots)
+  deckos undo    [list|NUMBER|clean]                   go back to before an update (restart to finish)
   deckos updates [--cached|--max-age S]                 how many updates are waiting (cached)
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
@@ -1407,6 +1498,7 @@ case ${1:-} in
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
+  undo) shift; undo_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
