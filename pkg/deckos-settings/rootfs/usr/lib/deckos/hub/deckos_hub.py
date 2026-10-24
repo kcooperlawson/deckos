@@ -97,12 +97,14 @@ class HubData:
         """cb(running, [open services])"""
         def start(done):
             def state(out, _code):
-                if out.strip() != "running":
+                if out.strip() != "active":
                     done(False, [])
                     return
+                # Reading the zone is polkit's FirewallD1.config.info: 50-deckos.rules lets wheel do it
+                # without a password. Without that rule it would ask, so a failure just shows no list.
                 sysinfo.Job(self.owner, ["firewall-cmd", "--list-services"],
-                            lambda o, _c: done(True, o.split()), demo=("kdeconnect steam-streaming", 0))
-            sysinfo.Job(self.owner, ["firewall-cmd", "--state"], state, demo=("running", 0))
+                            lambda o, c: done(True, o.split() if c == 0 else []), demo=("kdeconnect steam-streaming", 0))
+            sysinfo.Job(self.owner, ["systemctl", "is-active", "firewalld"], state, demo=("active", 0))
         self._get("firewall", fresh, cb, start)
 
 
