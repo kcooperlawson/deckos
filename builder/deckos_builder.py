@@ -197,7 +197,7 @@ def phases(run, jobs):
     if not (run.get("event") == "push" and (run.get("head_branch") or "").startswith("v")):
         update = ("No update (not a version tag)", MUTED)
     elif pub == "success":
-        update = ("Live: deckos update installs it", SUCCESS)
+        update = ("On testing: deckos update installs it", SUCCESS)
     elif pub == "running":
         update = ("Publishing…", ACCENT)
     elif pub in ("failure", "cancelled", "timed_out") or "failure" in (_job_state(by.get("lint")), _job_state(by.get("package"))):
@@ -301,9 +301,10 @@ class ReleaseDialog(QDialog):
         v.setContentsMargins(22, 18, 22, 16)
         v.setSpacing(10)
         v.addWidget(label("Release DeckOS", "title"))
-        v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and installed systems "
-                          "get the update about 5 minutes later. An ISO is only built when the installer or live "
-                          "USB changed since the last release.", "sub"))
+        v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and PCs on the testing "
+                          "channel get the update about 5 minutes later. Stable gets it when you run Promote to "
+                          "stable on GitHub. An ISO is only built when the installer or live USB changed since the "
+                          "last release.", "sub"))
         self.version = QLineEdit(next_version(version))
         self.summary = QLineEdit()
         self.summary.setPlaceholderText("What changed, e.g. Hub opens again; thumbstick login splash")
@@ -341,7 +342,7 @@ class Builder(QWidget):
         self.settings = QSettings("DeckOS", "Builder")
         self.pool = QThreadPool.globalInstance()
         self.runs, self.jobs, self.current, self.busy = [], [], None, False
-        self.assets, self.local = None, {}
+        self.assets, self.stable, self.local = None, None, {}
         self._tasks = set()
         self.typical = self.settings.value("typical_iso_seconds", 1800, type=int)
         self.iso_runs = {}  # finished run id -> seconds to a built ISO, or 0 when it built none
@@ -419,7 +420,7 @@ class Builder(QWidget):
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
         self.release_btn = button("Release…", slot=self.release, icon="arrow-up",
-                                  tip="Bump VERSION, tag and push: installed systems get it about 10 minutes later")
+                                  tip="Bump VERSION, tag and push: testing PCs get it about 10 minutes later")
         h.addWidget(self.release_btn)
         self.build_btn = button("Build on GitHub", "primary", self.start_build, "play",
                                 "Starts the 'Build DeckOS ISO' workflow on GitHub (about 13 minutes)")
@@ -679,11 +680,17 @@ class Builder(QWidget):
                     known[r["id"]] = (parse_ts(j["completed_at"]) - parse_ts(r["run_started_at"])).total_seconds()                         if j and j["conclusion"] == "success" and j["completed_at"] else 0
             # Typical ISO build time = the newest run that built one.
             typical = next((known[r["id"]] for r in runs if known.get(r["id"])), None)
+            # Tags publish to testing; stable only moves with the Promote to stable workflow.
             try:
-                assets = gh_json(f"repos/{repo}/releases/tags/repo")["assets"]
+                assets = gh_json(f"repos/{repo}/releases/tags/repo-testing")["assets"]
             except RuntimeError:
-                assets = None  # no repo release yet
-            return runs, cur, jobs, typical, assets, local_state(), known
+                assets = None  # no testing release yet
+            try:
+                stable = gh_json(f"repos/{repo}/releases/tags/repo")["assets"]
+                stable = next((m.group(2) for a in stable if (m := PKG_RE.match(a["name"])) and m.group(1) == "deckos-settings"), None)
+            except RuntimeError:
+                stable = None
+            return runs, cur, jobs, typical, (assets, stable), local_state(), known
 
         def done(res, err):
             self.busy = False
@@ -692,7 +699,7 @@ class Builder(QWidget):
                 self.timer.start(60000)
                 return
             prev, prev_jobs = self.current, self.jobs
-            self.runs, self.current, self.jobs, typical, self.assets, self.local, self.iso_runs = res
+            self.runs, self.current, self.jobs, typical, (self.assets, self.stable), self.local, self.iso_runs = res
             # The update goes live ~35 minutes before the ISO is done: say so the moment it does.
             if prev and self.current and prev["id"] == self.current["id"]:
                 was, now = phases(prev, prev_jobs)[0][1], phases(self.current, self.jobs)[0][1]
@@ -802,16 +809,17 @@ class Builder(QWidget):
             else:
                 self.t_version.set(v, f"Released as {lo.get('tag') or 'v' + v}", "ok")
         if self.assets is None:
-            self.t_repo.set("No repo yet", "Push a version tag to publish packages", "off")
+            self.t_repo.set("No testing repo yet", "Push a version tag to publish packages", "off")
         else:
             vers = {m.group(1): m.group(2) for a in self.assets if (m := PKG_RE.match(a["name"]))}
             pub = vers.get("deckos-settings", "?")
             newest = max((parse_ts(a["updated_at"]) for a in self.assets), default=None)
             when = f"published {fmt_ago(newest)}" if newest else ""
+            stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'}, promote from Actions"
             if lo and pub != lo["version"] and vkey(lo["version"]) > vkey(pub) and not lo.get("ahead"):
                 self.t_repo.set(pub, f"{lo['version']} is on its way · {when}", "info")
             else:
-                self.t_repo.set(pub, f"deckos-settings · {when}", "ok")
+                self.t_repo.set(pub, f"testing · {when} · {stable}", "ok" if self.stable == pub else "info")
         if self.current:
             state, _ = run_state(self.current)
             (u_text, u_col), (i_text, _) = phases(self.current, self.jobs)
@@ -925,7 +933,7 @@ class Builder(QWidget):
                 self.say(f"Release failed: {err}")
                 self.toast.show_message("Release failed: see the log", "bad", 8000)
                 return
-            self.say(f"Released DeckOS {ver}: installed systems get it in about 5 minutes")
+            self.say(f"Released DeckOS {ver} to testing: testing PCs get it in about 5 minutes; promote it to stable on GitHub once it's tried")
             self.toast.show_message(f"DeckOS {ver} is on its way", "ok")
             QTimer.singleShot(8000, self.refresh)
 
