@@ -3,6 +3,8 @@
 set -euo pipefail
 
 VERSION=$(cat /usr/share/deckos/version 2>/dev/null || echo rolling)
+# systemd services (the CI install test) start without HOME; set -u would stop at the first $HOME below.
+HOME=${HOME:-$(getent passwd "$(id -u)" | cut -d: -f6)}
 CONF_DIR=/etc/deckos
 DISPLAY_CONF=$CONF_DIR/display.conf
 GRUB_DEFAULT=/etc/default/grub

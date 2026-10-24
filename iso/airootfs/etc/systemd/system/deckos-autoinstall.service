@@ -7,6 +7,8 @@ After=network-online.target NetworkManager.service
 
 [Service]
 Type=oneshot
+# Like a desktop session: the installer and the deckos tool expect a home folder.
+Environment=HOME=/root
 ExecStart=/usr/local/bin/deckos-autoinstall
 StandardOutput=journal+console
 StandardError=journal+console
