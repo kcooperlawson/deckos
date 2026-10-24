@@ -104,14 +104,29 @@ READ_ONLY_DECKOS = {("display", "status"), ("display", "recommend"), ("display",
                     ("drives", "doctor"), ("scheduler", "status"), ("gpu", "status"), ("auto-update", "status"),
                     ("home", "status"), ("software", "list"), ("mode", "status")}
 READ_ONLY_FLAGS = {"pacman": re.compile(r"^-(Q|S[si]|F)"), "paru": re.compile(r"^-(Q|S[si])")}
+# Options that make a looking tool write files, delete things or run another program.
+WRITE_OPTIONS = {
+    "find": re.compile(r"^-(delete|exec|execdir|ok|okdir|fprint0?|fprintf|fls)$"),
+    "sort": re.compile(r"^(-[^-]*o|--output)"),
+    "tree": re.compile(r"^-[^-]*o"),
+    "date": re.compile(r"^(-[^-]*s|--set)"),
+    "rg": re.compile(r"^--pre(=|$)"),
+    "journalctl": re.compile(r"^--(vacuum-|rotate|flush|sync|relinquish-var|smart-relinquish-var|setup-keys|update-catalog)"),
+    "git": re.compile(r"^--output(=|$)"),
+}
+# `env CMD` and `hostname NAME` act; only their bare forms look. `uniq IN OUT` writes OUT.
+BARE_ONLY = {"env", "hostname"}
+GIT_BRANCH_LOOKS = {"-a", "-r", "-v", "-vv", "--all", "--remotes", "--list", "--show-current", "--verbose"}
 
 # Never, not even when the person says yes: wiping disks and home folders is a typo away from a disaster.
 BLOCKED = [
     (re.compile(r"\b(mkfs(\.\w+)?|wipefs|sfdisk|sgdisk|fdisk|parted|blkdiscard)\b"), "formats or repartitions a disk"),
     (re.compile(r"\bdd\b.*\bof="), "writes straight to a disk"),
     (re.compile(r"\bcryptsetup\s+(luksFormat|erase)\b"), "erases an encrypted disk"),
-    (re.compile(r"\brm\s+(-\w*\s+)*(/|/\*|~|~/|\$HOME|/home|/home/\w+)/?(\s|$)"), "deletes a whole system or home folder"),
+    (re.compile(r"\brm\s+(-\S*\s+)*[\"']?(/|~|\$HOME|\$\{HOME\}|/home|/home/[^/\s\"']+)/?\*?[\"']?(\s|$)"),
+     "deletes a whole system or home folder"),
     (re.compile(r">\s*/dev/(sd|nvme|vd|mmcblk)"), "writes straight to a disk"),
+    (re.compile(r"\bshred\b.*\s/dev/"), "writes straight to a disk"),
     (re.compile(r":\(\)\s*\{"), "is a fork bomb"),
     (re.compile(r"\bchmod\s+-R\s+\S+\s+/(\s|$)|\bchown\s+-R\s+\S+\s+/(\s|$)"), "changes permissions on the whole system"),
 ]
@@ -152,8 +167,20 @@ def is_read_only(command):
         return False
     if rest in (["--version"], ["--help"], ["-h"]):
         return True
+    if prog in WRITE_OPTIONS and any(WRITE_OPTIONS[prog].match(w) for w in rest):
+        return False
+    if prog in BARE_ONLY:
+        return all(w.startswith("-") for w in rest) and not (prog == "env" and rest)
+    if prog == "uniq":
+        return len([w for w in rest if not w.startswith("-")]) <= 1
     if prog in READ_ONLY:
-        return not (prog == "find" and any(w in ("-delete", "-exec", "-execdir", "-ok") for w in rest))
+        return True
+    if prog == "git":
+        subs = [w for w in rest if not w.startswith("-")]
+        if subs[:1] == ["branch"]:
+            return rest[0] == "branch" and all(w in GIT_BRANCH_LOOKS for w in rest[1:])
+        if subs[:1] == ["remote"]:
+            return rest[0] == "remote" and (rest[1:] in ([], ["-v"]) or rest[1:2] in (["show"], ["get-url"]))
     if prog in READ_ONLY_FLAGS:
         return bool(rest) and bool(READ_ONLY_FLAGS[prog].match(rest[0]))
     if prog == "deckos":
