@@ -19,13 +19,24 @@ tasks.writeConfig("launchers", [
     "preferred://browser",
     "applications:steam.desktop",
     "applications:code.desktop",
-    "applications:deckos-hub.desktop",
-    "applications:deckos-store.desktop"
-].join(","));
+    "applications:deckos-hub.desktop"
+].join(","));  // no Store: DeckOS Menu's search offers Store apps with "Get it"
 
 panel.addWidget("org.kde.plasma.marginsseparator");
 panel.addWidget("org.deckos.quicksettings");  // Wi-Fi, sound, Gaming Mode, updates and more
-panel.addWidget("org.kde.plasma.systemtray");
+
+// The tray keeps notifications, app icons and whatever is active (a USB stick, the camera). What Quick
+// Settings already does, and the rarely used, wait under the arrow. Same list as the
+// deckos_tidy_panel.js update script, which did this once for existing panels.
+var tray = panel.addWidget("org.kde.plasma.systemtray");
+tray.currentConfigGroup = ["General"];
+tray.writeConfig("hiddenItems", [
+    "org.kde.plasma.networkmanagement", "org.kde.plasma.volume", "org.kde.plasma.bluetooth",
+    "org.kde.plasma.brightness", "org.kde.plasma.battery", "org.kde.plasma.mediacontroller",
+    "org.kde.plasma.vault", "org.kde.kdeconnect", "org.kde.plasma.clipboard", "org.kde.kupapplet",
+    "org.kde.plasma.weather", "org.kde.plasma.printmanager", "org.kde.plasma.dwellclicker",
+    "org.kde.plasma.manage-inputmethod", "org.kde.kscreen", "org.kde.plasma.keyboardindicator"
+]);
 var clock = panel.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];
 clock.writeConfig("showDate", "true");

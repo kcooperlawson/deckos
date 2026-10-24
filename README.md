@@ -201,7 +201,7 @@ Alternatives…* › *DeckOS Menu*.
 
 ## DeckOS Store
 
-The DeckOS Store (in the panel, or `deckos-store`) installs apps without the command line, from all
+The DeckOS Store (in the app menu, or `deckos-store`) installs apps without the command line, from all
 three places DeckOS gets software:
 
 - **Arch and CachyOS repos**: installed with pacman, updated with the rest of the system. Preferred

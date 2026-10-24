@@ -114,7 +114,7 @@ class Hub(QWidget):
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setWindowTitle("DeckOS Hub")
-        self.setWindowIcon(QIcon.fromTheme("deckos", QIcon(str(S.BRANDING / "logo.svg"))))
+        self.setWindowIcon(QIcon.fromTheme("deckos-hub", QIcon(str(S.BRANDING / "hub-logo.svg"))))
         self.resize(1180, 800)
         self.setMinimumSize(940, 620)
         self.gpu = sysinfo.Gpu()

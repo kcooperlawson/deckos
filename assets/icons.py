@@ -101,6 +101,8 @@ ICONS = {
     "flask": ('<path d="M9.5 3.5h5M10.5 3.5v5.2L5.4 17.6A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-2.9L13.5 8.7V3.5"/>'
               '<path d="M7.6 14h8.8"/>'),
     "sliders": '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+    "gauge": ('<path d="M4.5 16.2A8 8 0 1 1 19.5 16.2M12 5.5v1.6M6.4 7.9l1.1 1.1M17.6 7.9l-1.1 1.1"/>'
+              '<path d="M12 13.5l3.6-3.8"/>' + dot(12, 13.5, 1.5) + '<path d="M8.5 19.5h7"/>'),
     "trash": ('<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/>'
               '<path d="M10 11v5.5M14 11v5.5"/>'),
     # hardware
@@ -197,9 +199,18 @@ def files_logo():
     return store_logo().replace(ICONS["store"], ICONS["folder"])
 
 
+HUB_LOGO = OUT.parent / "branding/hub-logo.svg"
+
+
+def hub_logo():
+    """The DeckOS Hub app icon: the same tile with the gauge, so it doesn't read as the DeckOS Menu button."""
+    return store_logo().replace(ICONS["store"], ICONS["gauge"]).replace('fill="#000"', 'fill="#fff"')
+
+
 def write():
     OUT.mkdir(parents=True, exist_ok=True)
     STORE_LOGO.write_text(store_logo(), newline="\n")
+    HUB_LOGO.write_text(hub_logo(), newline="\n")
     FILES_LOGO.parent.mkdir(parents=True, exist_ok=True)
     FILES_LOGO.write_text(files_logo(), newline="\n")
     for name, body in ICONS.items():
