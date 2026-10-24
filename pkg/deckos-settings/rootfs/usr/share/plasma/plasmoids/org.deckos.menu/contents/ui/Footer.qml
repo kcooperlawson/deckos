@@ -97,7 +97,6 @@ Item {
                     source: user.faceIconUrl
                     visible: status === Image.Ready
                     asynchronous: true
-                    cache: false
                 }
             }
 
