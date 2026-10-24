@@ -692,10 +692,21 @@ home_enable() {
   sub "Browse them in /home/.snapshots/<number>/snapshot (DeckOS Hub > System > Snapshots)."
 }
 
+# Snapshots saved in a snapper config, or nothing if snapper can't read it. wheel may list without
+# sudo (ALLOW_GROUPS); #0 is snapper's "current" row, not a snapshot.
+snapshot_count() {
+  local nums
+  nums=$(snapper --csvout --no-headers -c "$1" list --columns number 2>/dev/null) || return 1
+  grep -cvx '0' <<<"$nums" || true
+}
+
 home_status() {
   section "Home"
   if [[ -f /etc/snapper/configs/home ]]; then
-    ok "snapshots on: $(snapper -c home list 2>/dev/null | tail -n +3 | wc -l) saved"
+    local n
+    if ! n=$(snapshot_count home); then warn "couldn't read /home snapshots (snapper -c home list)"
+    elif (( n == 0 )); then warn "/home snapshots on, but none saved yet (systemctl status snapper-timeline.timer)"
+    else ok "snapshots on: $n saved"; fi
   else
     warn "no /home snapshots (sudo deckos home enable)"
   fi
@@ -1009,7 +1020,11 @@ doctor_cmd() {
   drives_list
   drives_doctor
   section "Snapshots"
-  say "  $(sudo -n snapper -c root list 2>/dev/null | tail -n +3 | wc -l) snapshots ${C_SUB}(sudo snapper -c root list)${C_0}"
+  local snaps
+  if [[ ! -f /etc/snapper/configs/root ]]; then warn "system snapshots aren't set up: a bad update can't be rolled back"
+  elif ! snaps=$(snapshot_count root); then warn "couldn't read system snapshots (snapper -c root list)"
+  elif (( snaps == 0 )); then warn "no system snapshots yet: the next update takes the first ones (snap-pac)"
+  else ok "$snaps system snapshots ${C_SUB}(snapper -c root list)${C_0}"; fi
   home_status
   section "Updates"
   if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on"
