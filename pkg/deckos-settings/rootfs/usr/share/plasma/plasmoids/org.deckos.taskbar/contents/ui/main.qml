@@ -33,9 +33,10 @@ PlasmoidItem {
     Component.onCompleted: Plasmoid.constraintHints = Plasmoid.CanFillArea
     Layout.fillWidth: !vertical && labels
     Layout.fillHeight: vertical
-    Layout.preferredWidth: vertical ? -1 : strip.implicitWidth
-    Layout.preferredHeight: vertical ? strip.implicitHeight : -1
-    Layout.minimumWidth: vertical ? -1 : Math.min(strip.implicitWidth, tile * 3)
+    // The strip of apps, then the + tile
+    Layout.preferredWidth: vertical ? -1 : strip.implicitWidth + Math.round(tile * 0.7)
+    Layout.preferredHeight: vertical ? strip.implicitHeight + Math.round(tile * 0.7) : -1
+    Layout.minimumWidth: vertical ? -1 : Math.min(strip.implicitWidth, tile * 3) + Math.round(tile * 0.7)
 
     TaskManager.VirtualDesktopInfo { id: desktopInfo }
     TaskManager.ActivityInfo { id: activityInfo }
@@ -85,15 +86,17 @@ PlasmoidItem {
         acceptedButtons: Qt.RightButton
         onClicked: barMenu.openRelative()
     }
+    // Any type filter here let the panel take the drop instead (it then failed to add an icon widget)
     DropArea {
         anchors.fill: parent
-        keys: ["text/uri-list"]
+        onEntered: drag => drag.accepted = drag.hasUrls
         onDropped: drop => {
             for (const u of drop.urls) {
-                if (String(u).endsWith(".desktop"))
-                    deckModel.requestAddLauncher(u);
+                const url = String(u);
+                if (url.endsWith(".desktop") || url.startsWith("applications:"))
+                    deckModel.requestAddLauncher(url);
             }
-            drop.accept();
+            drop.accept(Qt.CopyAction);
         }
     }
     PlasmaExtras.Menu {
@@ -102,13 +105,16 @@ PlasmoidItem {
         PlasmaExtras.MenuItem {
             text: "Pin an app…"
             icon: "list-add"
-            onClicked: picker.connectSource("kdialog --title 'Pin an app' --getopenfilename /usr/share/applications '*.desktop'")
+            onClicked: deckTasks.pickApp()
         }
         PlasmaExtras.MenuItem {
             text: Plasmoid.configuration.showLabels ? "Icons only" : "Show window titles"
             icon: "view-list-text"
             onClicked: Plasmoid.configuration.showLabels = !Plasmoid.configuration.showLabels
         }
+    }
+    function pickApp() {
+        picker.connectSource("kdialog --title 'Pin an app' --getopenfilename /usr/share/applications '*.desktop'");
     }
     P5Support.DataSource {
         id: picker
@@ -138,6 +144,43 @@ PlasmoidItem {
             id: repeater
             model: deckModel
             delegate: Task {}
+        }
+    }
+
+    // The way to pin an app that isn't open: a fitted dock has no empty space to right-click
+    Item {
+        id: addTile
+        x: deckTasks.vertical ? 0 : strip.x + strip.width
+        y: deckTasks.vertical ? strip.y + strip.height : 0
+        width: deckTasks.vertical ? deckTasks.width : Math.round(deckTasks.tile * 0.7)
+        height: deckTasks.vertical ? Math.round(deckTasks.tile * 0.7) : deckTasks.tile
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.round(deckTasks.tile * 0.5)
+            height: width
+            radius: 8
+            color: addArea.containsMouse ? deckTasks.raised : "transparent"
+            border.width: 1
+            border.color: addArea.containsMouse ? deckTasks.border : "transparent"
+            Text {
+                anchors.centerIn: parent
+                text: "+"
+                color: addArea.containsMouse ? deckTasks.text : deckTasks.subtext
+                opacity: addArea.containsMouse ? 1 : 0.6
+                font.pixelSize: Math.round(deckTasks.tile * 0.36)
+            }
+        }
+        MouseArea {
+            id: addArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: e => e.button === Qt.RightButton ? barMenu.openRelative() : deckTasks.pickApp()
+        }
+        PlasmaCore.ToolTipArea {
+            anchors.fill: parent
+            mainText: "Pin an app"
+            subText: "Or drag one here from the menu"
         }
     }
 }

@@ -86,7 +86,7 @@ def main():
     errors = []
     qInstallMessageHandler(lambda _m, _c, msg: errors.append(msg))
     app_ = QGuiApplication(sys.argv)  # noqa: F841
-    dock, classic = render(False, QSize(8 * 54, 52)), render(True, QSize(1240, 44))
+    dock, classic = render(False, QSize(8 * 54 + 38, 52)), render(True, QSize(1240, 44))
 
     scene = QImage(1280, 260, QImage.Format_ARGB32_Premultiplied)
     p = QPainter(scene)

@@ -229,6 +229,11 @@ Item {
             visible: task.url !== ""
             onClicked: deckTasks.togglePin(task.url)
         }
+        PlasmaExtras.MenuItem {
+            text: "Pin another app…"
+            icon: "list-add"
+            onClicked: deckTasks.pickApp()
+        }
         PlasmaExtras.MenuItem { separator: true; visible: !task.launcherOnly }
         PlasmaExtras.MenuItem {
             text: task.windows > 1 ? "Close all " + task.windows + " windows" : "Close window"
