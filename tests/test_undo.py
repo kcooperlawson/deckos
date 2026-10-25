@@ -65,5 +65,55 @@ class UndoListTests(unittest.TestCase):
         self.assertIn('needs root', result.stderr)
 
 
+class RestoreTests(unittest.TestCase):
+    """deckos restore N: only what was deleted between N and its post snapshot comes back."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.bin = Path(self.temp.name) / 'bin'
+        self.bin.mkdir()
+        self.calls = Path(self.temp.name) / 'calls'
+        home = {"home": [{"number": 7, "type": "pre", "description": "rm -rf ~/Pictures"},
+                         {"number": 8, "type": "post", "pre-number": 7, "description": "rm -rf ~/Pictures"}]}
+        (self.bin / 'home.json').write_text(json.dumps(home))
+        (self.bin / 'snapper').write_text(f"""#!/bin/bash
+case " $* " in
+  *" list "*) cat {self.bin / 'home.json'} ;;
+  *" status "*) printf '%s\\n' 'c..... /home/me/.local/share/baloo/index' '-..... /home/me/Pictures' \\
+                  '-..... /home/me/Pictures/trip photo.jpg' '+..... /home/me/new.txt' ;;
+  *" undochange "*) echo "undochange $*" >> {self.calls}
+                   if [[ $4 == --input ]]; then cat "$5" >> {self.calls}; fi ;;
+esac
+""")
+        (self.bin / 'snapper').chmod(0o755)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def restore(self, *args):
+        text = DECKOS.read_text().replace('[[ -f /etc/snapper/configs/home ]]', '[[ -n home ]]')
+        tool = Path(self.temp.name) / 'deckos'
+        tool.write_text(text)
+        return subprocess.run(['bash', str(tool), 'restore', *args], capture_output=True, text=True, timeout=10,
+                              env=dict(PATH=f'{self.bin}:/usr/bin:/bin', HOME=self.temp.name))
+
+    def test_only_deleted_files_come_back(self):
+        result = self.restore('7')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.calls.read_text().splitlines()
+        self.assertEqual(calls[0], 'undochange -c home undochange --input ' + calls[0].split('--input ')[1])
+        self.assertTrue(calls[0].endswith(' 7..8'))
+        self.assertEqual(calls[1:], ['/home/me/Pictures', '/home/me/Pictures/trip photo.jpg'])  # not baloo, not new.txt
+
+    def test_paths_given_are_used_as_they_are(self):
+        self.restore('7', '/home/me/Pictures')
+        self.assertEqual(self.calls.read_text().splitlines(), ['undochange -c home undochange 7..8 /home/me/Pictures'])
+
+    def test_a_number_without_an_after_snapshot_is_refused(self):
+        result = self.restore('8')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no 'after' snapshot", result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -818,7 +818,20 @@ restore_cmd() {
   read -r post what < <(snapper --jsonout -c home list 2>/dev/null | jq -r --argjson n "$n" \
     '.[keys[0]][] | select(.type == "post" and ."pre-number" == $n) | "\(.number) \(.description // "")"') || true
   [[ -n $post ]] || { err "home snapshot $n has no 'after' snapshot: give the number DeckOS printed after the command"; exit 1; }
-  snapper -c home undochange "$n..$post" "$@" || { err "couldn't put the files back (snapper -c home undochange $n..$post)"; exit 1; }
+  if (( $# == 0 )); then
+    # Only what was deleted comes back. Other programs write to /home while a command runs (Baloo's index,
+    # app settings), and a plain undochange would roll those back too, under the running programs.
+    local list
+    list=$(mktemp)
+    # shellcheck disable=SC2064
+    trap "rm -f '$list'" EXIT
+    snapper -c home status "$n..$post" | sed -n 's/^-[^ ]* //p' > "$list"
+    [[ -s $list ]] || { ok "nothing was deleted between snapshots $n and $post"; return; }
+    snapper -c home undochange --input "$list" "$n..$post" \
+      || { err "couldn't put the files back (snapper -c home undochange $n..$post)"; exit 1; }
+  else
+    snapper -c home undochange "$n..$post" "$@" || { err "couldn't put the files back (snapper -c home undochange $n..$post)"; exit 1; }
+  fi
   ok "back as before: $what"
 }
 
