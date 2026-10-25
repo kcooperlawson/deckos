@@ -1714,6 +1714,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
+  deckos report [--out FILE|--print]                    one file of hardware, drivers and errors for whoever helps
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
@@ -1756,6 +1757,7 @@ case ${1:-} in
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
+  report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps
   undo) shift; undo_cmd "$@" ;;
   restore) shift; restore_cmd "$@" ;;
   snapshot-first) shift; snapshot_first_cmd "$@" ;;

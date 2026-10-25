@@ -231,6 +231,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Recovery**: GRUB's snapshots menu (grub-btrfs, overlayfs) starts a snapshot read-only; `deckos undo booted` names it
   (from `rootflags=…subvol=@snapshots/N/snapshot`), the Hub's Home banner and System Doctor offer `deckos undo keep`,
   which swaps it in as @ through the same `swap_in` as `deckos undo N`. Tests: `tests/test_recovery.py`.
+- **Report** (`usr/lib/deckos/report/deckos_report.py`, `deckos report`): hardware, drivers, System Doctor, recent
+  errors in one text file for whoever helps; `scrub()` takes out names, serials, UUIDs, ids and addresses (tested).
+  Never sends it anywhere.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

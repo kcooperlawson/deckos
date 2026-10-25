@@ -24,6 +24,15 @@ icon = "check"
 run = ["deckos-sysdoctor"]
 
 [[action]]
+id = "report"
+title = "Make a report for whoever helps"
+summary = "One file with this PC's hardware, drivers and recent errors; personal details taken out"
+keywords = "bug report help support hardware log diagnostics send nvidia intel"
+icon = "check"
+run = ["deckos", "report"]
+how = "terminal"
+
+[[action]]
 id = "update"
 title = "Update DecKoOS"
 summary = "Updates DecKoOS and every app"
