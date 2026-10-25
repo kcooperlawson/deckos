@@ -301,6 +301,7 @@ class ChatBox(QWidget):
         self.output = None
         self.thread = None
         self.worker = None
+        self.answering = False
         self.new_chat()
 
     # -- window behaviour
@@ -346,8 +347,8 @@ class ChatBox(QWidget):
     # -- the conversation
 
     def new_chat(self):
-        if self.thread and self.thread.isRunning():
-            return  # finish the current answer first
+        if self.answering:
+            return  # finish the current answer first (the worker thread itself runs until the window closes)
         while self.feed.count() > 1:
             w = self.feed.takeAt(0).widget()
             if w:
@@ -386,6 +387,9 @@ class ChatBox(QWidget):
         if self.thread:
             self.thread.quit()
             self.thread.wait()
+        if self.worker:
+            self.ask_in_thread.disconnect(self.worker.ask)
+            self.worker.deleteLater()
         if DEMO:
             self.worker, model = DemoWorker(), "gpt-oss:20b (demo)"
         else:
@@ -437,6 +441,7 @@ class ChatBox(QWidget):
         self._add(self.status)
         self.output = None
         self.composer.set_busy(True)
+        self.answering = True
         self.thinking.start()
         self.ask_in_thread.emit(text)
 
@@ -484,6 +489,7 @@ class ChatBox(QWidget):
         self.finish(text, failed=True)
 
     def finish(self, text, failed=False):
+        self.answering = False
         self.thinking.stop()
         if self.status:
             self.status.deleteLater()

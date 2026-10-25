@@ -12,7 +12,7 @@ sys.path.insert(0,str(HERE.parent/'hub'))
 from PySide6.QtCore import QDir, QEvent, QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QFont, QFontDatabase, QIcon, QKeySequence, QPixmap, QShortcut, QTextCursor, QPalette, QColor
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFileSystemModel,
-    QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QPlainTextEdit,
+    QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMenu, QMessageBox, QPlainTextEdit,
     QScrollArea, QSpinBox, QSplitter, QStackedWidget, QTabWidget, QTextBrowser, QTreeView,
     QVBoxLayout, QWidget)
 import hub_style as S
@@ -158,6 +158,9 @@ class Work(QWidget):
         self.task_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.task_list.setTextElideMode(Qt.ElideRight)
         self.task_list.itemClicked.connect(self.select_task)
+        self.task_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.task_list.customContextMenuRequested.connect(self.task_menu)
+        QShortcut(QKeySequence.Delete,self.task_list,self.delete_task,context=Qt.WidgetShortcut)
         sl.addWidget(self.task_list,1)
         sl.addWidget(button('Workspace','nav',lambda:self.stack.setCurrentIndex(0),icon='code'))
         sl.addWidget(button('Image studio','nav',lambda:self.stack.setCurrentIndex(1),icon='image'))
@@ -469,6 +472,40 @@ class Work(QWidget):
             item.setData(Qt.UserRole,task['id'])
             item.setToolTip(task['workspace'])
             self.task_list.addItem(item)
+
+    def task_menu(self,pos):
+        item=self.task_list.itemAt(pos)
+        if not item or self.busy:
+            return
+        self.task_list.setCurrentItem(item)
+        menu=QMenu(self)
+        menu.addAction('Delete task',self.delete_task)
+        menu.exec(self.task_list.viewport().mapToGlobal(pos))
+
+    def delete_task(self):
+        item=self.task_list.currentItem()
+        if not item or self.busy:
+            return
+        if QMessageBox.question(self,'Delete this task?',
+                                f'“{item.text()}” and its undo history will be deleted. Files it made in your '
+                                'project folder stay.')!=QMessageBox.Yes:
+            return
+        task_id=item.data(Qt.UserRole)
+        if self.demo:
+            self.task_list.takeItem(self.task_list.row(item))
+            return
+        try:
+            self.store.delete(task_id)
+        except (OSError,ValueError) as error:
+            self.status.setText(str(error))
+            return
+        if self.task and self.task['id']==task_id:
+            self.task=None
+            self.task_title.setText('New task')
+            self.refresh_panels()
+            self.render_chat()
+        self.refresh_tasks()
+        self.status.setText('Task deleted.')
 
     def select_task(self,item):
         if self.busy or self.demo:

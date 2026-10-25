@@ -8,7 +8,7 @@ os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'pkg/deckos-settings/rootfs/usr/lib/deckos/work'))
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from work_app import Work, Process, qss
 
 
@@ -37,6 +37,14 @@ class WorkUiTests(unittest.TestCase):
         self.assertEqual(self.window.change_list.count(),1)
         self.assertEqual(self.window.artifact_list.count(),2)
         self.assertIn('Sample conversation',self.window.chat.toPlainText())
+
+    def test_delete_key_removes_a_task_after_asking(self):
+        self.window.task_list.setCurrentRow(1)
+        self.window.task_list.setFocus()
+        with patch('work_app.QMessageBox.question',return_value=QMessageBox.Yes) as asked:
+            QTest.keyClick(self.window.task_list,Qt.Key_Delete)
+        asked.assert_called_once()
+        self.assertEqual(self.window.task_list.count(),2)
 
     def test_busy_disables_task_switches_and_send(self):
         self.window.set_busy(True)

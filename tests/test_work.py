@@ -35,6 +35,16 @@ class WorkTests(unittest.TestCase):
                 scoped(self.project,name)
         self.assertFalse((outside/'secret').exists())
 
+    def test_delete_removes_task_and_backups_but_not_project_files(self):
+        save_edit(self.store,self.task,'notes.txt',b'one')
+        save_edit(self.store,self.task,'notes.txt',b'two')
+        self.store.delete(self.task['id'])
+        self.assertEqual(self.store.list(),[])
+        self.assertFalse((self.store.root/'backups'/self.task['id']).exists())
+        self.assertEqual((self.project/'notes.txt').read_bytes(),b'two')
+        with self.assertRaises(ValueError):
+            self.store.delete('../../etc')
+
     def test_saved_edits_and_undo_preserve_text_and_permissions(self):
         path=self.project/'script.py'
         original='print("café")\n'

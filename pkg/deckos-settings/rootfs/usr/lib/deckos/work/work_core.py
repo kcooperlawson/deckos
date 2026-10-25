@@ -9,6 +9,7 @@ import os
 import re
 import selectors
 import shlex
+import shutil
 import signal
 import socket
 import subprocess
@@ -70,6 +71,12 @@ class Store:
                     messages=[], events=[], artifacts=[], changes=[], status='ready')
         self.save(task)
         return task
+
+    def delete(self, task_id):
+        """Removes the conversation and its undo backups. Files it made in the project folder stay."""
+        path = self.path(task_id)
+        shutil.rmtree(self.root/'backups'/task_id, ignore_errors=True)
+        path.unlink(missing_ok=True)
 
     def list(self):
         tasks=[]
