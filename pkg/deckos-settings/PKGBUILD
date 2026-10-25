@@ -53,9 +53,9 @@ package() {
   rsvg-convert -w 960 -h 540 "$b/wallpaper.svg" -o "$pkgdir/usr/share/wallpapers/DeckOS/contents/screenshot.png"
   rsvg-convert -w 1920 -h 1080 "$b/wallpaper.svg" -o "$b/wallpaper-1920.png"
 
-  # DeckOS icon theme: Papirus-Dark, with every places icon that uses Papirus' folder blue
-  # (folders, home, desktop...) recoloured to the DeckOS blue, a violet-leaning back tab and
-  # navy symbols. Everything else is inherited from Papirus-Dark.
+  # DeckOS icon theme: DeckOS' own app and file type icons (scalable/, from assets/icon_theme.py,
+  # already in rootfs), every places icon that uses Papirus' folder blue (folders, home, desktop...)
+  # recoloured to the DeckOS blue, a violet-leaning back tab and navy symbols, and the rest from Papirus-Dark.
   local it=$pkgdir/usr/share/icons/DeckOS dirs=() d sz hits
   for d in /usr/share/icons/Papirus-Dark/*/places; do
     sz=$(basename "$(dirname "$d")")
@@ -70,8 +70,10 @@ package() {
   done
   [[ ${#dirs[@]} -gt 0 ]] || { echo "papirus-icon-theme is needed to build the DeckOS icons" >&2; return 1; }
   {
-    printf '[Icon Theme]\nName=DeckOS\nComment=Papirus Dark with folders in the DeckOS blue\n'
-    printf 'Inherits=Papirus-Dark,breeze-dark,hicolor\nDirectories=%s\n' "$(IFS=,; echo "${dirs[*]}")"
+    printf '[Icon Theme]\nName=DeckOS\nComment=DeckOS app and file icons, with Papirus Dark and folders in the DeckOS blue\n'
+    printf 'Inherits=Papirus-Dark,breeze-dark,hicolor\nDirectories=scalable/apps,scalable/mimetypes,%s\n' "$(IFS=,; echo "${dirs[*]}")"
+    printf '\n[scalable/apps]\nContext=Applications\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
+    printf '\n[scalable/mimetypes]\nContext=MimeTypes\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
     for d in "${dirs[@]}"; do
       sz=${d%%/*}
       printf '\n[%s]\nContext=Places\nSize=%s\nScale=%s\nType=Fixed\n' "$d" "${sz%%x*}" "$([[ $sz == *@2x ]] && echo 2 || echo 1)"
@@ -102,6 +104,8 @@ package() {
       "$it/index.theme" > "$vit/index.theme"
     # the light theme's other icons come from Papirus' light set
     [[ $vid != DeckOS-Paper ]] || sed -i 's/^Inherits=Papirus-Dark,breeze-dark,/Inherits=Papirus,breeze,/' "$vit/index.theme"
+    # the app and file type icons live once, in DeckOS: the colour variants inherit them
+    sed -i 's/^Inherits=/Inherits=DeckOS,/; s/^Directories=scalable\/apps,scalable\/mimetypes,/Directories=/' "$vit/index.theme"
   done < "$pkgdir/usr/share/deckos/themes/icon-variants.tsv"
 
   # App icon (controller tile): Kickoff button, Hub, os-release LOGO, fastfetch.

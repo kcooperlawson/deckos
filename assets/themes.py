@@ -225,7 +225,7 @@ def look_and_feel(tid, name, desc, pal, style):
     a = pal["accent"]
     defaults = (f"[kdeglobals][KDE]\nwidgetStyle=Breeze\n\n[kdeglobals][General]\nColorScheme=DeckOS{name.split()[0]}\n"
                 f"AccentColor={a[0]},{a[1]},{a[2]}\n\n[kdeglobals][Icons]\nTheme=DeckOS-{tid.capitalize()}\n\n"
-                f"[plasmarc][Theme]\nname={style}\n\n[kcminputrc][Mouse]\ncursorTheme=breeze_cursors\n\n"
+                f"[plasmarc][Theme]\nname={style}\n\n[kcminputrc][Mouse]\ncursorTheme=DeckOS-cursors\n\n"
                 f"[kwinrc][org.kde.kdecoration2]\nlibrary=org.kde.breeze\ntheme=Breeze\n\n[KSplash]\nTheme=org.deckos.desktop\n\n"
                 f"[Wallpaper]\nImage={wallpaper_id(tid, 'orbit')}\n")
     return json.dumps(meta, indent=4) + "\n", defaults

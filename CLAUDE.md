@@ -106,6 +106,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   and previews (`preview_hub.py`, `preview_welcome.py`, `preview_sddm.py`, `preview_plasma.py`,
   `preview_quicksettings.py`: the real plasmoid QML on stand-ins from `assets/qml-stubs/`). Re-run a
   generator after changing it and commit both.
+- Icons: `assets/icon_theme.py` draws DeckOS' own app (plates) and file type (sheets) icons into
+  `usr/share/icons/DeckOS/scalable/` (aliases are symlinks; the generator refuses a name listed twice); the PKGBUILD
+  adds Papirus' recoloured places and writes index.theme; colour variants inherit DeckOS. Never draw a brand's logo:
+  those come from Papirus. `assets/cursors.py` draws DeckOS Pointers (`usr/share/icons/DeckOS-cursors`):
+  Plasma 6 SVG cursors (`cursors_scalable/NAME/metadata.json`) plus Xcursor files 24-64 px written by hand
+  (no xcursorgen), every CSS/X11/hash name a symlink. Both need PySide6; outputs are committed.
 - `builder/`: DeckOS Builder (starts GitHub builds, downloads ISOs, copies to Ventoy, builds locally).
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.

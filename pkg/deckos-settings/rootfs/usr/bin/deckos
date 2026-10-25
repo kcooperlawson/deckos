@@ -1458,7 +1458,7 @@ theme_cmd() {
         [[ -f $d/contents/defaults ]] && break
       done
       [[ -f $d/contents/defaults ]] || { err "no global theme called '$id'"; exit 2; }
-      local defaults=$d/contents/defaults scheme accent wall
+      local defaults=$d/contents/defaults scheme accent wall cursor
       plasma-apply-lookandfeel --apply "$id" >/dev/null
       scheme=$(theme_default "$defaults" "[kdeglobals][General]" ColorScheme)
       accent=$(theme_default "$defaults" "[kdeglobals][General]" AccentColor)
@@ -1473,6 +1473,8 @@ theme_cmd() {
         plasma-apply-colorscheme --accent-color "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")" >/dev/null
       fi
       [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || plasma-apply-wallpaperimage "/usr/share/wallpapers/$wall" >/dev/null
+      cursor=$(theme_default "$defaults" "[kcminputrc][Mouse]" cursorTheme)
+      [[ -z $cursor || ! -d /usr/share/icons/$cursor ]] || plasma-apply-cursortheme "$cursor" >/dev/null 2>&1 || true
       ok "theme: $id" ;;
     *) err "usage: deckos theme apply ID"; exit 2 ;;
   esac

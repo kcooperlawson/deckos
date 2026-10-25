@@ -1376,10 +1376,18 @@ class AppearancePage(Page):
         grid.addWidget(self.plasma, 0, 1)
         grid.addWidget(label("Icons", "sub", wrap=False), 1, 0)
         grid.addWidget(self.icons, 1, 1)
+        self.cursors = QComboBox()
+        for name, theme in (("DeckOS", "DeckOS-cursors"), ("Breeze", "breeze_cursors"), ("Breeze Light", "Breeze_Light")):
+            self.cursors.addItem(name, theme)
+        self.cursors.setCurrentIndex(max(0, self.cursors.findData(sysinfo.current_cursor())))
+        self.cursors.currentIndexChanged.connect(lambda _i: self.apply(
+            ["plasma-apply-cursortheme", self.cursors.currentData()], f"Mouse pointer: {self.cursors.currentText()}"))
+        grid.addWidget(label("Mouse pointer", "sub", wrap=False), 2, 0)
+        grid.addWidget(self.cursors, 2, 1)
         grid.setColumnStretch(2, 1)
         style.body.addLayout(grid)
-        style.body.addWidget(label("DeckOS icons are Papirus with folders in the DeckOS blue. The login screen uses the "
-                                   "DeckOS theme.", "muted"))
+        style.body.addWidget(label("DeckOS icons draw the everyday apps and file types in the DeckOS style, with "
+                                   "Papirus for the rest. The login screen uses the DeckOS theme.", "muted"))
         self.lay.addWidget(style)
 
         spotify = Card("Spotify", "The DeckOS look for Spotify", "music")

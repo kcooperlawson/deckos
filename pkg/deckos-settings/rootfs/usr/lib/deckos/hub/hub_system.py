@@ -551,6 +551,10 @@ def current_icons():
     return kconfig("kdeglobals", "Icons", "Theme", "DeckOS")
 
 
+def current_cursor():
+    return kconfig("kcminputrc", "Mouse", "cursorTheme", "DeckOS-cursors")
+
+
 def current_plasma_style():
     return kconfig("plasmarc", "Theme", "name", "deckos")
 

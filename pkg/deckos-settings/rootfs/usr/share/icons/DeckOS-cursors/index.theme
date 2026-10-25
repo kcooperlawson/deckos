@@ -1,0 +1,4 @@
+[Icon Theme]
+Name=DeckOS Pointers
+Comment=The DeckOS mouse pointers
+Inherits=breeze_cursors

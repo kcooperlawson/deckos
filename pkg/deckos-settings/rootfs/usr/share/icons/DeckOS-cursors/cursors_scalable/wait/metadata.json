@@ -1,0 +1,72 @@
+[
+    {
+        "filename": "wait-01.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-02.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-03.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-04.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-05.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-06.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-07.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-08.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-09.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    },
+    {
+        "filename": "wait-10.svg",
+        "hotspot_x": 12.0,
+        "hotspot_y": 12.0,
+        "nominal_size": 24,
+        "delay": 70
+    }
+]

@@ -12,7 +12,7 @@ Theme=DeckOS-Graphite
 name=deckos
 
 [kcminputrc][Mouse]
-cursorTheme=breeze_cursors
+cursorTheme=DeckOS-cursors
 
 [kwinrc][org.kde.kdecoration2]
 library=org.kde.breeze

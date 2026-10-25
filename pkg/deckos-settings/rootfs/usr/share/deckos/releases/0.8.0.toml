@@ -44,3 +44,13 @@ permissions, and a system file like /etc/fstab saves with your password instead 
 icon = "rename"
 try = "Open DeckOS Editor"
 run = ["deckos-editor"]
+
+[[highlights]]
+title = "DeckOS icons and mouse pointers"
+text = """The everyday apps (files, terminal, settings, calculator, screenshots, archives and 70 more) and over 80 \
+kinds of file now have DeckOS's own icons: plates in each app's colour, and file sheets that say what they are \
+(PY, JSON, PDF, ZIP). New mouse pointers match, sharp at any size, with the thumbstick ring while you wait. \
+Brand apps like Firefox and Steam keep their own logos."""
+icon = "appearance"
+try = "See Appearance"
+run = ["deckos-hub", "--page", "appearance"]
