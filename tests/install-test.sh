@@ -78,6 +78,7 @@ if [[ $LAYOUT != empty ]]; then
 fi
 # What was on the disk before: the install may add to it, never change it (Installer safety, CLAUDE.md)
 kept_parts() {  # the EFI partition, and in free space the file system next to it (partition 2 is DecKoOS's otherwise)
+  [[ $LAYOUT != empty ]] || return 0  # nothing was there: everything on it is new
   sfdisk -d "$W/disk.img" | grep -E "^\\S+img$([[ $LAYOUT == free ]] && echo '[12]' || echo 1) :" || true
 }
 kept_fs() { [[ $LAYOUT != free ]] || blkid -p -o value -s UUID -O $((keep_start * 512)) "$W/disk.img"; }
