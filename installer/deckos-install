@@ -182,7 +182,7 @@ live_keyring() {
 # mounts fine) is unreadable to it.
 fat32_clusters() {
   local -a b
-  read -ra b < <(od -An -v -tu1 -N90 "$1" 2>/dev/null | tr -s ' \n' ' ')
+  read -ra b < <(od -An -v -tu1 -N90 "$1" 2>/dev/null | tr -s ' \n' ' ') || true  # no newline at the end: read says 1
   [[ ${#b[@]} -eq 90 && ${b[*]:82:5} == "70 65 84 51 50" ]] || return 0  # "FAT32" at offset 82
   local spc=${b[13]} reserved=$((b[14] + b[15] * 256)) fats=${b[16]}
   local total=$((b[32] + b[33] * 256 + b[34] * 65536 + b[35] * 16777216))

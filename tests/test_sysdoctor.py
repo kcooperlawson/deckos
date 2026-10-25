@@ -56,13 +56,18 @@ def fake_run(cmd, timeout=30):
 
 class Checkup(unittest.TestCase):
     def setUp(self):
-        self.patches = [patch.object(sd, "run", fake_run)]
+        self.fstab = tempfile.NamedTemporaryFile("w", suffix="fstab", delete=False)
+        self.fstab.write("UUID=1 / btrfs defaults 0 0\n")
+        self.fstab.close()
+        # not the machine's own fstab: CI runners have network mounts
+        self.patches = [patch.object(sd, "run", fake_run), patch.object(sd, "FSTAB", Path(self.fstab.name))]
         for p in self.patches:
             p.start()
 
     def tearDown(self):
         for p in self.patches:
             p.stop()
+        os.unlink(self.fstab.name)
 
     def findings(self):
         with patch.object(sd.os, "statvfs", lambda m: os.statvfs_result((4096, 4096, 50_000_000, 25_000_000,
