@@ -8,6 +8,14 @@ Arch Linux · CachyOS-optimised packages · KDE Plasma 6 · Steam Gaming Mode ·
 
 [Get DeckOS](#get-deckos) · [Install](#install) · [What's different](#why-deckos) · [Known limitations](#known-limitations)
 
+
+<img src="docs/screenshots/desktop.png" alt="The DeckOS desktop: taskbar with pinned apps and the performance widget" width="100%">
+
+<table><tr>
+<td width="50%"><img src="docs/screenshots/hub.png" alt="DeckOS Hub: live stats, updates, snapshots and quick actions"></td>
+<td width="50%"><b>DeckOS Hub</b><br>Live temperatures and clocks, updates, snapshots, the firewall, drives and software in one place, with Gaming Mode a click away.</td>
+</tr></table>
+
 </div>
 
 ---
