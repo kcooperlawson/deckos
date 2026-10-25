@@ -139,7 +139,7 @@ class Welcome(QWidget):
         side = QFrame()
         side.setObjectName("sidebar")
         side.setAttribute(Qt.WA_StyledBackground, True)
-        side.setFixedWidth(236)
+        side.setFixedWidth(S.scaled(236))
         self.rail = QVBoxLayout(side)
         self.rail.setContentsMargins(14, 20, 14, 16)
         self.rail.setSpacing(3)

@@ -457,7 +457,7 @@ REBOOT_RE = re.compile(r"linux(-cachyos[\w-]*|-zen|-lts)?(-headers)?$|linux-firm
 DESKTOP_RE = re.compile(r"deckos-settings|plasma-workspace|plasma-desktop|libplasma|kwin|qt6-declarative")
 
 DEMO_UPDATES = "\n".join([
-    "deckos-settings 0.3.10-1 -> 0.3.11-1", "deckos-files 0.3.10-1 -> 0.3.11-1",
+    "deckos-settings 0.12.2-1 -> 0.12.3-1", "deckos-files 0.12.2-1 -> 0.12.3-1",
     "linux-cachyos 6.17.4-1 -> 6.17.5-1", "mesa 1:25.2.5-1 -> 1:25.2.6-1", "firefox 144.0-1 -> 144.0.1-1",
     "plasma-workspace 6.5.0-1 -> 6.5.1-1", "kwin 6.5.0-1 -> 6.5.1-1", "pipewire 1:1.4.9-1 -> 1:1.4.9-2",
     "steam 1.0.0.84-1 -> 1.0.0.85-1", "python 3.13.7-1 -> 3.13.8-1", "curl 8.16.0-1 -> 8.16.0-2"])

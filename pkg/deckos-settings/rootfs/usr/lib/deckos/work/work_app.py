@@ -132,7 +132,7 @@ class Work(QWidget):
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground,True)
         self.setWindowTitle('DecKoOS Work'+(' — Demo' if demo else ''))
-        self.setWindowIcon(QIcon(str(HERE.parents[2]/'share/deckos/branding/work-logo.svg')))
+        self.setWindowIcon(QIcon.fromTheme('deckos-work', S.brand_icon('work-logo.svg')))
         self.resize(1440,930)
         self.setMinimumSize(1120,740)
         outer=QHBoxLayout(self)

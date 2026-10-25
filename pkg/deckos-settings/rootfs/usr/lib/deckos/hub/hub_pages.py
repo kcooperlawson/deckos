@@ -1594,15 +1594,26 @@ class AppearancePage(Page):
         self.apply(["deckos", "accent", "apply", color], f"Accent colour: {name}")
         self.hub.set_accent(color)
 
+    def columns(self, small=False):
+        """Tiles per row for the page's width: a narrow window or large text wraps them, never scrolls sideways."""
+        return max(1, (self.width() - 110) // ((176 if small else 232) + 26))
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if getattr(self, "_cols", None) not in (None, (self.columns(), self.columns(True))):
+            self.refresh()
+
     def refresh(self):
+        self._cols = (self.columns(), self.columns(True))
+        big, small = self._cols
         self.clear(self.theme_grid)
         demo = sysinfo.DEMO and hasattr(self, "demo_look")
         current = self.demo_look if demo else sysinfo.current_look()
         for i, (tid, name, desc, preview) in enumerate(sysinfo.look_and_feels()):
             self.theme_grid.addWidget(self.preview_tile(preview, name, desc, tid == current,
                                                         lambda t=tid, n=name: self.apply_theme(t, n)),
-                                      i // 4, i % 4)
-        self.theme_grid.setColumnStretch(4, 1)
+                                      i // big, i % big)
+        self.theme_grid.setColumnStretch(big, 1)
         self.clear(self.wall_grid)
         walls = sysinfo.wallpapers()
         wall = getattr(self, "demo_wall", None) if sysinfo.DEMO else sysinfo.current_wallpaper()
@@ -1610,16 +1621,16 @@ class AppearancePage(Page):
         for i, (path, name, preview) in enumerate(shown):
             self.wall_grid.addWidget(self.preview_tile(preview, name, "", wall is not None and path.name == wall.name,
                                                        lambda p=path, n=name: self.apply_wallpaper(p, n), small=True),
-                                     i // 4, i % 4)
-        self.wall_grid.setColumnStretch(4, 1)
+                                     i // small, i % small)
+        self.wall_grid.setColumnStretch(small, 1)
         self.walls_more.setVisible(len(walls) > 12)
         self.walls_more.setText("Show fewer" if self.walls_all else f"Show all {len(walls)}")
         self.clear(self.layout_grid)
         for i, (key, name, desc, preview) in enumerate(sysinfo.desktop_layouts()):
             self.layout_grid.addWidget(self.preview_tile(preview, name, desc, False,
                                                          lambda k=key, n=name: self.set_layout(k, n), small=True),
-                                       i // 4, i % 4)
-        self.layout_grid.setColumnStretch(4, 1)
+                                       i // small, i % small)
+        self.layout_grid.setColumnStretch(small, 1)
 
     def toggle_walls(self):
         self.walls_all = not self.walls_all
@@ -1652,8 +1663,9 @@ class AppearancePage(Page):
         else:
             img.setPixmap(pm.scaled(w, h, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation).copy(0, 0, w, h))
         v.addWidget(img)
-        v.addWidget(label(f"<b>{name}</b>" + (f" &nbsp;<span style='color:{S.P.accent}'>in use</span>" if current
-                                              else ""), wrap=False))
+        title = label(f"<b>{name}</b>" + (f" &nbsp;<span style='color:{S.P.accent}'>in use</span>" if current else ""))
+        title.setMaximumWidth(w)  # long names wrap instead of widening the tile
+        v.addWidget(title)
         if desc:
             d = label(desc, "muted")
             d.setMaximumWidth(w)

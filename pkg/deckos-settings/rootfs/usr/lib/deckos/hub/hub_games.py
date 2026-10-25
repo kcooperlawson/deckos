@@ -196,17 +196,19 @@ class GameTile(QFrame):
         super().__init__()
         self.setObjectName("tile")
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setFixedWidth(COVER_W + 20)
+        self.setFixedWidth(S.scaled(COVER_W + 20))
         v = QVBoxLayout(self)
         v.setContentsMargins(10, 10, 10, 10)
         v.setSpacing(4)
         art = QLabel()
-        art.setPixmap(cover(game))
+        w = S.scaled(COVER_W)  # the cover grows with the text, so the card stays one piece
+        pm = cover(game)
+        art.setPixmap(pm if w == COVER_W else pm.scaledToWidth(w, Qt.SmoothTransformation))
         v.addWidget(art)
         name = label(game["name"], wrap=False)
         name.setToolTip(game["name"])
-        name.setMaximumWidth(COVER_W)
-        name.setText(name.fontMetrics().elidedText(game["name"], Qt.ElideRight, COVER_W))
+        name.setMaximumWidth(w)
+        name.setText(name.fontMetrics().elidedText(game["name"], Qt.ElideRight, w))
         v.addWidget(name)
         bits = [game["source"], fmt_size(game["size"])]
         v.addWidget(label("  ·  ".join(b for b in bits if b), "muted", wrap=False))
@@ -416,7 +418,7 @@ class GamesPage(Page):
         return sorted(out, key=key)
 
     def columns(self):
-        return max(1, (self.width() - 60 + 12) // (COVER_W + 20 + 12))  # 30px page margins, 12px gaps
+        return max(1, (self.width() - 60 + 12) // (S.scaled(COVER_W + 20) + 12))  # 30px page margins, 12px gaps
 
     def layout_tiles(self, *_args):
         cols = self.cols = self.columns()

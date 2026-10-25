@@ -80,6 +80,11 @@ def load_style():
 STYLE = load_style()
 
 
+def scaled(px):
+    """A fixed width that holds text, grown or shrunk with the text size setting."""
+    return round(px * TEXT_SCALE.get(STYLE["text"], 1.0))
+
+
 def save_style(**changes):
     STYLE.update(changes)
     STYLE_CONF.parent.mkdir(parents=True, exist_ok=True)

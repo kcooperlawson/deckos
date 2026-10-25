@@ -137,7 +137,7 @@ class Hub(QWidget):
         side = QFrame()
         side.setObjectName("sidebar")
         side.setAttribute(Qt.WA_StyledBackground, True)
-        side.setFixedWidth(224)
+        side.setFixedWidth(S.scaled(224))
         sl = QVBoxLayout(side)
         sl.setContentsMargins(14, 20, 14, 16)
         sl.setSpacing(3)

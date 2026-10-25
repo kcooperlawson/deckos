@@ -227,7 +227,7 @@ class Bench(QWidget):
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setWindowTitle('DecKoOS Bench' + (' — Demo' if demo else ''))
-        self.setWindowIcon(QIcon.fromTheme('deckos-bench', QIcon(str(HERE.parents[2] / 'share/deckos/branding/bench-logo.svg'))))
+        self.setWindowIcon(QIcon.fromTheme('deckos-bench', S.brand_icon('bench-logo.svg')))
         self.resize(1280, 880)
         self.setMinimumSize(1050, 720)
         outer = QHBoxLayout(self)
