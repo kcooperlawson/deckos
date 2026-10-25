@@ -10,6 +10,9 @@ on:
   pull_request:
     paths: ["apps/deckos-terminal/**", "apps/deckos-files/src/style.*", "pkg/deckos-terminal/**", ".github/workflows/deckos-terminal.yml"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

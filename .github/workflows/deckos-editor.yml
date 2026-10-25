@@ -10,6 +10,9 @@ on:
   pull_request:
     paths: ["apps/deckos-editor/**", "apps/deckos-files/src/style.*", "pkg/deckos-editor/**", ".github/workflows/deckos-editor.yml"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -1,0 +1,29 @@
+name: Something's broken
+description: Something in DeckOS doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: System Doctor
+      description: Open DeckOS Hub › System › Health check, or run `deckos doctor` in a terminal, and paste what it says.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: DeckOS version
+      description: DeckOS Hub shows it at the top of Home (or `cat /usr/share/deckos/version`).
+    validations:
+      required: true
+  - type: dropdown
+    id: gpu
+    attributes:
+      label: Graphics card
+      options: [AMD, NVIDIA, Intel, Not sure]

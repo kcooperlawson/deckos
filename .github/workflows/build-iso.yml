@@ -6,30 +6,19 @@ on:
     tags: ["v*"]
   pull_request:
 
+# Read-only unless a job says otherwise (publish and plan do): a pull request can't write anything
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: shellcheck
+      - name: Lint (tests/check.sh lint, the same as running it locally)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -S warning -s bash build.sh installer/deckos-install tests/install-test.sh .github/publish-repo \
-            iso/airootfs/usr/local/bin/deckos-autoinstall \
-            pkg/deckos-settings/rootfs/usr/bin/deckos \
-            pkg/deckos-settings/rootfs/usr/lib/deckos/session-switch \
-            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-session \
-            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-service \
-            pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-cleanup \
-            pkg/deckos-settings/rootfs/usr/lib/os-session-select \
-            pkg/deckos-installer/rootfs/usr/bin/deckos-installer \
-            pkg/deckos-settings/rootfs/usr/share/deckos/shell/snapshot-first.bash tests/vm/partition_harness.bash
-          shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
-            pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
-      - name: python
-        run: |
-          python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/*/*.py builder/deckos_builder.py \
-            pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py assets/*.py
+          bash tests/check.sh lint
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -44,7 +33,13 @@ jobs:
       - name: Engine and offscreen UI tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p 'test_*.py'
+        run: bash tests/check.sh tests
+      - name: Generated files match their generators
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install fonttools
+          bash tests/check.sh generated
 
   package:
     # Proves the DeckOS packages (theme, icons, fonts, splash, Hub, tools, installer) build on Arch.

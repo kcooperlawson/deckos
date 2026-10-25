@@ -195,6 +195,13 @@ not die: a finished install must never be reported as failed.
 - Things verified only on real hardware so far are worth re-checking after touching them: SDDM theme,
   Plasma style, Store with the real AppStream catalogs, Spicetify theme, pkexec flows.
 
+## Contributions
+
+`CONTRIBUTING.md` is the contributor guide; `bash tests/check.sh [lint|tests|generated]` is the single list of
+checks, and CI's lint and unit-test jobs call it (add new scripts to its `BASH_SCRIPTS`, not to the workflow).
+Workflows default to read-only tokens; only `plan` and `publish` write, and only tags publish. `.github/CODEOWNERS`
+names the maintainer on everything, with the installer, root and packaging paths called out.
+
 ## Gotchas already hit
 
 - gpg on Windows (Git Bash/MSYS) stamps keys ~4h in the future (timezone bug); CI's gpg then rejects
@@ -256,4 +263,4 @@ llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Wo
 An NVIDIA and an Intel test install (the chwd
 path has only been checked with `bash -n`/shellcheck); the free-space and empty-disk modes through
 the whole installer on CI (their partitioning is checked in a VM); why NTFS drives weren't detected on
-the reference machine (likely BitLocker); a `LICENSE` file.
+the reference machine (likely BitLocker).
