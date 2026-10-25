@@ -4,6 +4,8 @@ linux-cachyos-headers
 linux-cachyos-lts
 linux-cachyos-lts-headers
 cachyos-settings
+# cachyos-settings' udev rule runs hdparm on hard drives (no spin-down); without it the rule fails every boot
+hdparm
 ananicy-cpp
 cachyos-ananicy-rules
 scx-tools
