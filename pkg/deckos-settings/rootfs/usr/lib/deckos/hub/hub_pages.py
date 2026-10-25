@@ -893,6 +893,9 @@ class SystemPage(Page):
         self.auto_state = label("", "muted")
         up.body.addWidget(self.auto)
         up.body.addWidget(self.auto_state)
+        self.testing = QCheckBox("Get new DeckOS releases first (the testing channel: everyone else gets them once tried)")
+        self.testing.clicked.connect(self.set_channel)
+        up.body.addWidget(self.testing)
         self.lay.addWidget(up)
 
         snaps = Card("Undo an update", "If something broke after updating", "undo")
@@ -905,6 +908,10 @@ class SystemPage(Page):
         self.snap_list = QVBoxLayout()
         self.snap_list.setSpacing(6)
         snaps.body.addLayout(self.snap_list)
+        self.snap_first = QCheckBox("In the terminal, offer a snapshot before deleting a big folder (undo it with "
+                                    "deckos restore)")
+        self.snap_first.clicked.connect(self.set_snapshot_first)
+        snaps.body.addWidget(self.snap_first)
         self.lay.addWidget(snaps)
         self.undo_pending = None  # (date, what) once an undo waits for the restart
 
@@ -940,6 +947,11 @@ class SystemPage(Page):
         self.check_updates()
         sysinfo.Job(self, [DECKOS, "auto-update", "status"], lambda out, _c: self.show_auto_update(sysinfo.kv(out)),
                     demo=(sysinfo.DEMO_AUTO_UPDATE, 0))
+        sysinfo.Job(self, [DECKOS, "channel"], lambda out, _c: self.show_channel(sysinfo.kv(out).get("channel", "")),
+                    demo=("channel=stable\n", 0))
+        sysinfo.Job(self, [DECKOS, "snapshot-first"],
+                    lambda out, _c: self.snap_first.setChecked(sysinfo.kv(out).get("snapshot-first") != "off"),
+                    demo=("snapshot-first=on\n", 0))
         self.hub.data.undoable(self.show_undoable)
         self.show_home()
         self.hub.data.firewall(self.show_firewall)
@@ -1031,6 +1043,25 @@ class SystemPage(Page):
             "skipped": f"Skipped on {at}: {st.get('why', '')}.",
         }.get(st.get("result"), f"<span style='color:{S.WARNING}'>Overnight update on {at} didn't finish:</span> "
                                 f"{st.get('why', '')}"))
+
+    def show_channel(self, channel):
+        self.testing.setChecked(channel == "testing")
+        # a hand-edited deckos-repo (another mirror, a USB) is left alone, here as in deckos channel
+        self.testing.setEnabled(channel in ("stable", "testing"))
+
+    def set_channel(self, on):
+        self.hub.privileged(["channel", "testing" if on else "stable"], lambda ok: (
+            self.hub.toast(("New releases come to this PC first now." if on else "Back on stable releases.") if ok else
+                           "Couldn't switch: the testing channel may not be published yet.", "ok" if ok else "bad",
+                           6000),
+            ok or self.testing.setChecked(not on), ok and self.check_updates()))
+
+    def set_snapshot_first(self, on):
+        sysinfo.Job(self, [DECKOS, "snapshot-first", "on" if on else "off"], lambda _out, code: (
+            self.hub.toast(("Snapshot first is on: terminals ask before big deletes." if on else
+                            "Snapshot first is off.") if code == 0 else "Couldn't change Snapshot first.",
+                           "ok" if code == 0 else "bad"),
+            code == 0 or self.snap_first.setChecked(not on)), demo=("", 0))
 
     def set_auto_update(self, on):
         self.hub.privileged(["auto-update", "on" if on else "off"], lambda ok: (
