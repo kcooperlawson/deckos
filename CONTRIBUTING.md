@@ -19,6 +19,9 @@ So nothing you push can reach anyone's PC by itself.
 
 ## Getting set up
 
+- The easy way: open **DeckOS Builder** (it comes with DeckOS), sign in with your GitHub account, and use its
+  **Contribute** card. It makes your fork, downloads it, runs the checks and opens the pull request for you.
+
 - On DeckOS: clone the repo, change things, and `deckos dev-install` builds and installs your checkout.
   Restart the app you changed. `sudo ./build.sh` builds an ISO; test installs in a VM (QEMU + OVMF),
   never on a disk you care about.

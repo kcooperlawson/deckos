@@ -1,14 +1,19 @@
 # DeckOS Builder
 
-A desktop app for building DeckOS and getting it onto a USB stick, in the DeckOS/Steady style. It runs on
-Windows and on DeckOS.
+DeckOS Builder comes with DeckOS (`deckos-builder`, in the app menu); its code is in
+`pkg/deckos-settings/rootfs/usr/lib/deckos/builder/`. This folder has the launchers for running it straight
+from a checkout, on DeckOS or Windows.
 
-- **Build ISO** starts the GitHub build, then shows each step live with an estimate based on GitHub's clock.
-- **Builds** lists history with result and duration, plus **Download ISO** and **Log** (failed steps only, for failures).
-- **USB** finds your Ventoy drive and copies the newest ISO with a SHA256 check. It can also remove older DeckOS ISOs.
-- **Build on this PC** (DeckOS/Arch only) runs `build.sh` locally and streams the output.
+Everyone signs in with their own GitHub account (Sign in with GitHub runs `gh auth login --web`), and Builder
+shows what that account can do on the repo:
 
-Needs the GitHub CLI signed in (`gh auth login`) and a GitHub copy of the repo (your fork works).
+- **The maintainer** (admin or maintain on the repo): release (to testing), promote (to stable), start ISO
+  builds on GitHub, and review pull requests in **Contributions** (Approve and merge once the checks pass).
+- **Everyone else**: watch builds and contributions, download ISOs, build an ISO on their PC, copy it to a Ventoy
+  USB, and **Contribute**: Builder forks DeckOS to their account, they change things on a branch, run the
+  checks, and open a pull request for the maintainer to review.
+
+GitHub enforces the same rules: the buttons only follow them.
 
 - **Windows:** double-click `DeckOS Builder.bat`. The first run sets up its own Python environment in `.venv`.
-- **DeckOS:** run `./deckos-builder`, or add it to the app menu with `./deckos-builder --install`.
+- **DeckOS, from a checkout:** run `./deckos-builder`, or add it to the app menu with `./deckos-builder --install`.

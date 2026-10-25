@@ -1,4 +1,6 @@
-"""DeckOS Builder — start, watch and collect DeckOS ISO builds; put them on a Ventoy USB.
+"""DeckOS Builder — start, watch and collect DeckOS ISO builds; put them on a Ventoy USB; review contributions.
+Comes with DeckOS (deckos-builder); everyone signs in with their own GitHub account, and sees the actions their
+account has on the repo: the maintainer releases, promotes and merges, everyone else contributes.
 
 Runs on Windows and Linux (PySide6 + the GitHub CLI `gh`, signed in with `gh auth login`).
 On an Arch/DeckOS machine it can also build the ISO locally with build.sh.
@@ -26,25 +28,53 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QFont, QFontDatabase, QIcon, QTextCursor
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFrame, QHBoxLayout,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFrame, QHBoxLayout,
                                QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 HERE = Path(__file__).resolve().parent
-REPO_DIR = HERE.parent
-HUB = REPO_DIR / "pkg/deckos-settings/rootfs/usr/lib/deckos/hub"
+# Installed with DeckOS (/usr/lib/deckos/builder), or run from a checkout: then the repo is the folder above
+# this one's pkg/deckos-settings/rootfs/usr/lib/deckos/builder
+SOURCE = next((p for p in HERE.parents if (p / "pkg/deckos-settings").is_dir() and (p / "VERSION").exists()), None)
+
+
+def _share(rel):
+    """A DeckOS file: the checkout's copy when run from one, the installed one otherwise."""
+    return SOURCE / "pkg/deckos-settings/rootfs" / rel if SOURCE else Path("/") / rel
+
+
+# The DeckOS source Builder releases, checks and builds from: the checkout it runs from, or one picked in
+# the Contribute card (a fork, for anyone who isn't the maintainer). None until there is one.
+REPO_DIR = SOURCE
+
+
+def is_checkout(path):
+    return bool(path) and all((Path(path) / f).exists() for f in ("VERSION", "build.sh", ".git"))
+
+
+def set_checkout(path):
+    global REPO_DIR
+    REPO_DIR = Path(path) if is_checkout(path) else None
+
+
+HUB = _share("usr/lib/deckos/hub")
 sys.path.insert(0, str(HUB))  # same look as DeckOS Hub: its palette, QSS, line icons and widgets
 
 import hub_style as S  # noqa: E402
 from hub_widgets import Card, Meter, RowItem, StatusTile, Toast, button, label, row  # noqa: E402
 
-BRANDING = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/branding"
-FONTS = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos"
+BRANDING = _share("usr/share/deckos/branding")
+FONTS = _share("usr/share/fonts/deckos")
+UPSTREAM = "kcooperlawson/deckos"
 WORKFLOW = "build-iso.yml"
 ARTIFACT = "deckos-iso"
 # DeckOS's own apps: each has a workflow that builds it and uploads offscreen screenshots
 APP_WORKFLOWS = (("deckos-files.yml", "DeckOS Files", "folder"), ("deckos-terminal.yml", "DeckOS Terminal", "terminal"),
                  ("deckos-editor.yml", "DeckOS Editor", "rename"))
-RELEASES = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/releases"
+
+
+def releases_dir():
+    return REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/releases" if REPO_DIR else _share(
+        "usr/share/deckos/releases")
 # Paths CONTRIBUTING.md calls out (installer, root, packaging): a contribution touching them is flagged
 CAREFUL = re.compile(r"^(installer/|build\.sh$|iso/|\.github/|pkg/deckos-installer/|pkg/[^/]+/PKGBUILD$|pkg/[^/]+/[^/]+\.install$|"
                      r"pkg/deckos-settings/rootfs/(etc/sudoers\.d/|usr/share/polkit-1/|usr/share/pacman/|"
@@ -78,6 +108,8 @@ PKG_RE = re.compile(r"^(.+)-([^-]+)-([^-]+)-([^-]+)\.pkg\.tar\.zst$")  # name-ve
 
 
 def git(*args, check=True):
+    if REPO_DIR is None:
+        raise RuntimeError("no copy of the DeckOS source yet (Contribute › Get the source)")
     r = subprocess.run(["git", "-C", str(REPO_DIR), *args], capture_output=True, text=True, encoding="utf-8",
                        errors="replace", creationflags=NO_WINDOW)
     if check and r.returncode != 0:
@@ -86,7 +118,11 @@ def git(*args, check=True):
 
 
 def read_version():
-    return (REPO_DIR / "VERSION").read_text().strip()
+    path = REPO_DIR / "VERSION" if REPO_DIR else Path("/usr/share/deckos/version")
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return "?"
 
 
 def next_version(v):
@@ -104,7 +140,7 @@ def pending_notes(version):
     that land write their notes as they go: they say which release is next)."""
     import tomllib
     out = {}
-    for f in sorted(RELEASES.glob("*.toml"), key=lambda f: vkey(f.stem)):
+    for f in sorted(releases_dir().glob("*.toml"), key=lambda f: vkey(f.stem)):
         if vkey(f.stem) > vkey(version):
             try:
                 out[f.stem] = [h.get("title", "") for h in tomllib.loads(f.read_text()).get("highlights", [])]
@@ -322,6 +358,24 @@ class Task(QRunnable):
 
 # ------------------------------------------------------------------ widgets
 
+def github_role(repo):
+    """(login, role) for the signed-in GitHub account on `repo`: role is 'maintainer' (admin or maintain:
+    releases, promotes, merges), 'contributor' (everyone else: watches, builds locally, sends pull requests)
+    or 'signed-out'. GitHub enforces the same rules: this only decides which buttons make sense to show."""
+    exe = gh_path()
+    if not exe:
+        return None, "no-gh"
+    st = subprocess.run([exe, "auth", "status"], capture_output=True, text=True, creationflags=NO_WINDOW)
+    if st.returncode != 0:
+        return None, "signed-out"
+    login = gh("api", "user", "--jq", ".login").strip()
+    try:
+        perms = json.loads(gh("api", f"repos/{repo}", "--jq", ".permissions") or "{}")
+    except (RuntimeError, ValueError):
+        perms = {}
+    return login, "maintainer" if perms.get("admin") or perms.get("maintain") else "contributor"
+
+
 def pill(text, color):
     return (f'<span style="color:{color}; font-weight:600">●</span>&nbsp;'
             f'<span style="color:{color}; font-weight:600">{text}</span>')
@@ -330,6 +384,9 @@ def pill(text, color):
 def local_state():
     """VERSION, the newest tag, and how many commits are past it / not pushed yet."""
     st = {"version": read_version()}
+    if REPO_DIR is None:
+        st["nosource"] = True
+        return st
     try:
         st["tag"] = git("describe", "--tags", "--abbrev=0", check=False)
         st["ahead"] = int(git("rev-list", "--count", f"{st['tag']}..HEAD") or 0) if st["tag"] else 0
@@ -421,6 +478,9 @@ class Builder(QWidget):
         self.resize(1180, 920)
         self.setMinimumSize(760, 560)
         self.settings = QSettings("DeckOS", "Builder")
+        # The source to work on: the one picked before, else the checkout Builder runs from, else ~/deckos
+        set_checkout(self.settings.value("checkout", "") or SOURCE or (Path.home() / "deckos"))
+        self.login, self.role = None, "signed-out"
         self.pool = QThreadPool.globalInstance()
         self.runs, self.jobs, self.current, self.busy = [], [], None, False
         self.assets, self.stable, self.local = None, None, {}
@@ -449,6 +509,7 @@ class Builder(QWidget):
         left = QVBoxLayout(left_host)
         left.setContentsMargins(0, 0, 0, 0)
         left.setSpacing(14)
+        left.addWidget(self.contribute_card())
         if CAN_BUILD_LOCAL:
             left.addWidget(self.local_card())
         left.addWidget(self.current_card())
@@ -505,6 +566,9 @@ class Builder(QWidget):
         self.repo_box.setFixedWidth(200)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
+        self.account_btn = button("Sign in with GitHub", "primary", self.account, icon="user",
+                                  tip="Builder uses your own GitHub account: what it can do is what GitHub lets you do")
+        h.addWidget(self.account_btn)
         self.checks_btn = button("Run checks", slot=self.run_checks, icon="check",
                                  tip="tests/check.sh: everything CI checks on a pull request, run here")
         self.checks_btn.setEnabled(bash_exe() is not None)
@@ -526,11 +590,11 @@ class Builder(QWidget):
         h = QHBoxLayout(w)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(14)
-        self.t_version = StatusTile("package", "This checkout")
+        self.t_version = StatusTile("package", "DeckOS source")
         self.t_repo = StatusTile("download", "Update repo")
         self.t_build = StatusTile("snapshot", "Last build")
         self.t_usb = StatusTile("drives", "Ventoy USB")
-        self.t_version.clicked.connect(self.release)
+        self.t_version.clicked.connect(lambda: self.release() if self.role == "maintainer" else None)
         self.t_repo.clicked.connect(lambda: webbrowser.open(f"https://github.com/{self.repo}/releases/tag/repo"))
         self.t_build.clicked.connect(lambda: self.current and webbrowser.open(self.current["html_url"]))
         self.t_usb.clicked.connect(self.scan_usb)
@@ -557,8 +621,106 @@ class Builder(QWidget):
         c.body.addWidget(scroll, 1)
         return c
 
+    def contribute_card(self):
+        self.contribute = Card("Contribute", "Send a change for the maintainer to review", "user")
+        self.contribute_box = QVBoxLayout()
+        self.contribute_box.setSpacing(8)
+        self.contribute.body.addLayout(self.contribute_box)
+        self.contribute.setVisible(False)
+        return self.contribute
+
+    def render_contribute(self):
+        while self.contribute_box.count():
+            item = self.contribute_box.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        src = REPO_DIR
+        self.checks_btn.setEnabled(bash_exe() is not None and src is not None)
+        self.checks_btn.setToolTip("tests/check.sh: everything CI checks on a pull request, run here" if src else
+                                   "Needs a copy of the DeckOS source: Contribute › Get the source")
+        if hasattr(self, "lc_btn"):
+            self.lc_btn.setEnabled(src is not None or self.local_proc is not None)
+        if src is None:
+            self.contribute_box.addWidget(label(
+                "1. Get your own copy of DeckOS: Builder makes a fork under your GitHub account and downloads it. "
+                "Your changes go there, never straight into DeckOS.", "sub"))
+            self.contribute_box.addWidget(row(
+                button("Get the source…", "primary", self.get_source, icon="download"),
+                button("Use a copy I have…", slot=self.pick_source, icon="folder")))
+            return
+        branch = git("rev-parse", "--abbrev-ref", "HEAD", check=False) or "?"
+        self.contribute_box.addWidget(RowItem("folder", str(src), f"on branch {branch}", S.P.accent))
+        self.contribute_box.addWidget(label(
+            "2. Make your change on a branch of its own (not main), and run the checks.<br>"
+            "3. Open a pull request: it lands in the maintainer's review queue, with the checks run on it.", "sub"))
+        pr = button("Open a pull request", "primary", self.open_pr, icon="arrow-up",
+                    tip="Pushes your branch to your fork and opens GitHub's pull request page")
+        pr.setEnabled(branch not in ("main", "?"))
+        if not pr.isEnabled():
+            pr.setToolTip("Make a branch for your change first:  git switch -c my-change")
+        self.contribute_box.addWidget(row(pr, button("Contributor guide", slot=lambda: webbrowser.open(
+            f"https://github.com/{UPSTREAM}/blob/main/CONTRIBUTING.md"), icon="info"),
+            button("Change…", slot=self.pick_source, icon="folder")))
+
+    def get_source(self):
+        parent = QFileDialog.getExistingDirectory(self, "Where should your copy of DeckOS go?", str(Path.home()))
+        if not parent:
+            return
+        target = Path(parent) / "deckos"
+        if target.exists():
+            QMessageBox.warning(self, "DeckOS Builder", f"{target} already exists: pick another folder, or use it with "
+                                "Use a copy I have.")
+            return
+        self.say(f"Making your fork of {UPSTREAM} and downloading it to {target}…")
+
+        def work(_):
+            # The fork is under the user's own account; origin is the fork, upstream is DeckOS
+            gh("repo", "fork", UPSTREAM, "--clone", "--default-branch-only", "--remote", "--", str(target))
+            return target
+
+        def done(path, err):
+            if err:
+                self.say(f"Couldn't get the source: {err}")
+                return
+            self.use_source(path)
+            self.say(f"Your copy of DeckOS is in {path}. Make a branch, change things, and open a pull request.")
+
+        self.bg(work, done)
+
+    def pick_source(self):
+        folder = QFileDialog.getExistingDirectory(self, "Your copy of the DeckOS source", str(Path.home()))
+        if folder:
+            if not is_checkout(folder):
+                QMessageBox.warning(self, "DeckOS Builder", "That folder isn't a copy of the DeckOS source (it needs "
+                                    "VERSION, build.sh and .git).")
+                return
+            self.use_source(Path(folder))
+
+    def use_source(self, path):
+        set_checkout(path)
+        self.settings.setValue("checkout", str(path))
+        self.local = local_state()
+        self.render_contribute()
+        self.render_tiles()
+
+    def open_pr(self):
+        src = REPO_DIR
+
+        def work(_):
+            branch = git("rev-parse", "--abbrev-ref", "HEAD")
+            git("push", "--set-upstream", "origin", branch)
+            # --web: GitHub's own page, where the title and description get written
+            r = subprocess.run([gh_path(), "pr", "create", "--web", "--repo", UPSTREAM, "--head",
+                                f"{self.login}:{branch}"], cwd=src, capture_output=True, text=True,
+                               creationflags=NO_WINDOW)
+            if r.returncode != 0:
+                raise RuntimeError((r.stderr or r.stdout).strip())
+
+        self.bg(work, lambda _, err: self.say(f"Pull request: {err}" if err else
+                                              "GitHub's pull request page is open in your browser."))
+
     def contrib_card(self):
-        c = Card("Contributions", "Pull requests waiting for you", "user")
+        c = Card("Contributions", "Pull requests waiting for review", "user")
         c.actions.addWidget(button("All", slot=lambda: webbrowser.open(f"https://github.com/{self.repo}/pulls"),
                                    icon="external", tip="Every pull request on GitHub"))
         holder = QWidget()
@@ -582,7 +744,7 @@ class Builder(QWidget):
                 item.widget().deleteLater()
         if not self.prs:
             self.contrib_box.addWidget(label("Nothing waiting. When someone opens a pull request it shows up here, "
-                                             "and nothing merges until you approve it.", "sub"))
+                                             "and nothing merges until the maintainer approves it.", "sub"))
             self.contrib_box.addStretch(1)
             return
         for pr in self.prs:
@@ -614,12 +776,13 @@ class Builder(QWidget):
             if not mergeable:
                 merge.setToolTip({"failed": "Its checks failed", "running": "Its checks are still running",
                                   "none": "No checks have run on it yet"}.get(state, "It's a draft, or it conflicts with main"))
-            v.addWidget(row(button("Changes", slot=lambda _=False, u=pr["url"]: webbrowser.open(u + "/files"),
-                                   icon="details", tip="Read the diff on GitHub"),
-                            button("Review with Claude", slot=lambda _=False, p=n: self.claude_review(p), icon="ai",
-                                   tip="Opens Claude Code in a terminal to review this pull request with you"),
-                            merge,
-                            button("Close…", slot=lambda _=False, p=pr: self.close_pr(p), icon="close")))
+            actions = [button("Changes", slot=lambda _=False, u=pr["url"]: webbrowser.open(u + "/files"),
+                              icon="details", tip="Read the diff on GitHub"),
+                       button("Review with Claude", slot=lambda _=False, p=n: self.claude_review(p), icon="ai",
+                              tip="Opens Claude Code in a terminal to review this pull request with you")]
+            if getattr(self, "role", "") == "maintainer":  # merging and closing are the maintainer's
+                actions += [merge, button("Close…", slot=lambda _=False, p=pr: self.close_pr(p), icon="close")]
+            v.addWidget(row(*actions))
             self.contrib_box.addWidget(box)
         self.contrib_box.addStretch(1)
 
@@ -631,13 +794,14 @@ class Builder(QWidget):
                   "you'd change. Don't merge, approve, comment on or push to it.")
         claude = shutil.which("claude") or str(Path.home() / ".local/bin/claude")
         if IS_WINDOWS:
-            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", claude, prompt], cwd=REPO_DIR, creationflags=NO_WINDOW)
+            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", claude, prompt], cwd=REPO_DIR or Path.home(),
+                             creationflags=NO_WINDOW)
         else:
             term = next((t for t in ("deckos-terminal", "konsole") if shutil.which(t)), None)
             if not term:
                 self.say("No terminal found to run Claude Code in.")
                 return
-            QProcess.startDetached(term, ["--workdir", str(REPO_DIR), "-e", claude, prompt])
+            QProcess.startDetached(term, ["--workdir", str(REPO_DIR or Path.home()), "-e", claude, prompt])
         self.say(f"Claude Code is reviewing #{number} in a terminal")
 
     def merge_pr(self, pr):
@@ -922,7 +1086,7 @@ class Builder(QWidget):
         self.pool.start(task)
 
     def out_dir(self):
-        d = Path(self.settings.value("out_dir", str(REPO_DIR / "out")))
+        d = Path(self.settings.value("out_dir", str(REPO_DIR / "out" if REPO_DIR else Path.home() / "DeckOS ISOs")))
         if not d.exists() and sys.platform.startswith("linux"):
             # On DeckOS (btrfs) a subvolume of its own, so /home snapshots don't keep old ISOs.
             d.parent.mkdir(parents=True, exist_ok=True)
@@ -941,9 +1105,6 @@ class Builder(QWidget):
             Clock.sync()
             if not gh_path():
                 raise RuntimeError("GitHub CLI (gh) not found. Install it: winget install GitHub.cli  (Linux: pacman -S github-cli)")
-            st = subprocess.run([gh_path(), "auth", "status"], capture_output=True, text=True, creationflags=NO_WINDOW)
-            if st.returncode != 0:
-                raise RuntimeError("Not signed in to GitHub. Run:  gh auth login")
             repo = self.repo
             if not repo:
                 try:
@@ -952,13 +1113,13 @@ class Builder(QWidget):
                     repo = url.rstrip("/").removesuffix(".git").split("github.com")[-1].lstrip(":/")
                 except OSError:
                     repo = ""
-            return repo or "kcooperlawson/deckos"
+            return repo or UPSTREAM
 
         def done(repo, err):
             if err:
                 self.subtitle.setText(str(err))
                 self.say(str(err))
-                self.build_btn.setEnabled(False)
+                self.set_role(None, "no-gh")
                 return
             if not self.repo:
                 self.repo_box.setText(repo)
@@ -970,12 +1131,72 @@ class Builder(QWidget):
     def repo_changed(self):
         self.settings.setValue("repo", self.repo)
         self.subtitle.setText(f"github.com/{self.repo}  ·  {WORKFLOW}  ·  times use GitHub's clock")
-        self.refresh()
+        repo = self.repo
+
+        def done(res, err):
+            login, role = (None, "signed-out") if err else res
+            self.set_role(login, role)
+            if role in ("maintainer", "contributor"):
+                self.refresh()
+
+        self.bg(lambda _: github_role(repo), done)
+
+    # ---- who's signed in, and what they can do
+
+    def set_role(self, login, role):
+        self.login, self.role = login, role
+        maint = role == "maintainer"
+        signed_in = role in ("maintainer", "contributor")
+        self.account_btn.setText({"signed-out": "Sign in with GitHub", "no-gh": "GitHub CLI missing"}.get(
+            role, f"{login} · {'maintainer' if maint else 'contributor'}"))
+        self.account_btn.setObjectName("primary" if not signed_in else "")
+        self.account_btn.style().unpolish(self.account_btn)
+        self.account_btn.style().polish(self.account_btn)
+        # The maintainer's actions: release, promote, run builds on GitHub, cancel them, merge
+        for b in (self.release_btn, self.promote_btn, self.build_btn):
+            b.setVisible(maint)
+        self.contribute.setVisible(signed_in and not maint)
+        self.render_current()
+        self.render_contribs()
+        self.render_contribute()
+        if role == "signed-out":
+            self.subtitle.setText("Sign in with your GitHub account to see builds and contributions")
+            self.say("Not signed in to GitHub. Press Sign in with GitHub: your browser opens to confirm it.")
+
+    def account(self):
+        if self.role == "no-gh":
+            webbrowser.open("https://cli.github.com/")
+            return
+        if self.role in ("maintainer", "contributor"):
+            if QMessageBox.question(self, "Sign out?", f"Sign {self.login} out of GitHub on this PC? (That's gh's "
+                                    "sign-in: other apps using gh are signed out too.)") == QMessageBox.Yes:
+                gh("auth", "logout", "--hostname", "github.com", check=False)
+                self.set_role(None, "signed-out")
+            return
+        # GitHub's own sign-in: a one-time code, confirmed in the browser. It needs a terminal to show the code.
+        cmd = [gh_path() or "gh", "auth", "login", "--web", "--hostname", "github.com", "--git-protocol", "https"]
+        if IS_WINDOWS:
+            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", *cmd], creationflags=NO_WINDOW)
+        else:
+            term = next((t for t in ("deckos-terminal", "konsole") if shutil.which(t)), None)
+            if term:
+                QProcess.startDetached(term, ["--hold", "-e", *cmd])  # both take --hold -e
+            else:
+                self.say("Run this in a terminal to sign in: " + " ".join(cmd))
+        self.say("Finish signing in in the terminal and your browser, then come back here.")
+        self.waiting_sign_in = True
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        # Back from the browser: see whether the sign-in went through
+        if e.type() == e.Type.ActivationChange and self.isActiveWindow() and getattr(self, "waiting_sign_in", False):
+            self.waiting_sign_in = False
+            self.repo_changed()
 
     # ---- polling
 
     def refresh(self):
-        if self.busy or not self.repo:
+        if self.busy or not self.repo or getattr(self, "role", "") not in ("maintainer", "contributor"):
             return
         self.busy = True
         repo = self.repo
@@ -1096,7 +1317,7 @@ class Builder(QWidget):
         else:
             self.cur_meta.setText(f"{state} in {fmt_duration(elapsed)}  ·  {fmt_ago(end)}")
             self.cur_meter.set(1.0 if state == "Passed" else 0.0)
-        self.cancel_btn.setVisible(active)
+        self.cancel_btn.setVisible(active and getattr(self, "role", "") == "maintainer")
         lines = []
         done_jobs = [j for j in self.jobs if j["status"] == "completed" and j["conclusion"] in ("success", "skipped")]
         if done_jobs:
@@ -1130,9 +1351,14 @@ class Builder(QWidget):
 
     def render_tiles(self):
         lo = self.local
-        if lo:
+        maint = getattr(self, "role", "") == "maintainer"
+        if lo and lo.get("nosource"):
+            self.t_version.set(lo["version"], "Installed on this PC · no copy of the source yet", "info")
+        elif lo:
             v = lo["version"]
-            if lo.get("ahead"):
+            if lo.get("ahead") and not maint:
+                self.t_version.set(v, f"{lo['ahead']} commit(s) of yours: open a pull request to send them", "info")
+            elif lo.get("ahead"):
                 self.t_version.set(v, f"{lo['ahead']} commit(s) not released yet: click to release", "warn")
             elif lo.get("unpushed"):
                 self.t_version.set(v, f"{lo['unpushed']} commit(s) not pushed", "warn")
@@ -1145,7 +1371,8 @@ class Builder(QWidget):
             pub = vers.get("deckos-settings", "?")
             newest = max((parse_ts(a["updated_at"]) for a in self.assets), default=None)
             when = f"published {fmt_ago(newest)}" if newest else ""
-            stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'} · Promote… moves it"
+            stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'}" + (
+                " · Promote… moves it" if maint else "")
             if lo and pub != lo["version"] and vkey(lo["version"]) > vkey(pub) and not lo.get("ahead"):
                 self.t_repo.set(pub, f"{lo['version']} is on its way · {when}", "info")
             else:

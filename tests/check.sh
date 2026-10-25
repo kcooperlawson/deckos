@@ -50,7 +50,7 @@ lint() {
   pass "shell"
 
   step "Python"
-  python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/*/*.py builder/deckos_builder.py \
+  python3 -m py_compile pkg/deckos-settings/rootfs/usr/lib/deckos/*/*.py \
     pkg/deckos-installer/rootfs/usr/lib/deckos/installer/deckos_installer.py assets/*.py tests/*.py \
     || fail "python syntax"
   pass "python"

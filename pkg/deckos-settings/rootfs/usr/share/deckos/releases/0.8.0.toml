@@ -64,3 +64,12 @@ games are in Gaming Mode. It doesn't download games or BIOS files: it works with
 icon = "gaming"
 try = "Open DeckOS Retro"
 run = ["deckos-retro"]
+
+[[highlights]]
+title = "DeckOS Builder, for everyone"
+text = """DeckOS Builder now comes with DeckOS. Sign in with your GitHub account to watch DeckOS being built, build \
+an ISO on your own PC and put it on a USB stick, or send a change: Builder makes your own copy of DeckOS, \
+checks your change and opens a pull request, which the maintainer reviews before anything goes in."""
+icon = "package"
+try = "Open DeckOS Builder"
+run = ["deckos-builder"]

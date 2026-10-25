@@ -118,7 +118,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   those come from Papirus. `assets/cursors.py` draws DeckOS Pointers (`usr/share/icons/DeckOS-cursors`):
   Plasma 6 SVG cursors (`cursors_scalable/NAME/metadata.json`) plus Xcursor files 24-64 px written by hand
   (no xcursorgen), every CSS/X11/hash name a symlink. Both need PySide6; outputs are committed.
-- `builder/`: DeckOS Builder (starts GitHub builds, downloads ISOs, copies to Ventoy, builds locally).
+- DeckOS Builder: `usr/lib/deckos/builder/deckos_builder.py` (in deckos-settings, `deckos-builder`; `builder/` has
+  the from-a-checkout launchers for Linux and Windows). It finds its checkout by walking up to `pkg/deckos-settings`,
+  else uses the installed Hub/branding. Everyone signs in with their own GitHub (`gh auth login --web`); `github_role()`
+  asks GitHub for the account's permission: admin/maintain see Release, Promote, Build on GitHub and merging,
+  everyone else gets Contribute (fork + clone with gh, checks, `gh pr create --web`). GitHub enforces the same rules.
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 

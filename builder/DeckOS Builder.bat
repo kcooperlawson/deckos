@@ -9,4 +9,4 @@ if not exist "%VENV%\Scripts\pythonw.exe" (
   "%VENV%\Scripts\python.exe" -m pip install --quiet --upgrade pip
   "%VENV%\Scripts\python.exe" -m pip install --quiet PySide6-Essentials || (echo Could not install PySide6 & pause & exit /b 1)
 )
-start "" "%VENV%\Scripts\pythonw.exe" "%~dp0deckos_builder.py"
+start "" "%VENV%\Scripts\pythonw.exe" "%~dp0..\pkg\deckos-settings\rootfs\usr\lib\deckos\builder\deckos_builder.py"

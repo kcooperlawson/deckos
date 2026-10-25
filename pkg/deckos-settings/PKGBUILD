@@ -11,6 +11,7 @@ license=(MIT)
 depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit kdialog konsole
          grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib playerctl
          papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal deckos-editor ripgrep
+         github-cli  # DeckOS Builder
          7zip fio vkmark  # DeckOS Bench's CPU, disk and graphics tests
          hdparm)  # cachyos-settings' hard-drive udev rule runs it; installs from before 0.6 lack it
 makedepends=(librsvg grub papirus-icon-theme)
@@ -31,7 +32,7 @@ package() {
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   chmod 755 "$pkgdir"/usr/bin/deckos "$pkgdir"/usr/bin/deckos-hub "$pkgdir"/usr/bin/deckos-store \
-            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew "$pkgdir"/usr/bin/deckos-gamedoctor "$pkgdir"/usr/bin/deckos-bench "$pkgdir"/usr/bin/deckos-work "$pkgdir"/usr/bin/deckos-movein "$pkgdir"/usr/bin/deckos-sysdoctor "$pkgdir"/usr/bin/deckos-sysmon "$pkgdir"/usr/bin/deckos-retro \
+            "$pkgdir"/usr/bin/deckos-welcome "$pkgdir"/usr/bin/deckos-assistant "$pkgdir"/usr/bin/deckos-whatsnew "$pkgdir"/usr/bin/deckos-gamedoctor "$pkgdir"/usr/bin/deckos-bench "$pkgdir"/usr/bin/deckos-work "$pkgdir"/usr/bin/deckos-movein "$pkgdir"/usr/bin/deckos-sysdoctor "$pkgdir"/usr/bin/deckos-sysmon "$pkgdir"/usr/bin/deckos-retro "$pkgdir"/usr/bin/deckos-builder \
             "$pkgdir"/usr/lib/deckos/{session-switch,gaming-session,gaming-service,gaming-cleanup,brand-os-release,plymouth-refresh} \
             "$pkgdir"/usr/lib/os-session-select
   chmod 750 "$pkgdir/etc/sudoers.d"
