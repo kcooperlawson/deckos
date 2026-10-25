@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Writes the DecKoOS icons in an accent colour, as a user icon theme: the folders (from the DecKoOS
-icon theme's places) and the DecKoOS app icons with their blue family swapped for the accent; file
+icon theme's places), the DecKoOS app icons and app tiles with their blue family swapped for the accent; file
 type icons and everything else come from DecKoOS by inheritance. `deckos accent` runs it.
     accent-icons '#2AD4A8' [--light]     prints the theme's name
 --light uses Papirus' light set underneath and light folder symbols, for light colour schemes."""
@@ -68,6 +68,10 @@ def main():
         (out / d).mkdir(parents=True, exist_ok=True)
         for f in (BASE / d).glob("*.svg"):
             recolour(f.resolve(), out / d / f.name, apps if d == "scalable/apps" else folders)
+
+    # DecKoOS's own app tiles (Hub, Files, Terminal... and the logo) live in hicolor: they follow too
+    for f in Path("/usr/share/icons/hicolor/scalable/apps").glob("deckos*.svg"):
+        recolour(f.resolve(), out / "scalable/apps" / f.name, apps)
 
     under = "Papirus,breeze" if light else "Papirus-Dark,breeze-dark"
     lines = []

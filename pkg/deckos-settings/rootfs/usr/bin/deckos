@@ -1485,16 +1485,38 @@ theme_default() {  # defaults file, [group][...] header, key
 # folder and app icons are rewritten in the accent as a user icon theme (/usr/lib/deckos/accent-icons),
 # applied only while a DecKoOS icon theme is in use: a user's own icon theme is left alone.
 accent_apply() {
-  local color=$1 icons light=""
+  local color=$1 icons light="" style
   plasma-apply-colorscheme --accent-color "$color" >/dev/null
+  # That bakes the accent into the colours but leaves AccentColor at /etc/xdg's blue: the Hub, Welcome
+  # and Quick Settings read it, so save it like Plasma's Colours settings do
+  kwriteconfig6 --file kdeglobals --group General --key AccentColor \
+    "$((16#${color:1:2})),$((16#${color:3:2})),$((16#${color:5:2}))"
   icons=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)
-  [[ -z $icons || $icons == DeckOS || $icons == DeckOS-* ]] || return 0
-  local bg; bg=$(kreadconfig6 --file kdeglobals --group Colors:Window --key BackgroundNormal)
-  if [[ $bg =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]] && ((BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] > 382)); then
-    light=--light
+  if [[ -z $icons || $icons == DeckOS || $icons == DeckOS-* ]]; then
+    local bg; bg=$(kreadconfig6 --file kdeglobals --group Colors:Window --key BackgroundNormal)
+    if [[ $bg =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]] && ((BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] > 382)); then
+      light=--light
+    fi
+    if icons=$(/usr/lib/deckos/accent-icons "$color" $light); then
+      /usr/lib/plasma-changeicons "$icons" >/dev/null 2>&1 || true
+      # The panel only redraws app icons, and its widgets only take a new accent, when Plasma reloads
+      if systemctl --user -q is-active plasma-plasmashell.service; then
+        systemctl --user restart plasma-plasmashell.service
+        return 0
+      elif pgrep -xu "$USER" plasmashell >/dev/null; then
+        setsid plasmashell --replace >/dev/null 2>&1 < /dev/null &
+        return 0
+      fi
+    else
+      warn "the icons couldn't be recoloured"
+    fi
   fi
-  icons=$(/usr/lib/deckos/accent-icons "$color" $light) || { warn "the icons couldn't be recoloured"; return 0; }
-  /usr/lib/plasma-changeicons "$icons" >/dev/null 2>&1 || true
+  # No reload: applying Plasma's style again (via another one) is enough for the accent alone
+  style=$(plasma-apply-desktoptheme --list-themes 2>/dev/null | sed -n 's/^ \* \(.*\) (current theme.*/\1/p')
+  if [[ -n $style ]]; then
+    plasma-apply-desktoptheme "$([[ $style == breeze-dark ]] && echo default || echo breeze-dark)" >/dev/null 2>&1
+    plasma-apply-desktoptheme "$style" >/dev/null 2>&1 || true
+  fi
 }
 
 accent_cmd() {
