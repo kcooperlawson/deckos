@@ -86,8 +86,11 @@ class Interactive(unittest.TestCase):
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             os.chdir(self.home)
-            os.execve('/bin/bash', ['bash', '--noprofile', '--rcfile', str(rc), '-i'], env)
+            # --norc: Arch's bash reads /etc/bash.bashrc even with --rcfile, and that sources the
+            # installed Snapshot first, not this checkout's. So no rc files; the test's comes first.
+            os.execve('/bin/bash', ['bash', '--noprofile', '--norc', '-i'], env)
         self.out = ''
+        self.type(f'. {rc}\n')
         self.expect('PROMPT> ')
 
     def tearDown(self):
@@ -156,6 +159,17 @@ class Interactive(unittest.TestCase):
         before = self.expect('done-2')
         self.assertNotIn('snapshot', before)
         self.assertFalse((self.home / 'proj/build').exists())
+
+    def test_deckos_terminal_gets_a_marker_for_its_undo_bar(self):
+        self.type('rm -rf ~/Documents\n')
+        self.expect('[c]ancel')
+        self.type('y')
+        self.assertNotIn('\x1b]7766;', self.expect('PROMPT> '))  # not in other terminals
+        (self.home / 'Documents').mkdir()
+        self.type('export TERM_PROGRAM=deckos-terminal; rm -rf ~/Documents\n')
+        self.expect('[c]ancel')
+        self.type('y')
+        self.assertIn('\x1b]7766;deckos-snapshot=home:7\x07', self.expect('PROMPT> '))
 
     def test_turned_off_in_shell_conf(self):
         conf = self.home / '.config/deckos'
