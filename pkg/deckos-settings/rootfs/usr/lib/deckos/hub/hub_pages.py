@@ -127,7 +127,8 @@ class HomePage(Page):
                                         icon="store"),
                                  button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
                                  button("Terminal", slot=lambda: QProcess.startDetached("deckos-terminal", []), icon="terminal"),
-                                 button("Health check", slot=lambda: self.hub.terminal("deckos doctor"), icon="check"),
+                                 button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
+                                        icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
                                         tip="DeckOS Work: code, documents and images with your local AI"),
@@ -861,8 +862,8 @@ class SystemPage(Page):
     subtitle = "Updates, snapshots, firewall and software."
 
     def build(self):
-        self.head_actions.addWidget(button("Health check", slot=lambda: self.hub.terminal("deckos doctor"),
-                                           icon="check"))
+        self.head_actions.addWidget(button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
+                                           icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"))
         self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
                                            icon="gauge"))
         up = Card("Updates", "Keep DeckOS current", "update")

@@ -1522,7 +1522,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos bench   [system|games|run KEYS|compare A B]    DeckOS Bench: benchmarks with confidence ranges
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
-  deckos doctor                                         health check
+  deckos doctor                                         health check (the full report)
+  deckos sysdoctor                                     System Doctor: what's wrong, in plain words, with fixes
   deckos hub                                            open DeckOS Hub
 EOF
 }
@@ -1561,6 +1562,7 @@ case ${1:-} in
   ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
   work) shift; exec python3 "${DECKOS_WORK_DIR:-/usr/lib/deckos/work}/work_app.py" "$@" ;;
   movein) shift; exec deckos-movein "$@" ;;
+  sysdoctor) shift; exec deckos-sysdoctor "$@" ;;
   bench) shift; exec python3 "${DECKOS_BENCH_DIR:-/usr/lib/deckos/bench}/deckos_bench.py" "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;

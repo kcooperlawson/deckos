@@ -169,6 +169,16 @@ It ends with a summary of what changed (and whether a restart is needed). After 
 the way: open it again from the app menu, **DeckOS Hub › Home › Welcome tour**, or `deckos-welcome`.
 Tick *Show at startup* to have it back at every login.
 
+## System Doctor
+
+**System Doctor** (DeckOS Hub's Health check, or `deckos sysdoctor`) says what's wrong with the PC right now,
+worst first, in plain words: services that failed, programs that crashed (named by what ran, and a burst of
+desktop crashes recognised as one event), graphics card resets, programs a system rule needs but that
+aren't installed, a slow start-up, a full disk, a restart an update is waiting for. Each finding shows the
+log lines it's based on, offers its fix (asking for your password when it changes the system) or the
+DeckOS app that handles it (Game Doctor, the Hub's display fix), and **Explain** asks the local AI what it
+means, on your graphics card, so nothing leaves the PC. `deckos doctor` is still the full report.
+
 ## Move in from Windows
 
 **Move in from Windows** (DeckOS Hub › Drives, the Welcome tour, or `deckos movein`) finds the Windows

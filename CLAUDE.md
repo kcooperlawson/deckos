@@ -76,6 +76,10 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `logs/console-linux.txt`, matches `RULES`, and applies/undoes fixes (state per game in
   `~/.local/state/deckos/gamedoctor/`). `gamedoctor_watch.py` is the user service (tail -F, no polling).
   Tests: `tests/test_gamedoctor.py` (a fake Steam root via `DECKOS_STEAM_ROOT`; never the real one).
+- System Doctor: `usr/lib/deckos/sysdoctor/`. `sysdoctor.py` (no Qt, read-only) runs `CHECKS` through `run()`
+  (tests feed it canned output) into `Finding`s with evidence, `Fix`es (commands; root ones via pkexec) and
+  `open` (a DeckOS app). `explain()` is deckos-local's `summarize` on one finding. Name crashes by command
+  line (`PROGRAMS`), not by `python3`. `deckos_sysdoctor.py` is the window (the Hub's Health check).
 - Move In: `usr/lib/deckos/movein/`. `movein.py` (no Qt) scans Windows on the mounted NTFS drives
   (`DECKOS_MOVEIN_ROOTS` for tests) into `Item`s and `apply()`s them: Windows is only read; Linux-side files
   keep `.deckos-bak`; Steam's libraryfolders.vdf goes through Game Doctor's `steamfiles`. Drives first: if

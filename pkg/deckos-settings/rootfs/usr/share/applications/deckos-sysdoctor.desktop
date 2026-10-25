@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DeckOS System Doctor
+GenericName=What's wrong with my PC
+Comment=Crashes, failed services, slow start-up, missing programs and full disks, in plain words, with fixes
+Exec=deckos-sysdoctor
+Icon=deckos-hub
+Type=Application
+Categories=System;
+Keywords=crash;error;fix;slow;boot;health;doctor;log;journal;problem;broken;
