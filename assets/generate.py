@@ -452,6 +452,21 @@ def grub_background(w=1920, h=1080):
     return svg(w, h, body, defs)
 
 
+def readme_banner(w=1600, h=420):
+    """The GitHub page's header: the wordmark on the slate with the brand's two soft lights and a tagline."""
+    defs, body = backdrop(w, h, glow_a=(0.15, 1.1), glow_b=(0.85, -0.1))
+    size = 150
+    frag, ww, stick = wordmark(0, 0, size)
+    baseline = h * 0.52
+    frag, ww, stick = wordmark((w - ww) / 2, baseline, size, glow="glow")
+    defs += wordmark_defs(stick, ww) + glow_filter("glow", 16)
+    tag = "Gaming, building and local AI on one PC"
+    t, tw = text_path(INTER_MED, tag, 0, 0, 30)
+    t, tw = text_path(INTER_MED, tag, (w - tw) / 2, baseline + 82, 30)
+    return svg(w, h, f'<clipPath id="r"><rect width="{w}" height="{h}" rx="20"/></clipPath><g clip-path="url(#r)">'
+               + body + frag + f'<path fill="{SUBTEXT}" d="{t}"/></g>', defs)
+
+
 def grub_select_pieces(r=10, fill="#1C2130", stroke="#2E3546"):
     """9-slice highlight bar for the GRUB menu: rounded corners, 1px border."""
     out = {}
@@ -550,6 +565,9 @@ def main():
     for name, data in files.items():
         (OUT / name).write_text(data, encoding="utf-8", newline="\n")
         print("wrote", name)
+    banner = HERE.parent / "docs/images/banner.svg"
+    banner.parent.mkdir(exist_ok=True)
+    banner.write_text(readme_banner(), encoding="utf-8", newline="\n")
     print(f"eye centres in wordmark.svg (for Splash.qml, deckos.script, boot_movie.py): "
           f"o ({eyes['o'][0]:.1f}, {eyes['o'][1]:.1f}), O ({eyes['O'][0]:.1f}, {eyes['O'][1]:.1f}) of ({wm_size[0]:.0f}, {wm_size[1]:.0f})")
 
