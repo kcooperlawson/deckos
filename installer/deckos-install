@@ -732,10 +732,11 @@ usb_pkg() {
 }
 
 section "DeckOS layer"
-# deckos-settings depends on deckos-files and deckos-terminal (DeckOS's own apps), so they go in together.
-if pkgfile=$(usb_pkg deckos-settings) && filesfile=$(usb_pkg deckos-files) && termfile=$(usb_pkg deckos-terminal); then
-  spin "Installing deckos-settings, DeckOS Files and DeckOS Terminal" arch-chroot "$MNT" pacman -U --needed --noconfirm \
-    "$filesfile" "$termfile" "$pkgfile"
+# deckos-settings depends on DeckOS's own apps (Files, Terminal, Editor), so they go in together.
+if pkgfile=$(usb_pkg deckos-settings) && filesfile=$(usb_pkg deckos-files) && termfile=$(usb_pkg deckos-terminal) \
+   && editfile=$(usb_pkg deckos-editor); then
+  spin "Installing deckos-settings, DeckOS Files, Terminal and Editor" arch-chroot "$MNT" pacman -U --needed --noconfirm \
+    "$filesfile" "$termfile" "$editfile" "$pkgfile"
 else
   build=/home/$USERNAME_/.cache/deckos
   mkdir -p "$MNT$build"
@@ -744,6 +745,8 @@ else
   spin "Building DeckOS Files" arch-chroot "$MNT" sudo -u "$USERNAME_" -H     bash -c "cd $build/pkg/deckos-files && makepkg -si --noconfirm"
   spin "Building DeckOS Terminal" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-terminal && makepkg -si --noconfirm"
+  spin "Building DeckOS Editor" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
+    bash -c "cd $build/pkg/deckos-editor && makepkg -si --noconfirm"
   spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-settings && makepkg -si --noconfirm"
 fi

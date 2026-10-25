@@ -55,12 +55,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: makepkg
         run: |
-          for p in deckos-files deckos-terminal; do
+          for p in deckos-files deckos-terminal deckos-editor; do
             ( startdir=$PWD/pkg/$p; . pkg/$p/PKGBUILD; pacman -S --noconfirm --needed "${depends[@]}" "${makedepends[@]}" )
           done
           useradd -m builder
           mkdir /home/builder/src && cp -r apps pkg VERSION /home/builder/src/ && chown -R builder: /home/builder/src
-          for p in deckos-files deckos-terminal deckos-settings deckos-theme-tmpikes deckos-installer; do
+          for p in deckos-files deckos-terminal deckos-editor deckos-settings deckos-theme-tmpikes deckos-installer; do
             su builder -c "cd ~/src/pkg/$p && makepkg --nodeps --noconfirm"
           done
           files=$(pacman -Qlp /home/builder/src/pkg/deckos-settings/*.pkg.tar.zst)
@@ -182,7 +182,7 @@ jobs:
           retention-days: 14
 
   publish:
-    # The DeckOS testing channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal and the
+    # The DeckOS testing channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal, deckos-editor and the
     # themes and publish them as a pacman repo in the "repo-testing" release. PCs on the testing channel
     # (deckos channel testing) pull from https://github.com/<owner>/<repo>/releases/download/repo-testing within minutes,
     # so failing unit tests stop the release. Stable ("repo") only changes through the "Promote to stable" workflow.

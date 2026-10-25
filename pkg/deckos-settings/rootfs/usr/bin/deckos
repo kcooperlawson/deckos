@@ -656,7 +656,7 @@ dev_install() {
     exit 1
   fi
   section "Installing DeckOS $new from $root"
-  for p in deckos-files deckos-terminal deckos-settings deckos-theme-tmpikes; do
+  for p in deckos-files deckos-terminal deckos-editor deckos-settings deckos-theme-tmpikes; do
     [[ -d $root/pkg/$p ]] || continue
     (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
     ok "$p"

@@ -207,6 +207,14 @@ def terminal_logo():
     return store_logo().replace(ICONS["store"], ICONS["terminal"]).replace('fill="#000"', 'fill="#fff"')
 
 
+EDITOR_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-editor/data/deckos-editor.svg"
+
+
+def editor_logo():
+    """The DeckOS Editor app icon: the same tile with the pencil in white."""
+    return store_logo().replace(ICONS["store"], ICONS["rename"]).replace('fill="#000"', 'fill="#fff"')
+
+
 HUB_LOGO = OUT.parent / "branding/hub-logo.svg"
 ASSISTANT_LOGO = OUT.parent / "branding/assistant-logo.svg"
 BENCH_LOGO = OUT.parent / "branding/bench-logo.svg"
@@ -239,6 +247,7 @@ def write():
     FILES_LOGO.parent.mkdir(parents=True, exist_ok=True)
     FILES_LOGO.write_text(files_logo(), newline="\n")
     TERMINAL_LOGO.write_text(terminal_logo(), newline="\n")
+    EDITOR_LOGO.write_text(editor_logo(), newline="\n")
     for name, body in ICONS.items():
         (OUT / f"{name}.svg").write_text(svg_text(body), newline="\n")
     SDDM.mkdir(parents=True, exist_ok=True)

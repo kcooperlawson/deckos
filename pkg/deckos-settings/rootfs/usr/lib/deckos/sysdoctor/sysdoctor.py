@@ -97,6 +97,7 @@ PROGRAMS = [
     (r"work_app", "DeckOS Work", "deckos"),
     (r"bench_app|deckos_bench", "DeckOS Bench", "deckos"),
     (r"deckos-terminal", "DeckOS Terminal", "deckos"),
+    (r"deckos-editor", "DeckOS Editor", "deckos"),
     (r"deckos-files", "DeckOS Files", "deckos"),
     (r"firefox", "Firefox", "app"),
     (r"spotify", "Spotify", "app"),

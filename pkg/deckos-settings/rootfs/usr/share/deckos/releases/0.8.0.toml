@@ -35,3 +35,12 @@ memory, graphics cards, disks and network with a minute of live graphs. Ctrl+Shi
 icon = "gauge"
 try = "Open System Monitor"
 run = ["deckos-sysmon"]
+
+[[highlights]]
+title = "DeckOS Editor"
+text = """A text editor made for DeckOS, with colours for over 300 languages. Tabs come back next time, find and \
+replace lights every match, and Ctrl+/ comments lines in any language. It keeps a file's line endings and \
+permissions, and a system file like /etc/fstab saves with your password instead of failing."""
+icon = "rename"
+try = "Open DeckOS Editor"
+run = ["deckos-editor"]

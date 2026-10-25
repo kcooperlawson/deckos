@@ -423,7 +423,7 @@ def update_channel_on():
 
 
 # DeckOS's own packages, from the signed DeckOS repo; everything else comes from Arch and CachyOS.
-DECKOS_PKGS = ("deckos-settings", "deckos-files", "deckos-terminal", "deckos-theme-tmpikes")
+DECKOS_PKGS = ("deckos-settings", "deckos-files", "deckos-terminal", "deckos-editor", "deckos-theme-tmpikes")
 # Updates that only take effect after a restart: the kernel and what boots with it.
 REBOOT_RE = re.compile(r"linux(-cachyos[\w-]*|-zen|-lts)?(-headers)?$|linux-firmware.*|amd-ucode|systemd|mesa|"
                        r"vulkan-radeon|nvidia.*")

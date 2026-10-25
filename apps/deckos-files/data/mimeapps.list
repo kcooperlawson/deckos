@@ -1,2 +1,16 @@
 [Default Applications]
 inode/directory=org.deckos.files.desktop
+text/plain=org.deckos.editor.desktop;
+text/markdown=org.deckos.editor.desktop;
+text/x-python=org.deckos.editor.desktop;
+text/x-shellscript=org.deckos.editor.desktop;
+application/x-shellscript=org.deckos.editor.desktop;
+application/json=org.deckos.editor.desktop;
+application/toml=org.deckos.editor.desktop;
+application/x-yaml=org.deckos.editor.desktop;
+text/x-log=org.deckos.editor.desktop;
+text/x-csrc=org.deckos.editor.desktop;
+text/x-c++src=org.deckos.editor.desktop;
+text/x-chdr=org.deckos.editor.desktop;
+text/x-cmake=org.deckos.editor.desktop;
+application/xml=org.deckos.editor.desktop;

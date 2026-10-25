@@ -70,6 +70,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `org.deckos.Mode.Changed`, which `deckos mode` emits with `busctl`. `--hold -e CMD` is what the Hub's
   terminal steps use. In Qt 6 `quit()` asks windows to close, and a running command makes the window
   ask: the screenshot mode uses `exit(0)`.
+- `apps/deckos-editor/` + `pkg/deckos-editor/`: DeckOS Editor, the default text editor (C++/Qt 6 on KSyntaxHighlighting,
+  design in `docs/editor.md`; `Document` keeps line endings/BOM/permissions and saves root files through pkexec cp).
+  Its text defaults live in DeckOS Files' `mimeapps.list` (that package owns /etc/xdg/mimeapps.list). A new
+  DeckOS app package goes in the same lists as deckos-terminal: build-iso.yml, build.sh, the installer's DeckOS
+  layer, deckos-settings' depends, `deckos dev-install`, `hub_system.DECKOS_PKGS`. `unix` is a GCC macro.
 - Local AI: `usr/lib/deckos/assistant/` (plain Python, no Qt). `assistant.py` has the Ollama client, the
   tools and their safety rules (`is_read_only`, `BLOCKED`: keep both tested), `Session` (the agent loop)
   and `summarize` (chunked, for deckos-local). `deckos_ask.py` is `deckos ask`; `deckos_assistant.py` is the chat box

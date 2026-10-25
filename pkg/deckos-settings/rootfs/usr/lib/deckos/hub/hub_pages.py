@@ -981,7 +981,7 @@ class SystemPage(Page):
         self.hub.data.update_list(self.show_updates, fresh=True)
 
     DECKOS_PARTS = {"deckos-settings": "Hub, Menu, Quick Settings, deckos tool, themes",
-                    "deckos-files": "DeckOS Files", "deckos-terminal": "DeckOS Terminal",
+                    "deckos-files": "DeckOS Files", "deckos-terminal": "DeckOS Terminal", "deckos-editor": "DeckOS Editor",
                     "deckos-theme-tmpikes": "TMpikes theme"}
 
     def show_updates(self, repo, aur, err):
