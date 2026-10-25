@@ -373,7 +373,16 @@ session_cmd() {
     kdialog --title "DeckOS" --yes-label "Switch" --no-label "Cancel" \
       --warningyesno "Switch to $label?"$'\n\n'"Open apps will close — save your work first." || exit 0
   fi
-  sudo -n /usr/lib/deckos/session-switch "$target" --delay 1
+  local cover=""
+  # The logo covers the closing desktop until SDDM ends the session; Steam's startup movie carries it on
+  if [[ $target == gaming && -n ${WAYLAND_DISPLAY:-${DISPLAY:-}} ]] && command -v qml6 >/dev/null; then
+    setsid qml6 /usr/lib/deckos/transition/Transition.qml -- "--text=Starting Gaming Mode" >/dev/null 2>&1 &
+    cover=$!
+  fi
+  if ! sudo -n /usr/lib/deckos/session-switch "$target" --delay 1; then
+    [[ -z $cover ]] || kill "$cover" 2>/dev/null || true
+    exit 1
+  fi
 }
 
 # Picks the output Gaming Mode should use: the Samsung Odyssey if present, else the first one.

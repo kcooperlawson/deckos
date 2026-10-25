@@ -27,8 +27,11 @@ class GamingSessionTests(unittest.TestCase):
         self.command('systemctl', 'printf "%s\\n" "systemctl $*" >> "$CALLS"\n'
                      '[[ $1 != is-active ]] || exit $(( ${MOCK_ACTIVE:-0} ? 0 : 3 ))\n')
         self.command('gamescope-session-plus', 'exit "${MOCK_STATUS:-0}"\n')
+        self.movie = self.root / 'deckos-startup.webm'
+        self.movie.write_bytes(b'webm')
         text = (SCRIPTS / 'gaming-session').read_text().replace(
-            '/usr/share/gamescope-session-plus/sessions.d/steam', str(self.profile))
+            '/usr/share/gamescope-session-plus/sessions.d/steam', str(self.profile)).replace(
+            '/usr/share/deckos/branding/deckos-startup.webm', str(self.movie))
         self.launcher = self.root / 'gaming-session'
         self.launcher.write_text(text)
 
@@ -73,6 +76,16 @@ class GamingSessionTests(unittest.TestCase):
                 self.assertIn('systemctl --user stop graphical-session.target', calls)
                 self.assertIn('XDG_DESKTOP_PORTAL_DIR', calls)
                 self.assertIn(f'status {status}', (self.root/'state/deckos/gaming-session.log').read_text())
+
+    def test_startup_movie_is_linked_but_a_users_own_movie_stays(self):
+        target = self.root / '.local/share/Steam/config/uioverrides/movies/deck_startup.webm'
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertEqual(target.resolve(), self.movie)
+        target.unlink()
+        target.write_bytes(b'mine')
+        self.assertEqual(self.run_script().returncode, 0)
+        self.assertFalse(target.is_symlink())
+        self.assertEqual(target.read_bytes(), b'mine')
 
     def test_service_reads_overrides_and_translates_disabled_vrr(self):
         source = (SCRIPTS / 'gaming-service').read_text()
