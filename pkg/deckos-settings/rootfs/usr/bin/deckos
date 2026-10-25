@@ -260,13 +260,14 @@ display_cmd() {
 # reformatted. Internal drives mount at boot, USB drives mount when first opened.
 
 ntfs_partitions() {
-  # path<TAB>uuid<TAB>label<TAB>parttype<TAB>size<TAB>transport
-  lsblk -J -b -o PATH,FSTYPE,UUID,LABEL,PARTTYPE,SIZE,TRAN | jq -r '
+  # path, uuid, label, parttype, size, transport; separated by \x1f, since a tab IFS collapses empty labels
+  # NAME keeps the disk → partition tree: without it lsblk (util-linux 2.42) prints a flat list
+  lsblk -J -b -o NAME,PATH,FSTYPE,UUID,LABEL,PARTTYPE,SIZE,TRAN | jq -r '
     .blockdevices[] | . as $d | (.children // [])[]
     | select(.fstype == "ntfs" and .uuid != null)
     | select((.parttype // "") != "de94bba4-06d1-4d40-a16a-bfd50179d6ac")
     | select(.size > 4000000000)
-    | [.path, .uuid, (.label // ""), (.parttype // ""), (.size|tostring), ($d.tran // "")] | @tsv'
+    | [.path, .uuid, (.label // ""), (.parttype // ""), (.size|tostring), ($d.tran // "")] | join("\u001f")'
 }
 
 mount_name() {
@@ -291,7 +292,7 @@ drives_fstab() {
   local base="uid=$uid,gid=$gid,umask=022,windows_names,prealloc,noatime,nofail,x-systemd.device-timeout=5s,x-gvfs-show"
   local used="" path uuid label _parttype size tran name opts
   echo "$FSTAB_BEGIN"
-  while IFS=$'\t' read -r path uuid label _parttype size tran; do
+  while IFS=$'\x1f' read -r path uuid label _parttype size tran; do
     name=$(mount_name "$path" "$label" "$uuid")
     while [[ " $used " == *" $name "* ]]; do name="$name-${uuid:0:4}"; done
     used+=" $name"
