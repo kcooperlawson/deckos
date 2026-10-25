@@ -329,7 +329,7 @@ class LookStep(Step):
 
     def set_theme(self, tid, name):
         self.look = tid
-        self.apply(["plasma-apply-lookandfeel", "--apply", tid], "theme", f"Theme: {name}")
+        self.apply(["deckos", "theme", "apply", tid], "theme", f"Theme: {name}")
         self.refresh()
 
     def set_scheme(self, scheme, name):

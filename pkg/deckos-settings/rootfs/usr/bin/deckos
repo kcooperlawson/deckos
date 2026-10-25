@@ -1422,6 +1422,45 @@ layout_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ global themes
+#
+# Plasma 6's plasma-apply-lookandfeel --apply leaves the colours and wallpaper alone unless it also
+# resets the panels, so apply the theme's colour scheme, accent and wallpaper from its defaults file.
+
+theme_default() {  # defaults file, [group][...] header, key
+  awk -v g="$2" -v k="$3" '/^\[/ {in_g = ($0 == g); next} in_g && index($0, k "=") == 1 {print substr($0, length(k) + 2); exit}' "$1"
+}
+
+theme_cmd() {
+  case ${1:-} in
+    apply)
+      local id=${2:-} d=""
+      [[ $id =~ ^[A-Za-z0-9._-]+$ ]] || { err "usage: deckos theme apply ID"; exit 2; }
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      for d in "${XDG_DATA_HOME:-$HOME/.local/share}/plasma/look-and-feel/$id" "/usr/share/plasma/look-and-feel/$id"; do
+        [[ -f $d/contents/defaults ]] && break
+      done
+      [[ -f $d/contents/defaults ]] || { err "no global theme called '$id'"; exit 2; }
+      local defaults=$d/contents/defaults scheme accent wall
+      plasma-apply-lookandfeel --apply "$id" >/dev/null
+      scheme=$(theme_default "$defaults" "[kdeglobals][General]" ColorScheme)
+      accent=$(theme_default "$defaults" "[kdeglobals][General]" AccentColor)
+      wall=$(theme_default "$defaults" "[Wallpaper]" Image)
+      if [[ -n $scheme ]]; then
+        # Switch away and back so Plasma reloads the scheme even when its name didn't change
+        [[ $(kreadconfig6 --file kdeglobals --group General --key ColorScheme) != "$scheme" ]] ||
+          plasma-apply-colorscheme BreezeDark >/dev/null 2>&1 || true
+        plasma-apply-colorscheme "$scheme" >/dev/null
+      fi
+      if [[ $accent =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]]; then
+        plasma-apply-colorscheme --accent-color "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")" >/dev/null
+      fi
+      [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || plasma-apply-wallpaperimage "/usr/share/wallpapers/$wall" >/dev/null
+      ok "theme: $id" ;;
+    *) err "usage: deckos theme apply ID"; exit 2 ;;
+  esac
+}
+
 # ------------------------------------------------------------------ streaming and Decky
 
 streaming_setup() {  # Sunshine: stream games to a TV, phone or Steam Deck with Moonlight
@@ -1516,6 +1555,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME]                        desktop layout: dock, classic, topbar, minimal, big
+  deckos theme apply ID                                 global theme with its colours, accent and wallpaper
   deckos whatsnew                                       what the latest DeckOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
   deckos work                                          local code, documents and image workspace
@@ -1553,6 +1593,7 @@ case ${1:-} in
   snapshot-first) shift; snapshot_first_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
+  theme) shift; theme_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
   game)
     shift

@@ -1387,12 +1387,35 @@ class AppearancePage(Page):
                                           icon="refresh")))
         self.lay.addWidget(spotify)
 
-    def apply(self, cmd, done_text):
+    def apply(self, cmd, done_text, after=None):
+        """Runs cmd; after() (a refresh, so the "in use" mark moves) once it has finished."""
         if sysinfo.DEMO:
             self.hub.toast(done_text, "ok")
+            after and after()
             return
-        ok = QProcess.startDetached(cmd[0], cmd[1:])
-        self.hub.toast(done_text if ok else f"Couldn't run {Path(cmd[0]).name}.", "ok" if ok else "warn")
+        proc = QProcess(self)
+        proc.finished.connect(lambda code, _s: (
+            self.hub.toast(done_text if code == 0 else f"Couldn't apply that ({Path(cmd[0]).name} failed).",
+                           "ok" if code == 0 else "warn"), after and after(), proc.deleteLater()))
+        proc.errorOccurred.connect(lambda e: e == QProcess.FailedToStart and (
+            self.hub.toast(f"Couldn't run {Path(cmd[0]).name}.", "warn"), proc.deleteLater()))
+        proc.start(cmd[0], cmd[1:])
+
+    def apply_theme(self, tid, name):
+        self.demo_look = tid
+        self.demo_wall = None
+        self.apply(["deckos", "theme", "apply", tid], f"Theme: {name}", self.after_theme)
+
+    def after_theme(self):
+        # The Hub follows the theme's accent like the rest of the desktop
+        accent = sysinfo.kconfig("kdeglobals", "General", "AccentColor")
+        if re.fullmatch(r"\d+,\d+,\d+", accent):
+            self.hub.set_accent("#{:02X}{:02X}{:02X}".format(*map(int, accent.split(","))))
+        self.refresh()
+
+    def apply_wallpaper(self, path, name):
+        self.demo_wall = Path(path)
+        self.apply(["plasma-apply-wallpaperimage", str(path)], f"Wallpaper: {name}", self.refresh)
 
     def set_accent(self, color, name):
         self.apply(["plasma-apply-colorscheme", "--accent-color", color], f"Accent colour: {name}")
@@ -1400,19 +1423,21 @@ class AppearancePage(Page):
 
     def refresh(self):
         self.clear(self.theme_grid)
-        current = sysinfo.current_look()
+        demo = sysinfo.DEMO and hasattr(self, "demo_look")
+        current = self.demo_look if demo else sysinfo.current_look()
         for i, (tid, name, desc, preview) in enumerate(sysinfo.look_and_feels()):
             self.theme_grid.addWidget(self.preview_tile(preview, name, desc, tid == current,
-                                                        lambda t=tid, n=name: self.apply(
-                                                            ["plasma-apply-lookandfeel", "--apply", t], f"Theme: {n}")),
+                                                        lambda t=tid, n=name: self.apply_theme(t, n)),
                                       i // 4, i % 4)
         self.theme_grid.setColumnStretch(4, 1)
         self.clear(self.wall_grid)
         walls = sysinfo.wallpapers()
+        wall = getattr(self, "demo_wall", None) if sysinfo.DEMO else sysinfo.current_wallpaper()
         shown = walls if self.walls_all else walls[:12]
         for i, (path, name, preview) in enumerate(shown):
-            self.wall_grid.addWidget(self.preview_tile(preview, name, "", False, lambda p=path, n=name: self.apply(
-                ["plasma-apply-wallpaperimage", str(p)], f"Wallpaper: {n}"), small=True), i // 4, i % 4)
+            self.wall_grid.addWidget(self.preview_tile(preview, name, "", wall is not None and path.name == wall.name,
+                                                       lambda p=path, n=name: self.apply_wallpaper(p, n), small=True),
+                                     i // 4, i % 4)
         self.wall_grid.setColumnStretch(4, 1)
         self.walls_more.setVisible(len(walls) > 12)
         self.walls_more.setText("Show fewer" if self.walls_all else f"Show all {len(walls)}")
@@ -1467,4 +1492,4 @@ class AppearancePage(Page):
         path, _ = QFileDialog.getOpenFileName(self, "Choose a wallpaper", str(Path.home() / "Pictures"),
                                               "Images (*.png *.jpg *.jpeg *.webp)")
         if path:
-            self.apply(["plasma-apply-wallpaperimage", path], f"Wallpaper: {Path(path).name}")
+            self.apply_wallpaper(path, Path(path).name)

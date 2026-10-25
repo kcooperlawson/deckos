@@ -537,6 +537,14 @@ def current_look():
     return kconfig("kdeglobals", "KDE", "LookAndFeelPackage", "org.deckos.desktop")
 
 
+def current_wallpaper():
+    """The first desktop's wallpaper, as a package dir or image path (None when unknown)."""
+    for line in read(Path.home() / ".config/plasma-org.kde.plasma.desktop-appletsrc").splitlines():
+        if line.startswith("Image="):
+            return Path(line.split("=", 1)[1].removeprefix("file://").rstrip("/"))
+    return None
+
+
 def current_icons():
     return kconfig("kdeglobals", "Icons", "Theme", "DeckOS")
 
