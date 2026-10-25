@@ -194,8 +194,9 @@ not die: a finished install must never be reported as failed.
 - **Install test (CI)**: the `install-test` job runs `tests/install-test.sh` on every ISO the workflow
   builds: QEMU + OVMF (KVM), a blank disk with an EFI partition and an empty one, the live kernel booted
   with `deckos.autoinstall`, then a first boot of the installed system until graphical.target with SDDM.
-  Two layouts (`DECKOS_TEST_LAYOUT`, a matrix in CI): `partition` (an EFI partition + an empty one) and
-  `empty` (a blank 80 GB disk the installer takes whole).
+  Three layouts (`DECKOS_TEST_LAYOUT`, a matrix in CI): `partition` (an EFI partition + an empty one),
+  `empty` (a blank 80 GB disk the installer takes whole) and `free` (EFI + a 20 GB ext4 to keep + free space; the
+  harness fails if a partition or file system that was there changed).
   Serial consoles are in the log and the `install-test-logs-LAYOUT` artifacts; runs locally on Arch too
   (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
   `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a
@@ -295,5 +296,5 @@ llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Wo
 
 An NVIDIA and an Intel test install (the chwd
 path has only been checked with `bash -n`/shellcheck); the free-space and empty-disk modes through
-the whole installer on CI (their partitioning is checked in a VM); why NTFS drives weren't detected on
+the whole installer on real hardware (CI installs into all three layouts: partition, empty, free); why NTFS drives weren't detected on
 the reference machine (likely BitLocker).

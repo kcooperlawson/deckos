@@ -22,10 +22,17 @@ modprobe qemu_fw_cfg 2>/dev/null || true
 udevadm settle || true
 [[ -b $DISK ]] || refuse "no test disk ($DISK)"
 disk=$(readlink -f "$DISK")
-# The harness makes partition 1 the EFI partition and leaves 2 empty for DecKoOS, or leaves the whole
-# disk blank (DECKOS_TEST_LAYOUT=empty): then DecKoOS gets the empty disk, as list_free offers it.
+# The harness makes partition 1 the EFI partition and leaves 2 empty for DecKoOS; or leaves the whole
+# disk blank (DECKOS_TEST_LAYOUT=empty): then DecKoOS gets the empty disk, as list_free offers it; or
+# fills 2 with a file system to keep and leaves free space after it (free): DecKoOS gets that gap.
+part2=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
 if [[ $(lsblk -lno TYPE "$disk" | grep -c part || true) == 0 ]]; then
   target="free:$disk:disk"
+elif [[ -n $part2 && -n $(blkid -o value -s TYPE "$part2" || true) ]]; then
+  # The installer's own list of free space, so the test takes the gap exactly as a person would
+  target=$(/usr/local/bin/deckos-install --list-targets 2>/dev/null \
+    | awk -F'\t' -v d="free:$disk:" 'index($1, d) == 1 && $1 != d "disk" && $7 == "" {print $1; exit}')
+  [[ -n $target ]] || refuse "the installer offers no usable free space on $disk"
 else
   target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
   [[ -b $target ]] || refuse "the test disk $disk has no second partition"
@@ -56,8 +63,8 @@ if [[ $rc -ne 0 ]]; then
   exit 0
 fi
 
-# The empty disk's DecKoOS partition is its second one (after the new EFI partition).
-[[ $target != free:* ]] || target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
+# In free space DecKoOS's partition is the disk's last (on an empty disk: after the new EFI partition).
+[[ $target != free:* ]] || target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {p = $1} END {print p}')
 
 # Test-only changes to the new system, so its boot shows on the serial console: no quiet/splash,
 # console on ttyS0 (which also gives a login prompt there), and a line once graphical.target is up.

@@ -15,7 +15,8 @@ INSTALL_MIN=${INSTALL_MIN:-100}
 BOOT_MIN=${BOOT_MIN:-15}
 # Optional software groups to install (comma-separated); none keeps the test quick.
 GROUPS_=${DECKOS_TEST_GROUPS:-}
-# partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DecKoOS gets whole.
+# partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DecKoOS gets whole;
+# free: an EFI partition + a file system to keep, and free space after them that DecKoOS goes into.
 LAYOUT=${DECKOS_TEST_LAYOUT:-partition}
 
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
@@ -54,17 +55,33 @@ if [[ $LAYOUT == empty ]]; then
   # 80 GB (sparse): the installer offers empty disks of 64 GB and up
   step "Blank 80 GB disk, no partitions: DecKoOS gets the whole disk"
   truncate -s 80G "$W/disk.img"
+elif [[ $LAYOUT == free ]]; then
+  # 100 GB (sparse): 20 GB stands in for another system, the rest is free space (DecKoOS needs 64 GB)
+  truncate -s 100G "$W/disk.img"
+  step "100 GB disk: EFI partition + a 20 GB file system to keep + free space"
+  printf 'label: gpt\nsize=300MiB, type=U, name="EFI system partition"\nsize=20GiB, type=L, name="Keep me"\n' \
+    | sfdisk -q "$W/disk.img"
+  read -r keep_start keep_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[1] | "\(.start) \(.size)"')
+  mkfs.ext4 -q -L keepme -E offset=$((keep_start * 512)) "$W/disk.img" $((keep_sectors / 2))k
 else
   truncate -s 40G "$W/disk.img"
   step "Blank 40 GB disk: EFI partition + empty partition"
   printf 'label: gpt\nsize=300MiB, type=U, name="EFI system partition"\ntype=L, name="DeckOS"\n' \
     | sfdisk -q "$W/disk.img"
+fi
+if [[ $LAYOUT != empty ]]; then
   read -r esp_start esp_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[0] | "\(.start) \(.size)"')
   # Cluster size explicitly: mkfs.fat sizes it for the whole 40 GB image, which leaves this partition too
   # few clusters for FAT32. Linux mounts that anyway; UEFI firmware counts clusters and can't read it.
   mkfs.fat -F 32 -S 512 -s 1 -n EFI --offset "$esp_start" "$W/disk.img" $((esp_sectors / 2)) >/dev/null
   sfdisk -l "$W/disk.img"
 fi
+# What was on the disk before: the install may add to it, never change it (Installer safety, CLAUDE.md)
+kept_parts() {  # the EFI partition, and in free space the file system next to it (partition 2 is DecKoOS's otherwise)
+  sfdisk -d "$W/disk.img" | grep -E "^\\S+img$([[ $LAYOUT == free ]] && echo '[12]' || echo 1) :" || true
+}
+kept_fs() { [[ $LAYOUT != free ]] || blkid -p -o value -s UUID -O $((keep_start * 512)) "$W/disk.img"; }
+parts_before=$(kept_parts) fs_before=$(kept_fs)
 
 # ------------------------------------------------------------------ live kernel
 # Booting the ISO's kernel directly is how the test adds deckos.autoinstall: no boot menu entry has it.
@@ -133,6 +150,12 @@ case $result in
   *) [[ $rc == 124 ]] && fail "The install didn't finish within $INSTALL_MIN minutes" "$W/install.log"
      fail "The live USB stopped before the install reported a result (no DECKOS-AUTOINSTALL line)" "$W/install.log" ;;
 esac
+[[ $(kept_parts) == "$parts_before" ]] || fail "The install changed a partition it should only have added next to:
+$parts_before
+is now
+$(kept_parts)" "$W/install.log"
+[[ $(kept_fs) == "$fs_before" ]] || fail "The install changed the file system it was meant to leave alone" "$W/install.log"
+[[ $LAYOUT != free ]] || { echo "Existing partitions untouched: yes"; summary "Existing partitions untouched: yes"; }
 
 # ------------------------------------------------------------------ first boot
 step "Booting the installed system (up to $BOOT_MIN minutes)"
