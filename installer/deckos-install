@@ -76,7 +76,7 @@ fail_hint() {
       echo "The partition is too small for what you picked. Choose a bigger one, or leave out Local AI or Development." ;;
     *"invalid or corrupted package"*|*"signature from"*|*"unknown trust"*|*"keyring"*)
       echo "A download didn't match its signature, usually a mirror that's mid-update. Wait a few minutes and install again." ;;
-    *"Input/output error"*|*"I/O error"*|*"Buffer I/O error"*)
+    *"Input/output error"*|*"I/O error"*)  # "Buffer I/O error" too
       echo "The disk or the USB stick reported read/write errors. Try another USB port, or write the USB stick again." ;;
     *"could not satisfy dependencies"*|*"conflicting dependencies"*|*"target not found"*)
       echo "The package lists changed upstream. Install again later, or use the newest DecKoOS USB stick." ;;
