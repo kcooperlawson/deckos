@@ -597,6 +597,10 @@ spin "Wiping $TARGET" wipefs -af "$TARGET"
 # Mark it as a Linux partition so Windows stops offering to "format" it.
 spin "Setting partition type" sfdisk --part-type "$TARGET_DISK" "$TARGET_PARTNO" "$LINUX_FS_GUID"
 spin "Creating btrfs" mkfs.btrfs -f -L DecKoOS "$TARGET"
+# The new file system's /dev/disk/by-uuid link only appears once udev re-reads the partition; grub-btrfs
+# mounts by that link when the boot menu is written (a fresh empty disk failed there without this)
+udevadm trigger --action=change "$TARGET" 2>/dev/null || true
+udevadm settle || true
 mount "$TARGET" "$MNT"
 for sv in @ @home @snapshots @log @pkg; do btrfs -q subvolume create "$MNT/$sv"; done
 umount "$MNT"
@@ -859,6 +863,7 @@ if inchroot deckos home enable >>"$LOG" 2>&1; then good "/home snapshots (hourly
 else warn "/home snapshots not set up - run 'sudo deckos home enable' after first boot"; fi
 CHANGED=boot
 spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
+udevadm settle || true  # the snapshot step below mounts by UUID
 spin "Writing boot menu (DecKoOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
 grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet - run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
 
