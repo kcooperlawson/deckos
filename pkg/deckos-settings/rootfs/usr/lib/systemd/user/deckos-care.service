@@ -1,0 +1,12 @@
+[Unit]
+Description=DecKoOS Care: checks your PC when something happens (a crash, an update) and says so once
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/lib/deckos/care/care.py
+Restart=on-failure
+RestartSec=30
+Nice=10
+
+[Install]
+WantedBy=default.target

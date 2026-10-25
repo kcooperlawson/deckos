@@ -6,6 +6,8 @@ _setup() {
   systemctl --global enable deckos-modes.service >/dev/null 2>&1 || true
   # Game Doctor's watcher: offers help when a game closes right after starting
   systemctl --global enable deckos-gamedoctor.service >/dev/null 2>&1 || true
+  # DecKoOS Care: System Doctor's checks after a crash or an update, said once in a while
+  systemctl --global enable deckos-care.service >/dev/null 2>&1 || true
   # The gaming CPU scheduler (scx_lavd, Gaming mode), once: after that it's the Hub's switch.
   if [ ! -e /var/lib/deckos/scheduler-default ] && [ -e /usr/lib/systemd/system/scx_loader.service ]; then
     [ -e /etc/scx_loader.toml ] || printf '# DecKoOS default (DecKoOS Hub > Gaming > Performance)\ndefault_sched = "scx_lavd"\ndefault_mode = "Gaming"\n' \
