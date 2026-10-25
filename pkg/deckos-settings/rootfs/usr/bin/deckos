@@ -1427,7 +1427,15 @@ layout_cmd() {
       qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
         "panels().forEach(function (p) { p.remove(); }); loadTemplate(\"org.deckos.layout.$name\");" >/dev/null
       ok "desktop layout: $name" ;;
-    *) err "usage: deckos layout [list|set NAME]"; exit 2 ;;
+    graphs)
+      # DeckOS Performance on the first screen's desktop, top right (once: a second one isn't added)
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
+        var d = desktops()[0], g = screenGeometry(d.screen);
+        if (d.widgets("org.deckos.perfgraphs").length == 0)
+            d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);' >/dev/null
+      ok "performance graphs are on your desktop" ;;
+    *) err "usage: deckos layout [list|set NAME|graphs]"; exit 2 ;;
   esac
 }
 
@@ -1563,7 +1571,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
-  deckos layout  [list|set NAME]                        desktop layout: dock, classic, topbar, minimal, big
+  deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
+                                                        graphs adds DeckOS Performance to the desktop
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
   deckos whatsnew                                       what the latest DeckOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="gpu" type="String">
+      <label>Graphics card sensor (gpu/gpu0…), or "auto" for the one with the most video memory</label>
+      <default>auto</default>
+    </entry>
+    <entry name="showNetwork" type="Bool">
+      <label>Show the network graph</label>
+      <default>true</default>
+    </entry>
+    <entry name="seconds" type="Int">
+      <label>How many seconds of history the graphs show</label>
+      <default>60</default>
+      <min>20</min>
+      <max>300</max>
+    </entry>
+  </group>
+</kcfg>

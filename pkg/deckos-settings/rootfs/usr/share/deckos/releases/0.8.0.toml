@@ -16,3 +16,12 @@ desktops get it; to switch yours, pick a desktop layout in DeckOS Hub."""
 icon = "panel-right"
 try = "Pick a desktop layout"
 run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "Performance graphs on your desktop"
+text = """Live graphs of your processor, graphics card, video memory, memory and network, on a DeckOS plate on \
+the desktop. Each shows the last minute; hover a graph to see any moment. It reads the same sensors as \
+Plasma's System Monitor, once a second."""
+icon = "gauge"
+try = "Add them to your desktop"
+run = ["deckos", "layout", "graphs"]

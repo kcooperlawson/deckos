@@ -1349,6 +1349,9 @@ class AppearancePage(Page):
         self.layout_grid = QGridLayout()
         self.layout_grid.setSpacing(10)
         layouts.body.addLayout(self.layout_grid)
+        layouts.body.addWidget(row(button("Add performance graphs", slot=lambda: self.apply(
+            ["deckos", "layout", "graphs"], "Performance graphs added to your desktop"), icon="gauge",
+            tip="Live processor, graphics, memory and network graphs on the desktop")))
         self.lay.addWidget(layouts)
 
         style = Card("Desktop style", "Panel, menus and icons", "display")

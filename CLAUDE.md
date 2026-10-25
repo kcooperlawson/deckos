@@ -30,6 +30,10 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `assets/preview_taskbar.py` (stand-ins in `assets/preview_taskbar/`); lint against the real modules with
   `qmllint -I /usr/lib/qt6/qml`. In QML, `foo: foo` inside a child binds the child's own `foo` to itself:
   give ids names that no property uses (Quick Settings lost its backend that way).
+  DeckOS Performance (`plasmoids/org.deckos.perfgraphs/`) is the desktop graphs widget on
+  `org.kde.ksysguard.sensors` (ksystemstats; the GPU with the most VRAM, not gpu0, unless configured), one
+  1 s clock while visible; default desktop and `deckos layout graphs` add it. Preview with
+  `assets/preview_perfgraphs.py`. A `PathPolyline` starts its own subpath: close areas inside one polyline.
 - Graphics: AMD is the tested path. The installer runs CachyOS's `chwd -a` only when an NVIDIA or Intel
   GPU is present (AMD-only PCs keep desktop.txt's Radeon packages) and falls back to NVIDIA's open driver
   if chwd fails. The display ladder, `deckos gpu` and the Hub's Graphics card / FSR 4 rows are

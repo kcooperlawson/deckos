@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Live graphs of your processor, graphics card, memory and network, in the DeckOS look",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.perfgraphs",
+        "License": "MIT",
+        "Name": "DeckOS Performance",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

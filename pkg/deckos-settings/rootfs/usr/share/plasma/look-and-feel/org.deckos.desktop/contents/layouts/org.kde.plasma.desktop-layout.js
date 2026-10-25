@@ -48,4 +48,9 @@ for (var i = 0; i < all.length; i++) {
     d.wallpaperPlugin = "org.kde.image";
     d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     d.writeConfig("Image", "file:///usr/share/wallpapers/DeckOS/");
+    if (i == 0) {
+        // DeckOS Performance in the top right of the first screen, clear of the desktop icons
+        var g = screenGeometry(d.screen);
+        d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);
+    }
 }
