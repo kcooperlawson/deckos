@@ -284,7 +284,7 @@ class Store(QWidget):
         t.setStyleSheet("color: white; background: transparent;")
         hv.addWidget(t)
         s = label("Games, creative tools and everything else, from Arch and CachyOS, Flathub and the AUR. "
-                  "Install with one click; updates come with DeckOS.", "sub")
+                  "Install with one click; updates come with DecKoOS.", "sub")
         s.setStyleSheet("color: rgba(255,255,255,0.85); background: transparent;")
         hv.addWidget(s)
         lay.addWidget(hero)

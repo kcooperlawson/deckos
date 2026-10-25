@@ -533,7 +533,7 @@ class Installer(QWidget):
                        "" if sudo_ok else "The live user should have passwordless sudo; this USB may be damaged.")
         sb = self.secure_boot()
         self.set_check(2, None if sb else True, "Secure Boot is on" if sb else "Secure Boot is off",
-                       "Turn it off in the BIOS before you restart into DeckOS." if sb else "")
+                       "Turn it off in the BIOS before you restart into DecKoOS." if sb else "")
         self.set_check(3, None, "Checking internet…")
         self.uefi_sudo = uefi and sudo_ok
         self.net_ok = False

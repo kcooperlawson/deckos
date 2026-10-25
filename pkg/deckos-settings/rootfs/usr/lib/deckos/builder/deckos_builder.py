@@ -653,7 +653,7 @@ class Builder(QWidget):
         if src is None:
             self.contribute_box.addWidget(label(
                 "1. Get your own copy of DecKoOS: Builder makes a fork under your GitHub account and downloads it. "
-                "Your changes go there, never straight into DeckOS.", "sub"))
+                "Your changes go there, never straight into DecKoOS.", "sub"))
             self.contribute_box.addWidget(row(
                 button("Get the source…", "primary", self.get_source, icon="download"),
                 button("Use a copy I have…", slot=self.pick_source, icon="folder")))

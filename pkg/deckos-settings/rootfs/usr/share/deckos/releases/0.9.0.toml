@@ -1,0 +1,25 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.9.0"
+name = "DecKoOS"
+tagline = "A new name and logo, eyes on the boot screen, and a taskbar that keeps your apps where you put them."
+
+fixes = [
+    "The taskbar keeps an open app in its pinned spot instead of moving it to the end (the browser, the file manager and apps like Discord).",
+    "Switching desktop layouts keeps your pinned apps.",
+    "Windows you move to another screen, and minimized windows, stay on the taskbar. Right-click the taskbar to show only this screen's windows.",
+]
+
+[[highlights]]
+title = "Meet DecKoOS"
+image = "0.9.0/logo.png"
+text = """DeckOS is now written DecKoOS, and has a new logo: the oO is a controller, a thumbstick and the face \
+buttons. On the boot screen, the login screen and Gaming Mode's startup they glance around and blink. Your \
+apps, settings and the deckos command are unchanged."""
+icon = "star"
+
+[[highlights]]
+title = "Pin any app, the easy way"
+text = """Click + on the taskbar for a list of everything installed: type to search, click an app to pin it, \
+click again to unpin."""
+icon = "panel-right"

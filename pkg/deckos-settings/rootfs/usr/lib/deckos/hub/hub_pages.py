@@ -1134,7 +1134,7 @@ class SystemPage(Page):
             self.notices = self.after_update(self.pending[0])
             needs = [k for k, _ in self.notices]
             self.hub.toast("Updated. Restart the PC to finish." if "reboot" in needs else
-                           "Updated. Restart the desktop to load the new DeckOS." if "desktop" in needs else
+                           "Updated. Restart the desktop to load the new DecKoOS." if "desktop" in needs else
                            "DecKoOS is up to date.", "ok", 7000)
         elif code in (126, 127):
             self.hub.toast("Update cancelled.", "warn")

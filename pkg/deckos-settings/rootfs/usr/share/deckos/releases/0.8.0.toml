@@ -2,7 +2,7 @@
 
 version = "0.8.0"
 name = "Made here"
-tagline = "DecKoOS's own taskbar, editor, system monitor, icons and pointers, retro games, and a way for anyone to help build DeckOS."
+tagline = "DecKoOS's own taskbar, editor, system monitor, icons and pointers, retro games, and a way for anyone to help build DecKoOS."
 
 fixes = [
     "DecKoOS Hub names your graphics card again (some cards showed as \"Graphics card\").",

@@ -345,7 +345,7 @@ drives_doctor() {
     say ""
     say "  Fix it from Windows (once): open Terminal as Administrator and run"
     say "    ${C_B}powercfg /h off${C_0}     (turns off Fast Startup + hibernation)"
-    say "  then Shut Down Windows normally and boot DeckOS."
+    say "  then Shut Down Windows normally and boot DecKoOS."
     say "  If Windows is NOT hibernated and a drive is just marked dirty: sudo ntfsfix -d /dev/sdXN"
   fi
 }
