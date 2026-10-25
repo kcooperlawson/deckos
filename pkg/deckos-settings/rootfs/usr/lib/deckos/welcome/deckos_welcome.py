@@ -145,7 +145,7 @@ class Welcome(QWidget):
         self.rail.setSpacing(3)
         brand = QHBoxLayout()
         brand.setSpacing(10)
-        tile = QSvgWidget(str(S.BRANDING / "logo.svg"))
+        tile = S.brand_widget("logo.svg")
         tile.setFixedSize(34, 34)
         brand.addWidget(tile)
         names = QVBoxLayout()
@@ -269,6 +269,7 @@ class Welcome(QWidget):
         S.P.set_accent(color)
         QApplication.instance().setStyleSheet(qss())
         self.paint_nav()
+        S.refresh_brand(self)
         for w in self.findChildren(QWidget):
             w.update()
 

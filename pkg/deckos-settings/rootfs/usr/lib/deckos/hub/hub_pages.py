@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt, QTimer
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
                                QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
                                QVBoxLayout, QWidget)
@@ -1428,6 +1428,16 @@ class AppearancePage(Page):
     title = "Appearance"
     subtitle = "Theme, accent colour, wallpaper and desktop style."
 
+    def custom_accent(self):
+        from PySide6.QtWidgets import QColorDialog
+        c = QColorDialog.getColor(QColor(S.P.accent), self, "Accent colour")
+        if c.isValid():
+            self.swatches.setExclusive(False)  # no preset is picked now
+            for b in self.swatches.buttons():
+                b.setChecked(False)
+            self.swatches.setExclusive(True)
+            self.set_accent(c.name().upper(), "Custom")
+
     def build(self):
         themes = Card("Theme", "Global theme", "appearance")
         themes.body.addWidget(label("Sets colours, wallpaper and the desktop layout's look in one go.", "sub"))
@@ -1453,6 +1463,9 @@ class AppearancePage(Page):
             sw_row.addWidget(b)
             if color.lower() == S.P.accent.lower():
                 b.setChecked(True)
+        custom = button("Custom…", slot=self.custom_accent, icon="drop",
+                        tip="Any colour: buttons, highlights and the DecKoOS logos in every app follow it")
+        sw_row.addWidget(custom)
         sw_row.addStretch(1)
         accent.body.addLayout(sw_row)
         self.lay.addWidget(accent)

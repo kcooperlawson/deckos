@@ -99,7 +99,7 @@ class Store(QWidget):
         sl.setSpacing(2)
         brand = QHBoxLayout()
         brand.setSpacing(10)
-        logo = QSvgWidget(str(S.BRANDING / "store-logo.svg"))
+        logo = S.brand_widget("store-logo.svg")
         logo.setFixedSize(34, 34)
         brand.addWidget(logo)
         names = QVBoxLayout()

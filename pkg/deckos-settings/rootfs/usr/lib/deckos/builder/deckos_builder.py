@@ -483,7 +483,7 @@ class Builder(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setWindowTitle("DecKoOS Builder")
-        self.setWindowIcon(QIcon(str(BRANDING / "logo.svg")))
+        self.setWindowIcon(S.brand_icon("logo.svg"))
         self.resize(1180, 920)
         self.setMinimumSize(760, 560)
         self.settings = QSettings("DeckOS", "Builder")
@@ -561,8 +561,7 @@ class Builder(QWidget):
 
     def header(self):
         h = QHBoxLayout()
-        tile = QSvgWidget(str(BRANDING / "logo.svg"))
-        tile.setFixedSize(44, 44)
+        tile = S.brand_widget("logo.svg", 44)
         h.addWidget(tile)
         h.addSpacing(12)
         t = QVBoxLayout()

@@ -57,6 +57,49 @@ class Palette:
 
 P = Palette(plasma_accent())
 
+# The brand art is drawn in DecKoOS blue and its violet partner; apps show it in the person's accent instead,
+# like the icon theme's colour variants do on the taskbar.
+BRAND_BLUE, BRAND_VIOLET = "#4C8DFF", "#7A5CFF"
+
+
+def brand_svg(name):
+    """A branding SVG (logo.svg, store-logo.svg...) recoloured to the current accent, for QSvgWidget.load()."""
+    try:
+        text = (BRANDING / name).read_text()
+    except OSError:
+        return QByteArray()
+    text = re.sub(BRAND_BLUE, P.accent, text, flags=re.I)
+    text = re.sub(BRAND_VIOLET, P.grad_b, text, flags=re.I)
+    return QByteArray(text.encode())
+
+
+def brand_widget(name, size=34):
+    """The logo as a widget that follows the accent: `refresh_brand(window)` reloads every one after a change."""
+    from PySide6.QtSvgWidgets import QSvgWidget
+    w = QSvgWidget()
+    w.setProperty("brand", name)
+    w.load(brand_svg(name))
+    w.setFixedSize(size, size)
+    return w
+
+
+def refresh_brand(root):
+    from PySide6.QtSvgWidgets import QSvgWidget
+    for w in root.findChildren(QSvgWidget):
+        if w.property("brand"):
+            w.load(brand_svg(w.property("brand")))
+
+
+def brand_icon(name, size=128):
+    """A window icon from the recoloured logo."""
+    r = QSvgRenderer(brand_svg(name))
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    r.render(p, QRectF(0, 0, size, size))
+    p.end()
+    return QIcon(pm)
+
 
 def qss():
     return f"""

@@ -143,8 +143,7 @@ class Hub(QWidget):
         sl.setSpacing(3)
         brand = QHBoxLayout()
         brand.setSpacing(10)
-        tile = QSvgWidget(str(S.BRANDING / "logo.svg"))
-        tile.setFixedSize(34, 34)
+        tile = S.brand_widget("logo.svg")
         brand.addWidget(tile)
         names = QVBoxLayout()
         names.setSpacing(0)
@@ -288,6 +287,7 @@ class Hub(QWidget):
         S.P.set_accent(color)
         QApplication.instance().setStyleSheet(S.qss())
         self.paint_nav()
+        S.refresh_brand(self)
         for w in self.findChildren(QWidget):
             w.update()
 
