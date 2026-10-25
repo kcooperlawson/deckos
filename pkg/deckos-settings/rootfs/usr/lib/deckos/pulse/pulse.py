@@ -35,7 +35,7 @@ def system_file():
 MAX_BYTES = 1 << 20  # then the oldest half goes
 
 # deckos subcommands an undo may run (each one already knows how to put its change back)
-UNDOABLE = {"theme", "accent", "layout", "undo", "restore", "drives", "mode", "profile", "retro", "gamedoctor"}
+UNDOABLE = {"theme", "accent", "layout", "undo", "restore", "drives", "mode", "profile", "retro", "gamedoctor", "setup"}
 
 # What each kind of event looks like where it's shown: (DecKoOS line icon, group)
 KINDS = {

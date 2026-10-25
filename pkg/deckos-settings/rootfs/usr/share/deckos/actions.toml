@@ -156,6 +156,14 @@ icon = "ai"
 run = ["deckos-assistant"]
 
 [[action]]
+id = "setup-export"
+title = "Take my setup with me"
+summary = "Saves your look, panel, pinned apps and DecKoOS settings to one file"
+keywords = "export backup settings new pc reinstall migrate transfer setup"
+icon = "download"
+run = ["deckos-hub", "--page", "system"]
+
+[[action]]
 id = "move-in"
 title = "Move in from Windows"
 summary = "Bring your folders, browser, wallpaper and games over"

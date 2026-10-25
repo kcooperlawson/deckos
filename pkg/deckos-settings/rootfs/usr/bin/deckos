@@ -1729,6 +1729,10 @@ case ${1:-} in
   theme) shift; theme_cmd "$@" ;;
   accent) shift; accent_cmd "$@" ;;
   retro) shift; retro_cmd "$@" ;;
+  setup)  # take this PC's setup with you: deckos setup export|import FILE, undo STAMP
+    shift
+    [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+    exec python3 "${DECKOS_SETUP_DIR:-/usr/lib/deckos/setup}/setup.py" "$@" ;;
   profile) shift; exec python3 "${DECKOS_PROFILES_DIR:-/usr/lib/deckos/profiles}/profiles.py" "$@" ;;
   do)  # one of DecKoOS's actions (usr/share/deckos/actions.toml); no ID lists them
     shift

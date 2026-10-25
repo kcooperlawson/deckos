@@ -862,9 +862,34 @@ class AiDevPage(Page):
 
 # ------------------------------------------------------------------ system
 
+def _setup_run(page, args, done_text):
+    """deckos setup ARGS, with the outcome as a toast (it's quick: small files only)."""
+    if sysinfo.DEMO:
+        page.hub.toast(done_text, "ok")
+        return
+    proc = QProcess(page)
+    proc.finished.connect(lambda code, _s: (page.hub.toast(
+        done_text if code == 0 else bytes(proc.readAllStandardError()).decode(errors="replace").strip()
+        or "That didn't work.", "ok" if code == 0 else "warn", 9000), proc.deleteLater()))
+    proc.start("deckos", ["setup", *args])
+
+
 class SystemPage(Page):
     title = "System"
     subtitle = "Updates, snapshots, firewall and software."
+
+    def export_setup(self):
+        name = f"decko-setup-{datetime.now():%Y-%m-%d}.tar.gz"
+        path, _ = QFileDialog.getSaveFileName(self, "Save your setup", str(Path.home() / name), "DecKoOS setup (*.tar.gz)")
+        if path:
+            _setup_run(self, ["export", path], f"Saved your setup to {Path(path).name}")
+
+    def import_setup(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Bring in a setup", str(Path.home()), "DecKoOS setup (*.tar.gz)")
+        if path and QMessageBox.question(self, "Bring in this setup?",
+                                         "Your look, panel and DecKoOS settings are replaced by the ones in the file. "
+                                         "What's there now is kept: the Timeline's Undo puts it back.") == QMessageBox.Yes:
+            _setup_run(self, ["import", path], "Setup brought in: log out and back in to see all of it")
 
     def build(self):
         self.head_actions.addWidget(button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
@@ -912,6 +937,13 @@ class SystemPage(Page):
         self.testing.clicked.connect(self.set_channel)
         up.body.addWidget(self.testing)
         self.lay.addWidget(up)
+
+        carry = Card("Take my setup with me", "For a new PC, or after a reinstall", "download")
+        carry.body.addWidget(label("One file with your look, your panel and pinned apps, DecKoOS's settings, game "
+                                   "profiles and Game Doctor's fixes. No passwords, games or system files.", "sub"))
+        carry.body.addWidget(row(button("Save my setup…", "primary", self.export_setup, icon="download"),
+                                 button("Bring in a setup…", slot=self.import_setup, icon="folder")))
+        self.lay.addWidget(carry)
 
         snaps = Card("Undo an update", "If something broke after updating", "undo")
         snaps.body.addWidget(label("DecKoOS takes a snapshot before every update. Undo one and the system goes back to "
