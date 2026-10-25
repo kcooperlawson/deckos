@@ -23,7 +23,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QProcess, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
 from PySide6.QtGui import QFont, QFontDatabase, QIcon, QTextCursor
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFrame, QHBoxLayout,
@@ -41,6 +41,10 @@ BRANDING = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/branding"
 FONTS = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos"
 WORKFLOW = "build-iso.yml"
 ARTIFACT = "deckos-iso"
+# DeckOS's own apps: each has a workflow that builds it and uploads offscreen screenshots
+APP_WORKFLOWS = (("deckos-files.yml", "DeckOS Files", "folder"), ("deckos-terminal.yml", "DeckOS Terminal", "terminal"),
+                 ("deckos-editor.yml", "DeckOS Editor", "rename"))
+RELEASES = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/releases"
 IS_WINDOWS = platform.system() == "Windows"
 CAN_BUILD_LOCAL = IS_WINDOWS or shutil.which("pacman") is not None or Path("/etc/arch-release").exists()
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0  # CREATE_NO_WINDOW: no console flashes on Windows
@@ -70,6 +74,30 @@ def next_version(v):
 
 def vkey(v):
     return [int(x) if x.isdigit() else 0 for x in v.split(".")]
+
+
+def pending_notes(version):
+    """{version: highlight titles} for release notes written for versions newer than `version` (features
+    that land write their notes as they go: they say which release is next)."""
+    import tomllib
+    out = {}
+    for f in sorted(RELEASES.glob("*.toml"), key=lambda f: vkey(f.stem)):
+        if vkey(f.stem) > vkey(version):
+            try:
+                out[f.stem] = [h.get("title", "") for h in tomllib.loads(f.read_text()).get("highlights", [])]
+            except (OSError, ValueError):
+                out[f.stem] = []
+    return out
+
+
+def bash_exe():
+    """bash for tests/check.sh: Git for Windows' on Windows."""
+    if not IS_WINDOWS:
+        return shutil.which("bash")
+    git_exe = shutil.which("git")
+    candidates = [Path(git_exe).resolve().parents[1] / "bin/bash.exe"] if git_exe else []
+    candidates += [Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git/bin/bash.exe"]
+    return next((str(c) for c in candidates if c.exists()), None)
 
 
 # ------------------------------------------------------------------ GitHub (via gh)
@@ -292,8 +320,9 @@ def local_state():
 class ReleaseDialog(QDialog):
     """Version + summary for a release; lists the commits it will publish."""
 
-    def __init__(self, parent, version, commits):
+    def __init__(self, parent, version, commits, notes=None):
         super().__init__(parent)
+        notes = notes or {}
         self.setObjectName("root")
         self.setWindowTitle("Release DeckOS")
         self.setMinimumWidth(520)
@@ -305,7 +334,9 @@ class ReleaseDialog(QDialog):
                           "channel get the update about 5 minutes later. Stable gets it when you run Promote to "
                           "stable on GitHub. An ISO is only built when the installer or live USB changed since the "
                           "last release.", "sub"))
-        self.version = QLineEdit(next_version(version))
+        # The notes already written say which release is next; otherwise it's a patch release
+        self.version = QLineEdit(next(iter(notes), next_version(version)))
+        self.notes = notes
         self.summary = QLineEdit()
         self.summary.setPlaceholderText("What changed, e.g. Hub opens again; thumbstick login splash")
         v.addWidget(label("VERSION", "kicker"))
@@ -318,8 +349,17 @@ class ReleaseDialog(QDialog):
         log.setReadOnly(True)
         log.setFixedHeight(120)
         v.addWidget(log)
+        self.what = label("", "sub")
+        self.what.setWordWrap(True)
+        v.addWidget(self.what)
+        self.version.textChanged.connect(self.describe)
+        self.describe()
         self.iso = QCheckBox("Build an ISO too, even if the installer and live USB didn't change")
         v.addWidget(self.iso)
+        self.checks = QCheckBox("Run the checks first (tests/check.sh): don't release if they fail")
+        self.checks.setChecked(bash_exe() is not None)
+        self.checks.setEnabled(bash_exe() is not None)
+        v.addWidget(self.checks)
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         ok = bb.button(QDialogButtonBox.Ok)
         ok.setText("Release")
@@ -327,6 +367,24 @@ class ReleaseDialog(QDialog):
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         v.addWidget(bb)
+
+    def describe(self):
+        """What What's New will show for this version, and the mismatches worth stopping for."""
+        ver = self.version.text().strip()
+        titles = self.notes.get(ver)
+        feature = ver.endswith(".0")
+        if titles:
+            text = f"<b>What's New shows:</b> {', '.join(titles)}"
+        elif feature:
+            text = (f"<span style='color:{WARNING}'>{ver} is a feature release but has no release notes "
+                    f"(releases/{ver}.toml): What's New will show nothing.</span>")
+        else:
+            text = "A patch release: it updates quietly, without What's New."
+        later = [v for v in self.notes if v != ver]
+        if later and not titles:
+            text += (f"<br><span style='color:{WARNING}'>Notes are waiting for {', '.join(later)}: the features "
+                     "in them would go out quietly in this release.</span>")
+        self.what.setText(text)
 
 
 # ------------------------------------------------------------------ main window
@@ -343,6 +401,8 @@ class Builder(QWidget):
         self.pool = QThreadPool.globalInstance()
         self.runs, self.jobs, self.current, self.busy = [], [], None, False
         self.assets, self.stable, self.local = None, None, {}
+        self.app_runs = {}  # workflow file -> its newest run (or None)
+        self.checks_proc = None
         self._tasks = set()
         self.typical = self.settings.value("typical_iso_seconds", 1800, type=int)
         self.iso_runs = {}  # finished run id -> seconds to a built ISO, or 0 when it built none
@@ -369,6 +429,7 @@ class Builder(QWidget):
             left.addWidget(self.local_card())
         left.addWidget(self.current_card())
         left.addWidget(self.usb_card())
+        left.addWidget(self.apps_card())
         left.addStretch(1)
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
@@ -419,6 +480,14 @@ class Builder(QWidget):
         self.repo_box.setFixedWidth(200)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
+        self.checks_btn = button("Run checks", slot=self.run_checks, icon="check",
+                                 tip="tests/check.sh: everything CI checks on a pull request, run here")
+        self.checks_btn.setEnabled(bash_exe() is not None)
+        h.addWidget(self.checks_btn)
+        self.promote_btn = button("Promote…", slot=self.promote, icon="shield",
+                                  tip="Moves the release on testing to stable, where installs start")
+        self.promote_btn.setEnabled(False)
+        h.addWidget(self.promote_btn)
         self.release_btn = button("Release…", slot=self.release, icon="arrow-up",
                                   tip="Bump VERSION, tag and push: testing PCs get it about 10 minutes later")
         h.addWidget(self.release_btn)
@@ -462,6 +531,107 @@ class Builder(QWidget):
         scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
         c.body.addWidget(scroll, 1)
         return c
+
+    def apps_card(self):
+        c = Card("Apps", "DeckOS Files, Terminal and Editor builds", "grid")
+        self.apps_box = QVBoxLayout()
+        self.apps_box.setSpacing(6)
+        c.body.addLayout(self.apps_box)
+        return c
+
+    def render_apps(self):
+        while self.apps_box.count():
+            item = self.apps_box.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        for wf, name, icon in APP_WORKFLOWS:
+            run = self.app_runs.get(wf)
+            if run is None:
+                detail, color = "No build yet: push a change to it", MUTED
+            else:
+                state, color = run_state(run)
+                detail = f"{state} · {run.get('head_branch', '')} · {fmt_ago(parse_ts(run['created_at']))}"
+            r = QWidget()
+            h = QHBoxLayout(r)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.addWidget(RowItem(icon, name, detail, color), 1)
+            if run is not None:
+                h.addWidget(button("Screenshots", slot=lambda _=False, rn=run, n=wf: self.app_screenshots(rn, n),
+                                   icon="image", tip="Download the offscreen screenshots this build took"))
+                h.addWidget(button("", slot=lambda _=False, u=run["html_url"]: webbrowser.open(u), icon="external",
+                                   tip="Open the build on GitHub"))
+            self.apps_box.addWidget(r)
+
+    def app_screenshots(self, run, workflow):
+        out = self.out_dir() / f"{workflow.removesuffix('.yml')}-screenshots-{run['run_number']}"
+        repo = self.repo
+        self.say(f"Downloading {workflow.removesuffix('.yml')} screenshots…")
+
+        def work(_):
+            if out.exists():
+                shutil.rmtree(out)
+            gh("run", "download", str(run["id"]), "--repo", repo, "--pattern", "*-screenshots", "--dir", str(out))
+            return out
+
+        def done(path, err):
+            if err:
+                self.say(f"Screenshots: {err}")
+                return
+            self.say(f"Screenshots in {path}")
+            webbrowser.open(path.as_uri())
+
+        self.bg(work, done)
+
+    def run_checks(self):
+        if self.checks_proc and self.checks_proc.state() != QProcess.NotRunning:
+            return
+        self.say("Running tests/check.sh (lint, tests, generated files)…")
+        self.checks_btn.setEnabled(False)
+        proc = QProcess(self)
+        proc.setWorkingDirectory(str(REPO_DIR))
+        proc.setProcessChannelMode(QProcess.MergedChannels)
+        e = QProcessEnvironment.systemEnvironment()  # offscreen Qt for the UI tests
+        e.insert("QT_QPA_PLATFORM", "offscreen")
+        proc.setProcessEnvironment(e)
+        proc.readyReadStandardOutput.connect(lambda: self.append_log(
+            re.sub(r"\x1b\[[0-9;]*m", "", bytes(proc.readAllStandardOutput()).decode(errors="replace")).rstrip()))
+
+        def finished(code, _status):
+            self.checks_btn.setEnabled(True)
+            ok = code == 0
+            self.say("All checks passed." if ok else "Some checks failed: see the log.")
+            self.toast.show_message("All checks passed" if ok else "Some checks failed", "ok" if ok else "bad")
+        proc.finished.connect(finished)
+        self.checks_proc = proc
+        proc.start(bash_exe(), ["tests/check.sh"])
+
+    def promote(self):
+        testing = self.testing_version()
+        if not testing:
+            return
+        if QMessageBox.question(self, "Promote to stable?",
+                                f"DeckOS {testing} goes from testing to stable: new installs and every PC on the "
+                                f"stable channel get it. Stable has {self.stable or 'nothing'} now.\n\nOnly do this once "
+                                f"{testing} has run on a testing PC.") != QMessageBox.Yes:
+            return
+        repo = self.repo
+        self.promote_btn.setEnabled(False)
+
+        def done(_, err):
+            if err:
+                self.say(f"Promote failed: {err}")
+                self.promote_btn.setEnabled(True)
+                return
+            self.say(f"Promoting {testing} to stable: the Promote to stable workflow is running")
+            self.toast.show_message(f"{testing} is going to stable", "ok")
+            QTimer.singleShot(30000, self.refresh)
+
+        self.bg(lambda _: gh("workflow", "run", "promote.yml", "--repo", repo, "--ref", "main",
+                             "-f", f"version={testing}"), done)
+
+    def testing_version(self):
+        vers = {m.group(1): m.group(2) for a in self.assets or [] if (m := PKG_RE.match(a["name"]))}
+        return vers.get("deckos-settings")
 
     def local_card(self):
         c = Card("This PC", "Build the ISO here", "terminal")
@@ -690,7 +860,13 @@ class Builder(QWidget):
                 stable = next((m.group(2) for a in stable if (m := PKG_RE.match(a["name"])) and m.group(1) == "deckos-settings"), None)
             except RuntimeError:
                 stable = None
-            return runs, cur, jobs, typical, (assets, stable), local_state(), known
+            apps = {}
+            for wf, _name, _icon in APP_WORKFLOWS:
+                try:
+                    apps[wf] = next(iter(gh_json(f"repos/{repo}/actions/workflows/{wf}/runs?per_page=1")["workflow_runs"]), None)
+                except RuntimeError:
+                    apps[wf] = None  # the workflow isn't on GitHub yet
+            return runs, cur, jobs, typical, (assets, stable), local_state(), known, apps
 
         def done(res, err):
             self.busy = False
@@ -699,7 +875,7 @@ class Builder(QWidget):
                 self.timer.start(60000)
                 return
             prev, prev_jobs = self.current, self.jobs
-            self.runs, self.current, self.jobs, typical, (self.assets, self.stable), self.local, self.iso_runs = res
+            self.runs, self.current, self.jobs, typical, (self.assets, self.stable), self.local, self.iso_runs, self.app_runs = res
             # The update goes live ~35 minutes before the ISO is done: say so the moment it does.
             if prev and self.current and prev["id"] == self.current["id"]:
                 was, now = phases(prev, prev_jobs)[0][1], phases(self.current, self.jobs)[0][1]
@@ -716,6 +892,11 @@ class Builder(QWidget):
             self.render_current()
             self.render_history()
             self.render_repo()
+            self.render_apps()
+            testing = self.testing_version()
+            self.promote_btn.setEnabled(bool(testing) and testing != self.stable)
+            self.promote_btn.setToolTip(f"Move {testing} from testing to stable" if testing and testing != self.stable
+                                        else "Stable already has what testing has")
             active = self.current and self.current["status"] != "completed"
             self.timer.start(15000 if active else 60000)
             if prev and self.current and prev["id"] == self.current["id"] and prev["status"] != "completed" \
@@ -815,7 +996,7 @@ class Builder(QWidget):
             pub = vers.get("deckos-settings", "?")
             newest = max((parse_ts(a["updated_at"]) for a in self.assets), default=None)
             when = f"published {fmt_ago(newest)}" if newest else ""
-            stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'}, promote from Actions"
+            stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'} · Promote… moves it"
             if lo and pub != lo["version"] and vkey(lo["version"]) > vkey(pub) and not lo.get("ahead"):
                 self.t_repo.set(pub, f"{lo['version']} is on its way · {when}", "info")
             else:
@@ -904,10 +1085,11 @@ class Builder(QWidget):
             return
         tag = lo.get("tag")
         commits = git("log", "--oneline", f"{tag}..HEAD" if tag else "-20", check=False).splitlines()
-        dlg = ReleaseDialog(self, lo["version"], commits)
+        dlg = ReleaseDialog(self, lo["version"], commits, pending_notes(lo["version"]))
         if dlg.exec() != QDialog.Accepted:
             return
         ver, summary, want_iso = dlg.version.text().strip(), dlg.summary.text().strip(), dlg.iso.isChecked()
+        run_checks = dlg.checks.isChecked()
         if not re.fullmatch(r"\d+(\.\d+)+", ver) or vkey(ver) <= vkey(lo["version"]):
             self.toast.show_message(f"Version must be newer than {lo['version']}", "bad")
             return
@@ -917,9 +1099,16 @@ class Builder(QWidget):
         self.release_btn.setEnabled(False)
         self.say(f"Releasing DeckOS {ver}…")
 
-        def work(_):
+        def work(progress):
             if git("tag", "-l", f"v{ver}"):
                 raise RuntimeError(f"tag v{ver} already exists")
+            if run_checks:
+                progress(0, "Running the checks…")
+                r = subprocess.run([bash_exe(), "tests/check.sh", "lint"], cwd=REPO_DIR, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
+                if r.returncode != 0:
+                    tail = "\n".join(re.sub(r"\x1b\[[0-9;]*m", "", r.stdout).splitlines()[-12:])
+                    raise RuntimeError(f"the checks failed, so nothing was released:\n{tail}")
             (REPO_DIR / "VERSION").write_text(ver + "\n")
             msg = f"DeckOS {ver}: {summary}"
             git("commit", "-m", msg, "--", "VERSION")
@@ -937,7 +1126,7 @@ class Builder(QWidget):
             self.toast.show_message(f"DeckOS {ver} is on its way", "ok")
             QTimer.singleShot(8000, self.refresh)
 
-        self.bg(work, done)
+        self.bg(work, done, lambda _f, text: text and self.say(text, log=False))
 
     def cancel_build(self):
         run = self.current
