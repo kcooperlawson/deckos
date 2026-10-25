@@ -114,12 +114,12 @@ FRAMES = {
 
 METADATA = {
     "KPlugin": {
-        "Authors": [{"Name": "DeckOS"}],
+        "Authors": [{"Name": "DecKoOS"}],
         "Category": "",
         "Description": "DecKoOS: slate plates with a 1px edge and screw heads, following your colour scheme",
         "Id": "deckos",
         "License": "MIT",
-        "Name": "DeckOS",
+        "Name": "DecKoOS",
         "Version": "1.0",
     },
     "X-Plasma-API-Minimum-Version": "6.0",

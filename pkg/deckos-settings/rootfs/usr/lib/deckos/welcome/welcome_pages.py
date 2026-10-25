@@ -298,13 +298,13 @@ class LookStep(Step):
         grid.setHorizontalSpacing(14)
         grid.setVerticalSpacing(8)
         self.plasma = QComboBox()
-        self.plasma.addItem("DeckOS", "deckos")
+        self.plasma.addItem("DecKoOS", "deckos")
         self.plasma.addItem("Breeze", "default")
         self.plasma.setCurrentIndex(max(0, self.plasma.findData(sysinfo.current_plasma_style())))
         self.plasma.currentIndexChanged.connect(lambda _i: self.apply(
             ["plasma-apply-desktoptheme", self.plasma.currentData()], "style", f"Plasma style: {self.plasma.currentText()}"))
         self.icons = QComboBox()
-        for name, theme in (("DeckOS", "DeckOS"), ("Papirus Dark", "Papirus-Dark"), ("Breeze Dark", "breeze-dark")):
+        for name, theme in (("DecKoOS", "DeckOS"), ("Papirus Dark", "Papirus-Dark"), ("Breeze Dark", "breeze-dark")):
             self.icons.addItem(name, theme)
         self.icons.setCurrentIndex(max(0, self.icons.findData(sysinfo.current_icons())))
         self.icons.currentIndexChanged.connect(lambda _i: self.apply(

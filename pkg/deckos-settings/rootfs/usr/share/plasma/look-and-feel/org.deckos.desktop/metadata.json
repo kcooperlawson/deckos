@@ -1,12 +1,12 @@
 {
     "KPackageStructure": "Plasma/LookAndFeel",
     "KPlugin": {
-        "Authors": [{ "Name": "DeckOS" }],
+        "Authors": [{ "Name": "DecKoOS" }],
         "Category": "",
         "Description": "DecKoOS: deep slate, blue-violet accents",
         "Id": "org.deckos.desktop",
         "License": "MIT",
-        "Name": "DeckOS",
+        "Name": "DecKoOS",
         "Version": "0.1"
     },
     "X-Plasma-APIVersion": "2"

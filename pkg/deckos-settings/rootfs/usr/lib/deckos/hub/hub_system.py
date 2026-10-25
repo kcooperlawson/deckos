@@ -84,7 +84,7 @@ def conf(path):
 
 def deckos_version():
     v = read("/usr/share/deckos/version") or (read(Path(__file__).resolve().parents[7] / "VERSION") if DEMO else "")
-    return f"DecKoOS {v}" if v and v != "rolling" else "DeckOS"
+    return f"DecKoOS {v}" if v and v != "rolling" else "DecKoOS"
 
 
 # ------------------------------------------------------------------ hardware

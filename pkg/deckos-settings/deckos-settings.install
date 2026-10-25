@@ -37,4 +37,11 @@ post_install() {
 
 post_upgrade() {
   _setup  # not --record: the hook compares against the splash from before this upgrade
+  # 0.9.0 renamed DeckOS to DecKoOS: the boot menu's entries carry the old name until GRUB's config
+  # is rewritten. Only the name the installer wrote is changed; the EFI folder (bootloader id) stays.
+  if grep -q '^GRUB_DISTRIBUTOR="DeckOS"$' /etc/default/grub 2>/dev/null; then
+    sed -i 's/^GRUB_DISTRIBUTOR="DeckOS"$/GRUB_DISTRIBUTOR="DecKoOS"/' /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 \
+      || echo "DecKoOS: couldn't rewrite the boot menu; run 'sudo grub-mkconfig -o /boot/grub/grub.cfg'"
+  fi
 }

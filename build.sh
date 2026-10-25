@@ -109,7 +109,7 @@ cp -r /usr/share/archiso/configs/releng "$P"
 
 sed -i -e 's/^iso_name=.*/iso_name="deckos"/' \
        -e 's/^iso_label="ARCH_/iso_label="DECKOS_/' \
-       -e 's|^iso_publisher=.*|iso_publisher="DeckOS"|' \
+       -e 's|^iso_publisher=.*|iso_publisher="DecKoOS"|' \
        -e 's|^iso_application=.*|iso_application="DecKoOS live desktop and installer"|' \
        -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" \
        -e "s|^airootfs_image_tool_options=.*|airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '$SQUASHFS_LEVEL' '-b' '1M')|" \

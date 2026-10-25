@@ -71,7 +71,7 @@ __deckos_sf_debug() {
   [[ -n $kind ]] && __deckos_sf_enabled || return 0
   config=$kind; [[ $kind == home ]] || config=root
   [[ -f /etc/snapper/configs/$config ]] || return 0
-  printf '\e[38;2;76;141;255mDeckOS:\e[0m take a snapshot first, so you can undo this? [Y]es / [n]o, just run it / [c]ancel ' >/dev/tty
+  printf '\e[38;2;76;141;255mDecKoOS:\e[0m take a snapshot first, so you can undo this? [Y]es / [n]o, just run it / [c]ancel ' >/dev/tty
   read -r -n1 answer </dev/tty; printf '\n' >/dev/tty
   case $answer in
     c|C) printf 'Cancelled.\n' >/dev/tty; kill -INT $$; return 0 ;;
@@ -98,9 +98,9 @@ __deckos_sf_prompt() {
     # only DecKoOS Terminal gets it anyway)
     [[ ${TERM_PROGRAM:-} != deckos-terminal ]] || printf '\e]7766;deckos-snapshot=%s:%s\a' "$config" "$n"
     if [[ $config == home ]]; then
-      printf '\e[38;2;76;141;255mDeckOS:\e[0m snapshot #%s is from before that. Undo it: deckos restore %s\n' "$n" "$n"
+      printf '\e[38;2;76;141;255mDecKoOS:\e[0m snapshot #%s is from before that. Undo it: deckos restore %s\n' "$n" "$n"
     else
-      printf '\e[38;2;76;141;255mDeckOS:\e[0m snapshot #%s is from before that. Undo it: sudo deckos undo %s (then restart)\n' "$n" "$n"
+      printf '\e[38;2;76;141;255mDecKoOS:\e[0m snapshot #%s is from before that. Undo it: sudo deckos undo %s (then restart)\n' "$n" "$n"
     fi
   fi
   __deckos_sf_ready=1

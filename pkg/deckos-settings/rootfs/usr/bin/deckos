@@ -370,7 +370,7 @@ session_cmd() {
   esac
   if [[ $ask == --ask ]] && command -v kdialog >/dev/null; then
     local label=Desktop; [[ $target == gaming ]] && label="Gaming Mode"
-    kdialog --title "DeckOS" --yes-label "Switch" --no-label "Cancel" \
+    kdialog --title "DecKoOS" --yes-label "Switch" --no-label "Cancel" \
       --warningyesno "Switch to $label?"$'\n\n'"Open apps will close — save your work first." || exit 0
   fi
   local cover=""
@@ -1275,7 +1275,7 @@ mode_enter() {  # mode_enter GAME: free what the game needs, remember what to pu
   mv "$MODE_STATE.tmp" "$MODE_STATE"
   mode_announce gaming "$game"
   if (( ${#did[@]} )) && command -v notify-send >/dev/null; then
-    timeout 5 notify-send -a "DeckOS" -i deckos-hub "Ready for $game" "$(printf '%s\n' "${did[@]^}")" >/dev/null 2>&1 || true
+    timeout 5 notify-send -a "DecKoOS" -i deckos-hub "Ready for $game" "$(printf '%s\n' "${did[@]^}")" >/dev/null 2>&1 || true
   fi
 }
 

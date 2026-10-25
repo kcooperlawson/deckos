@@ -36,7 +36,7 @@ log=$state/gaming-session.log
 # Keep the previous attempt without unbounded log growth.
 [[ ! -f $log ]] || mv -f "$log" "$log.previous"
 exec >>"$log" 2>&1
-printf '\nDeckOS Gaming Mode: %s\n' "$(date --iso-8601=seconds)"
+printf '\nDecKoOS Gaming Mode: %s\n' "$(date --iso-8601=seconds)"
 started=$(date '+%Y-%m-%d %H:%M:%S')
 
 # Steam's startup movie carries on the logo the desktop's cover showed. A movie the user chose

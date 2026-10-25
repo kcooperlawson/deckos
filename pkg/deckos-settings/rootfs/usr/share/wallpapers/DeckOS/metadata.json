@@ -1,8 +1,8 @@
 {
     "KPlugin": {
-        "Authors": [{ "Name": "DeckOS" }],
+        "Authors": [{ "Name": "DecKoOS" }],
         "Id": "DeckOS",
         "License": "MIT",
-        "Name": "DeckOS"
+        "Name": "DecKoOS"
     }
 }

@@ -218,7 +218,7 @@ def wallpaper_id(theme_id, motif):
 
 def look_and_feel(tid, name, desc, pal, style):
     meta = {"KPackageStructure": "Plasma/LookAndFeel",
-            "KPlugin": {"Authors": [{"Name": "DeckOS"}], "Category": "", "Description": desc, "Id": f"org.deckos.{tid}",
+            "KPlugin": {"Authors": [{"Name": "DecKoOS"}], "Category": "", "Description": desc, "Id": f"org.deckos.{tid}",
                         "License": "MIT", "Name": f"DecKoOS {name}" if not name.startswith("DecKoOS") else name,
                         "Version": "1.0"},
             "X-Plasma-APIVersion": "2"}
@@ -394,7 +394,7 @@ def main():
             wid = wallpaper_id(tid, motif)
             write(ROOT / f"deckos/wallpapers/{wid}.svg", DESIGNS[motif](pal, seed_base * 10 + i))
             write(ROOT / f"wallpapers/{wid}/metadata.json", json.dumps(
-                {"KPlugin": {"Authors": [{"Name": "DeckOS"}], "Id": wid, "License": "MIT",
+                {"KPlugin": {"Authors": [{"Name": "DecKoOS"}], "Id": wid, "License": "MIT",
                              "Name": wallpaper_name(name.split()[0] if tid != "deckos" else "DecKoOS", motif)}}, indent=4) + "\n")
             walls += 1
     # main, back tab, symbol: what the PKGBUILD recolours Papirus' folder blue to, per icon theme
@@ -403,7 +403,7 @@ def main():
         base = ROOT / f"plasma/layout-templates/org.deckos.layout.{key}"
         write(base / "metadata.json", json.dumps(
             {"KPackageStructure": "Plasma/LayoutTemplate",
-             "KPlugin": {"Authors": [{"Name": "DeckOS"}], "Description": desc, "Id": f"org.deckos.layout.{key}",
+             "KPlugin": {"Authors": [{"Name": "DecKoOS"}], "Description": desc, "Id": f"org.deckos.layout.{key}",
                          "License": "MIT", "Name": f"DecKoOS: {name}"},
              "X-Plasma-ContainmentCategories": ["panel"], "X-Plasma-Shell": "org.kde.plasma.desktop"}, indent=4) + "\n")
         write(base / "contents/layout.js", JS_HELPERS + "\n" + js)

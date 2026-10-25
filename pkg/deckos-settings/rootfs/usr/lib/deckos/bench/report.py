@@ -12,7 +12,7 @@ SENSOR_NAMES = {"cpu_busy": ("CPU load", "%"), "cpu_mhz": ("CPU clock", "MHz"), 
                 "gpu_temp": ("GPU temperature", "°C"), "gpu_watts": ("GPU power", "W"),
                 "vram_gb": ("Graphics memory used", "GB"), "ram_gb": ("RAM used", "GB")}
 ENV_NAMES = {"cpu": "CPU", "cores": "Threads", "gpu": "Graphics", "ram_gb": "RAM (GB)", "kernel": "Kernel",
-             "mesa": "Mesa", "deckos": "DeckOS", "scheduler": "CPU scheduler", "power_profile": "Power profile",
+             "mesa": "Mesa", "deckos": "DecKoOS", "scheduler": "CPU scheduler", "power_profile": "Power profile",
              "governor": "CPU governor", "display_fix": "Display fix", "gpu_power_cap_w": "GPU power limit (W)"}
 GROUP_NAMES = {"cpu": "CPU", "memory": "Memory", "disk": "Disk", "gpu": "Graphics", "ai": "Local AI", "game": "Games"}
 

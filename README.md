@@ -6,7 +6,7 @@
 
 Arch Linux · CachyOS-optimised packages · KDE Plasma 6 · Steam Gaming Mode · On-device AI
 
-[Get DeckOS](#get-deckos) · [Install](#install) · [What's different](#why-deckos) · [Known limitations](#known-limitations)
+[Get DecKoOS](#get-deckos) · [Install](#install) · [What's different](#why-deckos) · [Known limitations](#known-limitations)
 
 
 <img src="docs/screenshots/desktop.png" alt="The DecKoOS desktop: taskbar with pinned apps and the performance widget" width="100%">

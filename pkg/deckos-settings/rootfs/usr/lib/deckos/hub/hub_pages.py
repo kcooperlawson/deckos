@@ -1363,13 +1363,13 @@ class AppearancePage(Page):
         grid.setHorizontalSpacing(14)
         grid.setVerticalSpacing(8)
         self.plasma = QComboBox()
-        self.plasma.addItem("DeckOS", "deckos")
+        self.plasma.addItem("DecKoOS", "deckos")
         self.plasma.addItem("Breeze", "default")
         self.plasma.setCurrentIndex(max(0, self.plasma.findData(sysinfo.current_plasma_style())))
         self.plasma.currentIndexChanged.connect(lambda _i: self.apply(
             ["plasma-apply-desktoptheme", self.plasma.currentData()], f"Plasma style: {self.plasma.currentText()}"))
         self.icons = QComboBox()
-        for name, theme in (("DeckOS", "DeckOS"), ("Papirus Dark", "Papirus-Dark"), ("Breeze Dark", "breeze-dark")):
+        for name, theme in (("DecKoOS", "DeckOS"), ("Papirus Dark", "Papirus-Dark"), ("Breeze Dark", "breeze-dark")):
             self.icons.addItem(name, theme)
         self.icons.setCurrentIndex(max(0, self.icons.findData(sysinfo.current_icons())))
         self.icons.currentIndexChanged.connect(lambda _i: self.apply(
@@ -1379,7 +1379,7 @@ class AppearancePage(Page):
         grid.addWidget(label("Icons", "sub", wrap=False), 1, 0)
         grid.addWidget(self.icons, 1, 1)
         self.cursors = QComboBox()
-        for name, theme in (("DeckOS", "DeckOS-cursors"), ("Breeze", "breeze_cursors"), ("Breeze Light", "Breeze_Light")):
+        for name, theme in (("DecKoOS", "DeckOS-cursors"), ("Breeze", "breeze_cursors"), ("Breeze Light", "Breeze_Light")):
             self.cursors.addItem(name, theme)
         self.cursors.setCurrentIndex(max(0, self.cursors.findData(sysinfo.current_cursor())))
         self.cursors.currentIndexChanged.connect(lambda _i: self.apply(

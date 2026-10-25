@@ -71,7 +71,7 @@ package() {
   done
   [[ ${#dirs[@]} -gt 0 ]] || { echo "papirus-icon-theme is needed to build the DecKoOS icons" >&2; return 1; }
   {
-    printf '[Icon Theme]\nName=DeckOS\nComment=DecKoOS app and file icons, with Papirus Dark and folders in the DecKoOS blue\n'
+    printf '[Icon Theme]\nName=DecKoOS\nComment=DecKoOS app and file icons, with Papirus Dark and folders in the DecKoOS blue\n'
     printf 'Inherits=Papirus-Dark,breeze-dark,hicolor\nDirectories=scalable/apps,scalable/mimetypes,%s\n' "$(IFS=,; echo "${dirs[*]}")"
     printf '\n[scalable/apps]\nContext=Applications\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
     printf '\n[scalable/mimetypes]\nContext=MimeTypes\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
@@ -101,7 +101,7 @@ package() {
       cp "$it/$d/"*.svg "$vit/$d/"
       sed -i "s/#4c8dff/$folder/gI; s/#4a5fe0/$back/gI; s/#16234d/$symbol/gI" "$vit/$d/"*.svg
     done
-    sed -e "s/^Name=DeckOS$/Name=DecKoOS $vname/" -e "s/^Comment=.*/Comment=Papirus Dark with $vname folders/" \
+    sed -e "s/^Name=DecKoOS$/Name=DecKoOS $vname/" -e "s/^Comment=.*/Comment=Papirus Dark with $vname folders/" \
       "$it/index.theme" > "$vit/index.theme"
     # the light theme's other icons come from Papirus' light set
     [[ $vid != DeckOS-Paper ]] || sed -i 's/^Inherits=Papirus-Dark,breeze-dark,/Inherits=Papirus,breeze,/' "$vit/index.theme"
