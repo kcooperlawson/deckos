@@ -864,6 +864,8 @@ class SystemPage(Page):
     def build(self):
         self.head_actions.addWidget(button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
                                            icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"))
+        self.head_actions.addWidget(button("System monitor", slot=lambda: QProcess.startDetached("deckos-sysmon", []),
+                                           icon="list", tip="What's running and what it uses (Ctrl+Shift+Esc)"))
         self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
                                            icon="gauge"))
         up = Card("Updates", "Keep DeckOS current", "update")

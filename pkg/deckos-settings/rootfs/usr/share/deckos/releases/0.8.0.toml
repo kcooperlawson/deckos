@@ -5,6 +5,7 @@ name = "Made here"
 tagline = "DeckOS's own taskbar, and more of the desktop built for DeckOS."
 
 fixes = [
+    "DeckOS Hub names your graphics card again (some cards showed as \"Graphics card\").",
 ]
 
 [[highlights]]
@@ -25,3 +26,12 @@ Plasma's System Monitor, once a second."""
 icon = "gauge"
 try = "Add them to your desktop"
 run = ["deckos", "layout", "graphs"]
+
+[[highlights]]
+title = "DeckOS System Monitor"
+text = """What's running and what it uses, one row per app with its processes inside, sorted by processor, \
+memory or disk. End an app that's stuck, or force it to stop. Performance shows the processor (every core), \
+memory, graphics cards, disks and network with a minute of live graphs. Ctrl+Shift+Esc opens it."""
+icon = "gauge"
+try = "Open System Monitor"
+run = ["deckos-sysmon"]

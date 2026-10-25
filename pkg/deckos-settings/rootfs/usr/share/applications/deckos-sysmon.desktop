@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=DeckOS System Monitor
+GenericName=What's running
+Comment=Apps and processes with what they use, and live graphs of the processor, graphics card, memory, disks and network
+Exec=deckos-sysmon
+Icon=deckos-hub
+Type=Application
+Categories=System;Monitor;
+Keywords=task manager;processes;kill;end task;cpu;gpu;memory;ram;usage;performance;slow;monitor;
+X-KDE-Shortcuts=Ctrl+Shift+Esc

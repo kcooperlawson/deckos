@@ -119,14 +119,17 @@ class Meter(QWidget):
 
 class Sparkline(QWidget):
     """The last `points` samples as a line with a soft fill. Values are 0..1; the graph zooms to
-    the recent range (at least `span` tall) so small changes still show."""
+    the recent range (at least `span` tall) so small changes still show, unless `fixed` (0..1 always,
+    for a graph people read levels off)."""
 
     span = 0.15
 
-    def __init__(self, points=60, height=34):
+    def __init__(self, points=60, height=34, fixed=False, color=None):
         super().__init__()
         self.data = deque(maxlen=points)
-        self.setFixedHeight(height)
+        self.fixed, self.color = fixed, color
+        if height:
+            self.setFixedHeight(height)
 
     def push(self, v):
         self.data.append(max(0.0, min(1.0, v)))
@@ -140,9 +143,12 @@ class Sparkline(QWidget):
         w, h = self.width(), self.height() - 2
         step = w / (self.data.maxlen - 1)
         x0 = w - step * (len(self.data) - 1)
-        lo, hi = min(self.data), max(self.data)
-        mid, half = (lo + hi) / 2, max(hi - lo, self.span) / 2 * 1.2
-        lo, hi = max(0.0, mid - half), min(1.0, mid + half)
+        if self.fixed:
+            lo, hi = 0.0, 1.0
+        else:
+            lo, hi = min(self.data), max(self.data)
+            mid, half = (lo + hi) / 2, max(hi - lo, self.span) / 2 * 1.2
+            lo, hi = max(0.0, mid - half), min(1.0, mid + half)
         rng = (hi - lo) or 1
         pts = [QPointF(x0 + i * step, 1 + h * (1 - (v - lo) / rng)) for i, v in enumerate(self.data)]
         line = QPainterPath(pts[0])
@@ -153,14 +159,14 @@ class Sparkline(QWidget):
         fill.lineTo(pts[0].x(), h + 1)
         fill.closeSubpath()
         g = QLinearGradient(0, 0, 0, h)
-        top = QColor(S.P.accent)
+        top = QColor(self.color or S.P.accent)
         top.setAlpha(70)
-        bottom = QColor(S.P.accent)
+        bottom = QColor(self.color or S.P.accent)
         bottom.setAlpha(0)
         g.setColorAt(0, top)
         g.setColorAt(1, bottom)
         p.fillPath(fill, g)
-        pen = QPen(QColor(S.P.accent), 1.6)
+        pen = QPen(QColor(self.color or S.P.accent), 1.6)
         pen.setCapStyle(Qt.RoundCap)
         pen.setJoinStyle(Qt.RoundJoin)
         p.setPen(pen)

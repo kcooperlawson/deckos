@@ -197,6 +197,16 @@ not die: a finished install must never be reported as failed.
   `Hub.terminal`/`privileged`/`write_gaming` and `HubData`, and the Store's `Jobs`/`Installed`: changing
   those changes it too.
 
+## DeckOS System Monitor
+
+`usr/lib/deckos/sysmon/`: `sysmon.py` (no Qt) reads /proc and /sys (`DECKOS_PROC`/`DECKOS_SYS` for tests:
+`tests/test_sysmon.py`) into `Snapshot`s; rates and CPU shares are deltas between samples. Processes are
+grouped by the program they run, named from .desktop files (so Firefox's tab processes stay with Firefox).
+`deckos_sysmon.py` is the window (`deckos-sysmon`, Ctrl+Shift+Esc, `--demo --screenshot DIR`): Processes
+(tree updated in place, numeric sort via `Row.__lt__`; other users' processes end through pkexec kill) and
+Performance (fixed-scale `Sparkline`s). GPU figures are amdgpu-only (`gpu_busy_percent`); other cards are
+left out rather than guessed. pci.ids has comments inside vendor blocks: skip them when scanning.
+
 ## DeckOS Bench
 
 `usr/lib/deckos/bench/` has the plain-Python engine, runners, reports and the PySide6 native app.
