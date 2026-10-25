@@ -1217,7 +1217,7 @@ steam_game_name() {  # steam_game_name APPID: the name from its app manifest, in
   done < <(sed -n 's/^\s*"path"\s*"\(.*\)"/\1/p' "$steam/steamapps/libraryfolders.vdf" 2>/dev/null || true; echo "$steam")
 }
 
-mode_game() {  # the game running now, or nothing: Steam games (reaper), Lutris, Gaming Mode
+mode_game() {  # the game running now as ID<TAB>NAME, or nothing: Steam games (reaper: the App ID), Lutris, Gaming Mode
   local line id name
   # Anchored on the program itself, so a shell or editor whose command line mentions one doesn't count
   line=$(pgrep -a -u "$(id -u)" -f \
@@ -1228,9 +1228,9 @@ mode_game() {  # the game running now, or nothing: Steam games (reaper), Lutris,
       id=${line#*AppId=}; id=${id%% *}
       name=$(steam_game_name "$id")
       [[ -n $name ]] || { [[ $line == */steamapps/common/* ]] && name=${line#*/steamapps/common/} && name=${name%%/*}; }
-      echo "${name:-a Steam game}" ;;
-    *lutris-wrapper*) name=${line#*lutris-wrapper }; echo "${name%% /*}" ;;
-    *) echo "Gaming Mode" ;;
+      printf '%s\t%s\n' "$id" "${name:-a Steam game}" ;;
+    *lutris-wrapper*) name=${line#*lutris-wrapper }; name=${name%% /*}; printf '%s\t%s\n' "$name" "$name" ;;
+    *) printf 'gamescope\tGaming Mode\n' ;;
   esac
 }
 
@@ -1246,10 +1246,15 @@ ollama_url() {
   echo "$h"
 }
 
-mode_enter() {  # mode_enter GAME: free what the game needs, remember what to put back
-  local game=$1 url ps names="" vram=0 ids="" keep did=()
+profile() { python3 "${DECKOS_PROFILES_DIR:-/usr/lib/deckos/profiles}/profiles.py" "$@" 2>/dev/null || true; }
+
+mode_enter() {  # mode_enter GAME [ID]: free what the game needs, remember what to put back
+  local game=$1 gid=${2:-} url ps names="" vram=0 ids="" keep did=() ollama docker
+  # The game's own profile decides first (DecKoOS Hub > Games > Profile), then the workload-mode settings
+  ollama=$( [[ -n $gid ]] && profile get "$gid" ollama ); ollama=${ollama:-$(mode_conf OLLAMA unload)}
+  docker=$( [[ -n $gid ]] && profile get "$gid" docker ); docker=${docker:-$(mode_conf DOCKER pause)}
   url=$(ollama_url)
-  if [[ $(mode_conf OLLAMA unload) == unload ]] && ps=$(curl -fsS -m 3 "$url/api/ps" 2>/dev/null); then
+  if [[ $ollama == unload ]] && ps=$(curl -fsS -m 3 "$url/api/ps" 2>/dev/null); then
     local name size
     while IFS=$'\t' read -r name size; do
       [[ -n $name ]] || continue
@@ -1259,7 +1264,7 @@ mode_enter() {  # mode_enter GAME: free what the game needs, remember what to pu
     [[ -n $names ]] && did+=("unloaded $names from graphics memory ($(awk -v b="$vram" 'BEGIN { printf "%.1f GB", b / 1e9 }'))")
   fi
   # Containers labelled deckos.keep=true (a game server, say) keep running.
-  if [[ $(mode_conf DOCKER pause) == pause ]] && command -v docker >/dev/null \
+  if [[ $docker == pause ]] && command -v docker >/dev/null \
      && ids=$(timeout 5 docker ps -q --filter status=running 2>/dev/null); then
     keep=$(timeout 5 docker ps -q --filter label=deckos.keep=true 2>/dev/null || true)
     ids=$(grep -vxF -f <(echo "$keep") <<<"$ids" | grep . | tr '\n' ' ' || true)
@@ -1278,6 +1283,10 @@ mode_enter() {  # mode_enter GAME: free what the game needs, remember what to pu
     "$game" "$(date +%s)" "$names" "$vram" "$ids" "$baloo" > "$MODE_STATE.tmp"
   mv "$MODE_STATE.tmp" "$MODE_STATE"
   mode_announce gaming "$game"
+  if [[ -n $gid ]]; then
+    local p; p=$(profile apply "$gid" "$game")
+    [[ -n $p ]] && did+=("$p")
+  fi
   if (( ${#did[@]} )) && command -v notify-send >/dev/null; then
     timeout 5 notify-send -a "DecKoOS" -i deckos-hub "Ready for $game" "$(printf '%s\n' "${did[@]^}")" >/dev/null 2>&1 || true
   fi
@@ -1292,19 +1301,21 @@ mode_leave() {  # put back what mode_enter paused (Ollama loads models again on 
   [[ -n $ids ]] && { timeout 20 docker unpause $ids >/dev/null 2>&1 || true; }
   [[ $baloo == 1 ]] && { balooctl6 resume >/dev/null 2>&1 || true; }
   printf 'mode=normal\n' > "$MODE_STATE"
+  profile restore >/dev/null
   mode_announce normal
 }
 
 mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, no polling of anything else)
   [[ $(mode_conf AUTO 1) == 1 ]] || exit 0
-  local game misses=0 gaming=0
+  local game gid line misses=0 gaming=0
   [[ $(sed -n 's/^mode=//p' "$MODE_STATE" 2>/dev/null) == gaming ]] && gaming=1  # a watcher that didn't get to finish
   trap 'mode_leave; exit 0' TERM INT
   while :; do
-    game=$(mode_game)
-    if [[ -n $game ]]; then
+    line=$(mode_game)
+    gid=${line%%$'\t'*} game=${line#*$'\t'}
+    if [[ -n $line ]]; then
       misses=0
-      (( gaming )) || { mode_enter "$game"; gaming=1; pulse game-start "Playing $game" --app "Workload modes"; }
+      (( gaming )) || { mode_enter "$game" "$gid"; gaming=1; pulse game-start "Playing $game" --app "Workload modes"; }
     elif (( gaming )) && (( ++misses >= 2 )); then  # a launcher that restarts the game isn't the end of it
       mode_leave; gaming=0; misses=0
       pulse game-stop "Stopped playing" --app "Workload modes"
@@ -1718,6 +1729,7 @@ case ${1:-} in
   theme) shift; theme_cmd "$@" ;;
   accent) shift; accent_cmd "$@" ;;
   retro) shift; retro_cmd "$@" ;;
+  profile) shift; exec python3 "${DECKOS_PROFILES_DIR:-/usr/lib/deckos/profiles}/profiles.py" "$@" ;;
   do)  # one of DecKoOS's actions (usr/share/deckos/actions.toml); no ID lists them
     shift
     if [[ -z ${1:-} ]]; then exec python3 "${DECKOS_ACTIONS_DIR:-/usr/lib/deckos/actions}/actions.py" list; fi

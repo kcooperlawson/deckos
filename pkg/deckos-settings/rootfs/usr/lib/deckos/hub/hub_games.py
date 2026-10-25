@@ -9,12 +9,18 @@ from pathlib import Path
 
 from PySide6.QtCore import QProcess, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPixmap
-from PySide6.QtWidgets import QComboBox, QFrame, QGridLayout, QLabel, QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFrame, QGridLayout, QHBoxLayout,
+                               QLabel, QLineEdit, QVBoxLayout, QWidget)
 
 import hub_style as S
 import hub_system as sysinfo
 from hub_pages import Page
 from hub_widgets import Empty, button, label
+
+import sys  # noqa: E402
+for _sub in ("profiles", "gamedoctor"):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / _sub))
+import profiles  # noqa: E402
 
 HOME = Path.home()
 STEAM_ROOTS = [HOME / ".local/share/Steam", HOME / ".steam/steam", HOME / ".var/app/com.valvesoftware.Steam/.local/share/Steam"]
@@ -208,7 +214,12 @@ class GameTile(QFrame):
         self.tier.setTextFormat(Qt.RichText)
         self.set_tier(tier)
         v.addWidget(self.tier)
-        v.addWidget(button("Play", "primary", lambda: play(game), icon="play"))
+        has = bool(profiles.load().get(profile_id(game))) if not sysinfo.DEMO else game["name"].startswith("Cyber")
+        prof = button("", slot=lambda: ProfileDialog(self, game).exec(), icon="sliders",
+                      tip="Profile: what this game gets while it runs" + (" (set)" if has else ""))
+        if has:
+            prof.setIcon(S.icon("sliders", S.P.accent, 16))
+        v.addWidget(_row(button("Play", "primary", lambda: play(game), icon="play"), prof))
 
     def set_tier(self, tier):
         if tier:
@@ -216,6 +227,90 @@ class GameTile(QFrame):
                               f"{tier.capitalize()}")
         else:
             self.tier.setText("&nbsp;")
+
+
+def _row(*widgets):
+    w = QWidget()
+    h = QHBoxLayout(w)
+    h.setContentsMargins(0, 0, 0, 0)
+    h.setSpacing(6)
+    for x in widgets:
+        h.addWidget(x, 1 if x is widgets[0] else 0)
+    return w
+
+
+def profile_id(game):
+    """What workload modes know the game by: Steam's App ID, else its name (Lutris)."""
+    return str(game["id"]) if game.get("source") == "Steam" and game.get("id") else game["name"]
+
+
+class ProfileDialog(QDialog):
+    """A game's profile (usr/lib/deckos/profiles): applied when it starts, put back when it stops."""
+
+    CHOICES = {
+        "power": ("Power", [("As usual", ""), ("Performance", "performance"), ("Balanced", "balanced"),
+                            ("Power saver", "power-saver")]),
+        "ollama": ("Local AI models", [("As usual", ""), ("Unload them (frees graphics memory)", "unload"),
+                                       ("Keep them loaded", "keep")]),
+        "docker": ("Docker containers", [("As usual", ""), ("Pause them", "pause"), ("Keep them running", "keep")]),
+    }
+
+    def __init__(self, parent, game):
+        super().__init__(parent)
+        self.game, self.gid = game, profile_id(game)
+        self.setObjectName("root")
+        self.setWindowTitle(f"{game['name']}: profile")
+        self.setMinimumWidth(480)
+        current = profiles.load().get(self.gid, {})
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label(game["name"], "title"))
+        v.addWidget(label("While this game runs. Everything goes back when it stops.", "sub"))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        self.combos = {}
+        for row, (key, (title, opts)) in enumerate(self.CHOICES.items()):
+            box = QComboBox()
+            for text, value in opts:
+                box.addItem(text, value)
+            box.setCurrentIndex(max(0, box.findData(current.get(key, ""))))
+            grid.addWidget(label(title, "sub", wrap=False), row, 0)
+            grid.addWidget(box, row, 1)
+            self.combos[key] = box
+        v.addLayout(grid)
+        self.dnd = QCheckBox("Do not disturb (no notifications while playing)")
+        self.dnd.setChecked(bool(current.get("dnd")))
+        v.addWidget(self.dnd)
+        if game.get("source") == "Steam" and not sysinfo.DEMO:
+            v.addWidget(label(self.steam_side(), "muted"))
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.save)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def steam_side(self):
+        """The rest of what this game gets, set elsewhere: Game Doctor's fixes and Steam's launch options."""
+        bits = []
+        try:
+            import gamedoctor
+            fixes = [gamedoctor.describe_fix(e["fix"], self.gid)[0] for e in gamedoctor.applied(self.gid)]
+            if fixes:
+                bits.append("Game Doctor: " + ", ".join(fixes))
+            import steamfiles
+            opts = steamfiles.launch_options(self.gid)
+            if opts:
+                bits.append(f"Launch options: {opts}")
+        except Exception:  # Steam's files are best effort here
+            pass
+        return "<br>".join(bits) if bits else "No Game Doctor fixes or launch options for this game."
+
+    def save(self):
+        if not sysinfo.DEMO:
+            for key, box in self.combos.items():
+                profiles.set_(self.gid, key, box.currentData(), self.game["name"])
+            profiles.set_(self.gid, "dnd", self.dnd.isChecked(), self.game["name"])
+        self.accept()
 
 
 class GamesPage(Page):
