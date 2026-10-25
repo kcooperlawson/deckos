@@ -114,8 +114,8 @@ package() {
   for s in 16 24 32 48 64 128 256; do
     install -d "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps"
     # 16-24 px take the single-button mark: two circles blur together that small
-    local src=$b/logo.svg; ((s <= 24)) && src=$b/logo-small.svg
-    rsvg-convert -w "$s" -h "$s" "$src" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos.png"
+    local icon=$b/logo.svg; ((s <= 24)) && icon=$b/logo-small.svg
+    rsvg-convert -w "$s" -h "$s" "$icon" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos.png"
   done
   rsvg-convert -w 256 -h 256 "$b/logo.svg" -o "$b/logo-256.png"
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
