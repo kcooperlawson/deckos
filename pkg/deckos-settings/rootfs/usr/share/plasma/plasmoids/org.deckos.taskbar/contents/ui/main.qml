@@ -8,6 +8,8 @@ import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.taskmanager as TaskManager
+import org.kde.plasma.extras as PlasmaExtras
+import org.kde.plasma.plasma5support as P5Support
 
 PlasmoidItem {
     id: deckTasks
@@ -59,6 +61,14 @@ PlasmoidItem {
             Plasmoid.configuration.launchers = launcherList
     }
 
+    // What Plasma's menus call on a task manager to pin an app (used if they ever recognise this one)
+    function addLauncher(url) {
+        deckModel.requestAddLauncher(url);
+    }
+    function hasLauncher(url) {
+        return pinned(url);
+    }
+
     function pinned(url) {
         return deckModel.launcherPosition(url) !== -1;
     }
@@ -67,6 +77,48 @@ PlasmoidItem {
             deckModel.requestRemoveLauncher(url);
         else
             deckModel.requestAddLauncher(url);
+    }
+
+    // Empty taskbar space: right-click to pin an app, or drop one here from the menu or a folder
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.RightButton
+        onClicked: barMenu.openRelative()
+    }
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: drop => {
+            for (const u of drop.urls) {
+                if (String(u).endsWith(".desktop"))
+                    deckModel.requestAddLauncher(u);
+            }
+            drop.accept();
+        }
+    }
+    PlasmaExtras.Menu {
+        id: barMenu
+        visualParent: deckTasks
+        PlasmaExtras.MenuItem {
+            text: "Pin an app…"
+            icon: "list-add"
+            onClicked: picker.connectSource("kdialog --title 'Pin an app' --getopenfilename /usr/share/applications '*.desktop'")
+        }
+        PlasmaExtras.MenuItem {
+            text: Plasmoid.configuration.showLabels ? "Icons only" : "Show window titles"
+            icon: "view-list-text"
+            onClicked: Plasmoid.configuration.showLabels = !Plasmoid.configuration.showLabels
+        }
+    }
+    P5Support.DataSource {
+        id: picker
+        engine: "executable"
+        onNewData: (source, data) => {
+            const path = String(data.stdout || "").trim();
+            if (path.endsWith(".desktop"))
+                deckModel.requestAddLauncher("file://" + path);
+            disconnectSource(source);
+        }
     }
 
     Grid {

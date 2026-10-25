@@ -16,7 +16,9 @@ Item {
     readonly property bool launcherOnly: model.IsLauncher === true && !model.IsStartup
     readonly property bool active: model.IsActive === true
     readonly property int windows: model.IsGroupParent ? model.ChildCount : (launcherOnly ? 0 : 1)
-    readonly property string url: model.LauncherUrlWithoutIcon ? String(model.LauncherUrlWithoutIcon) : ""
+    // Some apps (Electron ones like Claude) report no launcher: their app id names the .desktop file instead
+    readonly property string url: model.LauncherUrlWithoutIcon ? String(model.LauncherUrlWithoutIcon)
+        : model.AppId ? "applications:" + model.AppId + (String(model.AppId).endsWith(".desktop") ? "" : ".desktop") : ""
     readonly property int childCount: model.IsGroupParent ? model.ChildCount : 0
     readonly property int row: index
     readonly property bool dragging: mouse.drag.active || mouse.reordering
@@ -48,7 +50,14 @@ Item {
             return;
         }
         if (!active) {
-            tasksModel.requestActivate(modelIndex());
+            // Activating a group itself does nothing: bring up the window used last
+            let last = 0, when = -1;
+            for (let i = 0; i < childCount; ++i) {
+                const t = tasksModel.data(tasksModel.makeModelIndex(row, i), TaskManager.AbstractTasksModel.LastActivated);
+                const ms = t ? new Date(t).getTime() : 0;
+                if (ms > when) { when = ms; last = i; }
+            }
+            tasksModel.requestActivate(tasksModel.makeModelIndex(row, last));
             return;
         }
         // Several windows and one of them in front: bring up the next one
