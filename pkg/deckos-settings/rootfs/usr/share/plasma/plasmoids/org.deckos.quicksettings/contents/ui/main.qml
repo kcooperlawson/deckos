@@ -9,21 +9,23 @@ PlasmoidItem {
     id: root
 
     Backend {
-        id: backend
+        // Not "backend": inside the representations below that name is their own property, so
+        // "backend: backend" bound it to itself and every DeckOS control got undefined
+        id: deckBackend
         expanded: root.expanded
     }
 
     toolTipMainText: "Quick settings"
-    toolTipSubText: backend.updatesText || "Wi-Fi, sound, brightness, Gaming Mode and more"
+    toolTipSubText: deckBackend.updatesText || "Wi-Fi, sound, brightness, Gaming Mode and more"
     preferredRepresentation: compactRepresentation
 
     compactRepresentation: CompactRepresentation {
-        backend: backend
+        backend: deckBackend
         expanded: root.expanded
         vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
         onActivated: open => root.expanded = open
     }
     fullRepresentation: FullRepresentation {
-        backend: backend
+        backend: deckBackend
     }
 }
