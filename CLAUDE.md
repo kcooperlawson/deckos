@@ -8,7 +8,7 @@ and develops DeckOS from DeckOS. User-facing docs are in README.md; read it befo
 **Positioning:** tuned for the reference machine, but the repo and UI must read as installable by
 anyone. Personal specifics (drive letters, BIOS paths, that PC's partition) go in
 docs/reference-machine.md, not the README or UI text. Be honest about limitations (README's "Known
-limitations") rather than implying support that isn't there (untested NVIDIA/Intel, whole-disk installs).
+limitations") rather than implying support that isn't there (untested NVIDIA/Intel, erasing a whole used disk).
 
 ## Layout
 
@@ -113,6 +113,9 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
 ## Installer safety (don't regress)
 
 The installer only erases the partition the user picks; the EFI partition is shared, never formatted.
+Free space and empty disks (`list_free`, `make_partition`) only ever add: one partition in a gap that
+`sfdisk -F` still reports free, or GPT + a new EFI partition + DeckOS on a disk with no table and no file
+system. Nothing existing is deleted, moved or resized; tests/vm/partition_steps.py checks that on real disks.
 `list_targets` blocks BitLocker/LUKS/RAID/mounted partitions; a partition that won't mount (so it can't
 be checked for Windows) is refused. `CHANGED` (nothing → partition → boot) drives the failure message;
 keep it accurate. Optional steps (drives, Flathub, themes, home snapshots, final unmount) must warn,
@@ -148,7 +151,9 @@ not die: a finished install must never be reported as failed.
 - **Install test (CI)**: the `install-test` job runs `tests/install-test.sh` on every ISO the workflow
   builds: QEMU + OVMF (KVM), a blank disk with an EFI partition and an empty one, the live kernel booted
   with `deckos.autoinstall`, then a first boot of the installed system until graphical.target with SDDM.
-  Serial consoles are in the log and the `install-test-logs` artifact; runs locally on Arch too
+  Two layouts (`DECKOS_TEST_LAYOUT`, a matrix in CI): `partition` (an EFI partition + an empty one) and
+  `empty` (a blank 80 GB disk the installer takes whole).
+  Serial consoles are in the log and the `install-test-logs-LAYOUT` artifacts; runs locally on Arch too
   (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
   `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a
   disk with the serial `deckos-autotest`. Keep all four checks; the target is never taken from the answers.
@@ -204,6 +209,6 @@ llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Wo
 ## Open work
 
 An NVIDIA and an Intel test install (the chwd
-path has only been checked with `bash -n`/shellcheck); free-space
-and whole-disk install modes; why NTFS drives weren't detected on
+path has only been checked with `bash -n`/shellcheck); the free-space and empty-disk modes through
+the whole installer on CI (their partitioning is checked in a VM); why NTFS drives weren't detected on
 the reference machine (likely BitLocker); a `LICENSE` file.

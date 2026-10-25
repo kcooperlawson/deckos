@@ -113,6 +113,11 @@ def run(cmd, timeout=10):
         return ""
 
 
+def free_disk(target):
+    """The disk of a free-space target (free:DISK:START:SECTORS or free:DISK:disk), else ""."""
+    return target.split(":")[1] if target and target.startswith("free:") else ""
+
+
 def table(name):
     """Rows of installer/NAME.tsv (the same file deckos-install reads), without comments."""
     try:
@@ -282,8 +287,9 @@ class Installer(QWidget):
 
     def build_disk(self):
         p = Page("Where should DeckOS go?",
-                 "Pick the partition to install on. Only that partition is erased; the EFI boot partition is "
-                 "shared with Windows and never formatted.")
+                 "Pick a partition, free space or an empty disk. Only a partition you pick is erased; in free "
+                 "space or on an empty disk DeckOS makes a new partition and erases nothing. The EFI boot "
+                 "partition is shared with Windows and never formatted.")
         self.disk_area = QScrollArea()
         self.disk_area.setWidgetResizable(True)
         self.disk_box = QWidget()
@@ -477,10 +483,12 @@ class Installer(QWidget):
         i = self.stack.currentIndex()
         self.back_btn.setVisible(i in (WHERE, YOU, SOFTWARE, CONFIRM))
         self.next_btn.setVisible(i != INSTALL)
-        self.next_btn.setObjectName("danger" if i == CONFIRM else "primary")
+        self.next_btn.setObjectName("danger" if i == CONFIRM and not free_disk(self.target() or "") else "primary")
         self.next_btn.style().unpolish(self.next_btn)
         self.next_btn.style().polish(self.next_btn)
-        text = {CONFIRM: "Erase and install", DONE: "Restart now" if self.finished_ok else "Close"}.get(i, "Next")
+        erases = not free_disk(self.target() or "")
+        text = {CONFIRM: "Erase and install" if erases else "Install",
+                DONE: "Restart now" if self.finished_ok else "Close"}.get(i, "Next")
         self.next_btn.setText(text)
         ok = {WELCOME: self.net_ok, WHERE: self.target() is not None, YOU: self.validate_you(),
               CONFIRM: self.agree.isChecked()}
@@ -578,15 +586,19 @@ class Installer(QWidget):
             out = ("/dev/nvme1n1p3\t232 GB\tntfs\tNVME\tSamsung SSD 970 EVO Plus 250GB\t1\t\n"
                    "/dev/sda2\t1000 GB\tntfs\tBIG\tST1000DM010\t0\t\n"
                    "/dev/nvme0n1p3\t500 GB\tBitLocker\t-\tWD_BLACK SN850X\t0\tBitLocker-encrypted, so DeckOS cannot "
-                   "check what is on it. Turn BitLocker off or delete this partition in Windows first.\n")
+                   "check what is on it. Turn BitLocker off or delete this partition in Windows first.\n"
+                   "free:/dev/sdb:disk\t500 GB\tfree\tEmpty disk\tCrucial MX500\t0\t\n"
+                   "free:/dev/nvme0n1:976773120:629145600\t322 GB\tfree\tFree space\tWD_BLACK SN850X\t0\t\n"
+                   "free:/dev/sda:1953519616:41943040\t21 GB\tfree\tFree space\tST1000DM010\t0\tOnly 21 GB free "
+                   "here: DeckOS needs 64 GB.\n")
         else:
             out = run([INSTALLER, "--list-targets"], timeout=20)
         # path, size, fs, label, model, default, and why it's blocked (empty = usable)
         rows = [(line.split("\t") + [""])[:7] for line in out.splitlines() if line.count("\t") >= 5]
         if not any(not why for *_, why in rows):
-            self.disk_list.addWidget(label("No partitions found that DeckOS can use. In Windows, shrink a drive in "
-                                           "Disk Management to make free space, create a partition there, then "
-                                           "press Refresh.", "sub"))
+            self.disk_list.addWidget(label("No space found that DeckOS can use. In Windows, shrink a drive in Disk "
+                                           "Management to leave 64 GB or more of unallocated space, then press "
+                                           "Refresh.", "sub"))
         default = None
         for path, size, fs, lab, model, is_default, why in rows:
             card = QFrame()
@@ -603,11 +615,16 @@ class Installer(QWidget):
             info = QVBoxLayout()
             info.setSpacing(2)
             name = html.escape(lab if lab not in ("-", "") else "No label")
-            info.addWidget(label(f"<b>{name}</b> &nbsp;<span style='color:{SUBTEXT}'>{path} · {size} · "
-                                 f"{'empty' if fs == 'empty' else fs}</span>"))
+            where = free_disk(path) or path
+            info.addWidget(label(f"<b>{name}</b> &nbsp;<span style='color:{SUBTEXT}'>{where} · {size}"
+                                 f"{'' if fs == 'free' else ' · ' + ('empty' if fs == 'empty' else fs)}</span>"))
             note = html.escape(model)
             if why:
                 note += f" · <span style='color:{DANGER}'>Can't install here: {html.escape(why)}</span>"
+            elif path.endswith(":disk"):
+                note += f" · <span style='color:{SUCCESS}'>Nothing on it: DeckOS gets the whole disk, with its own boot partition</span>"
+            elif fs == "free":
+                note += f" · <span style='color:{SUCCESS}'>DeckOS adds its own partition here; nothing is erased</span>"
             elif fs == "ntfs":
                 note += f" · <span style='color:{WARNING}'>Windows-format partition: everything on it will be erased</span>"
             elif fs != "empty":
@@ -666,11 +683,23 @@ class Installer(QWidget):
 
     def fill_summary(self):
         t = self.target()
+        disk = free_disk(t)
+        if not disk:
+            what = (f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>{t}</b> → "
+                    f"DeckOS (btrfs with snapshots)</td></tr>"
+                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and "
+                    f"Windows</td></tr>")
+        elif t.endswith(":disk"):
+            what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td><b>{disk}</b>, empty → a boot partition "
+                    f"and DeckOS (btrfs with snapshots)</td></tr>"
+                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>On {disk}, so it starts without any other disk</td></tr>")
+        else:
+            what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td>A partition in the free space on <b>{disk}</b> "
+                    f"→ DeckOS (btrfs with snapshots); nothing is erased</td></tr>"
+                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and "
+                    f"Windows</td></tr>")
         self.summary_text.setText(
-            f"<table cellspacing=6>"
-            f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>{t}</b> → DeckOS "
-            f"(btrfs with snapshots)</td></tr>"
-            f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and Windows</td></tr>"
+            f"<table cellspacing=6>" + what +
             f"<tr><td style='color:{SUBTEXT}'>Keep</td><td>Every other partition and drive</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Account</td><td>{html.escape(self.user.text())} @ {html.escape(self.host.text())}</td></tr>"
             f"<tr><td style='color:{SUBTEXT}'>Time zone</td><td>{self.tz.currentText()}</td></tr>"
@@ -681,7 +710,9 @@ class Installer(QWidget):
             "CachyOS kernel, KDE Plasma desktop, Firefox, graphics drivers and snapshots"
             + (f", plus {', '.join(extras)}." if extras else ". Nothing extra: add software later with Discover or pacman.")
             + " Your NTFS drives are mounted as they are. It takes 20–60 minutes depending on your internet.")
-        self.agree.setText(f"I understand everything on {t} will be erased")
+        self.agree.setText(f"I understand everything on {t} will be erased" if not disk else
+                           f"I understand DeckOS will use the empty disk {disk}" if t.endswith(":disk") else
+                           f"I understand DeckOS will add a partition on {disk}")
         self.agree.setChecked(False)
 
     # ------------------------------------------------------------- install

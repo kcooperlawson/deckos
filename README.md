@@ -79,7 +79,7 @@ an isolated creation runtime. See [usage, setup and current limits](docs/work.md
 | **CPU** | Any 64-bit x86 CPU. Packages are optimised for whatever level your CPU supports |
 | **GPU** | **AMD Radeon** recommended: it's what DeckOS is tested on. NVIDIA and Intel drivers are picked by CachyOS's hardware detection (`chwd`) but are untested so far ([limitations](#known-limitations)). Local AI needs a Radeon RX 7000 / 9000 (ROCm) or an NVIDIA card (CUDA) |
 | **Firmware** | UEFI with **Secure Boot off** |
-| **Disk** | A partition of **64 GB or more** (150 GB+ if games go on it too), created beforehand, plus an existing EFI partition (any PC with Windows has one) |
+| **Disk** | **64 GB or more** (150 GB+ if games go on it too): unallocated space, an empty disk, or a spare partition |
 | **Memory** | 8 GB minimum, 16 GB recommended |
 | **Internet** | Wired or Wi-Fi during the install: packages are downloaded fresh |
 
@@ -111,9 +111,9 @@ boot menu (usually F11, F12 or F8 right after power-on) and pick the UEFI entry.
 
 If DeckOS is going next to Windows, do this in Windows first:
 
-1. **Make room.** Open *Disk Management*, right-click a drive with free space › *Shrink Volume*, then
-   create a new partition in the free space (any format: the installer erases it). Skip this if you
-   already have a spare partition.
+1. **Make room.** Open *Disk Management*, right-click a drive with free space › *Shrink Volume*, and leave
+   the space unallocated: the installer makes DeckOS's partition there itself. (A spare partition works
+   too, and so does an empty second disk.)
 2. **Turn off Fast Startup.** Open Terminal **as Administrator** and run `powercfg /h off`. Fast Startup
    leaves NTFS drives half-hibernated, and Linux will only mount them read-only.
 3. **BitLocker.** Linux can't read BitLocker drives, and the installer won't offer a BitLocker partition
@@ -126,16 +126,18 @@ The USB boots straight into the **DeckOS desktop** (logged in as `liveuser`, no 
 first (Wi-Fi, your monitors, DeckOS Hub), then double-click **Install DeckOS**:
 
 1. **Welcome** checks UEFI mode, Secure Boot and internet. Connect to Wi-Fi from here if needed.
-2. **Where** lists the partitions DeckOS can go on. Only the one you pick is erased. Partitions it can't
-   safely check (BitLocker, encrypted, in use, part of a RAID) are shown greyed out with the reason,
-   and a partition that holds Windows is always refused.
+2. **Where** lists the partitions, free space and empty disks DeckOS can go on. A partition you pick is
+   erased; in free space (64 GB or more, on a GPT disk) or on an empty disk DeckOS makes its own partition
+   and erases nothing, and an empty disk gets its own boot partition too. Nothing existing is ever moved
+   or resized. Partitions it can't safely check (BitLocker, encrypted, in use, part of a RAID) are shown
+   greyed out with the reason, and a partition that holds Windows is always refused.
 3. **You**: username, computer name, language, keyboard layout, password and time zone. The live
    desktop switches to your keyboard layout right away, so the password you type is the one that works
    at login.
 4. **Software**: tick Gaming, Local AI and/or Development. The desktop, kernel, graphics drivers and
    snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 or NVIDIA card is
    found.
-5. **Confirm**: read the summary, tick the box, *Erase and install*.
+5. **Confirm**: read the summary, tick the box, *Erase and install* (just *Install* in free space or on an empty disk).
 6. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
 Behind the scenes it installs Arch from mirrors in your time zone's country, switches to the CachyOS repos for your CPU, installs the desktop and
@@ -364,8 +366,9 @@ DeckOS is early, and these are on the list:
   NVIDIA and Intel tuning. The FSR 4 upgrade needs a Radeon RX 9000. Local AI on Intel graphics runs on
   the CPU.
 - **The live USB** is set up for AMD graphics; on NVIDIA it runs on nouveau, which is enough to install.
-- **Disk layout:** DeckOS installs onto one existing partition and reuses an existing EFI partition.
-  Installing to free space or an empty disk isn't supported yet.
+- **Disk layout:** DeckOS installs onto a partition, unallocated space on a GPT disk, or an empty disk. It
+  doesn't erase or repartition a whole disk that has something on it, or resize partitions: make room in
+  Windows first.
 - **Secure Boot** has to stay off.
 
 Bug reports are welcome. Please attach the output of `deckos doctor` and, for install problems,

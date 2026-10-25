@@ -15,6 +15,8 @@ INSTALL_MIN=${INSTALL_MIN:-100}
 BOOT_MIN=${BOOT_MIN:-15}
 # Optional software groups to install (comma-separated); none keeps the test quick.
 GROUPS_=${DECKOS_TEST_GROUPS:-}
+# partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DeckOS gets whole.
+LAYOUT=${DECKOS_TEST_LAYOUT:-partition}
 
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
 summary() { [[ -n ${GITHUB_STEP_SUMMARY:-} ]] && printf '%s\n' "$*" >> "$GITHUB_STEP_SUMMARY"; return 0; }
@@ -47,19 +49,22 @@ cp "$VARS" "$W/vars.fd"  # the installed system's boot entry lands here, for the
 # ------------------------------------------------------------------ blank disk
 # An EFI partition and an empty partition for DeckOS: the installer installs onto a partition, next
 # to whatever shares the disk, and reuses the EFI partition it finds.
-step "Blank 40 GB disk: EFI partition + empty partition"
 rm -f "$W/disk.img"
-truncate -s 40G "$W/disk.img"
-sfdisk -q "$W/disk.img" <<'EOF'
-label: gpt
-size=300MiB, type=U, name="EFI system partition"
-type=L, name="DeckOS"
-EOF
-read -r esp_start esp_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[0] | "\(.start) \(.size)"')
-# Cluster size explicitly: mkfs.fat sizes it for the whole 40 GB image, which leaves this partition too
-# few clusters for FAT32. Linux mounts that anyway; UEFI firmware counts clusters and can't read it.
-mkfs.fat -F 32 -S 512 -s 1 -n EFI --offset "$esp_start" "$W/disk.img" $((esp_sectors / 2)) >/dev/null
-sfdisk -l "$W/disk.img"
+if [[ $LAYOUT == empty ]]; then
+  # 80 GB (sparse): the installer offers empty disks of 64 GB and up
+  step "Blank 80 GB disk, no partitions: DeckOS gets the whole disk"
+  truncate -s 80G "$W/disk.img"
+else
+  truncate -s 40G "$W/disk.img"
+  step "Blank 40 GB disk: EFI partition + empty partition"
+  printf 'label: gpt\nsize=300MiB, type=U, name="EFI system partition"\ntype=L, name="DeckOS"\n' \
+    | sfdisk -q "$W/disk.img"
+  read -r esp_start esp_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[0] | "\(.start) \(.size)"')
+  # Cluster size explicitly: mkfs.fat sizes it for the whole 40 GB image, which leaves this partition too
+  # few clusters for FAT32. Linux mounts that anyway; UEFI firmware counts clusters and can't read it.
+  mkfs.fat -F 32 -S 512 -s 1 -n EFI --offset "$esp_start" "$W/disk.img" $((esp_sectors / 2)) >/dev/null
+  sfdisk -l "$W/disk.img"
+fi
 
 # ------------------------------------------------------------------ live kernel
 # Booting the ISO's kernel directly is how the test adds deckos.autoinstall: no boot menu entry has it.

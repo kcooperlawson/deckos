@@ -25,6 +25,17 @@ PROMPT = '@@P@@ '
 ANSI = re.compile(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]')
 
 
+def extra_disks():
+    """VM_EXTRA_DISKS=a.img,b.img: more disks for the guest, with the serials a and b
+    (/dev/disk/by-id/virtio-a). They are written to: pass copies."""
+    args = []
+    for path in filter(None, os.environ.get('VM_EXTRA_DISKS', '').split(',')):
+        name = os.path.splitext(os.path.basename(path))[0]
+        args += ['-drive', f'file={os.path.abspath(path)},format=raw,if=none,id={name}',
+                 '-device', f'virtio-blk-pci,drive={name},serial={name}']
+    return args
+
+
 class VM:
     def __init__(self, disk, vars_fd, serve_dir):
         self.work = tempfile.mkdtemp(prefix='deckos-vm-')
@@ -45,7 +56,8 @@ class VM:
             'qemu-system-x86_64', '-machine', 'q35', '-accel', 'kvm', '-cpu', 'host', '-smp', '4', '-m', '4G',
             '-display', 'none', '-monitor', 'none', '-serial', f'unix:{self.sock_path},server=on,wait=on',
             '-drive', f'if=pflash,format=raw,readonly=on,file={code}', '-drive', f'if=pflash,format=raw,file={self.vars}',
-            '-drive', f'file={self.disk},format=raw,if=virtio,snapshot=on', '-nic', 'user,model=virtio-net-pci'],
+            '-drive', f'file={self.disk},format=raw,if=virtio,snapshot=on', '-nic', 'user,model=virtio-net-pci',
+            *extra_disks()],
             env=dict(os.environ, TMPDIR=os.environ.get('VM_TMP', '/var/tmp')))
         for _ in range(100):
             if os.path.exists(self.sock_path):

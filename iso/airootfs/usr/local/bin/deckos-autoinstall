@@ -22,9 +22,14 @@ modprobe qemu_fw_cfg 2>/dev/null || true
 udevadm settle || true
 [[ -b $DISK ]] || refuse "no test disk ($DISK)"
 disk=$(readlink -f "$DISK")
-# The harness makes partition 1 the EFI partition and leaves 2 empty for DeckOS.
-target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
-[[ -b $target ]] || refuse "the test disk $disk has no second partition"
+# The harness makes partition 1 the EFI partition and leaves 2 empty for DeckOS, or leaves the whole
+# disk blank (DECKOS_TEST_LAYOUT=empty): then DeckOS gets the empty disk, as list_free offers it.
+if [[ $(lsblk -lno TYPE "$disk" | grep -c part || true) == 0 ]]; then
+  target="free:$disk:disk"
+else
+  target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
+  [[ -b $target ]] || refuse "the test disk $disk has no second partition"
+fi
 
 # Only DECKOS_* answers are read, as data: nothing from fw_cfg is ever run.
 pwfile=$(mktemp)
@@ -50,6 +55,9 @@ if [[ $rc -ne 0 ]]; then
   poweroff
   exit 0
 fi
+
+# The empty disk's DeckOS partition is its second one (after the new EFI partition).
+[[ $target != free:* ]] || target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
 
 # Test-only changes to the new system, so its boot shows on the serial console: no quiet/splash,
 # console on ttyS0 (which also gives a login prompt there), and a line once graphical.target is up.

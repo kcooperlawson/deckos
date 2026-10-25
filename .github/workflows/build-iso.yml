@@ -144,9 +144,15 @@ jobs:
   install-test:
     # Installs the new ISO onto a blank virtual disk in QEMU (OVMF, KVM), boots the installed system
     # and waits for its login screen. Fails with both serial consoles in the log and as an artifact.
+    # Two disks: a partition next to an EFI partition (the usual Windows PC), and an empty disk
+    # DeckOS gets whole (its own EFI partition).
     needs: iso
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: [partition, empty]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -165,10 +171,12 @@ jobs:
           ls -l /dev/kvm || true
       - name: Install and first boot
         run: bash tests/install-test.sh out/*.iso install-test
+        env:
+          DECKOS_TEST_LAYOUT: ${{ matrix.layout }}
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: install-test-logs
+          name: install-test-logs-${{ matrix.layout }}
           path: install-test/*.log
           retention-days: 14
 
