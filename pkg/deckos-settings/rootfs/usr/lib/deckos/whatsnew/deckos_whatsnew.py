@@ -36,15 +36,26 @@ def vkey(version):
     return tuple(int(x) for x in version.split(".") if x.isdigit())
 
 
+def installed():
+    """This PC's DeckOS version, or "" (a checkout, the demo: every release counts)."""
+    try:
+        return Path("/usr/share/deckos/version").read_text().strip() if not DEMO else ""
+    except OSError:
+        return ""
+
+
 def releases():
-    """Every release's notes, newest first."""
-    out = []
+    """Every release's notes up to the installed version, newest first. Notes are written as the
+    features land, so a dev-install of a checkout carries the next release's before it exists."""
+    out, now = [], installed()
     for f in SHARE.glob("*.toml"):
         try:
             notes = tomllib.loads(f.read_text())
         except (OSError, tomllib.TOMLDecodeError):
             continue
         notes.setdefault("version", f.stem)
+        if now and vkey(now) and vkey(notes["version"]) > vkey(now):
+            continue
         out.append(notes)
     return sorted(out, key=lambda n: vkey(n["version"]), reverse=True)
 

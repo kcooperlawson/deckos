@@ -1,0 +1,40 @@
+# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.6.0"
+name = "Safe to try"
+tagline = "Undo an update that broke something, a snapshot before big deletes, and room for DeckOS on any spare disk."
+
+fixes = [
+    "DeckOS Assistant and DeckOS Work ask before more commands that change things (env, rg --pre, git branch -D, find -fprint and others ran without asking), and refuse more disasters outright.",
+    "DeckOS Work only reads the public web, and asks before opening an address it made up itself.",
+    "A fresh install no longer says \"deckos: missing required signature\" on every pacman command until the first update.",
+    "The installer refuses an EFI partition the PC's firmware can't read, before changing anything.",
+    "deckos dev-install won't replace a newer DeckOS with an older checkout by accident.",
+]
+
+[[highlights]]
+title = "Undo an update"
+text = """Something broke after updating? DeckOS Hub lists your recent updates, each with an Undo button. \
+After a restart the system is back as it was before that update: apps, drivers and the kernel. Your \
+files and settings in your home folder stay as they are, and the system you left is kept until you \
+say it can go."""
+icon = "undo"
+try = "See your updates"
+run = ["deckos-hub", "--page", "system"]
+
+[[highlights]]
+title = "Snapshot first"
+text = """Before a big delete, like a whole folder in your home or a git repository, or system files with \
+sudo, the terminal asks whether to take a snapshot first. If it was a mistake, `deckos restore` puts \
+the files back straight away. Everyday deletes like a build folder don't ask, and it works in any \
+terminal."""
+icon = "snapshot"
+try = "Open a terminal"
+run = ["deckos-terminal"]
+
+[[highlights]]
+title = "Install anywhere there's room"
+text = """The installer now also offers unallocated space and empty disks, not just a partition you made \
+beforehand. In free space it adds DeckOS's own partition and erases nothing; an empty disk gets its own \
+boot partition, so it starts without any other disk. Nothing you have is ever moved or resized."""
+icon = "drives"
