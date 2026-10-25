@@ -1,5 +1,5 @@
-"""Renders Steam's startup movie for Gaming Mode: the login splash (wordmark, thumbstick cap turning
-once, as in Splash.qml) fading in from and out to the slate, so the switch from the desktop's cover
+"""Renders Steam's startup movie for Gaming Mode: the login splash (wordmark, its oO eyes glancing
+and blinking, as in Splash.qml) fading in from and out to the slate, so the switch from the desktop's cover
 (usr/lib/deckos/transition) carries straight on. Needs PySide6 and ffmpeg; the output is committed:
     python assets/boot_movie.py
 """
@@ -15,12 +15,17 @@ ROOT = Path(__file__).resolve().parents[1] / "pkg/deckos-settings/rootfs/usr/sha
 OUT = ROOT / "deckos-startup.webm"
 W, H, FPS = 1920, 1080, 30
 SECONDS = 3.0
-TURN = 2.5  # Splash.qml: 360 → 0 every 2.5 s
 FADE_IN, FADE_OUT = 0.35, 0.45
 BG = QColor("#0F1115")
+EYES = (("eye-stick.svg", 625.5, 117.4), ("eye-buttons.svg", 766.3, 97.0))  # assets/generate.py's eye centres
 
 
-def frame(word, stick, t):
+def ease(a, b, x):
+    k = min(1.0, max(0.0, (x - a) / (b - a)))
+    return k * k * (3 - 2 * k)
+
+
+def frame(word, eyes, t):
     img = QImage(W, H, QImage.Format_RGB888)
     img.fill(BG)
     p = QPainter(img)
@@ -30,22 +35,30 @@ def frame(word, stick, t):
     s = min(W * 0.4, 1008) / 1008  # same scale as Splash.qml
     wx, wy = (W - 1008 * s) / 2, (H - 194 * s) / 2
     word.render(p, QRectF(wx, wy, 1008 * s, 194 * s))
-    p.translate(wx + 625.5 * s, wy + 117.4 * s)
-    p.rotate(-360 * (t % TURN) / TURN)
-    stick.render(p, QRectF(-54.5 * s, -54.5 * s, 109 * s, 109 * s))
+    # Splash.qml's glance (left, then right); its blink comes at 3.2 s, past this 3 s movie, so the movie
+    # blinks while looking right instead
+    look = -ease(0.6, 0.9, t) + 2 * ease(1.5, 1.9, t) - ease(2.5, 2.8, t)
+    lid = 1 - 0.92 * (ease(2.1, 2.22, t) - ease(2.22, 2.34, t))
+    for eye, (_, cx, cy) in zip(eyes, EYES):
+        p.save()
+        p.translate(wx + (cx + 5 * look) * s, wy + (cy + 2 * abs(look)) * s)
+        p.scale(1, lid)
+        eye.render(p, QRectF(-50 * s, -50 * s, 100 * s, 100 * s))
+        p.restore()
     p.end()
     return img
 
 
 def main():
     app = QGuiApplication(sys.argv)  # noqa: F841 (QPainter on images needs the app for fonts)
-    word, stick = QSvgRenderer(str(ROOT / "wordmark-bare.svg")), QSvgRenderer(str(ROOT / "stick.svg"))
+    word = QSvgRenderer(str(ROOT / "wordmark-bare.svg"))
+    eyes = [QSvgRenderer(str(ROOT / name)) for name, _, _ in EYES]
     ff = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
                            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-c:v", "libvpx-vp9", "-b:v", "0",
                            "-crf", "32", "-row-mt", "1", "-pix_fmt", "yuv420p", "-an", str(OUT)],
                           stdin=subprocess.PIPE)
     for i in range(int(SECONDS * FPS)):
-        img = frame(word, stick, i / FPS)
+        img = frame(word, eyes, i / FPS)
         ff.stdin.write(bytes(img.constBits())[:W * H * 3] if img.bytesPerLine() == W * 3 else
                        b"".join(bytes(img.constScanLine(y))[:W * 3] for y in range(H)))
     ff.stdin.close()

@@ -1,5 +1,5 @@
 // Covers the desktop while deckos session switches to Gaming Mode: the login splash (wordmark and
-// circling thumbstick cap) fades in and keeps turning until SDDM ends this session, so the switch
+// its oO eyes glancing and blinking) fades in and keeps going until SDDM ends this session, so the switch
 // reads as one animation (this, then Steam's startup movie of the same logo) instead of a flash
 // of the closing desktop. qml6 Transition.qml -- --text=CAPTION [--splash=URL]
 import QtQuick

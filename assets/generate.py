@@ -232,24 +232,38 @@ STICK_GRID = (36, 64, 36)    # small o: centre x offset, centre y, radius (grid 
 BUTTONS_GRID = (50, 50, 50)  # big O
 
 
-def stick_mark(cx, cy, r, ring, cap, hole, w):
-    """The thumbstick o: ring, dark well, raised cap tilted up."""
+def stick_pupil(cx, cy, r, cap):
+    """The thumbstick's raised cap, tilted up. On the splash screens it is one of the two eyes' pupils."""
+    return f'<ellipse cx="{cx + r * 0.06:.2f}" cy="{cy - r * 0.16:.2f}" rx="{r * 0.36:.2f}" ry="{r * 0.25:.2f}" fill="{cap}"/>'
+
+
+def buttons_pupil(cx, cy, r, btn, g=0.30, br=0.15):
+    """The four face buttons in a diamond: the other eye's pupil."""
+    return "".join(f'<circle cx="{cx + dx * r * g:.2f}" cy="{cy + dy * r * g:.2f}" r="{r * br:.2f}" fill="{btn}"/>'
+                   for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)))
+
+
+def _well(cx, cy, r, ring, hole, w):
     return (f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w / 2:.2f}" fill="none" stroke="{ring}" stroke-width="{w:.2f}"/>'
-            f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w:.2f}" fill="{hole}"/>'
-            f'<ellipse cx="{cx + r * 0.06:.2f}" cy="{cy - r * 0.16:.2f}" rx="{r * 0.36:.2f}" ry="{r * 0.25:.2f}" fill="{cap}"/>')
+            f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w:.2f}" fill="{hole}"/>')
+
+
+def stick_mark(cx, cy, r, ring, cap, hole, w):
+    """The thumbstick o: ring, dark well, raised cap."""
+    return _well(cx, cy, r, ring, hole, w) + stick_pupil(cx, cy, r, cap)
 
 
 def buttons_mark(cx, cy, r, ring, btn, hole, w, g=0.30, br=0.15):
     """The face-button O: ring, dark well, four buttons in a diamond."""
-    return (f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w / 2:.2f}" fill="none" stroke="{ring}" stroke-width="{w:.2f}"/>'
-            f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w:.2f}" fill="{hole}"/>'
-            + "".join(f'<circle cx="{cx + dx * r * g:.2f}" cy="{cy + dy * r * g:.2f}" r="{r * br:.2f}" fill="{btn}"/>'
-                      for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))))
+    return _well(cx, cy, r, ring, hole, w) + buttons_pupil(cx, cy, r, btn, g, br)
+
+
+EYES = {}  # the two eyes' (cx, cy, r) in the last wordmark drawn: "o" (stick) and "O" (buttons)
 
 
 def wordmark(x, baseline, size, text=TEXT, stick_fill="url(#deckos-grad)", with_stick=True, glow=None, hole=BG):
     """'DecK' + stick-o + buttons-O + 'S', cap height = size * 0.73. Returns (svg, width, stick(cx, cy, r)).
-    with_stick=False leaves the stick out (the boot splash spins it separately)."""
+    with_stick=False leaves both pupils out: the splash screens draw them as eyes that glance and blink."""
     k = size * 0.73 / 100
     top = baseline - 100 * k
     gx, letters = 0, []
@@ -268,9 +282,11 @@ def wordmark(x, baseline, size, text=TEXT, stick_fill="url(#deckos-grad)", with_
     pos = lambda u, v: (x + u * k, top + v * k)
     stick_c = (*pos(sx, sy), sr * k)
     parts = [f'<path fill="{text}" fill-rule="evenodd" transform="translate({x:.2f},{top:.2f}) scale({k:.5f})" d="{" ".join(letters)}"/>']
-    marks = buttons_mark(*pos(bx, by), brr * k, stick_fill, stick_fill, hole, ring_w * k)
+    buttons_c = (*pos(bx, by), brr * k)
+    EYES.update(o=stick_c, O=buttons_c)
+    marks = _well(*stick_c, stick_fill, hole, ring_w * k) + _well(*buttons_c, stick_fill, hole, ring_w * k)
     if with_stick:
-        marks = stick_mark(*stick_c, stick_fill, stick_fill, hole, ring_w * k) + marks
+        marks += stick_pupil(*stick_c, stick_fill) + buttons_pupil(*buttons_c, stick_fill)
     if glow:  # soft halo under the controller (filter id supplied by the caller's defs)
         parts.insert(0, f'<g opacity="0.7" filter="url(#{glow})">{marks}</g>')
     parts.append(marks)
@@ -316,12 +332,12 @@ def wordmark_file(with_stick=True, size=200):
     return svg(round(w + pad * 2), round(h), frag, wordmark_defs(stick, w)), stick, (w + pad * 2, h)
 
 
-def stick_file(r_px, weight=None):
-    """The thumbstick o alone, centred, for the boot splash to spin (the cap then circles the well)."""
-    size = r_px * 2 + 4
-    c = size / 2
-    defs = gradient("deckos-grad", units="userSpaceOnUse", x1=f"{c - r_px}", y1=f"{c - r_px * 2}", x2=f"{c + r_px * 5}", y2=f"{c + r_px}")
-    return svg(round(size), round(size), stick_mark(c, c, r_px, "url(#deckos-grad)", "url(#deckos-grad)", BG, GRID_T * 0.62 * r_px / 36), defs)
+def eye_file(which, eyes, defs):
+    """One eye's pupil from wordmark-bare.svg's last draw, in a box 100 wordmark units wide centred on its well,
+    with the wordmark's gradient: placed at the well centre, it lines up with the bare wordmark."""
+    cx, cy, r = eyes[which]
+    pupil = stick_pupil(cx, cy, r, "url(#deckos-grad)") if which == "o" else buttons_pupil(cx, cy, r, "url(#deckos-grad)")
+    return svg(100, 100, pupil, defs, vb=f"{cx - 50:.2f} {cy - 50:.2f} 100 100")
 
 
 def backdrop(w, h, glow_a=(0.18, 0.92), glow_b=(0.86, 0.12)):
@@ -514,12 +530,15 @@ def main():
     (OUT / "grub").mkdir(exist_ok=True)
     wm, wm_stick, wm_size = wordmark_file()
     wm_bare, _, _ = wordmark_file(with_stick=False)
+    eyes = dict(EYES)  # later wordmarks (GRUB, installer) redraw EYES at other sizes
+    eye_defs = wordmark_defs(eyes["o"], 0)
     files = {
         "logo.svg": icon(),
         "logo-small.svg": icon_small(),
         "wordmark.svg": wm,
         "wordmark-bare.svg": wm_bare,
-        "stick.svg": stick_file(wm_stick[2]),
+        "eye-stick.svg": eye_file("o", eyes, eye_defs),
+        "eye-buttons.svg": eye_file("O", eyes, eye_defs),
         "wallpaper.svg": wallpaper(),
         "grub-background.svg": grub_background(),
         "installer-welcome.svg": installer_welcome(),
@@ -532,8 +551,8 @@ def main():
     for name, data in files.items():
         (OUT / name).write_text(data, encoding="utf-8", newline="\n")
         print("wrote", name)
-    print(f"stick centre in wordmark.svg (for deckos.script): ({wm_stick[0]:.1f}, {wm_stick[1]:.1f}) "
-          f"r={wm_stick[2]:.1f} of ({wm_size[0]:.0f}, {wm_size[1]:.0f})")
+    print(f"eye centres in wordmark.svg (for Splash.qml, deckos.script, boot_movie.py): "
+          f"o ({eyes['o'][0]:.1f}, {eyes['o'][1]:.1f}), O ({eyes['O'][0]:.1f}, {eyes['O'][1]:.1f}) of ({wm_size[0]:.0f}, {wm_size[1]:.0f})")
 
     # Preview sheet for eyeballing (not committed).
     show = [("wordmark.svg", 420), ("logo.svg", 160), ("wallpaper.svg", 1200),
