@@ -105,6 +105,8 @@ def pci_name(vendor, device):
     try:
         with open("/usr/share/hwdata/pci.ids", encoding="utf-8", errors="replace") as f:
             for line in f:
+                if line.startswith("#") or not line.strip():
+                    continue  # comments sit inside vendor blocks too
                 if not line.startswith("\t"):
                     in_vendor = line.startswith(vendor + "  ")
                 elif in_vendor and line.startswith(f"\t{device}  "):
