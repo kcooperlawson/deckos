@@ -200,7 +200,9 @@ not die: a finished install must never be reported as failed.
 `CONTRIBUTING.md` is the contributor guide; `bash tests/check.sh [lint|tests|generated]` is the single list of
 checks, and CI's lint and unit-test jobs call it (add new scripts to its `BASH_SCRIPTS`, not to the workflow).
 Workflows default to read-only tokens; only `plan` and `publish` write, and only tags publish. `.github/CODEOWNERS`
-names the maintainer on everything, with the installer, root and packaging paths called out.
+names the maintainer on everything, with the installer, root and packaging paths called out. DeckOS Builder's
+Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), opens Claude Code to review one
+(review only: never merge, approve or push), and merges only after the checks pass and the maintainer confirms.
 
 ## Gotchas already hit
 

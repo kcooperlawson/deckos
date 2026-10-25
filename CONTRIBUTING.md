@@ -8,8 +8,9 @@ and most of them are checked for you.
 
 1. You open a pull request. CI runs every check on it (below). Pull requests can't use the signing key,
    publish packages or build release ISOs: those only run for the maintainer's version tags.
-2. The maintainer reviews it (every file has an owner in `.github/CODEOWNERS`) and merges it when the
-   checks pass.
+2. It waits in the maintainer's review queue (DeckOS Builder's Contributions card), with its checks and any
+   files that need extra care flagged. It's read, often with an AI review alongside, and merged only once
+   the checks pass and the maintainer approves it. Nothing merges on its own.
 3. A release tag puts it on the **testing** channel first, which the maintainer's own PC runs.
 4. Only after that does the maintainer promote the release to **stable**, where installs start. Nothing
    reaches stable without having run on testing.

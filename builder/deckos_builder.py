@@ -45,6 +45,29 @@ ARTIFACT = "deckos-iso"
 APP_WORKFLOWS = (("deckos-files.yml", "DeckOS Files", "folder"), ("deckos-terminal.yml", "DeckOS Terminal", "terminal"),
                  ("deckos-editor.yml", "DeckOS Editor", "rename"))
 RELEASES = REPO_DIR / "pkg/deckos-settings/rootfs/usr/share/deckos/releases"
+# Paths CONTRIBUTING.md calls out (installer, root, packaging): a contribution touching them is flagged
+CAREFUL = re.compile(r"^(installer/|build\.sh$|iso/|\.github/|pkg/deckos-installer/|pkg/[^/]+/PKGBUILD$|pkg/[^/]+/[^/]+\.install$|"
+                     r"pkg/deckos-settings/rootfs/(etc/sudoers\.d/|usr/share/polkit-1/|usr/share/pacman/|"
+                     r"usr/lib/deckos/(session-switch|gaming-session)$))")
+PR_FIELDS = ("number,title,author,url,isDraft,createdAt,additions,deletions,files,statusCheckRollup,reviewDecision,"
+             "mergeable,headRefName")
+
+
+def checks_state(pr):
+    """'passed', 'running', 'failed' or 'none' from a pull request's check runs."""
+    runs = pr.get("statusCheckRollup") or []
+    if not runs:
+        return "none"
+    states = [(r.get("conclusion") or r.get("state") or r.get("status") or "").upper() for r in runs]
+    if any(x in ("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED") for x in states):
+        return "failed"
+    if any(x in ("", "PENDING", "QUEUED", "IN_PROGRESS", "EXPECTED", "WAITING") for x in states):
+        return "running"
+    return "passed"
+
+
+def careful_files(pr):
+    return [f["path"] for f in pr.get("files") or [] if CAREFUL.match(f["path"])]
 IS_WINDOWS = platform.system() == "Windows"
 CAN_BUILD_LOCAL = IS_WINDOWS or shutil.which("pacman") is not None or Path("/etc/arch-release").exists()
 NO_WINDOW = 0x08000000 if IS_WINDOWS else 0  # CREATE_NO_WINDOW: no console flashes on Windows
@@ -402,6 +425,7 @@ class Builder(QWidget):
         self.runs, self.jobs, self.current, self.busy = [], [], None, False
         self.assets, self.stable, self.local = None, None, {}
         self.app_runs = {}  # workflow file -> its newest run (or None)
+        self.prs = []  # open pull requests: contributions waiting for review
         self.checks_proc = None
         self._tasks = set()
         self.typical = self.settings.value("typical_iso_seconds", 1800, type=int)
@@ -439,6 +463,7 @@ class Builder(QWidget):
         cols.addWidget(left_scroll, 5)
         right = QVBoxLayout()
         right.setSpacing(14)
+        right.addWidget(self.contrib_card(), 3)
         right.addWidget(self.history_card(), 3)
         right.addWidget(self.repo_card(), 2)
         cols.addLayout(right, 6)
@@ -531,6 +556,124 @@ class Builder(QWidget):
         scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
         c.body.addWidget(scroll, 1)
         return c
+
+    def contrib_card(self):
+        c = Card("Contributions", "Pull requests waiting for you", "user")
+        c.actions.addWidget(button("All", slot=lambda: webbrowser.open(f"https://github.com/{self.repo}/pulls"),
+                                   icon="external", tip="Every pull request on GitHub"))
+        holder = QWidget()
+        self.contrib_box = QVBoxLayout(holder)
+        self.contrib_box.setSizeConstraint(QVBoxLayout.SetMinimumSize)
+        self.contrib_box.setContentsMargins(0, 0, 0, 0)
+        self.contrib_box.setSpacing(8)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(holder)
+        scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
+        c.body.addWidget(scroll, 1)
+        return c
+
+    def render_contribs(self):
+        while self.contrib_box.count():
+            item = self.contrib_box.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        if not self.prs:
+            self.contrib_box.addWidget(label("Nothing waiting. When someone opens a pull request it shows up here, "
+                                             "and nothing merges until you approve it.", "sub"))
+            self.contrib_box.addStretch(1)
+            return
+        for pr in self.prs:
+            state = checks_state(pr)
+            careful = careful_files(pr)
+            color = {"passed": SUCCESS, "running": ACCENT, "failed": DANGER}.get(state, MUTED)
+            box = QFrame()
+            box.setObjectName("card")
+            box.setAttribute(Qt.WA_StyledBackground, True)
+            v = QVBoxLayout(box)
+            v.setContentsMargins(12, 10, 12, 10)
+            v.setSpacing(4)
+            who = (pr.get("author") or {}).get("login", "someone")
+            # One line each: wrapping labels report no height, and the scroll area squashed the rows
+            v.addWidget(label(f"<b>#{pr['number']} {pr['title'][:80]}</b>" + (" <i>(draft)</i>" if pr.get("isDraft") else ""),
+                              None, wrap=False))
+            files = pr.get("files") or []
+            v.addWidget(label(f"by {who} · {len(files)} file(s), +{pr.get('additions', 0)} −{pr.get('deletions', 0)} · "
+                              f"{fmt_ago(parse_ts(pr['createdAt']))} · "
+                              f"<span style='color:{color}'>checks {state}</span>", "sub", wrap=False))
+            if careful:
+                shown = ", ".join(careful[:4]) + (f" and {len(careful) - 4} more" if len(careful) > 4 else "")
+                v.addWidget(label(f"<span style='color:{WARNING}'>Needs extra care: {shown}</span>", "sub", wrap=False))
+            n = pr["number"]
+            mergeable = state == "passed" and not pr.get("isDraft") and pr.get("mergeable") != "CONFLICTING"
+            merge = button("Approve and merge…", "primary", lambda _=False, p=pr: self.merge_pr(p), icon="check",
+                           tip="Only once the checks pass and you've read the change")
+            merge.setEnabled(mergeable)
+            if not mergeable:
+                merge.setToolTip({"failed": "Its checks failed", "running": "Its checks are still running",
+                                  "none": "No checks have run on it yet"}.get(state, "It's a draft, or it conflicts with main"))
+            v.addWidget(row(button("Changes", slot=lambda _=False, u=pr["url"]: webbrowser.open(u + "/files"),
+                                   icon="details", tip="Read the diff on GitHub"),
+                            button("Review with Claude", slot=lambda _=False, p=n: self.claude_review(p), icon="ai",
+                                   tip="Opens Claude Code in a terminal to review this pull request with you"),
+                            merge,
+                            button("Close…", slot=lambda _=False, p=pr: self.close_pr(p), icon="close")))
+            self.contrib_box.addWidget(box)
+        self.contrib_box.addStretch(1)
+
+    def claude_review(self, number):
+        prompt = (f"Review pull request #{number} in {self.repo} with me before I decide whether to merge it. Read it "
+                  f"with `gh pr view {number} --repo {self.repo}` and `gh pr diff {number} --repo {self.repo}`. Check it "
+                  "against CONTRIBUTING.md and CLAUDE.md, especially the parts that need extra care (installer, root, "
+                  "packaging), look for anything that could break a DeckOS PC or sneak something in, and tell me what "
+                  "you'd change. Don't merge, approve, comment on or push to it.")
+        claude = shutil.which("claude") or str(Path.home() / ".local/bin/claude")
+        if IS_WINDOWS:
+            subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", claude, prompt], cwd=REPO_DIR, creationflags=NO_WINDOW)
+        else:
+            term = next((t for t in ("deckos-terminal", "konsole") if shutil.which(t)), None)
+            if not term:
+                self.say("No terminal found to run Claude Code in.")
+                return
+            QProcess.startDetached(term, ["--workdir", str(REPO_DIR), "-e", claude, prompt])
+        self.say(f"Claude Code is reviewing #{number} in a terminal")
+
+    def merge_pr(self, pr):
+        n, careful = pr["number"], careful_files(pr)
+        text = (f"Merge #{n} \"{pr['title']}\" into main?\n\nIt reaches DeckOS PCs only when you next release, and "
+                "stable only when you promote that release.")
+        if careful:
+            text += f"\n\nIt changes parts that need extra care:\n" + "\n".join(f"  {f}" for f in careful)
+        if QMessageBox.question(self, "Approve and merge?", text) != QMessageBox.Yes:
+            return
+        repo = self.repo
+
+        def work(_):
+            # GitHub doesn't let you approve your own pull request: that one just merges
+            gh("pr", "review", str(n), "--repo", repo, "--approve", check=False)
+            gh("pr", "merge", str(n), "--repo", repo, "--squash", "--delete-branch")
+
+        def done(_, err):
+            if err:
+                self.say(f"#{n} didn't merge: {err}")
+                return
+            self.say(f"Merged #{n}. Pull main to have it here; it goes out with the next release.")
+            self.toast.show_message(f"Merged #{n}", "ok")
+            QTimer.singleShot(3000, self.refresh)
+
+        self.bg(work, done)
+
+    def close_pr(self, pr):
+        n = pr["number"]
+        if QMessageBox.question(self, "Close without merging?", f"Close #{n} \"{pr['title']}\" without merging it? "
+                                "Say why on GitHub, so its author knows.") != QMessageBox.Yes:
+            return
+        repo = self.repo
+        self.bg(lambda _: gh("pr", "close", str(n), "--repo", repo),
+                lambda _, err: (self.say(f"Closed #{n}" if not err else f"#{n}: {err}"),
+                                webbrowser.open(pr["url"]) if not err else None, QTimer.singleShot(2000, self.refresh)))
 
     def apps_card(self):
         c = Card("Apps", "DeckOS Files, Terminal and Editor builds", "grid")
@@ -866,7 +1009,11 @@ class Builder(QWidget):
                     apps[wf] = next(iter(gh_json(f"repos/{repo}/actions/workflows/{wf}/runs?per_page=1")["workflow_runs"]), None)
                 except RuntimeError:
                     apps[wf] = None  # the workflow isn't on GitHub yet
-            return runs, cur, jobs, typical, (assets, stable), local_state(), known, apps
+            try:
+                prs = json.loads(gh("pr", "list", "--repo", repo, "--state", "open", "--json", PR_FIELDS, "--limit", "30"))
+            except (RuntimeError, ValueError):
+                prs = []
+            return runs, cur, jobs, typical, (assets, stable), local_state(), known, apps, prs
 
         def done(res, err):
             self.busy = False
@@ -875,7 +1022,8 @@ class Builder(QWidget):
                 self.timer.start(60000)
                 return
             prev, prev_jobs = self.current, self.jobs
-            self.runs, self.current, self.jobs, typical, (self.assets, self.stable), self.local, self.iso_runs, self.app_runs = res
+            (self.runs, self.current, self.jobs, typical, (self.assets, self.stable), self.local, self.iso_runs,
+             self.app_runs, self.prs) = res
             # The update goes live ~35 minutes before the ISO is done: say so the moment it does.
             if prev and self.current and prev["id"] == self.current["id"]:
                 was, now = phases(prev, prev_jobs)[0][1], phases(self.current, self.jobs)[0][1]
@@ -893,6 +1041,7 @@ class Builder(QWidget):
             self.render_history()
             self.render_repo()
             self.render_apps()
+            self.render_contribs()
             testing = self.testing_version()
             self.promote_btn.setEnabled(bool(testing) and testing != self.stable)
             self.promote_btn.setToolTip(f"Move {testing} from testing to stable" if testing and testing != self.stable
