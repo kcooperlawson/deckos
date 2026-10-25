@@ -318,14 +318,15 @@ while a game runs a chip in the corner says what workload modes freed for it.
 | Ctrl+Shift+T / Ctrl+Shift+W | new tab in the same folder / close the pane (the tab, when it's the last one) |
 | Ctrl+Shift+D / Ctrl+Shift+E | split right / split down; Alt+arrows move between the panes |
 | Ctrl+PgUp/PgDn, Alt+1…9 | switch tabs |
-| Ctrl+Shift+C / V / F | copy / paste / find |
+| Ctrl+C / Ctrl+V | copy (when text is selected; otherwise Ctrl+C stops the program, as always) / paste |
+| Ctrl+Shift+C / V / F | copy / paste / find; right-click has them too, plus Open link and Ask DeckOS Assistant |
 | Ctrl+Shift+A | ask DeckOS Assistant about the selected text (an error, a command) |
 | Ctrl+= / Ctrl+- / Ctrl+0 | bigger / smaller / normal text |
 
 **Snapshot first:** before a big delete (`rm -rf ~/Documents`, a whole git repository, `sudo rm -r` of
 system files), the shell asks whether to take a snapshot first, in any terminal. Afterwards it says how
 to undo it: `deckos restore N` puts the files back straight away; a system delete goes back with
-`sudo deckos undo N` and a restart. `rm -rf build/` and other everyday deletes don't ask.
+`sudo deckos undo N` and a restart. In DeckOS Terminal an Undo bar under the pane does either for you. `rm -rf build/` and other everyday deletes don't ask.
 `deckos snapshot-first off` turns it off.
 
 Konsole stays installed for anyone who prefers it (System Settings › Default Applications › Terminal).

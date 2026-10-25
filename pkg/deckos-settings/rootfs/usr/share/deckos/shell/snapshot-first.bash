@@ -94,6 +94,9 @@ __deckos_sf_prompt() {
     __deckos_sf_pending=
     snapper -c "$config" create --type post --pre-number "$n" --cleanup-algorithm number \
       --description "$__deckos_sf_line" --userdata deckos=snapshot-first >/dev/null 2>&1 || true
+    # DeckOS Terminal shows an Undo bar for this (other terminals ignore an OSC they don't know, but
+    # only DeckOS Terminal gets it anyway)
+    [[ ${TERM_PROGRAM:-} != deckos-terminal ]] || printf '\e]7766;deckos-snapshot=%s:%s\a' "$config" "$n"
     if [[ $config == home ]]; then
       printf '\e[38;2;76;141;255mDeckOS:\e[0m snapshot #%s is from before that. Undo it: deckos restore %s\n' "$n" "$n"
     else

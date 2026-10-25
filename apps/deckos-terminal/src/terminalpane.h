@@ -3,10 +3,12 @@
 #pragma once
 
 #include "project.h"
+#include "snapshotbar.h"
 
 #include <QFrame>
 #include <QStringList>
 
+class QMenu;
 class QTermWidget;
 
 class TerminalPane : public QFrame
@@ -27,6 +29,8 @@ public:
     void zoom(int step);  // +1, -1, 0 (back to the default size)
     void focusTerminal();
     void setHold(bool hold) { m_hold = hold; }  // --hold: keep the output after the command ends
+    void askAssistant();  // DeckOS Assistant about the selection (an error, a command), or just the chat box
+    QMenu *contextMenu(const QPoint &pos);  // right-click: copy, paste, links, find, ask the Assistant
 
 Q_SIGNALS:
     void infoChanged();
@@ -36,9 +40,12 @@ Q_SIGNALS:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;  // Ctrl+C / Ctrl+V on the display
 
 private:
     QTermWidget *m_term;
+    SnapshotBar *m_snapBar;
+    SnapshotMarker m_marker;
     ProjectInfo m_info;
     bool m_active = false;
     int m_zoom = 0;

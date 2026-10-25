@@ -33,7 +33,11 @@ jobs:
           mkdir -p -m 700 /tmp/xdg
           timeout 240 dbus-run-session -- deckos-terminal --demo --screenshot "$PWD/screenshots" 2>&1 | tee screenshots.log
           ls -l screenshots
-          test "$(ls screenshots/*.png | wc -l)" -ge 1
+          test "$(ls screenshots/*.png | wc -l)" -ge 2
+      - name: Copy, paste and the Undo bar (offscreen, real window and bash)
+        run: |
+          su builder -c "cmake -S ~/src/apps/deckos-terminal -B ~/keys -DDECKOS_TERMINAL_TESTS=ON && cmake --build ~/keys -j4 --target keys_test"
+          su builder -c "mkdir -p -m 700 /tmp/xdg-builder && cd ~ && XDG_RUNTIME_DIR=/tmp/xdg-builder QT_QPA_PLATFORM=offscreen timeout 120 dbus-run-session -- ~/keys/keys_test"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

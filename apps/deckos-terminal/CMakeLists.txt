@@ -34,6 +34,7 @@ add_executable(deckos-terminal
   src/tabpage.cpp
   src/modewatch.cpp
   src/mainwindow.cpp
+  src/snapshotbar.cpp
   ${FILES_SRC}/style.cpp
 )
 target_include_directories(deckos-terminal PRIVATE ${FILES_SRC})
@@ -55,3 +56,17 @@ install(TARGETS deckos-terminal RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES data/org.deckos.terminal.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES data/deckos-terminal.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES data/DeckOS.colorscheme DESTINATION ${CMAKE_INSTALL_DATADIR}/deckos-terminal/color-schemes)
+
+# Offscreen checks of copy, paste and the Undo bar through the real window (not built by the PKGBUILD).
+option(DECKOS_TERMINAL_TESTS "Build the DeckOS Terminal tests" OFF)
+if(DECKOS_TERMINAL_TESTS)
+  find_package(Qt6 REQUIRED COMPONENTS Test)
+  add_executable(keys_test tests/keys_test.cpp
+    src/project.cpp src/terminalpane.cpp src/tabpage.cpp src/modewatch.cpp src/mainwindow.cpp
+    src/snapshotbar.cpp ${FILES_SRC}/style.cpp)
+  target_include_directories(keys_test PRIVATE src ${FILES_SRC})
+  get_target_property(_defs deckos-terminal COMPILE_DEFINITIONS)
+  target_compile_definitions(keys_test PRIVATE ${_defs})
+  get_target_property(_libs deckos-terminal LINK_LIBRARIES)
+  target_link_libraries(keys_test PRIVATE ${_libs} Qt6::Test)
+endif()

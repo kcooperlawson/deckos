@@ -104,7 +104,18 @@ void runDemo(MainWindow *w, ModeWatch *modes, const QString &root, const QString
             QDir().mkpath(out);
             w->grab().save(out + QStringLiteral("/1-project-split.png"));
             qInfo("deckos-terminal screenshot: 1-project-split.png");
-            QApplication::exit(0);  // not quit(): that asks the window, which asks about the running build
+            // Snapshot first's Undo bar, from the marker the shell sends after a snapshotted delete
+            TerminalPane *pane = project->activePane();  // the build; the other pane is at its prompt
+            for (TerminalPane *p : project->panes())
+                if (p != project->activePane())
+                    pane = p;
+            // only the marker: the demo runs a real shell, so it never runs anything that changes files
+            type(pane, QStringLiteral("clear; printf '\\033]7766;deckos-snapshot=home:16\\007'\n"));
+            QTimer::singleShot(900, w, [=] {
+                w->grab().save(out + QStringLiteral("/2-snapshot-undo.png"));
+                qInfo("deckos-terminal screenshot: 2-snapshot-undo.png");
+                QApplication::exit(0);  // not quit(): that asks the window, which asks about the running build
+            });
         });
     });
 }

@@ -247,12 +247,10 @@ void MainWindow::addShortcuts()
     addShortcut(ctrlShift | Qt::Key_F, [this] { if (pane()) pane()->term()->toggleShowSearchBar(); });
     // DeckOS Assistant about the selection (an error, a command), or just the chat box
     addShortcut(ctrlShift | Qt::Key_A, [this] {
-        QStringList args;
-        if (TerminalPane *p = pane(); p && !p->term()->selectedText().trimmed().isEmpty())
-            args << QStringLiteral("--ask")
-                 << QStringLiteral("Explain this from my terminal (in %1), and fix it if something's wrong:\n%2")
-                        .arg(p->currentDir(), p->term()->selectedText().trimmed().left(4000));
-        QProcess::startDetached(QStringLiteral("deckos-assistant"), args);
+        if (pane())
+            pane()->askAssistant();
+        else
+            QProcess::startDetached(QStringLiteral("deckos-assistant"), {});
     });
     addShortcut(Qt::CTRL | Qt::Key_Equal, [this] { if (pane()) pane()->zoom(1); });
     addShortcut(Qt::CTRL | Qt::Key_Plus, [this] { if (pane()) pane()->zoom(1); });

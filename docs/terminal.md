@@ -26,7 +26,7 @@ bookmarks and the Claude pane (next, below).
 |---|---|---|
 | Tabs | Ctrl+Shift+T new tab in the current folder, Ctrl+Shift+W close, Ctrl+PgUp/PgDn or Ctrl+Tab to switch, Alt+1…9 to jump, middle-click closes, drag to reorder. A tab is named after its project and branch (`deckos ⎇ main`), or its folder, plus the running command (`cargo build`) | `QTabBar` |
 | Splits | Ctrl+Shift+D splits right, Ctrl+Shift+E splits down, Alt+arrows move between panes, the active pane has an accent outline; closing the last pane closes the tab | nested `QSplitter` |
-| Terminal | Copy/paste Ctrl+Shift+C/V, Ctrl+Shift+F find, Ctrl+= / Ctrl+- / Ctrl+0 zoom, links open with a click, 20,000 lines of scrollback, bell flashes the tab | `QTermWidget` |
+| Terminal | Copy/paste Ctrl+Shift+C/V, and Ctrl+C (with a selection; ^C without) / Ctrl+V, through an event filter on the display; a right-click menu (Copy, Paste, link actions, Find, Ask DeckOS Assistant); Ctrl+Shift+F find, Ctrl+= / Ctrl+- / Ctrl+0 zoom, links open with a click, 20,000 lines of scrollback, bell flashes the tab | `QTermWidget` |
 | Project awareness | The shell's working folder (`/proc/PID/cwd`), its git root and branch (`.git/HEAD`, read directly: no `git` process), the foreground command (`/proc/PID/comm`). Checked when the shell's title changes and every 2 s for the visible tab only | `/proc`, `QFileInfo` |
 | Workload modes | A strip in the window's corner while a game runs ("Playing Cyberpunk 2077 · 9.1 GB freed"), updated the moment the mode changes | `org.deckos.Mode.Changed` on the session bus, `$XDG_RUNTIME_DIR/deckos-mode` |
 | Integration | `deckos-terminal --workdir DIR` / `-e CMD` (what `KTerminalLauncherJob`, DeckOS Files' Shift+F4 and Plasma's "Open terminal here" call), one process for every window | `KDBusService` |
@@ -53,8 +53,11 @@ than the mode to keep.
   (sourced from `/etc/bash.bashrc`) asks before `rm -r` of a big folder in /home (home itself, a folder
   right inside it, a git repository) or `sudo rm -r` of system files, takes a snapper pre/post pair,
   and prints the undo: `deckos restore N` (files, no restart) or `sudo deckos undo N` (system, restart).
-  Works in any terminal. pacman isn't covered here: snap-pac snapshots it already. Next for the
-  terminal itself: show that hint as a bar with an Undo button (the shell can send it as an OSC).
+  Works in any terminal. pacman isn't covered here: snap-pac snapshots it already. In DeckOS Terminal
+  (`TERM_PROGRAM=deckos-terminal`) the shell also sends `ESC ]7766;deckos-snapshot=home:N BEL`, which
+  the emulation ignores; `SnapshotMarker` finds it in `receivedData` (markers split across reads too)
+  and `SnapshotBar` shows Undo under the pane: `deckos restore N`, or `pkexec deckos undo N` after a
+  confirmation and then Restart now.
 - **Claude pane:** Claude Code in a split that sees the tab's folder; "Explain this error" sends the
   last command's output.
 - **Build mode:** the foreground command tells workload modes a build is running in a tab, so it can
