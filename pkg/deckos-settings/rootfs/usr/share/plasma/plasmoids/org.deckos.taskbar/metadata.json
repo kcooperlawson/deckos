@@ -1,0 +1,23 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Windows and Tasks",
+        "Description": "DeckOS's taskbar: pinned apps and open windows in the DeckOS look",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.taskbar",
+        "License": "MIT",
+        "Name": "DeckOS Taskbar",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.multitasking"
+    ]
+}

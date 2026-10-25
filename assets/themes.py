@@ -248,9 +248,10 @@ function deckosMenu(panel) {{
     menu.writeConfig("icon", "deckos");
 }}
 function deckosTasks(panel, labels) {{
-    var tasks = panel.addWidget(labels ? "org.kde.plasma.taskmanager" : "org.kde.plasma.icontasks");
+    var tasks = panel.addWidget("org.deckos.taskbar");
     tasks.currentConfigGroup = ["General"];
     tasks.writeConfig("launchers", {json.dumps(LAUNCHERS)});
+    tasks.writeConfig("showLabels", labels ? "true" : "false");
 }}
 function deckosTray(panel) {{
     panel.addWidget("org.deckos.quicksettings");

@@ -1,0 +1,18 @@
+# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.8.0"
+name = "Made here"
+tagline = "DeckOS's own taskbar, and more of the desktop built for DeckOS."
+
+fixes = [
+]
+
+[[highlights]]
+title = "DeckOS Taskbar"
+text = """A taskbar made for DeckOS: your pinned apps and open windows in the DeckOS look, with the accent \
+glow under the app you're using and a dot for each one that's open. Click an app with several windows to \
+go through them, middle-click for a new window, drag to reorder, and right-click to pin or close. New \
+desktops get it; to switch yours, pick a desktop layout in DeckOS Hub."""
+icon = "panel-right"
+try = "Pick a desktop layout"
+run = ["deckos-hub", "--page", "appearance"]

@@ -24,7 +24,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   (`usr/share/plasma/plasmoids/org.deckos.menu/`) on Plasma's kicker models and KRunner; its Store
   suggestions come from `usr/lib/deckos/store/store_find.py` (no Qt, a slim index the Store writes).
   Preview it with `assets/preview_menu.py` (stand-in Plasma modules in `assets/preview_menu/`). JS names
-  like `escape` or `get` break QML method/signal declarations.
+  like `escape` or `get` break QML method/signal declarations. DeckOS Taskbar
+  (`plasmoids/org.deckos.taskbar/`) is the panel's task manager on Plasma's `TasksModel` (launchers,
+  grouping, order); every DeckOS layout uses it (`showLabels` for Classic). Preview with
+  `assets/preview_taskbar.py` (stand-ins in `assets/preview_taskbar/`); lint against the real modules with
+  `qmllint -I /usr/lib/qt6/qml`. In QML, `foo: foo` inside a child binds the child's own `foo` to itself:
+  give ids names that no property uses (Quick Settings lost its backend that way).
 - Graphics: AMD is the tested path. The installer runs CachyOS's `chwd -a` only when an NVIDIA or Intel
   GPU is present (AMD-only PCs keep desktop.txt's Radeon packages) and falls back to NVIDIA's open driver
   if chwd fails. The display ladder, `deckos gpu` and the Hub's Graphics card / FSR 4 rows are

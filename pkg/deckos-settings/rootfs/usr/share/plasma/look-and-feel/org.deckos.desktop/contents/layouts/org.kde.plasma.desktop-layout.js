@@ -11,7 +11,7 @@ var menu = panel.addWidget("org.deckos.menu");  // DeckOS Menu (replaces Kickoff
 menu.currentConfigGroup = ["General"];
 menu.writeConfig("icon", "deckos");
 
-var tasks = panel.addWidget("org.kde.plasma.icontasks");
+var tasks = panel.addWidget("org.deckos.taskbar");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", [
     "preferred://filemanager",
