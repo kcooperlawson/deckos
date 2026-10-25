@@ -884,7 +884,7 @@ class ModelDialog(QDialog):
     """The local models DecKoOS offers, each rated for this PC's graphics card (assistant/models.py)."""
 
     FIT = {"fits": ("Fits", S.SUCCESS), "tight": ("Tight fit", S.WARNING),
-           "slow": ("Slow: runs on the processor", S.WARNING), "too big": ("Too big for this PC", S.DANGER)}
+           "slow": ("Slower: partly on the processor", S.WARNING), "too big": ("Too big for this PC", S.DANGER)}
 
     def __init__(self, page, installed):
         super().__init__(page)

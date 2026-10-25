@@ -86,7 +86,7 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   thread and build widgets there, which crashes); `deckos_local_mcp.py` is a hand-written MCP stdio
   server (`deckos ai claude-link`). Read-only pipelines (every part read-only) run without asking. Changes always go through `Tools.confirm`.
   `models.py` picks a model by graphics memory (`deckos ai models`, the Hub's "Choose a model", `deckos ai setup`'s
-  default). Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
+  default); "measured" means it passed `tests/eval/assistant_tools.py` (needs Ollama; results in docs/assistant-models.md). Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
   chat instead. `DECKOS_AI_DIR` points `deckos ask`/`deckos ai` at a checkout for testing.
 - Game Doctor: `usr/lib/deckos/gamedoctor/`. `steamfiles.py` reads and writes Steam's KeyValues files
   (round-trips must stay exact; writes keep `.deckos-bak`; Steam must be closed: it rewrites them on exit),

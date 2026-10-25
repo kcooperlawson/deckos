@@ -3,8 +3,9 @@ each fits, and the one to start with. `deckos ai setup` downloads the recommende
 DecKoOS Hub's "Choose a model" shows them all.
 
 Only models that call DecKoOS Assistant's tools reliably are listed (the Assistant acts through tools; a model
-that answers in chat instead can't set anything up). gpt-oss:20b is the one measured on DecKoOS (it called the
-right tools where gemma4:12b asked in chat); the others are expected to work, and say so.
+that answers in chat instead can't set anything up). Measured ones went through tests/eval/assistant_tools.py
+(docs/assistant-models.md): gpt-oss:20b and qwen3-coder:30b called the right tool every time, gemma4:12b asked
+in chat instead of installing. The others are expected to work, and say so.
 
     models.py hardware | list [--json] | recommend
 """
@@ -32,6 +33,8 @@ CATALOG = [
     ("qwen3:8b", "Qwen3 8B", "A good all-rounder for 8 GB cards", 5.2, 7.5, False),
     ("qwen3:14b", "Qwen3 14B", "Sharper answers on 12 GB cards", 9.3, 12, False),
     ("gpt-oss:20b", "gpt-oss 20B", "The best DecKoOS Assistant on 16 GB cards (measured)", 13, 13.5, True),
+    ("qwen3-coder:30b", "Qwen3 Coder 30B (MoE)", "Code and DecKoOS's tools; runs partly on the processor below 24 GB "
+     "(measured)", 18, 21, True),
     ("qwen3:30b", "Qwen3 30B (MoE)", "Fast for its size on 24 GB cards", 19, 22, False),
     ("qwen3:32b", "Qwen3 32B", "The most capable here for 24 GB cards and up", 20, 24, False),
     ("gpt-oss:120b", "gpt-oss 120B", "Workstations with 80 GB of graphics memory", 65, 70, False),
@@ -86,8 +89,10 @@ def fit(model, hw):
             return "fits"
         if need_b <= hw["vram"]:
             return "tight"
-    # On the processor (or spilling over to it): needs the memory, and it's slow
-    if download * GiB * 1.3 <= hw["ram"] * 0.6:
+    # Split between the card and the processor (Ollama does that by itself), or on the processor alone: what the
+    # card can't hold goes to system memory, of which the desktop and apps keep a good part
+    card = max(hw["vram"] - RESERVED, 0) if hw["accel"] != "cpu" else 0
+    if max(need_b, download * GiB * 1.3) <= card + hw["ram"] * 0.6:
         return "slow"
     return "too big"
 
@@ -124,7 +129,7 @@ def describe(hw):
     return f"{hw['gpu']} · {hw['vram'] / GiB:.0f} GB · {how}"
 
 
-FIT_TEXT = {"fits": "fits", "tight": "tight fit", "slow": "slow (on the processor)", "too big": "too big"}
+FIT_TEXT = {"fits": "fits", "tight": "tight fit", "slow": "slower (partly on the processor)", "too big": "too big"}
 
 
 def main(argv):
@@ -141,7 +146,7 @@ def main(argv):
             print(describe(hw))
             for x in r:
                 mark = "→" if x["recommended"] else " "
-                print(f" {mark} {x['tag']:<14} {FIT_TEXT[x['fit']]:<24} {x['download_gb']:>5.1f} GB  {x['good_for']}")
+                print(f" {mark} {x['tag']:<16} {FIT_TEXT[x['fit']]:<24} {x['download_gb']:>5.1f} GB  {x['good_for']}")
     else:
         print(__doc__.split("\n\n")[-1].strip(), file=sys.stderr)
         return 2
