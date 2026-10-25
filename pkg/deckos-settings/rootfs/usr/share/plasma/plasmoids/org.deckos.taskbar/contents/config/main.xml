@@ -13,8 +13,8 @@
       <default>false</default>
     </entry>
     <entry name="onlyThisScreen" type="Bool">
-      <label>Only show windows on the screen this taskbar is on</label>
-      <default>true</default>
+      <label>Only show windows on the screen this taskbar is on (off: one taskbar shows every screen's windows)</label>
+      <default>false</default>
     </entry>
   </group>
 </kcfg>

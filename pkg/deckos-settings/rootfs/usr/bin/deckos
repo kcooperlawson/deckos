@@ -1424,8 +1424,15 @@ layout_cmd() {
       local name=${2:-}
       [[ $name =~ ^[a-z]+$ && -d $LAYOUTS_DIR/org.deckos.layout.$name ]] || { err "no layout called '$name' (deckos layout list)"; exit 2; }
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
-      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \
-        "panels().forEach(function (p) { p.remove(); }); loadTemplate(\"org.deckos.layout.$name\");" >/dev/null
+      # Pinned apps outlive the switch: the template's defaults are only for a first taskbar
+      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var pins = null;
+        function taskbars(f) { panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach(function (w) {
+          w.currentConfigGroup = ['General']; f(w); }); }); }
+        taskbars(function (w) { var l = w.readConfig('launchers', ''); if (pins === null && String(l) !== '') pins = l; });
+        panels().forEach(function (p) { p.remove(); });
+        loadTemplate('org.deckos.layout.$name');
+        if (pins !== null) taskbars(function (w) { w.writeConfig('launchers', pins); w.reloadConfig(); });" >/dev/null
       ok "desktop layout: $name" ;;
     graphs)
       # DeckOS Performance on the first screen's desktop, top right (once: a second one isn't added)

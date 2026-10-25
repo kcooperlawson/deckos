@@ -179,6 +179,7 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
         property point pressAt
         property bool reordering: false
+        onReorderingChanged: deckTasks.dragActive = reordering
 
         onPressed: e => pressAt = Qt.point(e.x, e.y)
         onPositionChanged: e => {

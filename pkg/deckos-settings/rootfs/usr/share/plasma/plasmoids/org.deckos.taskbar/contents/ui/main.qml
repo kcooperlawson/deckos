@@ -10,6 +10,8 @@ import org.kde.plasma.core as PlasmaCore
 import org.kde.taskmanager as TaskManager
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.plasma5support as P5Support
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: deckTasks
@@ -52,14 +54,75 @@ PlasmoidItem {
         filterByVirtualDesktop: true
         filterByActivity: true
         filterByScreen: Plasmoid.configuration.onlyThisScreen
-        filterHidden: true
         virtualDesktop: desktopInfo.currentDesktop
         activity: activityInfo.currentActivity
         screenGeometry: Plasmoid.containment.screenGeometry
         launcherList: Plasmoid.configuration.launchers
         // Pinning, unpinning and dragging change the model's list; keep the config in step
-        onLauncherListChanged: if (String(launcherList) !== String(Plasmoid.configuration.launchers))
-            Plasmoid.configuration.launchers = launcherList
+        onLauncherListChanged: {
+            if (String(launcherList) !== String(Plasmoid.configuration.launchers))
+                Plasmoid.configuration.launchers = launcherList;
+            Qt.callLater(deckTasks.keepPinnedOrder);
+        }
+        onRowsInserted: Qt.callLater(deckTasks.keepPinnedOrder)
+        onDataChanged: Qt.callLater(deckTasks.keepPinnedOrder)
+    }
+
+    // TasksModel's own launch-in-place misses windows whose launcher is preferred:// (browser,
+    // file manager) or that report only an app id (Electron), and those slid to the end. So a
+    // window is put back in its pin's slot here, matched by .desktop name; unpinned ones follow.
+    property bool dragActive: false
+    property var preferred: ({})
+    function appKey(u) {
+        u = String(u || "");
+        if (u.startsWith("preferred://"))
+            u = preferred[u.slice(12)] || u;
+        return u.split("?")[0].replace(/^applications:/, "").replace(/^.*\//, "")
+            .replace(/\.desktop$/, "").toLowerCase();
+    }
+    function pinRank(row, pins) {
+        const i = deckModel.makeModelIndex(row);
+        for (const role of [TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon, TaskManager.AbstractTasksModel.AppId]) {
+            const k = appKey(deckModel.data(i, role));
+            const at = k ? pins.indexOf(k) : -1;
+            if (at !== -1)
+                return at;
+        }
+        return 1e6;
+    }
+    function keepPinnedOrder() {
+        if (dragActive)
+            return;
+        const pins = deckModel.launcherList.map(appKey);
+        const ranks = [];
+        for (let r = 0; r < deckModel.count; ++r)
+            ranks.push(pinRank(r, pins));
+        // Stable insertion sort, one model move per tile out of place
+        for (let r = 1; r < ranks.length; ++r) {
+            let to = r;
+            while (to > 0 && ranks[to - 1] > ranks[r])
+                --to;
+            if (to !== r) {
+                deckModel.move(r, to);
+                ranks.splice(to, 0, ranks.splice(r, 1)[0]);
+            }
+        }
+    }
+    P5Support.DataSource {
+        id: defaults
+        engine: "executable"
+        connectedSources: ["echo \"browser=$(xdg-settings get default-web-browser)\"; echo \"filemanager=$(xdg-mime query default inode/directory)\""]
+        onNewData: (source, data) => {
+            const map = {};
+            for (const line of String(data.stdout || "").split("\n")) {
+                const eq = line.indexOf("=");
+                if (eq > 0 && line.slice(eq + 1).trim())
+                    map[line.slice(0, eq)] = line.slice(eq + 1).trim();
+            }
+            deckTasks.preferred = map;
+            disconnectSource(source);
+            deckTasks.keepPinnedOrder();
+        }
     }
 
     // What Plasma's menus call on a task manager to pin an app (used if they ever recognise this one)
@@ -112,18 +175,80 @@ PlasmoidItem {
             icon: "view-list-text"
             onClicked: Plasmoid.configuration.showLabels = !Plasmoid.configuration.showLabels
         }
+        PlasmaExtras.MenuItem {
+            text: Plasmoid.configuration.onlyThisScreen ? "Show windows from all screens" : "Only this screen's windows"
+            icon: "video-display"
+            onClicked: Plasmoid.configuration.onlyThisScreen = !Plasmoid.configuration.onlyThisScreen
+        }
     }
+    // A searchable list of installed apps; click one to pin it (pinned ones are ticked, click again to unpin)
     function pickApp() {
-        picker.connectSource("kdialog --title 'Pin an app' --getopenfilename /usr/share/applications '*.desktop'");
+        appSource.connectSource("python3 '" + Qt.resolvedUrl("../code/apps.py").toString().replace("file://", "") + "'");
+        search.text = "";
+        appDialog.visible = true;
+        search.forceActiveFocus();
     }
+    property var allApps: []
     P5Support.DataSource {
-        id: picker
+        id: appSource
         engine: "executable"
         onNewData: (source, data) => {
-            const path = String(data.stdout || "").trim();
-            if (path.endsWith(".desktop"))
-                deckModel.requestAddLauncher("file://" + path);
+            try { deckTasks.allApps = JSON.parse(data.stdout); } catch (e) { deckTasks.allApps = []; }
             disconnectSource(source);
+        }
+    }
+    PlasmaCore.Dialog {
+        id: appDialog
+        visualParent: addTile
+        location: Plasmoid.location
+        type: PlasmaCore.Dialog.PopupMenu
+        hideOnWindowDeactivate: true
+        flags: Qt.WindowStaysOnTopHint
+        mainItem: ColumnLayout {
+            width: Kirigami.Units.gridUnit * 18
+            height: Kirigami.Units.gridUnit * 24
+            PlasmaComponents.TextField {
+                id: search
+                Layout.fillWidth: true
+                placeholderText: "Search apps to pin…"
+                Keys.onEscapePressed: appDialog.visible = false
+                Keys.onDownPressed: appList.forceActiveFocus()
+                onAccepted: if (appList.count > 0) deckTasks.togglePin(appList.model[0].url)
+            }
+            ListView {
+                id: appList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                keyNavigationEnabled: true
+                model: {
+                    const q = search.text.toLowerCase();
+                    return deckTasks.allApps.filter(a => !q || a.name.toLowerCase().includes(q) || a.comment.toLowerCase().includes(q));
+                }
+                delegate: PlasmaComponents.ItemDelegate {
+                    required property var modelData
+                    width: ListView.view.width
+                    readonly property bool isPinned: deckModel.launcherList.length >= 0 && deckTasks.pinned(modelData.url)
+                    contentItem: RowLayout {
+                        spacing: 8
+                        Kirigami.Icon { source: modelData.icon; Layout.preferredWidth: 22; Layout.preferredHeight: 22 }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            PlasmaComponents.Label { text: modelData.name; Layout.fillWidth: true; elide: Text.ElideRight }
+                            PlasmaComponents.Label { text: modelData.comment; visible: text !== ""; opacity: 0.6; font.pointSize: 8; Layout.fillWidth: true; elide: Text.ElideRight }
+                        }
+                        Kirigami.Icon { source: "checkmark"; visible: isPinned; Layout.preferredWidth: 16; Layout.preferredHeight: 16 }
+                    }
+                    onClicked: deckTasks.togglePin(modelData.url)
+                }
+                PlasmaComponents.Label {
+                    anchors.centerIn: parent
+                    visible: appList.count === 0
+                    text: deckTasks.allApps.length ? "No apps match" : "Loading apps…"
+                    opacity: 0.6
+                }
+            }
         }
     }
 
