@@ -14,7 +14,7 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QSize, Qt, QTimer
+from PySide6.QtCore import QEvent, QProcess, QSize, Qt, QTimer
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMessageBox, QPushButton,
@@ -207,6 +207,26 @@ class Hub(QWidget):
 
     def toast(self, text, kind="info", ms=5000):
         self.toast_box.show_message(text, kind, ms)
+
+    # No sampling (or playerctl every 2 s) while nobody can see the Hub
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == QEvent.WindowStateChange:
+            self.timer.stop() if self.isMinimized() else self.resume()
+
+    def hideEvent(self, e):
+        super().hideEvent(e)
+        self.timer.stop()
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if hasattr(self, "timer"):
+            self.resume()
+
+    def resume(self):
+        if not self.timer.isActive():
+            self.tick()
+            self.timer.start()
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
