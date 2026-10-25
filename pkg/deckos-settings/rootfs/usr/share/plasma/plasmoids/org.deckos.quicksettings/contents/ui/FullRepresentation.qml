@@ -18,11 +18,6 @@ Item {
     implicitWidth: 400
     implicitHeight: column.implicitHeight
 
-    Binding {
-        target: Deck
-        property: "accent"
-        value: Kirigami.Theme.highlightColor
-    }
 
     component Piece: Loader {
         required property string file

@@ -12,9 +12,10 @@ import sys
 from pathlib import Path
 
 BASE = Path("/usr/share/icons/DeckOS")
-# Two names, used in turn: Plasma caches icons per theme name, so a new accent under the same name
-# can keep showing the old colours until the cache expires.
-NAMES = ("DeckOS-Accent-A", "DeckOS-Accent-B")
+# One fixed name, rewritten in place: running apps only find icon themes that existed when they
+# looked, so a new name each time showed as missing until the next login.
+NAME = "DeckOS-Accent"
+OLD = ("DeckOS-Accent-A", "DeckOS-Accent-B")  # 0.9.2's two names
 HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "icons"
 
 
@@ -51,10 +52,7 @@ def main():
     if len(sys.argv) < 2 or not re.fullmatch(r"#[0-9A-Fa-f]{6}", sys.argv[1]):
         sys.exit("usage: accent-icons '#RRGGBB' [--light]")
     accent, light = sys.argv[1].upper(), "--light" in sys.argv[2:]
-    current = Path(HOME / NAMES[0] / "index.theme")
-    name = NAMES[1] if current.exists() and "DecKoOS accent" in current.read_text() else NAMES[0]
-    out = HOME / name
-    shutil.rmtree(out, ignore_errors=True)
+    out = HOME / NAME  # rewritten file by file: the theme never disappears while it's in use
 
     folders = {"#4C8DFF": accent, "#4A5FE0": shade(accent, 0.82),
                "#16234D": shade(accent, 1.85) if light else shade(accent, 0.28)}
@@ -86,9 +84,9 @@ def main():
             l = "Directories=" + ",".join(d for d in dirs if d != "scalable/mimetypes")
         lines.append(l)
     (out / "index.theme").write_text("\n".join(lines) + "\n# DecKoOS accent\n", encoding="utf-8")
-    # The other name's copy is now stale
-    shutil.rmtree(HOME / NAMES[1 - NAMES.index(name)], ignore_errors=True)
-    print(name)
+    for stale in OLD:
+        shutil.rmtree(HOME / stale, ignore_errors=True)
+    print(NAME)
 
 
 if __name__ == "__main__":

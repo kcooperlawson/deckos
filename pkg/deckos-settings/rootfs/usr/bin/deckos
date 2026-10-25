@@ -1499,24 +1499,22 @@ accent_apply() {
     fi
     if icons=$(/usr/lib/deckos/accent-icons "$color" $light); then
       /usr/lib/plasma-changeicons "$icons" >/dev/null 2>&1 || true
-      # The panel only redraws app icons, and its widgets only take a new accent, when Plasma reloads
-      if systemctl --user -q is-active plasma-plasmashell.service; then
-        systemctl --user restart plasma-plasmashell.service
-        return 0
-      elif pgrep -xu "$USER" plasmashell >/dev/null; then
-        setsid plasmashell --replace >/dev/null 2>&1 < /dev/null &
-        return 0
-      fi
     else
       warn "the icons couldn't be recoloured"
     fi
   fi
-  # No reload: applying Plasma's style again (via another one) is enough for the accent alone
+  # Never restart Plasma for this: its service allows 3 starts a minute, and a theme change plus an
+  # accent change used them up and left the screens black. Instead, Plasma's widgets take the accent
+  # when their style is applied again (via another one), and the DecKoOS taskbar remakes its tiles
+  # (with the new icons) when its iconEpoch changes.
   style=$(plasma-apply-desktoptheme --list-themes 2>/dev/null | sed -n 's/^ \* \(.*\) (current theme.*/\1/p')
   if [[ -n $style ]]; then
     plasma-apply-desktoptheme "$([[ $style == breeze-dark ]] && echo default || echo breeze-dark)" >/dev/null 2>&1
     plasma-apply-desktoptheme "$style" >/dev/null 2>&1 || true
   fi
+  qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach(function (w) {
+      w.currentConfigGroup = ['General']; w.writeConfig('iconEpoch', $(date +%s) % 1000000000); }); });" >/dev/null 2>&1 || true
 }
 
 accent_cmd() {

@@ -44,6 +44,14 @@ PlasmoidItem {
     Layout.preferredHeight: vertical ? strip.implicitHeight + Math.round(tile * 0.7) : -1
     Layout.minimumWidth: vertical ? -1 : Math.min(strip.implicitWidth, tile * 3) + Math.round(tile * 0.7)
 
+    // `deckos accent` bumps iconEpoch after it recolours the icons: the tiles keep the icons they were
+    // made with, so they're made again (no restart of Plasma needed)
+    readonly property int iconEpoch: Plasmoid.configuration.iconEpoch
+    onIconEpochChanged: {
+        repeater.model = null;
+        repeater.model = deckModel;
+    }
+
     TaskManager.VirtualDesktopInfo { id: desktopInfo }
     TaskManager.ActivityInfo { id: activityInfo }
 
