@@ -51,6 +51,15 @@ def is_checkout(path):
     return bool(path) and all((Path(path) / f).exists() for f in ("VERSION", "build.sh", ".git"))
 
 
+def find_checkout():
+    """The newest DeckOS checkout in the usual places (an old clone left in ~/deckos mustn't win over the
+    one in use), or None."""
+    home = Path.home()
+    found = [p for p in (home / "Documents/DeckOS", home / "Documents/deckos", home / "deckos", home / "DeckOS",
+                         home / "Projects/deckos", home / "src/deckos", home / "code/deckos") if is_checkout(p)]
+    return max(found, key=lambda p: vkey((p / "VERSION").read_text().strip()), default=None)
+
+
 def set_checkout(path):
     global REPO_DIR
     REPO_DIR = Path(path) if is_checkout(path) else None
@@ -478,8 +487,9 @@ class Builder(QWidget):
         self.resize(1180, 920)
         self.setMinimumSize(760, 560)
         self.settings = QSettings("DeckOS", "Builder")
-        # The source to work on: the one picked before, else the checkout Builder runs from, else ~/deckos
-        set_checkout(self.settings.value("checkout", "") or SOURCE or (Path.home() / "deckos"))
+        # The source to work on: the one picked before, else the checkout Builder runs from, else the newest
+        # one in the usual places
+        set_checkout(self.settings.value("checkout", "") or SOURCE or find_checkout())
         self.login, self.role = None, "signed-out"
         self.pool = QThreadPool.globalInstance()
         self.runs, self.jobs, self.current, self.busy = [], [], None, False

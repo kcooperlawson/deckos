@@ -3,9 +3,11 @@
 # ./deckos-builder --install adds it to the app menu.
 here=$(cd "$(dirname "$0")" && pwd)
 if [ "$1" = "--install" ]; then
+  # Its own name, beside the installed DeckOS Builder: a deckos-builder.desktop here would hide that one
   mkdir -p "$HOME/.local/share/applications"
-  sed "s|@BUILDER@|$here/deckos-builder|" "$here/deckos-builder.desktop" > "$HOME/.local/share/applications/deckos-builder.desktop"
-  echo "Added DeckOS Builder to the app menu."
+  sed -e "s|@BUILDER@|$here/deckos-builder|" -e "s|^Name=DeckOS Builder$|Name=DeckOS Builder (this checkout)|" \
+    "$here/deckos-builder.desktop" > "$HOME/.local/share/applications/deckos-builder-checkout.desktop"
+  echo "Added \"DeckOS Builder (this checkout)\" to the app menu."
   exit 0
 fi
 exec python3 "$here/../pkg/deckos-settings/rootfs/usr/lib/deckos/builder/deckos_builder.py" "$@"
