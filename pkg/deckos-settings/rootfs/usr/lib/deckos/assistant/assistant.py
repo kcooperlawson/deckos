@@ -221,6 +221,20 @@ def run(argv_or_command, timeout=60, echo=None, limit=OUTPUT_LIMIT):
 
 # ------------------------------------------------------------------ the tools
 
+
+_LIB = Path(__file__).resolve().parent.parent
+for _sub in ("actions", "pulse"):
+    if str(_LIB / _sub) not in sys.path:
+        sys.path.insert(0, str(_LIB / _sub))
+
+
+def _actions():
+    try:
+        import actions
+        return actions.load()
+    except (ImportError, OSError, ValueError):
+        return []
+
 class Tools:
     """The assistant's tools. `confirm(title, detail) -> bool` asks the person; `say(text)` shows progress."""
 
@@ -268,7 +282,23 @@ class Tools:
     ]
 
     def schemas(self):
-        return [{"type": "function", "function": s} for s in self.SCHEMAS]
+        out = [{"type": "function", "function": s} for s in self.SCHEMAS]
+        acts = _actions()
+        if acts:
+            # DecKoOS's own actions (usr/share/deckos/actions.toml): the same list as the Menu's search
+            catalog = "; ".join(f"{a['id']} = {a['title']}" for a in acts)
+            out.append({"type": "function", "function": {
+                "name": "do_action", "description": "Do one of DecKoOS's own actions (opens the right app or runs "
+                "the right DecKoOS command). Prefer these to run_command when one fits. The person confirms "
+                "first. Actions: " + catalog,
+                "parameters": {"type": "object", "properties": {"id": {"type": "string", "enum": [a["id"] for a in acts]}},
+                               "required": ["id"]}}})
+        out.append({"type": "function", "function": {
+            "name": "what_changed", "description": "What changed on this PC recently (updates, installs, game fixes, "
+            "theme changes, drives, games played), newest first, with whether each can be undone in the Hub's "
+            "Timeline. Call it when something stopped working: the cause is often a recent change.",
+            "parameters": {"type": "object", "properties": {"limit": {"type": "integer"}}}}})
+        return out
 
     def call(self, name, args):
         fn = getattr(self, "t_" + name, None)
@@ -362,6 +392,31 @@ class Tools:
         self.say(f"Installing {label}…")
         code, out = run(argv, timeout=3600, echo=self.echo)
         return ("installed. " if code == 0 else f"failed (exit {code}). ") + out[-1500:]
+
+    def t_do_action(self, id):
+        a = next((x for x in _actions() if x["id"] == id), None)
+        if a is None:
+            return f"error: no DecKoOS action called {id}"
+        if not self.confirm(f"{a['title']}?", (a.get("summary", "") + "\n" + " ".join(a["run"])).strip()):
+            return "the person said no"
+        try:
+            import actions
+            actions.run(id)
+        except (ImportError, KeyError, OSError) as e:
+            return f"error: {e}"
+        return f"started: {a['title']}" + (" (in a terminal window)" if a.get("how") == "terminal" else "")
+
+    def t_what_changed(self, limit=15):
+        try:
+            import pulse
+        except ImportError:
+            return "the timeline isn't available"
+        rows = pulse.entries(int(limit or 15))
+        if not rows:
+            return "nothing recorded yet"
+        return "\n".join(f"{pulse.when(r['time'])}: {r['title']}" + (f" ({r['detail']})" if r.get("detail") else "")
+                         + (" [undone]" if r["undone"] else " [can be undone in Hub › Timeline]" if r["can_undo"] else "")
+                         for r in rows)
 
     def t_add_software_group(self, group):
         if group not in ("gaming", "ai", "dev"):

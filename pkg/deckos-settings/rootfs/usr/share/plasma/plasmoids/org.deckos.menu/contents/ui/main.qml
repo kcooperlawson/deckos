@@ -136,12 +136,26 @@ PlasmoidItem {
     // ---- DecKoOS Store suggestions: looked up 350 ms after typing stops, never on the first frame
 
     property var storeResults: []
+    property var actionResults: []  // DecKoOS actions (usr/share/deckos/actions.toml) the search matches
 
     Timer {
         id: storeTimer
         interval: 350
         onTriggered: {
             const q = deckMenu.query.trim();
+            deckMenu.exec("python3 /usr/lib/deckos/actions/actions.py find --limit 3 -- " + deckMenu.quote(q), (code, out) => {
+                if (q !== deckMenu.query.trim()) {
+                    return;
+                }
+                try {
+                    deckMenu.actionResults = code === 0 ? JSON.parse(out) : [];
+                } catch (e) {
+                    deckMenu.actionResults = [];
+                }
+            });
+            if (!Plasmoid.configuration.storeResults || q.length < 3) {
+                return;
+            }
             deckMenu.exec("python3 /usr/lib/deckos/store/store_find.py --limit 4 -- " + deckMenu.quote(q), (code, out) => {
                 if (q !== deckMenu.query.trim()) {
                     return;  // typed on since
@@ -157,11 +171,16 @@ PlasmoidItem {
 
     onQueryChanged: {
         storeResults = [];
-        if (Plasmoid.configuration.storeResults && query.trim().length >= 3) {
+        actionResults = [];
+        if (query.trim().length >= 2) {
             storeTimer.restart();
         } else {
             storeTimer.stop();
         }
+    }
+
+    function runAction(id) {
+        launch("python3 /usr/lib/deckos/actions/actions.py run " + quote(id));
     }
 
     function openInStore(appKey) {

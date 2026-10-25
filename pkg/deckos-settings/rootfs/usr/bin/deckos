@@ -1673,6 +1673,8 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
                                                         graphs adds DecKoOS Performance to the desktop
+  deckos do [ID]                                        one of DecKoOS's actions (no ID: the list)
+  deckos timeline [list|undo ID]                        what happened on this PC, and undo
   deckos retro [install PKG...]                         DecKoOS Retro (install: its emulators)
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
   deckos accent apply '#RRGGBB'                         accent colour for Plasma, the DecKoOS widgets and icons
@@ -1716,6 +1718,17 @@ case ${1:-} in
   theme) shift; theme_cmd "$@" ;;
   accent) shift; accent_cmd "$@" ;;
   retro) shift; retro_cmd "$@" ;;
+  do)  # one of DecKoOS's actions (usr/share/deckos/actions.toml); no ID lists them
+    shift
+    if [[ -z ${1:-} ]]; then exec python3 "${DECKOS_ACTIONS_DIR:-/usr/lib/deckos/actions}/actions.py" list; fi
+    exec python3 "${DECKOS_ACTIONS_DIR:-/usr/lib/deckos/actions}/actions.py" run "$1" ;;
+  timeline)  # DecKoOS Pulse: what happened, and undo
+    shift
+    case ${1:-list} in
+      list) exec python3 "${DECKOS_PULSE_DIR:-/usr/lib/deckos/pulse}/pulse.py" list "${@:2}" ;;
+      undo) exec python3 "${DECKOS_PULSE_DIR:-/usr/lib/deckos/pulse}/pulse.py" undo "${2:-}" ;;
+      *) err "usage: deckos timeline [list|undo ID]"; exit 2 ;;
+    esac ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
   gamedoctor)  # the timeline's undo for a fix: deckos gamedoctor undo APPID FIX
     shift

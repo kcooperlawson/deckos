@@ -1,22 +1,37 @@
-// Search results while typing: KRunner's matches grouped by kind (apps, settings, files,
-// calculator, commands…), then apps from the DecKoOS Store that aren't installed, then rows that ask
-// DecKoOS Assistant the search and open the Store on it. The search field keeps the keyboard: Up/Down move `cursor` over all
-// of them, Enter runs the one it's on.
+// Search results while typing: DecKoOS actions ("Link my Windows drives") at the top, then KRunner's
+// matches grouped by kind (apps, settings, files, calculator, commands…), then apps from the DecKoOS
+// Store that aren't installed, then rows that ask DecKoOS Assistant the search and open the Store on it.
+// The search field keeps the keyboard: Up/Down move `cursor` over all of them, Enter runs the one it's on.
+// The cursor starts on the first match, not an action, so Enter still opens the app typed ("steam"
+// opens Steam, though "Switch to Gaming Mode" sits above it); Up reaches the actions.
 import QtQuick
 import org.kde.kirigami as Kirigami
 
 Item {
     id: page
 
+    // cursor runs over: actions, then matches, then Store apps, then the two link rows
+    readonly property int actions: deckMenu.actionResults.length
     readonly property int matches: results.count
-    readonly property int total: matches + deckMenu.storeResults.length + 2
+    readonly property int total: actions + matches + deckMenu.storeResults.length + 2
     property int cursor: 0
+    property bool moved: false  // until the keyboard moves, the cursor stays on the first match
+
+    onActionsChanged: if (!moved) {
+        cursor = actions;
+        Qt.callLater(results.positionViewAtBeginning);  // the actions header, not just the first match
+    }
 
     function move(by) {
+        moved = true;
         cursor = Math.max(0, Math.min(total - 1, cursor + by));
-        if (cursor < matches) {
-            results.currentIndex = cursor;
-            results.positionViewAtIndex(cursor, ListView.Contain);
+        const m = cursor - actions;
+        if (cursor < actions) {
+            results.currentIndex = -1;
+            results.positionViewAtBeginning();
+        } else if (m < matches) {
+            results.currentIndex = m;
+            results.positionViewAtIndex(m, ListView.Contain);
         } else {
             results.currentIndex = -1;
             results.positionViewAtEnd();
@@ -24,10 +39,13 @@ Item {
     }
 
     function accept() {
-        if (cursor < matches) {
-            deckMenu.activate(results.model, cursor);
-        } else if (cursor < matches + deckMenu.storeResults.length) {
-            deckMenu.openInStore(deckMenu.storeResults[cursor - matches].key);
+        const m = cursor - actions;
+        if (cursor < actions) {
+            deckMenu.runAction(deckMenu.actionResults[cursor].id);
+        } else if (m < matches) {
+            deckMenu.activate(results.model, m);
+        } else if (m < matches + deckMenu.storeResults.length) {
+            deckMenu.openInStore(deckMenu.storeResults[m - matches].key);
         } else if (cursor === total - 2) {
             deckMenu.askAssistant(deckMenu.query.trim());
         } else {
@@ -36,7 +54,8 @@ Item {
     }
 
     function reset() {
-        cursor = 0;
+        moved = false;
+        cursor = actions;
         results.currentIndex = 0;
         results.positionViewAtBeginning();
     }
@@ -56,8 +75,46 @@ Item {
         // Re-read on every count change, as Kickoff does: the merged model is replaced per query.
         model: deckMenu.runnerModel.count ? deckMenu.runnerModel.modelForRow(0) : null
         property bool keepCurrent: true
+        // move() scrolls for the keyboard; following the current item by itself hid the actions header
+        highlightFollowsCurrentItem: false
         delegate: ItemRow {}
-        onCountChanged: if (page.cursor < count) currentIndex = page.cursor
+        onCountChanged: {
+            if (page.cursor >= page.actions && page.cursor - page.actions < count)
+                currentIndex = page.cursor - page.actions;
+            // Following the current item scrolls the header out of sight: show it while nothing's moved
+            if (!page.moved)
+                Qt.callLater(positionViewAtBeginning);
+        }
+
+        header: Column {
+            width: results.width
+            visible: page.actions > 0
+            height: visible ? implicitHeight : 0
+            // Its rows arrive after the matches: keep it in view as it grows, until the keyboard moves
+            onHeightChanged: if (!page.moved) results.positionViewAtBeginning()
+
+            SectionLabel {
+                width: parent.width
+                height: 28
+                leftPadding: 8
+                verticalAlignment: Text.AlignBottom
+                bottomPadding: 4
+                text: "In DecKoOS"
+            }
+
+            Repeater {
+                model: deckMenu.actionResults
+                delegate: StoreRow {
+                    required property var modelData
+                    required property int index
+                    width: results.width
+                    app: ({ name: modelData.title, summary: modelData.summary || "", icon: "" })
+                    line: modelData.icon || "arrow-right"
+                    cursor: page.cursor === index
+                    onChosen: deckMenu.runAction(modelData.id)
+                }
+            }
+        }
 
         section.property: "group"
         section.delegate: SectionLabel {
@@ -103,7 +160,7 @@ Item {
                     required property int index
                     width: results.width
                     app: modelData
-                    cursor: page.cursor === page.matches + index
+                    cursor: page.cursor === page.actions + page.matches + index
                     onChosen: deckMenu.openInStore(modelData.key)
                 }
             }

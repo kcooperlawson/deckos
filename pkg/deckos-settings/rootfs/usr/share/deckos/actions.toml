@@ -1,0 +1,206 @@
+# DecKoOS actions: everything DecKoOS can do, once. DecKoOS Menu's search, `deckos do ID`, and DecKoOS
+# Assistant all read this list (usr/lib/deckos/actions/actions.py).
+#   title     what it does, as a button would say it
+#   summary   one line more
+#   keywords  other words people type for it
+#   icon      a DecKoOS line icon
+#   run       the command (argv)
+#   how       "app" (starts something: the default) or "terminal" (shows its output in DecKoOS Terminal)
+
+[[action]]
+id = "gaming-mode"
+title = "Switch to Gaming Mode"
+summary = "Steam full screen, like a Steam Deck"
+keywords = "big picture steam deck tv couch controller"
+icon = "gaming"
+run = ["deckos", "session", "gaming", "--ask"]
+
+[[action]]
+id = "checkup"
+title = "Run a checkup"
+summary = "System Doctor: what's wrong, in plain words, with fixes"
+keywords = "health problem broken crash slow error fix doctor diagnose"
+icon = "check"
+run = ["deckos-sysdoctor"]
+
+[[action]]
+id = "update"
+title = "Update DecKoOS"
+summary = "Updates DecKoOS and every app"
+keywords = "upgrade updates pacman new version"
+icon = "update"
+run = ["deckos", "update"]
+how = "terminal"
+
+[[action]]
+id = "timeline"
+title = "See what changed"
+summary = "The timeline: updates, fixes and changes, with Undo"
+keywords = "history undo recent changes log what happened rollback revert"
+icon = "clock"
+run = ["deckos-hub", "--page", "timeline"]
+
+[[action]]
+id = "drives-relink"
+title = "Link my Windows drives"
+summary = "Mounts your NTFS drives and keeps them after a restart"
+keywords = "ntfs drive disk mount windows hdd ssd games library missing"
+icon = "drives"
+run = ["sudo", "deckos", "drives", "rescan"]
+how = "terminal"
+
+[[action]]
+id = "drives-doctor"
+title = "Why is my drive read-only?"
+summary = "Checks for Windows Fast Startup and dirty NTFS drives"
+keywords = "read only readonly ntfs fast startup hibernate dirty drive"
+icon = "drives"
+run = ["deckos", "drives", "doctor"]
+how = "terminal"
+
+[[action]]
+id = "game-doctor"
+title = "Fix a game that won't start"
+summary = "Game Doctor looks at why the last game closed"
+keywords = "game crash wont start launch proton fix doctor steam"
+icon = "gaming"
+run = ["deckos-gamedoctor"]
+
+[[action]]
+id = "retro"
+title = "Play retro games"
+summary = "DecKoOS Retro: your games, set up and in Steam"
+keywords = "emulator emulation retroarch rom nes snes n64 playstation ps1 ps2 gamecube nintendo sega"
+icon = "gaming"
+run = ["deckos-retro"]
+
+[[action]]
+id = "sysmon"
+title = "See what's running"
+summary = "System Monitor: apps, processes and live graphs"
+keywords = "task manager processes kill end task cpu ram memory gpu usage slow"
+icon = "gauge"
+run = ["deckos-sysmon"]
+
+[[action]]
+id = "graphs"
+title = "Add performance graphs to the desktop"
+summary = "Live processor, graphics, memory and network graphs"
+keywords = "widget monitor desktop graphs fps cpu gpu temperature"
+icon = "gauge"
+run = ["deckos", "layout", "graphs"]
+
+[[action]]
+id = "appearance"
+title = "Change the look"
+summary = "Themes, accent colour, wallpaper, icons and mouse pointer"
+keywords = "theme wallpaper background colour color accent dark icons cursor pointer appearance"
+icon = "appearance"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[action]]
+id = "layout-dock"
+title = "Use the dock layout"
+summary = "One floating dock at the bottom"
+keywords = "panel taskbar layout dock macos"
+icon = "panel-right"
+run = ["deckos", "layout", "set", "dock"]
+
+[[action]]
+id = "layout-classic"
+title = "Use the classic layout"
+summary = "A full-width taskbar with window titles"
+keywords = "panel taskbar layout classic windows"
+icon = "panel-right"
+run = ["deckos", "layout", "set", "classic"]
+
+[[action]]
+id = "display"
+title = "Fix screen flicker"
+summary = "Display fixes for flicker, VRR and HDR"
+keywords = "flicker screen monitor display vrr freesync hdr black screen"
+icon = "display"
+run = ["deckos-hub", "--page", "display"]
+
+[[action]]
+id = "pair-controller"
+title = "Pair a controller"
+summary = "Bluetooth pairing for Xbox, PlayStation and Switch controllers"
+keywords = "controller gamepad bluetooth xbox ps5 dualsense switch pro pair"
+icon = "bluetooth"
+run = ["deckos", "controllers", "pair"]
+how = "terminal"
+
+[[action]]
+id = "whats-new"
+title = "What's new in DecKoOS"
+summary = "The latest release's features"
+keywords = "release notes new features changelog"
+icon = "star"
+run = ["deckos-whatsnew"]
+
+[[action]]
+id = "store"
+title = "Get apps"
+summary = "The DecKoOS Store"
+keywords = "install app software store download flatpak"
+icon = "store"
+run = ["deckos-store"]
+
+[[action]]
+id = "assistant"
+title = "Ask DecKoOS Assistant"
+summary = "The local AI that sets things up for you"
+keywords = "ai help chat assistant question"
+icon = "ai"
+run = ["deckos-assistant"]
+
+[[action]]
+id = "move-in"
+title = "Move in from Windows"
+summary = "Bring your folders, browser, wallpaper and games over"
+keywords = "windows migrate import move transfer"
+icon = "arrow-right"
+run = ["deckos-movein"]
+
+[[action]]
+id = "builder"
+title = "Build DecKoOS or send a change"
+summary = "DecKoOS Builder: ISOs, USB sticks and contributions"
+keywords = "iso usb ventoy build contribute github pull request"
+icon = "package"
+run = ["deckos-builder"]
+
+[[action]]
+id = "bench"
+title = "Benchmark this PC"
+summary = "DecKoOS Bench: processor, graphics and disk tests"
+keywords = "benchmark test speed performance score"
+icon = "gauge"
+run = ["deckos-bench"]
+
+[[action]]
+id = "setup-ai"
+title = "Set up local AI"
+summary = "Downloads a local model for DecKoOS Assistant"
+keywords = "ollama ai model llm setup local"
+icon = "ai"
+run = ["sudo", "deckos", "ai", "setup"]
+how = "terminal"
+
+[[action]]
+id = "restart-desktop"
+title = "Restart the desktop"
+summary = "Reloads the panel and widgets; open windows stay open"
+keywords = "plasma panel frozen stuck restart taskbar reload"
+icon = "refresh"
+run = ["systemctl", "--user", "restart", "plasma-plasmashell"]
+
+[[action]]
+id = "spotify-theme"
+title = "Give Spotify the DecKoOS look"
+summary = "Restyles the Spotify app with Spicetify"
+keywords = "spotify theme spicetify music"
+icon = "music"
+run = ["deckos", "spotify", "theme"]
+how = "terminal"

@@ -214,6 +214,11 @@ class Shell(QObject):
     """The plasma5support "executable" engine, for the commands the menu runs."""
     @Slot(str, result="QVariantList")
     def run(self, cmd):
+        m = re.search(r"actions\.py find .* -- '(.*)'$", cmd)
+        if m:  # the real catalog, from the checkout
+            out = subprocess.run([sys.executable, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/actions/actions.py"),
+                                  "find", "--limit", "3", "--", m.group(1)], capture_output=True, text=True).stdout
+            return [0, out]
         m = re.search(r"store_find\.py.* -- '(.*)'$", cmd)
         if m:
             out = subprocess.run([sys.executable, str(STORE / "store_find.py"), "--demo", "--limit", "4", "--",
