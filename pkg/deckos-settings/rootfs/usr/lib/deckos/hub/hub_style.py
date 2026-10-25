@@ -80,6 +80,11 @@ def load_style():
 STYLE = load_style()
 
 
+def corner(px):
+    """A corner radius drawn by hand (covers, album art), following Appearance > Style > Corners."""
+    return px * CORNERS.get(STYLE["corners"], 1.0)
+
+
 def scaled(px):
     """A fixed width that holds text, grown or shrunk with the text size setting."""
     return round(px * TEXT_SCALE.get(STYLE["text"], 1.0))

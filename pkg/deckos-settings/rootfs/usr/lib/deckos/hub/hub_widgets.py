@@ -423,7 +423,7 @@ class NowPlaying(QFrame):
         p = QPainter(out)
         p.setRenderHint(QPainter.Antialiasing)
         path = QPainterPath()
-        path.addRoundedRect(QRectF(0, 0, s, s), 22, 22)
+        path.addRoundedRect(QRectF(0, 0, s, s), S.corner(22), S.corner(22))
         p.setClipPath(path)
         p.drawPixmap((s - pm.width()) // 2, (s - pm.height()) // 2, pm)
         p.end()

@@ -596,6 +596,20 @@ def main():
     app.setStyleSheet(S.qss())
     w = Store()
     w.show()
+    if "--screenshot" in sys.argv:  # --demo --screenshot DIR: every section, for checking layouts anywhere
+        out = Path(sys.argv[sys.argv.index("--screenshot") + 1])
+        out.mkdir(parents=True, exist_ok=True)
+        keys = list(w.nav_buttons)
+
+        def shoot(i=0):
+            if i:
+                w.grab().save(str(out / f"store-{keys[i - 1]}.png"))
+            if i == len(keys):
+                app.exit(0)
+                return
+            w.open_section(keys[i])
+            QTimer.singleShot(900, lambda: shoot(i + 1))
+        QTimer.singleShot(900, shoot)
     sys.exit(app.exec())
 
 

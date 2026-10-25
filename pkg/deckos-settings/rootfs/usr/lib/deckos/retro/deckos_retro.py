@@ -102,11 +102,11 @@ def cover(game, size=QSize(150, 200)):
     base = QColor(COLORS.get(game.system, "#374151"))
     p.setPen(Qt.NoPen)
     p.setBrush(base.darker(150))
-    p.drawRoundedRect(0, 3, size.width(), size.height() - 3, 12, 12)
+    p.drawRoundedRect(0, 3, size.width(), size.height() - 3, S.corner(12), S.corner(12))
     p.setBrush(base)
-    p.drawRoundedRect(0, 0, size.width(), size.height() - 4, 12, 12)
+    p.drawRoundedRect(0, 0, size.width(), size.height() - 4, S.corner(12), S.corner(12))
     p.setBrush(QColor(255, 255, 255, 30))
-    p.drawRoundedRect(0, 0, size.width(), 34, 12, 12)
+    p.drawRoundedRect(0, 0, size.width(), 34, S.corner(12), S.corner(12))
     for x in (9, size.width() - 9):  # screw heads, the DecKoOS motif
         for y in (9, size.height() - 13):
             p.setBrush(QColor(255, 255, 255, 70))

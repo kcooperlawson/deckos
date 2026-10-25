@@ -171,7 +171,7 @@ def cover(game):
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     clip = QPainterPath()
-    clip.addRoundedRect(QRectF(0, 0, COVER_W, COVER_H), 8, 8)
+    clip.addRoundedRect(QRectF(0, 0, COVER_W, COVER_H), S.corner(8), S.corner(8))
     p.setClipPath(clip)
     art = QPixmap(str(game["art"])) if game.get("art") else QPixmap()
     if not art.isNull():

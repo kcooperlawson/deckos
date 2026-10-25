@@ -130,7 +130,11 @@ class AppCard(QFrame):
             top.addWidget(label(f"<span style='color:{S.SUCCESS}'>Installed</span>", "muted", wrap=False))
         v.addLayout(top)
         summary = label(app.summary, "sub")
-        summary.setMaximumHeight(36)
+        summary.setToolTip(app.summary)
+        summary.ensurePolished()  # the stylesheet's font (and text size setting), not the default one
+        # Two whole lines at whatever the text size is: a fixed height cut the third line in half
+        summary.setMaximumHeight(summary.fontMetrics().lineSpacing() * 2 + 2)
+        summary.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         v.addWidget(summary)
         badges = QHBoxLayout()
         badges.setSpacing(5)
@@ -231,7 +235,7 @@ class Screenshots(QScrollArea):
             p = QPainter(rounded)
             p.setRenderHint(QPainter.Antialiasing)
             path = QPainterPath()
-            path.addRoundedRect(QRectF(rounded.rect()), 18, 18)
+            path.addRoundedRect(QRectF(rounded.rect()), S.corner(18), S.corner(18))
             p.setClipPath(path)
             p.drawPixmap(0, 0, pm)
             p.end()
