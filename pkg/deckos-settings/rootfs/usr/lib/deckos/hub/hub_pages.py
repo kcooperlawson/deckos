@@ -363,6 +363,8 @@ class GamingPage(Page):
     subtitle = "Steam Gaming Mode: Big Picture full screen, like a Steam Deck."
 
     def build(self):
+        self.head_actions.addWidget(button("Retro games", slot=lambda: QProcess.startDetached("deckos-retro", []),
+                                           icon="gaming", tip="DeckOS Retro: your retro games, set up and in Steam"))
         if not all(sysinfo.installed(cmd) for cmd in ("gamescope-session-plus", "steam", "gamescope", "steamos-session-select")):
             self.lay.addWidget(Empty("gaming", "Gaming isn't installed",
                                      "Add Steam, Gaming Mode, Proton, Lutris, Heroic, MangoHud and the rest.",

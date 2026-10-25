@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DeckOS Retro
+GenericName=Retro games
+Comment=Your retro games in one place: finds them, sets up the emulators and adds them to Steam
+Exec=deckos-retro
+Icon=input-gaming
+Type=Application
+Categories=Game;Emulator;
+Keywords=retro;emulator;emulation;retroarch;rom;nes;snes;n64;gameboy;playstation;ps1;ps2;psp;gamecube;wii;sega;genesis;dreamcast;arcade;

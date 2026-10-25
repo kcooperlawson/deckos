@@ -90,6 +90,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `logs/console-linux.txt`, matches `RULES`, and applies/undoes fixes (state per game in
   `~/.local/state/deckos/gamedoctor/`). `gamedoctor_watch.py` is the user service (tail -F, no polling).
   Tests: `tests/test_gamedoctor.py` (a fake Steam root via `DECKOS_STEAM_ROOT`; never the real one).
+- DeckOS Retro: `usr/lib/deckos/retro/`. `retro.py` (no Qt): `SYSTEMS` (consoles: extensions, folder names,
+  libretro core package or Flathub id, BIOS with known md5s), `scan()` (extension, then folder name, then disc
+  header bytes; .cue/.gdi/.m3u claim their files; "(Disc N)" files merge; anything unidentified is left out,
+  never guessed), `import_bios()` (by checksum), `sync_steam()` (non-Steam shortcuts tagged "DeckOS Retro" via
+  steamfiles' binary KeyValues; other shortcuts untouched; Steam must be closed). `deckos retro install` installs
+  only emulators (allow-listed). Never add game or BIOS downloads. Tests: `tests/test_retro.py`.
 - System Doctor: `usr/lib/deckos/sysdoctor/`. `sysdoctor.py` (no Qt, read-only) runs `CHECKS` through `run()`
   (tests feed it canned output) into `Finding`s with evidence, `Fix`es (commands; root ones via pkexec) and
   `open` (a DeckOS app). `explain()` is deckos-local's `summarize` on one finding. Name crashes by command

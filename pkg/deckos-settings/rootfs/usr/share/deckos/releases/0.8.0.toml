@@ -54,3 +54,13 @@ Brand apps like Firefox and Steam keep their own logos."""
 icon = "appearance"
 try = "See Appearance"
 run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "DeckOS Retro"
+text = """Your retro games in one place, from the NES to the PlayStation 2. DeckOS Retro finds the games you have \
+(by file, folder or the disc itself), installs the emulators they need in one click, checks for the BIOS \
+files some consoles need and recognises yours by their contents, and adds everything to Steam, so your \
+games are in Gaming Mode. It doesn't download games or BIOS files: it works with your own."""
+icon = "gaming"
+try = "Open DeckOS Retro"
+run = ["deckos-retro"]

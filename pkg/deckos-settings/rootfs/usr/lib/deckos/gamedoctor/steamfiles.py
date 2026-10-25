@@ -3,13 +3,16 @@
 Steam keeps per-game launch options in userdata/<id>/config/localconfig.vdf and per-game compatibility
 tools (Proton versions) in config/config.vdf, in Valve's KeyValues text format. Steam rewrites both when
 it exits, so anything written here must be written while Steam is closed (steam_running(), close_steam()).
-Every write keeps the previous file as NAME.deckos-bak.
+Every write keeps the previous file as NAME.deckos-bak. Non-Steam games ("shortcuts", which DeckOS Retro
+adds) live in userdata/<id>/config/shortcuts.vdf, in Valve's binary KeyValues: load_binary/dump_binary.
 """
 import os
 import re
 import shutil
+import struct
 import subprocess
 import time
+import zlib
 from pathlib import Path
 
 STEAM = Path(os.environ.get("DECKOS_STEAM_ROOT") or Path.home() / ".local/share/Steam")
@@ -104,6 +107,109 @@ def _ci(d, *keys):
             found = k
         d = d[found]
     return d
+
+
+# ------------------------------------------------------------------ binary KeyValues (shortcuts.vdf)
+
+class Raw:
+    """A binary KeyValues value of a type DeckOS doesn't edit (floats, 64-bit ints...): kept byte for byte."""
+
+    def __init__(self, kind, data):
+        self.kind, self.data = kind, data
+
+    def __eq__(self, other):
+        return isinstance(other, Raw) and (self.kind, self.data) == (other.kind, other.data)
+
+    def __repr__(self):
+        return f"Raw({self.kind}, {self.data!r})"
+
+
+_RAW_SIZE = {0x03: 4, 0x04: 4, 0x05: 4, 0x06: 4, 0x07: 8, 0x0A: 8}
+
+
+def load_binary(data):
+    """bytes -> nested dicts. Strings (0x01) come back as str, int32 (0x02) as int, others as Raw."""
+    pos = 0
+
+    def cstring():
+        nonlocal pos
+        end = data.index(b"\0", pos)
+        s = data[pos:end].decode("utf-8", errors="surrogateescape")
+        pos = end + 1
+        return s
+
+    def mapping():
+        nonlocal pos
+        out = {}
+        while True:
+            kind = data[pos]
+            pos += 1
+            if kind == 0x08:
+                return out
+            key = cstring()
+            if kind == 0x00:
+                out[key] = mapping()
+            elif kind == 0x01:
+                out[key] = cstring()
+            elif kind == 0x02:
+                out[key] = struct.unpack_from("<i", data, pos)[0]
+                pos += 4
+            elif kind in _RAW_SIZE:
+                out[key] = Raw(kind, data[pos:pos + _RAW_SIZE[kind]])
+                pos += _RAW_SIZE[kind]
+            else:
+                raise ValueError(f"unknown binary KeyValues type {kind:#x} at {pos}")
+
+    result = mapping()
+    return result
+
+
+def dump_binary(d):
+    out = bytearray()
+    for key, value in d.items():
+        k = key.encode("utf-8", errors="surrogateescape") + b"\0"
+        if isinstance(value, dict):
+            out += b"\x00" + k + dump_binary(value)
+        elif isinstance(value, str):
+            out += b"\x01" + k + value.encode("utf-8", errors="surrogateescape") + b"\0"
+        elif isinstance(value, bool) or isinstance(value, int):
+            out += b"\x02" + k + struct.pack("<i", int(value))
+        elif isinstance(value, Raw):
+            out += bytes([value.kind]) + k + value.data
+        else:
+            raise TypeError(f"can't write {type(value).__name__} to binary KeyValues")
+    return bytes(out + b"\x08")
+
+
+def shortcuts_path(user):
+    return Path(user) / "config/shortcuts.vdf"
+
+
+def read_shortcuts(user):
+    """The user's non-Steam games as a list of dicts (empty if the file doesn't exist yet)."""
+    path = shortcuts_path(user)
+    if not path.exists():
+        return []
+    root = load_binary(path.read_bytes())
+    entries = next((v for k, v in root.items() if k.lower() == "shortcuts"), {})
+    return [entries[k] for k in sorted(entries, key=lambda x: int(x) if x.isdigit() else 0)]
+
+
+def write_shortcuts(user, entries):
+    path = shortcuts_path(user)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        shutil.copy2(path, path.with_name(path.name + ".deckos-bak"))
+    tmp = path.with_name(path.name + ".deckos-tmp")
+    tmp.write_bytes(dump_binary({"shortcuts": {str(i): e for i, e in enumerate(entries)}}))
+    tmp.replace(path)
+
+
+def shortcut_appid(exe, name):
+    """The id Steam gives a non-Steam game (what Steam ROM Manager and Steam itself compute): grid art and
+    "steam://rungameid" use it."""
+    crc = zlib.crc32((exe + name).encode("utf-8")) | 0x80000000
+    return struct.unpack("<i", struct.pack("<I", crc))[0]
 
 
 # ------------------------------------------------------------------ games, tools, users

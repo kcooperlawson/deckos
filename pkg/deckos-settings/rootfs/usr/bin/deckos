@@ -1439,6 +1439,32 @@ layout_cmd() {
   esac
 }
 
+# ------------------------------------------------------------------ retro games
+#
+# DeckOS Retro's installs: emulators only (RetroArch and libretro cores from the repos, standalone ones from
+# Flathub). It never downloads games or BIOS files.
+
+retro_cmd() {
+  case ${1:-} in
+    install)
+      shift
+      local pac=() flat=() p
+      for p in "$@"; do
+        if [[ $p =~ ^(retroarch|libretro-[a-z0-9-]+)$ ]]; then pac+=("$p")
+        elif [[ $p =~ ^(net\.pcsx2\.PCSX2|org\.DolphinEmu\.dolphin-emu|org\.ppsspp\.PPSSPP|org\.duckstation\.DuckStation)$ ]]; then flat+=("$p")
+        else err "not an emulator DeckOS Retro installs: $p"; exit 2; fi
+      done
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      if ((${#pac[@]})); then pkexec pacman -S --needed --noconfirm "${pac[@]}" || { err "the emulators didn't install"; exit 1; }; fi
+      if ((${#flat[@]})); then
+        flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+        flatpak install --user -y --noninteractive flathub "${flat[@]}" || { err "the Flathub emulators didn't install"; exit 1; }
+      fi
+      ok "emulators installed: ${pac[*]} ${flat[*]}" ;;
+    *) exec deckos-retro "$@" ;;
+  esac
+}
+
 # ------------------------------------------------------------------ global themes
 #
 # Plasma 6's plasma-apply-lookandfeel --apply leaves the colours and wallpaper alone unless it also
@@ -1575,6 +1601,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
                                                         graphs adds DeckOS Performance to the desktop
+  deckos retro [install PKG...]                         DeckOS Retro (install: its emulators)
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
   deckos whatsnew                                       what the latest DeckOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
@@ -1614,6 +1641,7 @@ case ${1:-} in
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   theme) shift; theme_cmd "$@" ;;
+  retro) shift; retro_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
   game)
     shift
