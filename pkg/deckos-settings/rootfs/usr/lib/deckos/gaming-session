@@ -67,6 +67,9 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# "DecKoOS" in the Steam library (the Gaming Mode panel): Steam isn't running yet, so its file can be written
+/usr/bin/deckos-gamepanel --add-to-steam >/dev/null 2>&1 || true
+
 # Do not exec: the EXIT trap must run after both a normal exit and a startup failure.
 gamescope-session-plus steam &
 wait "$!"
