@@ -106,11 +106,14 @@ generated() {
   # Re-run the generators whose output is committed; the tree must come out unchanged. The Xcursor files
   # are pixels and differ between Qt versions, so they're left out of the comparison.
   # Untracked files from before don't count: only what the generators themselves make
-  local before; before=$(git ls-files --others --exclude-standard -- pkg apps | sort)
+  local before changes
+  before=$(git ls-files --others --exclude-standard -- pkg apps | sort)
+  # Edits not committed yet don't count either: only what the generators change
+  changes=$(git diff -- . ':!pkg/deckos-settings/rootfs/usr/share/icons/DeckOS-cursors/cursors' | sha1sum)
   python3 assets/icons.py >/dev/null && python3 assets/themes.py >/dev/null \
     && QT_QPA_PLATFORM=offscreen python3 assets/icon_theme.py >/dev/null \
     && QT_QPA_PLATFORM=offscreen python3 assets/cursors.py >/dev/null || { fail "a generator failed"; return; }
-  if ! git diff --quiet -- . ':!pkg/deckos-settings/rootfs/usr/share/icons/DeckOS-cursors/cursors' \
+  if [[ $(git diff -- . ':!pkg/deckos-settings/rootfs/usr/share/icons/DeckOS-cursors/cursors' | sha1sum) != "$changes" ]] \
       || [[ -n $(comm -13 <(echo "$before") <(git ls-files --others --exclude-standard -- pkg apps | sort)) ]]; then
     git status --short -- pkg apps | head -20
     fail "generated files are out of date: run the generator and commit its output"
