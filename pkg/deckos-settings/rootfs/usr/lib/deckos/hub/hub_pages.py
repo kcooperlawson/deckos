@@ -706,6 +706,13 @@ class DrivesPage(Page):
         self.list.setSpacing(8)
         self.card.body.addLayout(self.list)
         self.lay.addWidget(self.card)
+        movein = Card("Coming from Windows?", "Bring your stuff over", "arrow-right")
+        movein.body.addWidget(label("Your Windows folders in the sidebar, your wallpaper, Firefox and Edge bookmarks, "
+                                    "your Steam games without downloading them again, and a DeckOS match for your apps. "
+                                    "Windows itself isn't changed.", "sub"))
+        movein.body.addWidget(row(button("Move in from Windows", "primary",
+                                         lambda: QProcess.startDetached("deckos-movein", []), icon="arrow-right")))
+        self.lay.addWidget(movein)
         help_ = Card("If a drive is read-only", None, "alert")
         help_.body.addWidget(label("Windows leaves drives half-hibernated when Fast Startup is on, and Linux won't write "
                                    "to them. In Windows, open Terminal as administrator and run "

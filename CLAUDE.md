@@ -76,6 +76,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `logs/console-linux.txt`, matches `RULES`, and applies/undoes fixes (state per game in
   `~/.local/state/deckos/gamedoctor/`). `gamedoctor_watch.py` is the user service (tail -F, no polling).
   Tests: `tests/test_gamedoctor.py` (a fake Steam root via `DECKOS_STEAM_ROOT`; never the real one).
+- Move In: `usr/lib/deckos/movein/`. `movein.py` (no Qt) scans Windows on the mounted NTFS drives
+  (`DECKOS_MOVEIN_ROOTS` for tests) into `Item`s and `apply()`s them: Windows is only read; Linux-side files
+  keep `.deckos-bak`; Steam's libraryfolders.vdf goes through Game Doctor's `steamfiles`. Drives first: if
+  they move to /mnt, `repoint()` moves the other items' paths. `deckos_movein.py` is the window. Build rows
+  on their own widget (`QHBoxLayout(holder)`): a free layout added with addLayout crashed PySide on exit.
 - `pkg/deckos-theme-tmpikes/`: optional TMpikes theme. `pkg/deckos-installer/`: live USB only, never
   published to the update repo.
 - `build.sh`: ISO build (archiso releng + DeckOS + an on-USB repo of prebuilt DeckOS/AUR packages).

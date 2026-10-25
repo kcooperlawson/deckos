@@ -1518,6 +1518,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos whatsnew                                       what the latest DeckOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
   deckos work                                          local code, documents and image workspace
+  deckos movein                                        bring folders, browser, games and apps over from Windows
   deckos bench   [system|games|run KEYS|compare A B]    DeckOS Bench: benchmarks with confidence ranges
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
@@ -1559,6 +1560,7 @@ case ${1:-} in
     esac ;;
   ask) shift; exec python3 "$AI_DIR/deckos_ask.py" "$@" ;;
   work) shift; exec python3 "${DECKOS_WORK_DIR:-/usr/lib/deckos/work}/work_app.py" "$@" ;;
+  movein) shift; exec deckos-movein "$@" ;;
   bench) shift; exec python3 "${DECKOS_BENCH_DIR:-/usr/lib/deckos/bench}/deckos_bench.py" "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;

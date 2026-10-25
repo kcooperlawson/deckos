@@ -780,6 +780,8 @@ class FilesStep(Step):
         drives = Card("Windows drives", "Mounted as they are, nothing reformatted", "drives")
         drives.actions.addWidget(button("Rescan", slot=self.rescan, icon="refresh", tip="Adds new NTFS drives"))
         drives.actions.addWidget(button("Open in Files", slot=lambda: launch("dolphin", "/mnt"), icon="folder"))
+        drives.actions.addWidget(button("Move in from Windows", slot=lambda: launch("deckos-movein"), icon="arrow-right",
+                                        tip="Folders, wallpaper, browser, Steam games and apps from Windows"))
         self.drive_box = QVBoxLayout()
         self.drive_box.setSpacing(6)
         drives.body.addLayout(self.drive_box)

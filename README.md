@@ -169,6 +169,23 @@ It ends with a summary of what changed (and whether a restart is needed). After 
 the way: open it again from the app menu, **DeckOS Hub › Home › Welcome tour**, or `deckos-welcome`.
 Tick *Show at startup* to have it back at every login.
 
+## Move in from Windows
+
+**Move in from Windows** (DeckOS Hub › Drives, the Welcome tour, or `deckos movein`) finds the Windows
+on this PC and brings over what's worth having, in one go:
+
+- your Windows **folders** (Documents, Pictures, Downloads, OneDrive…) in DeckOS Files' sidebar, read
+  straight from the Windows drive, nothing copied;
+- your **wallpaper**; your **Firefox** profile (bookmarks, history, passwords, add-ons) as Firefox's
+  profile here; **Edge or Chrome bookmarks** as a file Firefox imports;
+- your **Steam games** as libraries in Steam here, so nothing downloads again (and Proton's files go on
+  the Linux drive); other launchers' game folders, with how to add them to Heroic or Lutris;
+- a DeckOS match for **your apps**, each with a Get button; fonts you installed;
+- and it makes your Windows drives mount at every start, so none of that vanishes after a restart.
+
+Windows itself is never changed; anything changed on the DeckOS side keeps a `.deckos-bak`. Wi-Fi
+passwords can't come over: Windows encrypts them.
+
 ## Display blackouts on Radeon cards
 
 Some Radeon cards (confirmed on the RX 9070 XT) save power at idle by switching their VRAM clock with

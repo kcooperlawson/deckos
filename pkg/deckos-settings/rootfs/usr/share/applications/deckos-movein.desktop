@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Move in from Windows
+GenericName=Bring your Windows stuff over
+Comment=Folders, wallpaper, Firefox, bookmarks, Steam games and apps from the Windows on this PC
+Exec=deckos-movein
+Icon=deckos-hub
+Type=Application
+Categories=System;Utility;
+Keywords=windows;migrate;import;move;switch;bookmarks;firefox;edge;steam;games;wallpaper;
