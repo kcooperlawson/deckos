@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QScroll
 
 import hub_style as S  # noqa: E402
 import sysdoctor as sd  # noqa: E402
-from hub_widgets import Card, Empty, button, icon_label, label  # noqa: E402
+from hub_widgets import Empty, button, icon_label, label  # noqa: E402
 
 DEMO = "--demo" in sys.argv
 COLORS = {sd.BAD: S.DANGER, sd.WARN: S.WARNING, sd.INFO: S.SUBTEXT}

@@ -185,7 +185,7 @@ def _folders(home):
         path = home / name
         if path.is_dir() and nonempty(path):
             out.append(Item(f"folder:{name}", "folders", f"Windows {name}",
-                            f"In DeckOS Files' sidebar, straight from the Windows drive: nothing is copied.",
+                            "In DeckOS Files' sidebar, straight from the Windows drive: nothing is copied.",
                             data={"path": str(path), "icon": icon}))
     return out
 

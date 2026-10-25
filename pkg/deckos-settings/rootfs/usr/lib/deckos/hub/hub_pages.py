@@ -1136,6 +1136,13 @@ class SystemPage(Page):
             self.hub.toast("Update cancelled.", "warn")
         else:
             self.hub.toast("The update stopped with an error; see the log.", "bad", 7000)
+            tail = "\n".join(self.up_log.toPlainText().splitlines()[-40:])
+            self.notices = [("error", lambda: RowItem(
+                "alert", "The update stopped with an error", "The log shows where. The Assistant can read it with you.",
+                S.DANGER, [button("Ask DeckOS Assistant", slot=lambda: sysinfo.ask_assistant(
+                    "A DeckOS update (pacman -Syu through deckos update) stopped with an error. Explain what went "
+                    "wrong and how to fix it. The end of its output:\n" + tail), icon="ai")]))]
+            self.up_rows.insertWidget(0, self.notices[0][1]())
         self.hub.data.invalidate()
         self.check_updates()
         self.hub.data.undoable(self.show_undoable, fresh=True)

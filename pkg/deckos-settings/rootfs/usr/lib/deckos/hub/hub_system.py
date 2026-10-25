@@ -397,6 +397,13 @@ def last_undo():
     return info if info.get("snapshot") else None
 
 
+def ask_assistant(question):
+    """DeckOS Assistant's chat box, asked about something that went wrong (it runs on the local model)."""
+    if not DEMO:
+        from PySide6.QtCore import QProcess
+        QProcess.startDetached("deckos-assistant", ["--ask", question[-6000:]])
+
+
 def home_snapshots_on():
     return DEMO or Path("/etc/snapper/configs/home").exists()
 

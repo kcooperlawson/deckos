@@ -26,6 +26,12 @@ from store_catalog import (CATEGORIES, DEMO, SOURCE_NAMES, SOURCE_ORDER, Catalog
 from store_jobs import Jobs  # noqa: E402
 from store_widgets import AppCard, AppIcon, CardGrid, Screenshots, badge  # noqa: E402
 
+
+def ask_assistant(question):
+    """DeckOS Assistant's chat box, asked about something that went wrong (the Hub has the same)."""
+    if not DEMO:
+        QProcess.startDetached("deckos-assistant", ["--ask", question[-6000:]])
+
 PAGE_SIZE = 48
 
 
@@ -525,6 +531,12 @@ class Store(QWidget):
             self.actions.addWidget(pick)
             if len(available) == 1:
                 self.actions.addWidget(label(f"From {SOURCE_NAMES[available[0]]}", "muted", wrap=False))
+        if job and job.ok is False and job.text != "Cancelled.":
+            log = "\n".join(job.log[-40:])
+            self.actions.addWidget(button("Ask DeckOS Assistant", slot=lambda: ask_assistant(
+                f"On DeckOS, {'installing' if job.action == 'install' else 'removing'} {app.name} from "
+                f"{SOURCE_NAMES.get(job.source, job.source)} failed. Explain what went wrong and how to fix it. "
+                f"The end of its output:\n{log}"), icon="ai"))
         self.actions.addStretch(1)
         self.paint_progress()
 

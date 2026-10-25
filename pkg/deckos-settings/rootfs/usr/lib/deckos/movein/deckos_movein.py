@@ -10,7 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
 
-from PySide6.QtCore import QObject, QProcess, Qt, QTimer, Signal  # noqa: E402
+from PySide6.QtCore import QObject, QProcess, QTimer, Signal  # noqa: E402
 from PySide6.QtGui import QFont  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame, QHBoxLayout, QScrollArea,  # noqa: E402
                                QVBoxLayout, QWidget)
