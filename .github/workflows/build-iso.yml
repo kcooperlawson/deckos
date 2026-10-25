@@ -22,7 +22,8 @@ jobs:
             pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-service \
             pkg/deckos-settings/rootfs/usr/lib/deckos/gaming-cleanup \
             pkg/deckos-settings/rootfs/usr/lib/os-session-select \
-            pkg/deckos-installer/rootfs/usr/bin/deckos-installer
+            pkg/deckos-installer/rootfs/usr/bin/deckos-installer \
+            pkg/deckos-settings/rootfs/usr/share/deckos/shell/snapshot-first.bash tests/vm/partition_harness.bash
           shellcheck -S warning -s sh pkg/deckos-settings/rootfs/usr/lib/deckos/brand-os-release \
             pkg/deckos-settings/rootfs/etc/profile.d/deckos.sh
       - name: python

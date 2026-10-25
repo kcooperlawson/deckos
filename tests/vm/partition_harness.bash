@@ -17,6 +17,7 @@ spin() { local t=$1; shift; "$@" >>"$LOG" 2>&1 || die "$t failed"; good "$t"; }
 case $1 in
   list) list_free ;;
   make)
+    # shellcheck disable=SC2034  # read by make_partition (functions.bash)
     FREE=$2 ESP="" TARGET=""
     make_partition
     echo "TARGET=$TARGET ESP=$ESP PARTNO=$TARGET_PARTNO" ;;
