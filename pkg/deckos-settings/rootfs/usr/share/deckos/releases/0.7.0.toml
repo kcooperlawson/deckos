@@ -1,0 +1,23 @@
+# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.7.0"
+name = "Smooth switch"
+tagline = "One animation from the desktop into Gaming Mode, and a round of fixes for things that quietly didn't work."
+
+fixes = [
+    "Windows (NTFS) drives stay connected after a restart again: Rescan was finding no drives on the newest system tools, so they were never added.",
+    "Picking a theme in DeckOS Hub or Welcome now changes the colours, accent and wallpaper too, and the wallpaper you pick shows as the one in use.",
+    "Quick Settings: Gaming Mode, display fixes, updates, workload modes and the Hub and Assistant buttons work again.",
+    "DeckOS Assistant: New chat starts a fresh conversation every time, not just the first.",
+    "DeckOS Work: delete a task from the list with right-click or the Delete key.",
+    "Fewer CPU spikes: the file indexer skips game libraries, Wine prefixes and build folders, and DeckOS Hub stops reading sensors while it's minimized.",
+]
+
+[[highlights]]
+title = "A smooth switch to Gaming Mode"
+text = """Switching to Gaming Mode no longer flashes the closing desktop. The DeckOS logo fades in and keeps \
+turning while the desktop closes, and Steam opens with the same animation as its startup movie. A startup \
+movie you picked yourself stays."""
+icon = "gaming"
+try = "Switch to Gaming Mode"
+run = ["deckos", "session", "gaming", "--ask"]
