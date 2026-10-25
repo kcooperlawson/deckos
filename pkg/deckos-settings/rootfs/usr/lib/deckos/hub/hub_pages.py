@@ -1428,6 +1428,10 @@ class AppearancePage(Page):
     title = "Appearance"
     subtitle = "Theme, accent colour, wallpaper and desktop style."
 
+    def set_style(self, key, value):
+        S.save_style(**{key: value})
+        self.hub.set_accent(S.P.accent)  # the same live restyle: stylesheet, logos, repaint
+
     def custom_accent(self):
         from PySide6.QtWidgets import QColorDialog
         c = QColorDialog.getColor(QColor(S.P.accent), self, "Accent colour")
@@ -1469,6 +1473,28 @@ class AppearancePage(Page):
         sw_row.addStretch(1)
         accent.body.addLayout(sw_row)
         self.lay.addWidget(accent)
+
+        style = Card("Style", "How DecKoOS apps look", "sliders")
+        style.body.addWidget(label("For DecKoOS's own apps: the Hub, Store, Welcome, Assistant and the rest.", "sub"))
+        for key, title, options in (("logo", "Logo", (("gradient", "Gradient"), ("flat", "One colour"))),
+                                    ("corners", "Corners", (("sharp", "Sharp"), ("default", "Default"),
+                                                            ("round", "Round"))),
+                                    ("text", "Text size", (("small", "Small"), ("normal", "Normal"),
+                                                           ("large", "Large")))):
+            group = QButtonGroup(self)
+            buttons = []
+            for value, text in options:
+                b = QPushButton(text)
+                b.setObjectName("seg")
+                b.setCheckable(True)
+                b.setChecked(S.STYLE[key] == value)
+                b.clicked.connect(lambda _c, k=key, v=value: self.set_style(k, v))
+                group.addButton(b)
+                buttons.append(b)
+            name = label(title)
+            name.setFixedWidth(90)
+            style.body.addWidget(row(name, *buttons))
+        self.lay.addWidget(style)
 
         walls = Card("Wallpaper", "Desktop background", "image")
         self.wall_grid = QGridLayout()

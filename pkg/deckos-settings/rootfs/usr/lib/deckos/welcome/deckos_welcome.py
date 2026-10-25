@@ -39,8 +39,8 @@ QLabel#key {{ background: {raised}; border: 1px solid {border}; border-bottom: 2
 
 
 def qss():
-    return S.qss() + EXTRA_QSS.format(bg=S.SIDEBAR, border=S.BORDER, sub=S.SUBTEXT, text=S.TEXT, surface=S.SURFACE,
-                                      raised=S.RAISED)
+    return S.styled(S._qss() + EXTRA_QSS.format(bg=S.SIDEBAR, border=S.BORDER, sub=S.SUBTEXT, text=S.TEXT, surface=S.SURFACE,
+                                      raised=S.RAISED))
 
 
 def step_icon(number, state, size=22, ratio=2.0):

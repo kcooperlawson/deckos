@@ -224,7 +224,7 @@ class ChatBox(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowTitle("DecKoOS Assistant")
         self.resize(660, 600)
-        self.setStyleSheet(S.qss() + QSS_EXTRA)
+        self.setStyleSheet(S.styled(S._qss() + QSS_EXTRA))
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)

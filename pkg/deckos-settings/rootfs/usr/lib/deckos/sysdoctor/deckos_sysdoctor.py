@@ -112,7 +112,7 @@ class Doctor(QWidget):
         super().__init__()
         self.setWindowTitle("System Doctor")
         self.resize(820, 860)
-        self.setStyleSheet(S.qss() + QSS)
+        self.setStyleSheet(S.styled(S._qss() + QSS))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()

@@ -126,7 +126,7 @@ class WhatsNew(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setWindowTitle("What's new in DecKoOS")
-        self.setStyleSheet(S.qss() + QSS)
+        self.setStyleSheet(S.styled(S._qss() + QSS))
         self.resize(760, 820)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)

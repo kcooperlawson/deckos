@@ -57,6 +57,35 @@ class Palette:
 
 P = Palette(plasma_accent())
 
+# Appearance > Style: logo (gradient, flat), corners (sharp, default, round), text (small, normal, large).
+# Every DecKoOS app reads it through qss() and brand_svg(); `deckos`-free, since it's only the user's own file.
+STYLE_CONF = Path.home() / ".config/deckos/style.conf"
+STYLE_DEFAULTS = {"logo": "gradient", "corners": "default", "text": "normal"}
+CORNERS = {"sharp": 0.35, "default": 1.0, "round": 1.6}
+TEXT_SCALE = {"small": 0.9, "normal": 1.0, "large": 1.15}
+
+
+def load_style():
+    style = dict(STYLE_DEFAULTS)
+    try:
+        for line in STYLE_CONF.read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() in style:
+                style[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return style
+
+
+STYLE = load_style()
+
+
+def save_style(**changes):
+    STYLE.update(changes)
+    STYLE_CONF.parent.mkdir(parents=True, exist_ok=True)
+    STYLE_CONF.write_text("# DecKoOS apps' style (Hub > Appearance > Style)\n" +
+                          "".join(f"{k}={v}\n" for k, v in STYLE.items()))
+
 # The brand art is drawn in DecKoOS blue and its violet partner; apps show it in the person's accent instead,
 # like the icon theme's colour variants do on the taskbar.
 BRAND_BLUE, BRAND_VIOLET = "#4C8DFF", "#7A5CFF"
@@ -69,7 +98,7 @@ def brand_svg(name):
     except OSError:
         return QByteArray()
     text = re.sub(BRAND_BLUE, P.accent, text, flags=re.I)
-    text = re.sub(BRAND_VIOLET, P.grad_b, text, flags=re.I)
+    text = re.sub(BRAND_VIOLET, P.accent if STYLE["logo"] == "flat" else P.grad_b, text, flags=re.I)
     return QByteArray(text.encode())
 
 
@@ -102,6 +131,25 @@ def brand_icon(name, size=128):
 
 
 def qss():
+    return styled(_qss())
+
+
+def styled(sheet):
+    """A stylesheet with the person's corners and text size: radii and point sizes scaled. Swatches and radio
+    buttons are circles and stay circles."""
+    r = CORNERS.get(STYLE["corners"], 1.0)
+    t = TEXT_SCALE.get(STYLE["text"], 1.0)
+    out = []
+    for line in sheet.splitlines():
+        if r != 1.0 and "swatch" not in line and "QRadioButton" not in line:
+            line = re.sub(r"border-radius: (\d+)px", lambda m: f"border-radius: {round(int(m.group(1)) * r)}px", line)
+        if t != 1.0:
+            line = re.sub(r"font-size: ([\d.]+)pt", lambda m: f"font-size: {float(m.group(1)) * t:.1f}pt", line)
+        out.append(line)
+    return "\n".join(out)
+
+
+def _qss():
     return f"""
 QWidget {{ background: transparent; color: {TEXT}; font-family: "Inter", "Noto Sans"; font-size: 10pt; }}
 #root {{ background: {BG}; }}
