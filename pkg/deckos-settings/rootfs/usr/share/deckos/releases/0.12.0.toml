@@ -1,0 +1,49 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.12.0"
+name = "Ready for more PCs"
+tagline = "Getting back from a bad update, NVIDIA cards, picking an AI model that fits, and help when something goes wrong."
+
+fixes = [
+    "Windows (NTFS) drives are found again while installing: a change in a disk tool had hidden them.",
+    "When an install stops, the installer says what most likely went wrong and what to do, and saves its log on the USB stick.",
+    "With an NVIDIA card and Secure Boot on, the installer warns before the screen would stay black.",
+    "System Doctor spots an NVIDIA card without its driver, RTX 50 cards on the wrong driver, and old Intel 13th/14th gen microcode.",
+]
+
+[[highlights]]
+title = "Back from a bad update"
+image = "0.12.0/recovery.png"
+text = """If DecKoOS won't start after an update, pick a snapshot from the boot menu's DecKoOS snapshots. It \
+starts as it was before, and DecKoOS Hub says so on Home: keep it, and that snapshot becomes your system \
+from the next start. The one that didn't start is kept too, in case you want it back."""
+icon = "restore"
+try = "See your snapshots"
+run = ["deckos-hub", "--page", "system"]
+
+[[highlights]]
+title = "A local AI model that fits your PC"
+text = """Choose a model in DecKoOS Hub > AI & Dev. Each one says whether it fits your graphics card, runs \
+slower, or is too big, and the best fit is marked. gpt-oss 20B and Qwen3 Coder 30B passed every everyday \
+task in DecKoOS's own test; setting up local AI now picks the right size by itself."""
+icon = "ai"
+try = "Choose a model"
+run = ["deckos-hub", "--page", "aidev"]
+
+[[highlights]]
+title = "NVIDIA cards, seen properly"
+text = """DecKoOS Hub, System Monitor and the AI setup now read NVIDIA cards directly: temperature, power, \
+graphics memory and load, like Radeon cards. System Doctor knows what an NVIDIA PC needs and fixes it in \
+one click. NVIDIA and Intel are still new on DecKoOS: tell us how it goes."""
+icon = "gpu"
+try = "Run a checkup"
+run = ["deckos-sysdoctor"]
+
+[[highlights]]
+title = "A report for whoever helps"
+text = """One command makes a single file with your PC's hardware, drivers, screens and recent errors, with \
+your names, serial numbers and addresses taken out. Send it to whoever helps you; DecKoOS never sends it \
+anywhere itself. Search the menu for "report", or run deckos report."""
+icon = "doc"
+try = "Make a report"
+run = ["deckos-terminal", "--hold", "-e", "deckos", "report"]
