@@ -86,7 +86,7 @@ Item {
         width: getRow.width + 22
         height: 30
         radius: 8
-        color: buttonMouse.containsMouse ? Qt.rgba(0.30, 0.55, 1, 0.12) : "transparent"
+        color: buttonMouse.containsMouse ? Qt.rgba(deckMenu.accent.r, deckMenu.accent.g, deckMenu.accent.b, 0.12) : "transparent"
         border.color: deckMenu.accent
 
         Row {

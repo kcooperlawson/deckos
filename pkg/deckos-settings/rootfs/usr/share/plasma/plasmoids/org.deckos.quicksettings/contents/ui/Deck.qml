@@ -1,22 +1,24 @@
 pragma Singleton
 import QtQuick
+import org.kde.kirigami as Kirigami
 
-// The DecKoOS palette (same as hub_style.py). The accent follows Plasma's; FullRepresentation sets it.
+// The DecKoOS palette, from the active colour scheme and accent so themes and the Hub's accent reach
+// Quick Settings; the surfaces are the scheme's background lifted towards its text.
 QtObject {
-    readonly property color bg: "#0F1115"
-    readonly property color surface: "#171A21"
-    readonly property color raised: "#1D212A"
-    readonly property color border: "#262B36"
-    readonly property color hover: "#2A2F3B"
-    readonly property color pressed: "#353B49"
-    readonly property color text: "#E8EAF0"
-    readonly property color subtext: "#8C94A6"
-    readonly property color muted: "#5A6172"
+    readonly property color bg: Kirigami.Theme.backgroundColor
+    readonly property color text: Kirigami.Theme.textColor
+    readonly property color subtext: Kirigami.Theme.disabledTextColor
+    readonly property color surface: Qt.tint(bg, Qt.rgba(text.r, text.g, text.b, 0.035))
+    readonly property color raised: Qt.tint(bg, Qt.rgba(text.r, text.g, text.b, 0.06))
+    readonly property color border: Qt.tint(bg, Qt.rgba(text.r, text.g, text.b, 0.12))
+    readonly property color hover: Qt.tint(bg, Qt.rgba(text.r, text.g, text.b, 0.10))
+    readonly property color pressed: Qt.tint(bg, Qt.rgba(text.r, text.g, text.b, 0.15))
+    readonly property color muted: Qt.tint(subtext, Qt.rgba(bg.r, bg.g, bg.b, 0.35))
     readonly property color success: "#3DD68C"
     readonly property color warning: "#F5B84B"
     readonly property color danger: "#FF6B6B"
 
-    property color accent: "#4C8DFF"
+    readonly property color accent: Kirigami.Theme.highlightColor
     // The gradient partner: the accent shifted towards violet, like the brand tile.
     readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
                                              accent.hsvValue, 1)

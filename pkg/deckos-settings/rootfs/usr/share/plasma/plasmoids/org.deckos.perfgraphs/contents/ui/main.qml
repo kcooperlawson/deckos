@@ -7,18 +7,23 @@ import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.ksysguard.sensors as Sensors
+import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: deckPerf
 
-    readonly property color plate: "#171A21"
-    readonly property color raised: "#1E222B"
-    readonly property color border: "#262B36"
-    readonly property color text: "#E8EAF0"
-    readonly property color subtext: "#8C94A6"
-    readonly property color muted: "#5A6172"
-    readonly property color accent: "#4C8DFF"
-    readonly property color accentB: "#7A5CFF"
+    // Colours from the active colour scheme and accent, so themes and the Hub's accent reach this widget;
+    // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
+    readonly property color text: Kirigami.Theme.textColor
+    readonly property color subtext: Kirigami.Theme.disabledTextColor
+    readonly property color accent: Kirigami.Theme.highlightColor
+    // The gradient partner: the accent shifted towards violet, like the brand tile
+    readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
+                                             accent.hsvValue, 1)
+    readonly property color plate: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.035))
+    readonly property color raised: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.07))
+    readonly property color border: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.12))
+    readonly property color muted: Qt.tint(subtext, Qt.rgba(plate.r, plate.g, plate.b, 0.35))
     readonly property color upload: "#0EA08E"  // validated against the plate with the accent (dataviz)
 
     readonly property int samples: Plasmoid.configuration.seconds
@@ -92,7 +97,7 @@ PlasmoidItem {
     Rectangle {
         anchors.fill: parent
         radius: 14
-        color: Qt.rgba(0.09, 0.10, 0.13, 0.92)
+        color: Qt.rgba(deckPerf.plate.r, deckPerf.plate.g, deckPerf.plate.b, 0.92)
         border.color: deckPerf.border
 
         // Bolted plates: a screw head in each corner (the DecKoOS motif)

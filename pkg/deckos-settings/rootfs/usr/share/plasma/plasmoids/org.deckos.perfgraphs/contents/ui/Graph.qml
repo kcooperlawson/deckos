@@ -110,8 +110,8 @@ ColumnLayout {
                 fillRule: ShapePath.WindingFill
                 fillGradient: LinearGradient {
                     y1: 0; y2: plot.height
-                    GradientStop { position: 0; color: Qt.rgba(0.30, 0.55, 1, 0.32) }
-                    GradientStop { position: 1; color: Qt.rgba(0.48, 0.36, 1, 0.0) }
+                    GradientStop { position: 0; color: Qt.rgba(deckPerf.accent.r, deckPerf.accent.g, deckPerf.accent.b, 0.32) }
+                    GradientStop { position: 1; color: Qt.rgba(deckPerf.accentB.r, deckPerf.accentB.g, deckPerf.accentB.b, 0.0) }
                 }
                 PathPolyline { path: graph.area(graph.history, plot.width, plot.height) }
             }

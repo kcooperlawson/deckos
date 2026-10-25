@@ -14,16 +14,20 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: deckMenu
 
-    readonly property color base: "#0F1115"
-    readonly property color surface: "#171A21"
-    readonly property color raised: "#1E222B"
-    readonly property color border: "#262B36"
-    readonly property color text: "#E8EAF0"
-    readonly property color subtext: "#8C94A6"
-    readonly property color accent: "#4C8DFF"
-    readonly property color accentB: "#7A5CFF"
-    readonly property color hot: Qt.rgba(0.30, 0.55, 1, 0.16)
-    readonly property color hotBorder: Qt.rgba(0.30, 0.55, 1, 0.45)
+    // Colours from the active colour scheme and accent, so themes and the Hub's accent reach this widget;
+    // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
+    readonly property color text: Kirigami.Theme.textColor
+    readonly property color subtext: Kirigami.Theme.disabledTextColor
+    readonly property color accent: Kirigami.Theme.highlightColor
+    // The gradient partner: the accent shifted towards violet, like the brand tile
+    readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
+                                             accent.hsvValue, 1)
+    readonly property color base: Kirigami.Theme.backgroundColor
+    readonly property color surface: Qt.tint(base, Qt.rgba(text.r, text.g, text.b, 0.035))
+    readonly property color raised: Qt.tint(base, Qt.rgba(text.r, text.g, text.b, 0.07))
+    readonly property color border: Qt.tint(base, Qt.rgba(text.r, text.g, text.b, 0.12))
+    readonly property color hot: Qt.rgba(accent.r, accent.g, accent.b, 0.16)
+    readonly property color hotBorder: Qt.rgba(accent.r, accent.g, accent.b, 0.45)
     // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
     readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")

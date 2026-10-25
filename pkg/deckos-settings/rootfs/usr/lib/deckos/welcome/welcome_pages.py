@@ -338,7 +338,7 @@ class LookStep(Step):
         self.refresh()
 
     def set_accent(self, color, name):
-        self.apply(["plasma-apply-colorscheme", "--accent-color", color], "accent", f"Accent colour: {name}")
+        self.apply(["deckos", "accent", "apply", color], "accent", f"Accent colour: {name}")
         self.win.set_accent(color)
         self.refresh()  # the light/dark previews use the accent
 

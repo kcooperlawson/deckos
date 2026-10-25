@@ -24,7 +24,7 @@ Rectangle {
     LineIcon {
         anchors.centerIn: parent
         name: root.icon
-        tint: root.hovered || root.activeFocus ? deckMenu.text : "#C9CEDA"
+        tint: root.hovered || root.activeFocus ? deckMenu.text : Qt.tint(deckMenu.text, Qt.rgba(deckMenu.subtext.r, deckMenu.subtext.g, deckMenu.subtext.b, 0.4))
     }
 
     MouseArea {

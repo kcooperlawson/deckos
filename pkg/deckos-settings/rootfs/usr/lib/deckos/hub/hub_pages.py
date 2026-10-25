@@ -1433,7 +1433,7 @@ class AppearancePage(Page):
         self.apply(["plasma-apply-wallpaperimage", str(path)], f"Wallpaper: {name}", self.refresh)
 
     def set_accent(self, color, name):
-        self.apply(["plasma-apply-colorscheme", "--accent-color", color], f"Accent colour: {name}")
+        self.apply(["deckos", "accent", "apply", color], f"Accent colour: {name}")
         self.hub.set_accent(color)
 
     def refresh(self):

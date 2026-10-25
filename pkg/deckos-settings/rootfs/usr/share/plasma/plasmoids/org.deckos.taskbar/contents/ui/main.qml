@@ -16,12 +16,16 @@ import org.kde.kirigami as Kirigami
 PlasmoidItem {
     id: deckTasks
 
-    readonly property color raised: "#1E222B"
-    readonly property color border: "#262B36"
-    readonly property color text: "#E8EAF0"
-    readonly property color subtext: "#8C94A6"
-    readonly property color accent: "#4C8DFF"
-    readonly property color accentB: "#7A5CFF"
+    // Colours from the active colour scheme and accent, so themes and the Hub's accent reach this widget;
+    // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
+    readonly property color text: Kirigami.Theme.textColor
+    readonly property color subtext: Kirigami.Theme.disabledTextColor
+    readonly property color accent: Kirigami.Theme.highlightColor
+    // The gradient partner: the accent shifted towards violet, like the brand tile
+    readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
+                                             accent.hsvValue, 1)
+    readonly property color raised: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.08))
+    readonly property color border: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.13))
     readonly property color attention: "#F5A524"
 
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical

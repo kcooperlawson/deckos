@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Writes the DecKoOS icons in an accent colour, as a user icon theme: the folders (from the DecKoOS
+icon theme's places) and the DecKoOS app icons with their blue family swapped for the accent; file
+type icons and everything else come from DecKoOS by inheritance. `deckos accent` runs it.
+    accent-icons '#2AD4A8' [--light]     prints the theme's name
+--light uses Papirus' light set underneath and light folder symbols, for light colour schemes."""
+import colorsys
+import os
+import re
+import shutil
+import sys
+from pathlib import Path
+
+BASE = Path("/usr/share/icons/DeckOS")
+# Two names, used in turn: Plasma caches icons per theme name, so a new accent under the same name
+# can keep showing the old colours until the cache expires.
+NAMES = ("DeckOS-Accent-A", "DeckOS-Accent-B")
+HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "icons"
+
+
+def hexrgb(h):
+    return tuple(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
+
+
+def rgbhex(r, g, b):
+    return "#{:02X}{:02X}{:02X}".format(*(round(max(0, min(1, c)) * 255) for c in (r, g, b)))
+
+
+def shade(h, k):
+    """k < 1 darkens, k > 1 lightens towards white."""
+    r, g, b = hexrgb(h)
+    if k <= 1:
+        return rgbhex(r * k, g * k, b * k)
+    t = k - 1
+    return rgbhex(r + (1 - r) * t, g + (1 - g) * t, b + (1 - b) * t)
+
+
+def partner(h):
+    """The gradient partner: the accent shifted towards violet, as in the widgets."""
+    hh, s, v = colorsys.rgb_to_hsv(*hexrgb(h))
+    return rgbhex(*colorsys.hsv_to_rgb((hh + 32 / 360) % 1, min(1, s + 0.04), v))
+
+
+def recolour(src, dst, table):
+    text = src.read_text(encoding="utf-8")
+    pat = re.compile("|".join(re.escape(k) for k in table), re.I)
+    dst.write_text(pat.sub(lambda m: table[m.group(0).upper()], text), encoding="utf-8")
+
+
+def main():
+    if len(sys.argv) < 2 or not re.fullmatch(r"#[0-9A-Fa-f]{6}", sys.argv[1]):
+        sys.exit("usage: accent-icons '#RRGGBB' [--light]")
+    accent, light = sys.argv[1].upper(), "--light" in sys.argv[2:]
+    current = Path(HOME / NAMES[0] / "index.theme")
+    name = NAMES[1] if current.exists() and "DecKoOS accent" in current.read_text() else NAMES[0]
+    out = HOME / name
+    shutil.rmtree(out, ignore_errors=True)
+
+    folders = {"#4C8DFF": accent, "#4A5FE0": shade(accent, 0.82),
+               "#16234D": shade(accent, 1.85) if light else shade(accent, 0.28)}
+    apps = {"#4C8DFF": accent, "#5A9BFF": shade(accent, 1.12), "#2F6BE0": shade(accent, 0.8),
+            "#7A5CFF": partner(accent), "#6A7CFF": shade(partner(accent), 1.08), "#3A47C9": shade(partner(accent), 0.78)}
+    index = (BASE / "index.theme").read_text().splitlines()
+    dirs = next(l for l in index if l.startswith("Directories=")).split("=", 1)[1].split(",")
+    for d in dirs:
+        if d == "scalable/mimetypes":
+            continue
+        (out / d).mkdir(parents=True, exist_ok=True)
+        for f in (BASE / d).glob("*.svg"):
+            recolour(f.resolve(), out / d / f.name, apps if d == "scalable/apps" else folders)
+
+    under = "Papirus,breeze" if light else "Papirus-Dark,breeze-dark"
+    lines = []
+    for l in index:
+        if l.startswith("Name="):
+            l = f"Name=DecKoOS ({accent})"
+        elif l.startswith("Comment="):
+            l = f"Comment=DecKoOS accent {accent}: DecKoOS icons with folders in your accent colour"
+        elif l.startswith("Inherits="):
+            l = f"Inherits=DeckOS,{under},hicolor"
+        elif l.startswith("Directories="):
+            l = "Directories=" + ",".join(d for d in dirs if d != "scalable/mimetypes")
+        lines.append(l)
+    (out / "index.theme").write_text("\n".join(lines) + "\n# DecKoOS accent\n", encoding="utf-8")
+    # The other name's copy is now stale
+    shutil.rmtree(HOME / NAMES[1 - NAMES.index(name)], ignore_errors=True)
+    print(name)
+
+
+if __name__ == "__main__":
+    main()

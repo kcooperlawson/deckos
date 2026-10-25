@@ -76,10 +76,10 @@ Item {
         anchors.fill: parent
         anchors.margins: 3
         radius: 10
-        color: task.active ? Qt.rgba(0.30, 0.55, 1, 0.16)
+        color: task.active ? Qt.rgba(deckTasks.accent.r, deckTasks.accent.g, deckTasks.accent.b, 0.16)
             : mouse.containsMouse || task.dragging ? deckTasks.raised : "transparent"
         border.width: task.active || mouse.containsMouse ? 1 : 0
-        border.color: task.active ? Qt.rgba(0.30, 0.55, 1, 0.45) : deckTasks.border
+        border.color: task.active ? Qt.rgba(deckTasks.accent.r, deckTasks.accent.g, deckTasks.accent.b, 0.45) : deckTasks.border
         Behavior on color { ColorAnimation { duration: 120 } }
 
         RowLayout {

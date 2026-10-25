@@ -1481,6 +1481,33 @@ theme_default() {  # defaults file, [group][...] header, key
   awk -v g="$2" -v k="$3" '/^\[/ {in_g = ($0 == g); next} in_g && index($0, k "=") == 1 {print substr($0, length(k) + 2); exit}' "$1"
 }
 
+# The accent colour: Plasma's (widgets, selections, the DecKoOS panel widgets) and the icons'. The DecKoOS
+# folder and app icons are rewritten in the accent as a user icon theme (/usr/lib/deckos/accent-icons),
+# applied only while a DecKoOS icon theme is in use: a user's own icon theme is left alone.
+accent_apply() {
+  local color=$1 icons light=""
+  plasma-apply-colorscheme --accent-color "$color" >/dev/null
+  icons=$(kreadconfig6 --file kdeglobals --group Icons --key Theme)
+  [[ -z $icons || $icons == DeckOS || $icons == DeckOS-* ]] || return 0
+  local bg; bg=$(kreadconfig6 --file kdeglobals --group Colors:Window --key BackgroundNormal)
+  if [[ $bg =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]] && ((BASH_REMATCH[1] + BASH_REMATCH[2] + BASH_REMATCH[3] > 382)); then
+    light=--light
+  fi
+  icons=$(/usr/lib/deckos/accent-icons "$color" $light) || { warn "the icons couldn't be recoloured"; return 0; }
+  /usr/lib/plasma-changeicons "$icons" >/dev/null 2>&1 || true
+}
+
+accent_cmd() {
+  case ${1:-} in
+    apply)
+      [[ ${2:-} =~ ^#[0-9A-Fa-f]{6}$ ]] || { err "usage: deckos accent apply '#RRGGBB'"; exit 2; }
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      accent_apply "$2"
+      ok "accent: $2" ;;
+    *) err "usage: deckos accent apply '#RRGGBB'"; exit 2 ;;
+  esac
+}
+
 theme_cmd() {
   case ${1:-} in
     apply)
@@ -1503,7 +1530,7 @@ theme_cmd() {
         plasma-apply-colorscheme "$scheme" >/dev/null
       fi
       if [[ $accent =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]]; then
-        plasma-apply-colorscheme --accent-color "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")" >/dev/null
+        accent_apply "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")"
       fi
       [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || plasma-apply-wallpaperimage "/usr/share/wallpapers/$wall" >/dev/null
       cursor=$(theme_default "$defaults" "[kcminputrc][Mouse]" cursorTheme)
@@ -1610,6 +1637,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
                                                         graphs adds DecKoOS Performance to the desktop
   deckos retro [install PKG...]                         DecKoOS Retro (install: its emulators)
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
+  deckos accent apply '#RRGGBB'                         accent colour for Plasma, the DecKoOS widgets and icons
   deckos whatsnew                                       what the latest DecKoOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
   deckos work                                          local code, documents and image workspace
@@ -1648,6 +1676,7 @@ case ${1:-} in
   mode) shift; mode_cmd "$@" ;;
   layout) shift; layout_cmd "$@" ;;
   theme) shift; theme_cmd "$@" ;;
+  accent) shift; accent_cmd "$@" ;;
   retro) shift; retro_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
   game)
