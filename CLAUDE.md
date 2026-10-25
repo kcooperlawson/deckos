@@ -208,6 +208,26 @@ names the maintainer on everything, with the installer, root and packaging paths
 Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), opens Claude Code to review one
 (review only: never merge, approve or push), and merges only after the checks pass and the maintainer confirms.
 
+## How DecKoOS hangs together (0.10.0)
+
+- **Pulse** (`usr/lib/deckos/pulse/pulse.py`, no Qt): the timeline. JSON lines in `~/.local/state/deckos/timeline.jsonl`
+  (user) and root-owned `/var/lib/deckos/timeline.jsonl` (system); readers watch the files (no polling), user events
+  also go out as `org.deckos.Pulse.Event`. Record with `pulse.emit(kind, title, undo=[...])` (Python) or the `pulse`
+  function in `deckos`. An undo is a `deckos` command from `UNDOABLE`; only system entries undo via pkexec. pacman
+  hooks (`zzz-deckos-pulse-*.hook`) record installs/updates/removals with `deckos undo N`. Tests must point
+  `DECKOS_PULSE_USER`/`DECKOS_PULSE_SYSTEM` at temp files (check.sh does for the whole run).
+- **Actions** (`usr/share/deckos/actions.toml` + `usr/lib/deckos/actions/actions.py`): everything DecKoOS can do, once.
+  DecKoOS Menu's search (In DecKoOS, above the results; the cursor still starts on the first app), `deckos do ID`, and the
+  Assistant's `do_action` read it. Add a feature's action there; `tests/test_actions.py` checks icons, commands, pages.
+- **Care** (`usr/lib/deckos/care/care.py`, `deckos-care.service`): follows the journal's crash reports and both timelines;
+  runs System Doctor's quick checks after system changes; says each thing once in a while.
+- **Game profiles** (`usr/lib/deckos/profiles/`): per-game power, Do Not Disturb, AI/Docker freeing; workload modes apply
+  them on game start (`mode_game` prints `ID<TAB>NAME`) and restore on stop. Hub > Games > sliders button.
+- **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
+- **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
+  gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers
+  register as joysticks too). A Decky plugin is the next step once one can be tested.
+
 ## Gotchas already hit
 
 - gpg on Windows (Git Bash/MSYS) stamps keys ~4h in the future (timezone bug); CI's gpg then rejects

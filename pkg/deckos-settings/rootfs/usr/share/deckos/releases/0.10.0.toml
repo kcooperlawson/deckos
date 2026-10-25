@@ -1,0 +1,66 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.10.0"
+name = "Everything together"
+tagline = "DecKoOS now knows what happens on your PC, shows it in one place, and lets you take any change back."
+
+fixes = [
+    "Installing DecKoOS on an empty drive no longer fails while writing the boot menu.",
+]
+
+[[highlights]]
+title = "The timeline, with Undo"
+image = "0.10.0/timeline.png"
+text = """Everything DecKoOS does is in one place: updates and installs, game fixes, theme changes, drives, the \
+games you play. Most of it has an Undo: an update goes back to the snapshot taken just before it, a theme to \
+the one you had. Home shows the last few."""
+icon = "clock"
+try = "Open the timeline"
+run = ["deckos-hub", "--page", "timeline"]
+
+[[highlights]]
+title = "Just type what you want"
+text = """Search in the DecKoOS Menu now finds DecKoOS itself: type "drives", "fix game", "task manager" or \
+"flicker" and the right thing is at the top, under In DecKoOS. DecKoOS Assistant can do the same things \
+(it asks first), and it can see what changed recently when something stops working."""
+icon = "search"
+try = "Ask DecKoOS Assistant"
+run = ["deckos-assistant"]
+
+[[highlights]]
+title = "Game profiles"
+image = "0.10.0/profile.png"
+text = """Give a game its own settings: performance power, Do Not Disturb, and whether your local AI and Docker \
+make room for it. They switch on when the game starts and back when it stops. The profile also shows the \
+game's Game Doctor fixes and launch options, so everything about a game is in one place."""
+icon = "sliders"
+try = "Pick a game"
+run = ["deckos-hub", "--page", "games"]
+
+[[highlights]]
+title = "DecKoOS in Gaming Mode"
+image = "0.10.0/gamepanel.png"
+text = """DecKoOS is in your Steam library now. Open it from Gaming Mode for what Steam doesn't do: back to the \
+desktop, workload modes, power, the profile of the game you're playing, Game Doctor and a checkup. It's made \
+for a controller."""
+icon = "gaming"
+try = "Open it here"
+run = ["deckos-gamepanel"]
+
+[[highlights]]
+title = "Care in the background"
+text = """When a program crashes, or after an update, DecKoOS checks for you and says so once, calmly: "Restart \
+to finish the update", or why an app closed, with a button that shows what to do. Games stay Game Doctor's."""
+icon = "shield"
+try = "Run a checkup"
+run = ["deckos-sysdoctor"]
+
+[[highlights]]
+title = "Take your setup with you"
+image = "0.10.0/setup.png"
+text = """Save your look, panel and pinned apps, DecKoOS settings, game profiles and Game Doctor's fixes to one \
+file, and bring it to a new PC or back after a reinstall. Never passwords, games or system files, and \
+bringing one in can be undone from the timeline."""
+icon = "download"
+try = "Save my setup"
+run = ["deckos-hub", "--page", "system"]
