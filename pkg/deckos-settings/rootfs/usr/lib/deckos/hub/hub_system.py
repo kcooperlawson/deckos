@@ -13,6 +13,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "gpu"))
+import nvml  # noqa: E402  NVIDIA cards' numbers (gpu/nvml.py)
+
 DEMO = "--demo" in sys.argv
 # --demo-gpu=nvidia|intel: the demo on a non-AMD card, to check those layouts.
 DEMO_VENDOR = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--demo-gpu=")), "amd")
@@ -177,17 +180,19 @@ class Stats:
                     "cpu_load": (f"{w(18, 12, 3):.0f}%", w(18, 12, 3) / 100),
                     "ram": ("9.4 / 31 GB", 9.4 / 31)}
         out = {}
+        if self.gpu.nvidia and nvml.devices():
+            self.nvidia_sample(out)
         dev, hw = self.gpu.dev, self.gpu.hwmon
         t = read(hw / "temp1_input") if hw else ""
-        out["gpu_temp"] = (f"{int(t) / 1000:.0f}°C", int(t) / 100000) if t else ("—", None)
+        out.setdefault("gpu_temp", (f"{int(t) / 1000:.0f}°C", int(t) / 100000) if t else ("—", None))
         pw = (read(hw / "power1_average") or read(hw / "power1_input")) if hw else ""
         cap = int(read(hw / "power1_cap") or 0) if hw else 0
-        out["gpu_power"] = (f"{int(pw) / 1e6:.0f} W", int(pw) / (cap or 300e6)) if pw else ("—", None)
+        out.setdefault("gpu_power", (f"{int(pw) / 1e6:.0f} W", int(pw) / (cap or 300e6)) if pw else ("—", None))
         lines = read(dev / "pp_dpm_mclk").splitlines() if dev else []
         cur = next((ln for ln in lines if "*" in ln), "")
         mhz = re.search(r"(\d+)\s*Mhz", cur, re.I)
         top = re.search(r"(\d+)\s*Mhz", lines[-1], re.I) if lines else None
-        out["vram"] = ((f"{mhz.group(1)} MHz", int(mhz.group(1)) / int(top.group(1))) if mhz and top
+        out.setdefault("vram", (f"{mhz.group(1)} MHz", int(mhz.group(1)) / int(top.group(1))) if mhz and top
                        else ("—", None))
         ct = read(self.cpu_hwmon / "temp1_input") if self.cpu_hwmon else ""
         out["cpu_temp"] = (f"{int(ct) / 1000:.0f}°C", int(ct) / 95000) if ct else ("—", None)
@@ -209,6 +214,16 @@ class Stats:
         else:
             out["ram"] = ("—", None)
         return out
+
+    def nvidia_sample(self, out):
+        """An NVIDIA card's tiles from NVML (its driver has no amdgpu sysfs files to read)."""
+        d = nvml.devices()[0]
+        if d["temp"] is not None:
+            out["gpu_temp"] = (f"{d['temp']:.0f}°C", d["temp"] / 100)
+        if d["power"] is not None:
+            out["gpu_power"] = (f"{d['power']:.0f} W", d["power"] / (d["power_limit"] or 300))
+        if d["mem_clock"]:
+            out["vram"] = (f"{d['mem_clock']} MHz", d["mem_clock"] / (d["mem_clock_max"] or d["mem_clock"]))
 
     def vram_mode(self):
         dev = self.gpu.dev

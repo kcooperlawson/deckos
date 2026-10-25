@@ -38,6 +38,9 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   GPU is present (AMD-only PCs keep desktop.txt's Radeon packages) and falls back to NVIDIA's open driver
   if chwd fails. The display ladder, `deckos gpu` and the Hub's Graphics card / FSR 4 rows are
   amdgpu-only and step aside on other cards; the Hub demo takes `--demo-gpu=nvidia|intel` to check that.
+  NVIDIA numbers (Hub tiles, System Monitor, the AI model pick) come from NVML in process (`usr/lib/deckos/gpu/nvml.py`,
+  ctypes, no nvidia-smi). System Doctor flags nouveau/no driver and RTX 50 (Blackwell) on the closed module, and old
+  Raptor Lake microcode. Tests: `tests/test_nvidia.py` (a simulated i9-14900K + RTX 5070 Ti).
 - Gaming tuning: `deckos scheduler` (scx_loader; lavd Gaming is the one-time default from the .install),
   `deckos gpu` (power limit, voltage offset, fan curve via amdgpu sysfs from `/etc/deckos/gpu.conf`,
   re-applied by `deckos-gpu.service`; boot with `deckos.gpu=stock` to skip; stands aside when LACT's
@@ -82,7 +85,8 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `--demo --screenshot DIR`; worker signals connect to bound methods: a lambda would run in the worker
   thread and build widgets there, which crashes); `deckos_local_mcp.py` is a hand-written MCP stdio
   server (`deckos ai claude-link`). Read-only pipelines (every part read-only) run without asking. Changes always go through `Tools.confirm`.
-  Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
+  `models.py` picks a model by graphics memory (`deckos ai models`, the Hub's "Choose a model", `deckos ai setup`'s
+  default). Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
   chat instead. `DECKOS_AI_DIR` points `deckos ask`/`deckos ai` at a checkout for testing.
 - Game Doctor: `usr/lib/deckos/gamedoctor/`. `steamfiles.py` reads and writes Steam's KeyValues files
   (round-trips must stay exact; writes keep `.deckos-bak`; Steam must be closed: it rewrites them on exit),
@@ -254,7 +258,7 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 grouped by the program they run, named from .desktop files (so Firefox's tab processes stay with Firefox).
 `deckos_sysmon.py` is the window (`deckos-sysmon`, Ctrl+Shift+Esc, `--demo --screenshot DIR`): Processes
 (tree updated in place, numeric sort via `Row.__lt__`; other users' processes end through pkexec kill) and
-Performance (fixed-scale `Sparkline`s). GPU figures are amdgpu-only (`gpu_busy_percent`); other cards are
+Performance (fixed-scale `Sparkline`s). GPU figures are amdgpu (`gpu_busy_percent`) and NVIDIA (NVML); Intel cards are
 left out rather than guessed. pci.ids has comments inside vendor blocks: skip them when scanning.
 
 ## DeckOS Bench

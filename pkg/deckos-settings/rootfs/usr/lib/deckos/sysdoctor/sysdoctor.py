@@ -310,6 +310,71 @@ def gpu_resets():
                     evidence=lines[:6], open=["deckos-hub", "--page", "display"])]
 
 
+SYS, PROC = Path("/sys"), Path("/proc")  # tests point these at a fake tree
+
+
+def read(path):
+    try:
+        return Path(path).read_text().strip()
+    except (OSError, UnicodeDecodeError):
+        return ""
+# RTX 50 (Blackwell: GB202-GB207) PCI device IDs; NVIDIA's closed kernel module doesn't drive these cards
+BLACKWELL = range(0x2B00, 0x3000)
+
+
+def nvidia_driver():
+    """An NVIDIA card that isn't on NVIDIA's driver: on nouveau or none (Secure Boot, a failed install), or an RTX 50
+    on the closed module, which doesn't support it."""
+    out = []
+    for dev in sorted((SYS / "bus/pci/devices").glob("*")):
+        if not (dev / "class").exists() or not read(dev / "class").startswith("0x03") or read(dev / "vendor") != "0x10de":
+            continue
+        drv = (dev / "driver").resolve().name if (dev / "driver").exists() else ""
+        try:
+            device = int(read(dev / "device"), 16)
+        except ValueError:
+            device = 0
+        fix = [Fix("Set up the NVIDIA driver",
+                   ["pkexec", "sh", "-c", "pacman -S --needed --noconfirm chwd && chwd -a"],
+                   "CachyOS's hardware setup picks the right NVIDIA driver for this card; restart afterwards")]
+        if drv != "nvidia":
+            out.append(Finding(f"nvidia:{dev.name}", BAD, "The NVIDIA card isn't using NVIDIA's driver",
+                               ("It's on the basic nouveau driver: games and Gaming Mode run badly or not at all."
+                                if drv == "nouveau" else "No driver has taken it, so it can't be used.")
+                               + " Secure Boot on is a common cause (turn it off in the BIOS); otherwise set up "
+                               "the driver.", evidence=[f"{dev.name}: driver {drv or 'none'}"], fixes=fix))
+        elif device in BLACKWELL:
+            version = read(PROC / "driver/nvidia/version")
+            if version and "Open Kernel Module" not in version:
+                out.append(Finding(f"nvidia-open:{dev.name}", BAD, "This RTX 50 card needs NVIDIA's open driver",
+                                   "The closed NVIDIA driver doesn't support RTX 50 cards. Switching to the open one "
+                                   "(the same driver, open kernel module) makes it work.",
+                                   evidence=[version.splitlines()[0][:160]], fixes=fix))
+    return out
+
+
+def intel_microcode():
+    """13th and 14th gen Intel desktop processors (Raptor Lake) degrade on old microcode; Intel's fix is 0x12B."""
+    text = read(PROC / "cpuinfo")
+    if "GenuineIntel" not in text:
+        return []
+    model = re.search(r"^model\s*:\s*(\d+)", text, re.M)
+    family = re.search(r"^cpu family\s*:\s*(\d+)", text, re.M)
+    micro = re.search(r"^microcode\s*:\s*(0x[0-9a-f]+)", text, re.M)
+    name = re.search(r"^model name\s*:\s*(.+)$", text, re.M)
+    if not (model and family and micro) or family.group(1) != "6" or int(model.group(1)) not in (0xB7, 0xBA, 0xBF):
+        return []
+    if int(micro.group(1), 16) >= 0x12B:
+        return []
+    return [Finding("intel-microcode", WARN, "Your Intel processor is missing Intel's stability update",
+                    "13th and 14th gen Intel processors can become unstable over time without Intel's microcode "
+                    "fix (0x12B or newer). DecKoOS loads it at start-up from the intel-ucode package; a BIOS update "
+                    "from your motherboard maker brings it too.",
+                    evidence=[f"{name.group(1).strip() if name else 'Intel CPU'}: microcode {micro.group(1)}"],
+                    fixes=[Fix("Install Intel's microcode", ["pkexec", "pacman", "-S", "--needed", "--noconfirm",
+                                                             "intel-ucode"], "Takes effect after a restart")])]
+
+
 def restart_pending():
     running = os.uname().release
     if Path(f"/usr/lib/modules/{running}").is_dir():
@@ -340,7 +405,8 @@ def journal_errors(known):
                     "what they mean for you.", evidence=[f"{n}×  {l}" for l, n in top])]
 
 
-CHECKS = [failed_units, crashes, gpu_resets, missing_programs, disk_space, restart_pending, slow_boot]
+CHECKS = [failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
+          restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 
 

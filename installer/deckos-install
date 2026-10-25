@@ -363,7 +363,9 @@ until wait_for_internet; do
   read -rp "  Press Enter to try again... " _
 done
 good "internet"
-grep -qw avx512f /proc/cpuinfo && good "Zen 4 CPU (znver4-optimised packages)" || warn "CPU lacks AVX-512 - CachyOS will pick a compatible repo"
+# CachyOS picks the package build for the CPU itself (znver4, x86-64-v3/v4...): nothing to warn about
+cpu=$(sed -n 's/^model name[[:space:]]*:[[:space:]]*//p' /proc/cpuinfo | head -n1)
+good "CPU: ${cpu:-unknown} (CachyOS picks the packages optimised for it)"
 sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ' || true)
 if [[ $sb == 1 ]]; then warn "Secure Boot is ON - turn it off in the BIOS (Security > Secure Boot) before rebooting into DecKoOS"
 else good "Secure Boot off"; fi

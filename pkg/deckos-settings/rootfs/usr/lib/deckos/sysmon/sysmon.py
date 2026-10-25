@@ -6,6 +6,7 @@ import os
 import pwd
 import re
 import signal
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -196,8 +197,23 @@ def _gpus():
                        vram_total=int(read(d / "mem_info_vram_total") or 0),
                        temp=int(temp) / 1000 if temp else None,
                        power=int(power) / 1e6 if power else None))
+    # NVIDIA's driver has no such sysfs files: its cards come from NVML (gpu/nvml.py)
+    for i, d in enumerate(_nvidia()):
+        out.append(Gpu(card=f"nvidia{i}", name=d["name"], busy=d["busy"] or 0.0, vram_used=d["vram_used"],
+                       vram_total=d["vram_total"], temp=d["temp"], power=d["power"]))
     # The real card first: the one with the most video memory
     return sorted(out, key=lambda g: -g.vram_total)
+
+
+def _nvidia():
+    if os.environ.get("DECKOS_SYS"):  # a test's fake tree: no real driver
+        return []
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "gpu"))
+        import nvml
+        return nvml.devices()
+    except ImportError:
+        return []
 
 
 def _cpu_temp():

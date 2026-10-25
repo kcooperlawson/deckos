@@ -1378,9 +1378,13 @@ ai_status() {
   fi
 }
 
-ai_setup() {  # sudo deckos ai setup [MODEL]: models out of snapshots, the default model downloaded
+ai_setup() {  # sudo deckos ai setup [MODEL]: models out of snapshots, the model for this PC downloaded
   need_root ai setup
-  local model=${1:-$AI_DEFAULT}
+  local model=${1:-}
+  # No model named: the one this PC's graphics card runs best (deckos ai models shows them all)
+  [[ -n $model ]] || model=$(python3 "$AI_DIR/models.py" recommend 2>/dev/null || true)
+  model=${model:-$AI_DEFAULT}
+  [[ $model =~ ^[A-Za-z0-9._/-]+(:[A-Za-z0-9._-]+)?$ ]] || { err "not a model name: $model"; exit 2; }
   systemctl is-active --quiet ollama || { err "Ollama isn't running (deckos software add ai)"; exit 1; }
   if [[ $(stat -f -c %T /var/lib/ollama 2>/dev/null) == btrfs ]] && [[ $(stat -c %i /var/lib/ollama) != 256 ]]; then
     systemctl stop ollama
@@ -1399,6 +1403,7 @@ ai_cmd() {
   case ${1:-status} in
     status) ai_status ;;
     setup) shift; ai_setup "$@" ;;
+    models) shift; exec python3 "$AI_DIR/models.py" list "$@" ;;
     model)
       [[ -n ${2:-} ]] || { ai_model; return; }
       mkdir -p "$HOME/.config/deckos"
@@ -1416,7 +1421,7 @@ ai_cmd() {
     claude-unlink)
       "$(command -v claude || echo "$HOME/.local/bin/claude")" mcp remove --scope user deckos-local
       ok "deckos-local removed from Claude Code" ;;
-    *) err "usage: deckos ai [status|setup [MODEL]|model [NAME]|claude-link|claude-unlink]"; exit 2 ;;
+    *) err "usage: deckos ai [status|models|setup [MODEL]|model [NAME]|claude-link|claude-unlink]"; exit 2 ;;
   esac
 }
 

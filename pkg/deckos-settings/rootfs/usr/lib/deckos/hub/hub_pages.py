@@ -2,6 +2,7 @@
 two seconds while it's on screen."""
 import re
 import shlex
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -794,6 +795,10 @@ class AiDevPage(Page):
             self.models.setSpacing(6)
             self.ollama_card.body.addLayout(self.models)
             self.toggle = button("Start", slot=self.toggle_ollama, icon="play")
+            self.installed_models = []
+            self.ollama_card.body.addWidget(row(
+                button("Choose a model…", slot=lambda: ModelDialog(self, self.installed_models).exec(), icon="sliders",
+                       tip="Which local model, picked for what your graphics card can run")))
             self.ollama_card.body.addWidget(row(
                 button("Ask DecKoOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
                        tip="Install and set things up by asking (Meta+Space anywhere)"),
@@ -853,11 +858,76 @@ class AiDevPage(Page):
 
     def show_models(self, out, code):
         rows = [ln.split() for ln in out.splitlines()[1:] if ln.strip()]
+        self.installed_models = [r[0] for r in rows]
         if not rows:
-            self.models.addWidget(label("No models yet. “Try a model” downloads one.", "muted"))
+            self.models.addWidget(label("No models yet. “Choose a model” downloads one that suits this PC.", "muted"))
         for r in rows:
             size_ = " ".join(r[2:4]) if len(r) > 3 else ""
             self.models.addWidget(RowItem("ai", r[0], size_))
+
+
+class ModelDialog(QDialog):
+    """The local models DecKoOS offers, each rated for this PC's graphics card (assistant/models.py)."""
+
+    FIT = {"fits": ("Fits", S.SUCCESS), "tight": ("Tight fit", S.WARNING),
+           "slow": ("Slow: runs on the processor", S.WARNING), "too big": ("Too big for this PC", S.DANGER)}
+
+    def __init__(self, page, installed):
+        super().__init__(page)
+        self.page = page
+        self.setObjectName("root")
+        self.setWindowTitle("Choose a local model")
+        self.setMinimumWidth(720)
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "assistant"))
+        import models
+        hw = ({"gpu": "GeForce RTX 5070 Ti", "vendor": "nvidia", "vram": 16 << 30, "accel": "cuda", "ram": 64 << 30}
+              if sysinfo.DEMO else models.hardware())
+        current = self.current_model()
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label("Choose a local model", "title"))
+        v.addWidget(label(f"<b>{models.describe(hw)}</b>. Bigger models answer better but need more graphics memory; "
+                          "one that doesn't fit runs partly on the processor, which is slow.", "sub"))
+        for r in models.rows(hw, installed):
+            text, color = self.FIT[r["fit"]]
+            # The fit goes by the name, where it can't be cut off: it's what the choice turns on
+            title = (f"{r['title']}  <span style='color:{color}'>{text}</span>"
+                     + (f"  <span style='color:{S.P.accent}'>· recommended</span>" if r["recommended"] else ""))
+            detail = f"{r['good_for']} · {r['download_gb']:.0f} GB · {r['tag']}"
+            if r["tag"] == current:
+                act = label(f"<span style='color:{S.SUCCESS}'>In use</span>", None, wrap=False)
+            elif r["installed"]:
+                act = button("Use", "primary" if r["recommended"] else None, lambda _=False, t=r["tag"]: self.use(t))
+            else:
+                act = button("Download and use", "primary" if r["recommended"] else None,
+                             lambda _=False, t=r["tag"]: self.download(t), icon="download")
+                act.setEnabled(r["fit"] != "too big")
+            v.addWidget(RowItem("ai", title, detail,
+                                S.P.accent if r["recommended"] else S.SUBTEXT, [act]))
+        v.addWidget(label("Only models that use DecKoOS Assistant's tools reliably are listed. Any other Ollama model "
+                          "works too: deckos ai setup NAME.", "muted"))
+
+    @staticmethod
+    def current_model():
+        if sysinfo.DEMO:
+            return "qwen3:8b"
+        for f in (Path.home() / ".config/deckos/ai.conf", Path("/etc/deckos/ai.conf")):
+            m = re.search(r"^MODEL=(\S+)", sysinfo.read(f), re.M)
+            if m:
+                return m.group(1)
+        return ""
+
+    def use(self, tag):
+        if not sysinfo.DEMO:
+            QProcess.startDetached("deckos", ["ai", "model", tag])
+        self.page.hub.toast(f"DecKoOS Assistant uses {tag} now", "ok")
+        self.accept()
+
+    def download(self, tag):
+        # In a terminal: a model is gigabytes, and the download shows its progress there
+        self.page.hub.terminal(f"sudo deckos ai setup {tag} && deckos ai model {tag}")
+        self.accept()
 
 
 # ------------------------------------------------------------------ system
