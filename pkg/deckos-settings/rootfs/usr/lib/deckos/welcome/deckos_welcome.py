@@ -1,9 +1,9 @@
-"""DeckOS Welcome: the first-login tour. A few optional steps through what people change first
+"""DecKoOS Welcome: the first-login tour. A few optional steps through what people change first
 (look, display, software, gaming, backups, updates, extras), each applied right away, then a
 summary of what changed.
 
-Same look as DeckOS Hub, whose style, widgets and helpers it shares.
-    deckos-welcome               the real thing (app menu, DeckOS Hub)
+Same look as DecKoOS Hub, whose style, widgets and helpers it shares.
+    deckos-welcome               the real thing (app menu, DecKoOS Hub)
     deckos-welcome --autostart   at login: the launcher skips it once ~/.config/deckos/welcome-done exists
     deckos-welcome --demo        canned data, no system changes, for working on the UI anywhere
 """
@@ -94,7 +94,7 @@ class Welcome(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setWindowTitle("Welcome to DeckOS")
+        self.setWindowTitle("Welcome to DecKoOS")
         self.setWindowIcon(QIcon.fromTheme("deckos", QIcon(str(S.BRANDING / "logo.svg"))))
         self.resize(1140, 780)
         self.setMinimumSize(940, 640)
@@ -150,7 +150,7 @@ class Welcome(QWidget):
         brand.addWidget(tile)
         names = QVBoxLayout()
         names.setSpacing(0)
-        names.addWidget(label("DeckOS Welcome", "brand", wrap=False))
+        names.addWidget(label("DecKoOS Welcome", "brand", wrap=False))
         names.addWidget(label("Set things up your way", "muted", wrap=False))
         brand.addLayout(names, 1)
         self.rail.addLayout(brand)
@@ -165,7 +165,7 @@ class Welcome(QWidget):
         self.startup.setChecked(ws.show_at_startup())
         self.startup.toggled.connect(ws.set_show_at_startup)
         self.rail.addWidget(self.startup)
-        self.rail.addWidget(label("Open it again any time from the app menu or DeckOS Hub.", "muted"))
+        self.rail.addWidget(label("Open it again any time from the app menu or DecKoOS Hub.", "muted"))
         return side
 
     def add_nav(self, i, title):
@@ -285,7 +285,7 @@ class Welcome(QWidget):
         if self.apps.current and self.apps.current.ok is None and not self.closing:
             name = self.apps.current.title
             if QMessageBox.question(self, "Apps are still installing",
-                                    f"{name} is still installing. Close DeckOS Welcome when it's done?\n\n"
+                                    f"{name} is still installing. Close DecKoOS Welcome when it's done?\n\n"
                                     "Stopping now could leave it half installed.",
                                     QMessageBox.Yes | QMessageBox.Cancel) == QMessageBox.Yes:
                 self.closing = True
@@ -298,7 +298,7 @@ class Welcome(QWidget):
 def main():
     os.environ.setdefault("QT_QPA_PLATFORMTHEME", "kde")
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Welcome")
+    app.setApplicationName("DecKoOS Welcome")
     app.setDesktopFileName("deckos-welcome")
     app.setFont(QFont("Inter", 10))
     app.setStyleSheet(qss())

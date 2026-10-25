@@ -180,7 +180,7 @@ void MainWindow::updateTab(TabPage *page)
     m_tabs->setTabText(i, p->info().label());
     m_tabs->setTabToolTip(i, p->info().dir);
     if (i == m_tabs->currentIndex())
-        setWindowTitle(p->info().label() + QStringLiteral(" — DeckOS Terminal"));
+        setWindowTitle(p->info().label() + QStringLiteral(" — DecKoOS Terminal"));
 }
 
 void MainWindow::pageChanged()
@@ -245,7 +245,7 @@ void MainWindow::addShortcuts()
     addShortcut(ctrlShift | Qt::Key_C, [this] { if (pane()) pane()->term()->copyClipboard(); });
     addShortcut(ctrlShift | Qt::Key_V, [this] { if (pane()) pane()->term()->pasteClipboard(); });
     addShortcut(ctrlShift | Qt::Key_F, [this] { if (pane()) pane()->term()->toggleShowSearchBar(); });
-    // DeckOS Assistant about the selection (an error, a command), or just the chat box
+    // DecKoOS Assistant about the selection (an error, a command), or just the chat box
     addShortcut(ctrlShift | Qt::Key_A, [this] {
         if (pane())
             pane()->askAssistant();
@@ -295,7 +295,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
     if (!running.isEmpty() && isVisible()) {
         const auto answer = QMessageBox::question(
-            this, QStringLiteral("Close DeckOS Terminal?"),
+            this, QStringLiteral("Close DecKoOS Terminal?"),
             QStringLiteral("Still running: %1. Closing the window stops %2.").arg(running.join(QStringLiteral(", ")),
                                                                                    running.size() == 1 ? QStringLiteral("it") : QStringLiteral("them")),
             QMessageBox::Close | QMessageBox::Cancel, QMessageBox::Cancel);

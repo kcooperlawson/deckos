@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// The DeckOS palette (same as hub_style.py). The accent follows Plasma's; FullRepresentation sets it.
+// The DecKoOS palette (same as hub_style.py). The accent follows Plasma's; FullRepresentation sets it.
 QtObject {
     readonly property color bg: "#0F1115"
     readonly property color surface: "#171A21"
@@ -26,7 +26,7 @@ QtObject {
     readonly property int spacing: 8
     readonly property string font: "Inter"
 
-    // The DeckOS line icons and logo, installed by deckos-settings (assets/icons.py draws them).
+    // The DecKoOS line icons and logo, installed by deckos-settings (assets/icons.py draws them).
     readonly property string share: "file:///usr/share/deckos/"
     function icon(name: string): string {
         return share + "icons/" + name + ".svg";

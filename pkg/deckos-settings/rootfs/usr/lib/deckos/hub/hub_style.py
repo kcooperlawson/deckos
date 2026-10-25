@@ -1,4 +1,4 @@
-"""DeckOS Hub look: palette, stylesheet and the DeckOS line icons.
+"""DecKoOS Hub look: palette, stylesheet and the DecKoOS line icons.
 
 Same visual language as Steady Downloader: slate surfaces, 1px borders, 10px radii, Inter, and
 a gradient on primary actions. The accent follows Plasma's accent colour (Appearance page), so
@@ -12,7 +12,7 @@ from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
-# /usr/share/deckos/... on DeckOS; the package's own rootfs when run from the repo.
+# /usr/share/deckos/... on DecKoOS; the package's own rootfs when run from the repo.
 _SHARE = Path(__file__).resolve().parents[3] / "share/deckos"
 BRANDING = Path(os.environ.get("DECKOS_BRANDING") or (
     "/usr/share/deckos/branding" if Path("/usr/share/deckos/branding").is_dir() else _SHARE / "branding"))
@@ -27,7 +27,7 @@ DEFAULT_ACCENT = "#4C8DFF"
 
 
 def plasma_accent():
-    """Plasma's accent colour from kdeglobals, or the DeckOS blue."""
+    """Plasma's accent colour from kdeglobals, or the DecKoOS blue."""
     try:
         text = (Path.home() / ".config/kdeglobals").read_text()
         m = re.search(r"^AccentColor=(\d+),(\d+),(\d+)", text, re.M)
@@ -125,7 +125,7 @@ _cache = {}
 
 
 def pixmap(name, color=TEXT, size=18, ratio=2.0):
-    """A DeckOS line icon recoloured to `color`, rendered crisp for HiDPI."""
+    """A DecKoOS line icon recoloured to `color`, rendered crisp for HiDPI."""
     key = (name, color, size, ratio)
     if key not in _cache:
         try:

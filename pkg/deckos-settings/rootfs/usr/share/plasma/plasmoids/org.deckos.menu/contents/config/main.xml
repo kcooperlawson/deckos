@@ -17,7 +17,7 @@
       <default>false</default>
     </entry>
     <entry name="storeResults" type="Bool">
-      <label>Suggest apps from the DeckOS Store when a search matches apps you don't have</label>
+      <label>Suggest apps from the DecKoOS Store when a search matches apps you don't have</label>
       <default>true</default>
     </entry>
   </group>

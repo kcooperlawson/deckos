@@ -1,4 +1,4 @@
-"""DeckOS System Monitor: what's running and how hard the PC is working, in the DeckOS look.
+"""DecKoOS System Monitor: what's running and how hard the PC is working, in the DecKoOS look.
 
     deckos-sysmon [--page processes|performance]
     deckos-sysmon --demo [--screenshot DIR]
@@ -27,7 +27,7 @@ from hub_widgets import Sparkline, button, icon_label, label, restyle  # noqa: E
 
 DEMO = "--demo" in sys.argv
 COLS = ["Name", "CPU", "Memory", "Disk", "User"]
-UPLOAD = "#0EA08E"  # the second network line (same validated pair as DeckOS Performance)
+UPLOAD = "#0EA08E"  # the second network line (same validated pair as DecKoOS Performance)
 
 QSS = f"""
 QTreeWidget {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 10px; padding: 4px;
@@ -61,7 +61,7 @@ class DemoSampler:
 
     APPS = [("Cyberpunk 2077", "cyberpunk", 1, 6.1e9, 38.0, 4e6), ("Firefox", "firefox", 11, 4.4e9, 6.0, 2e5),
             ("Steam", "steam", 9, 1.6e9, 2.2, 3.1e7), ("Discord", "discord", 8, 1.2e9, 1.4, 1e4),
-            ("DeckOS Files", "org.deckos.files", 1, 2.1e8, 0.2, 0),
+            ("DecKoOS Files", "org.deckos.files", 1, 2.1e8, 0.2, 0),
             ("KWin", "kwin", 1, 2.8e8, 3.1, 0), ("Plasma", "plasmashell", 1, 5.7e8, 0.8, 0),
             ("ollama", "", 1, 3.2e8, 0.0, 0), ("pipewire", "", 1, 2.7e7, 0.4, 0)]
 
@@ -483,7 +483,7 @@ class PerformancePage(QWidget):
 class Monitor(QWidget):
     def __init__(self, page="processes"):
         super().__init__()
-        self.setWindowTitle("DeckOS System Monitor")
+        self.setWindowTitle("DecKoOS System Monitor")
         self.setWindowIcon(QIcon.fromTheme("deckos"))
         self.resize(1080, 720)
         self.setObjectName("root")
@@ -548,7 +548,7 @@ class Monitor(QWidget):
         self.perf.show(s)
         self.procs.show(s)
 
-    # No sampling while nobody can see the window (as in DeckOS Hub)
+    # No sampling while nobody can see the window (as in DecKoOS Hub)
     def changeEvent(self, e):
         super().changeEvent(e)
         if e.type() == QEvent.WindowStateChange:
@@ -570,7 +570,7 @@ class Monitor(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS System Monitor")
+    app.setApplicationName("DecKoOS System Monitor")
     app.setDesktopFileName("deckos-sysmon")
     app.setFont(QFont("Inter", 10))
     page = sys.argv[sys.argv.index("--page") + 1] if "--page" in sys.argv[:-1] else "processes"

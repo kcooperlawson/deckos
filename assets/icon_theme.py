@@ -1,8 +1,8 @@
-"""Generates the DeckOS icon theme's own icons: app icons for the everyday system and KDE apps, and file
+"""Generates the DecKoOS icon theme's own icons: app icons for the everyday system and KDE apps, and file
 type icons. Everything else (and every brand's own logo: Firefox, Steam, Discord...) comes from
-Papirus-Dark, which the theme inherits; the PKGBUILD adds Papirus' places in the DeckOS blue.
+Papirus-Dark, which the theme inherits; the PKGBUILD adds Papirus' places in the DecKoOS blue.
 
-App icons are a "plate": a rounded tile in the app's colour, lit from the top, with the DeckOS line glyph in
+App icons are a "plate": a rounded tile in the app's colour, lit from the top, with the DecKoOS line glyph in
 white and four small screw heads (the brand motif). File type icons are a slate sheet with a folded corner,
 a glyph for what's inside and a coloured band with the type's name (outlined from Inter, so no font is
 needed when they're drawn).

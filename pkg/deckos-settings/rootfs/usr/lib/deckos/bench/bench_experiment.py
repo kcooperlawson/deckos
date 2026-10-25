@@ -1,11 +1,11 @@
-"""DeckOS Bench experiments: the same tests with one setting changed, A and B in turn.
+"""DecKoOS Bench experiments: the same tests with one setting changed, A and B in turn.
 
 The order alternates (A B B A A B...) so a PC that warms up or a background task that starts halfway
 doesn't favour either side. Each value's repetitions are saved as a normal run, so History and Compare
 show them, and the setting is put back afterwards whatever happens.
 
 Settings need no password: the power profile (power-profiles-daemon) and whether the local AI model
-sits in graphics memory (what DeckOS's workload modes free for games).
+sits in graphics memory (what DecKoOS's workload modes free for games).
 """
 import json
 import os

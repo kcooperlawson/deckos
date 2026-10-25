@@ -1,4 +1,4 @@
-"""DeckOS Move In: what a Windows install on this PC has that's worth bringing over, and bringing it.
+"""DecKoOS Move In: what a Windows install on this PC has that's worth bringing over, and bringing it.
 
 Plain Python, no Qt (deckos_movein.py is the window). Windows is only ever read: nothing on its drives
 is changed. On the Linux side every file changed keeps a NAME.deckos-bak first, and what was done is
@@ -36,7 +36,7 @@ FOLDERS = [("Documents", "folder-documents"), ("Pictures", "folder-pictures"), (
            ("Videos", "folder-videos"), ("Downloads", "folder-downloads"), ("Desktop", "user-desktop"),
            ("OneDrive", "folder-cloud")]
 
-# Start Menu name (lowercase, a substring) -> (what to get on DeckOS, Store search, command if installed)
+# Start Menu name (lowercase, a substring) -> (what to get on DecKoOS, Store search, command if installed)
 APPS = [
     ("discord", "Discord", "discord", "discord"),
     ("spotify", "Spotify", "spotify", "spotify"),
@@ -46,7 +46,7 @@ APPS = [
     ("visual studio code", "Visual Studio Code", "visual studio code", "code"),
     ("visual studio 20", "VS Code or JetBrains Rider (Visual Studio has no Linux version)", "visual studio code", "code"),
     ("google chrome", "Google Chrome", "chrome", "google-chrome-stable"),
-    ("notepad++", "Kate (DeckOS's text editor)", "kate", "kate"),
+    ("notepad++", "Kate (DecKoOS's text editor)", "kate", "kate"),
     ("winrar", "Ark (opens RAR, ZIP and 7z; already installed)", "ark", "ark"),
     ("7-zip", "Ark (opens RAR, ZIP and 7z; already installed)", "ark", "ark"),
     ("microsoft office", "LibreOffice or OnlyOffice", "office", "libreoffice"),
@@ -63,12 +63,12 @@ APPS = [
     ("battle.net", "Lutris (Battle.net games)", "lutris", "lutris"),
     ("git", "Git (already installed)", "git", "git"),
     ("python", "Python (already installed)", "python", "python3"),
-    ("powershell", "DeckOS Terminal (bash); PowerShell is in the Store too", "powershell", "pwsh"),
-    ("steam", "Steam (Gaming in DeckOS Hub)", "steam", "steam"),
+    ("powershell", "DecKoOS Terminal (bash); PowerShell is in the Store too", "powershell", "pwsh"),
+    ("steam", "Steam (Gaming in DecKoOS Hub)", "steam", "steam"),
     ("firefox", "Firefox (already installed)", "firefox", "firefox"),
     ("microsoft edge", "Firefox, or Microsoft Edge from the Store", "edge", "microsoft-edge-stable"),
-    ("msi afterburner", "DeckOS Hub > Gaming > Graphics card, and MangoHud for the overlay", "lact", "lact"),
-    ("adrenalin", "DeckOS Hub > Gaming > Graphics card (power, fans, undervolt)", "lact", "lact"),
+    ("msi afterburner", "DecKoOS Hub > Gaming > Graphics card, and MangoHud for the overlay", "lact", "lact"),
+    ("adrenalin", "DecKoOS Hub > Gaming > Graphics card (power, fans, undervolt)", "lact", "lact"),
     ("blender", "Blender", "blender", "blender"),
     ("audacity", "Audacity", "audacity", "audacity"),
     ("krita", "Krita", "krita", "krita"),
@@ -185,7 +185,7 @@ def _folders(home):
         path = home / name
         if path.is_dir() and nonempty(path):
             out.append(Item(f"folder:{name}", "folders", f"Windows {name}",
-                            "In DeckOS Files' sidebar, straight from the Windows drive: nothing is copied.",
+                            "In DecKoOS Files' sidebar, straight from the Windows drive: nothing is copied.",
                             data={"path": str(path), "icon": icon}))
     return out
 
@@ -296,7 +296,7 @@ def _steam(win):
             item.ready, item.picked, item.detail = False, False, f"{shown}. Already in Steam here."
         elif not linux_vdf.is_file():
             item.ready, item.picked = False, False
-            item.detail = f"{shown}. Install Steam first (DeckOS Hub > Gaming), open it once, then look again."
+            item.detail = f"{shown}. Install Steam first (DecKoOS Hub > Gaming), open it once, then look again."
         elif steamfiles.steam_running():
             item.ready, item.detail = False, f"{shown}. Close Steam first, then look again."
         out.append(item)
@@ -339,7 +339,7 @@ def _apps(win, home):
     if not matches:
         return []
     missing = [m for m in matches if not m["installed"]]
-    return [Item("apps", "apps", f"Your apps: {len(matches)} with a DeckOS match",
+    return [Item("apps", "apps", f"Your apps: {len(matches)} with a DecKoOS match",
                  f"{len(missing)} to get; the Store opens on each." if missing else "All of them are here already.",
                  picked=bool(missing), data={"apps": matches})]
 
@@ -394,7 +394,7 @@ def backup(path):
 
 
 def add_place(title, path, icon):
-    """A bookmark in KDE's places (DeckOS Files' and Dolphin's sidebar). Inserted as text before </xbel>, so
+    """A bookmark in KDE's places (DecKoOS Files' and Dolphin's sidebar). Inserted as text before </xbel>, so
     the rest of KDE's file stays exactly as it was."""
     url = "file://" + "/".join(html.escape(part, quote=True).replace(" ", "%20") for part in str(path).split("/"))
     text = PLACES.read_text() if PLACES.is_file() else ""
@@ -601,7 +601,7 @@ def _apply_one(item, log):
             subprocess.Popen(["deckos-store", "--search", missing[0]["search"]], start_new_session=True,
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return f"the Store is open on {missing[0]['linux']}"
-        return "nothing to get" if not missing else "get them from DeckOS Store"
+        return "nothing to get" if not missing else "get them from DecKoOS Store"
     if item.kind == "fonts":
         dest = HOME / ".local/share/fonts/windows"
         dest.mkdir(parents=True, exist_ok=True)

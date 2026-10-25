@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS System Monitor
+Name=DecKoOS System Monitor
 GenericName=What's running
 Comment=Apps and processes with what they use, and live graphs of the processor, graphics card, memory, disks and network
 Exec=deckos-sysmon

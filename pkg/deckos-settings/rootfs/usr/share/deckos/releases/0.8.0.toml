@@ -1,20 +1,20 @@
-# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
 
 version = "0.8.0"
 name = "Made here"
-tagline = "DeckOS's own taskbar, editor, system monitor, icons and pointers, retro games, and a way for anyone to help build DeckOS."
+tagline = "DecKoOS's own taskbar, editor, system monitor, icons and pointers, retro games, and a way for anyone to help build DeckOS."
 
 fixes = [
-    "DeckOS Hub names your graphics card again (some cards showed as \"Graphics card\").",
+    "DecKoOS Hub names your graphics card again (some cards showed as \"Graphics card\").",
 ]
 
 [[highlights]]
-title = "DeckOS Taskbar"
+title = "DecKoOS Taskbar"
 image = "0.8.0/taskbar.png"
-text = """A taskbar made for DeckOS: your pinned apps and open windows in the DeckOS look, with the accent \
+text = """A taskbar made for DecKoOS: your pinned apps and open windows in the DecKoOS look, with the accent \
 glow under the app you're using and a dot for each one that's open. Click an app with several windows to \
 go through them, middle-click for a new window, drag to reorder, and right-click to pin or close. New \
-desktops get it; to switch yours, pick a desktop layout in DeckOS Hub."""
+desktops get it; to switch yours, pick a desktop layout in DecKoOS Hub."""
 icon = "panel-right"
 try = "Pick a desktop layout"
 run = ["deckos-hub", "--page", "appearance"]
@@ -22,7 +22,7 @@ run = ["deckos-hub", "--page", "appearance"]
 [[highlights]]
 title = "Performance graphs on your desktop"
 image = "0.8.0/graphs.png"
-text = """Live graphs of your processor, graphics card, video memory, memory and network, on a DeckOS plate on \
+text = """Live graphs of your processor, graphics card, video memory, memory and network, on a DecKoOS plate on \
 the desktop. Each shows the last minute; hover a graph to see any moment. It reads the same sensors as \
 Plasma's System Monitor, once a second."""
 icon = "gauge"
@@ -30,7 +30,7 @@ try = "Add them to your desktop"
 run = ["deckos", "layout", "graphs"]
 
 [[highlights]]
-title = "DeckOS System Monitor"
+title = "DecKoOS System Monitor"
 image = "0.8.0/sysmon.png"
 text = """What's running and what it uses, one row per app with its processes inside, sorted by processor, \
 memory or disk. End an app that's stuck, or force it to stop. Performance shows the processor (every core), \
@@ -40,20 +40,20 @@ try = "Open System Monitor"
 run = ["deckos-sysmon"]
 
 [[highlights]]
-title = "DeckOS Editor"
+title = "DecKoOS Editor"
 image = "0.8.0/editor.png"
-text = """A text editor made for DeckOS, with colours for over 300 languages. Tabs come back next time, find and \
+text = """A text editor made for DecKoOS, with colours for over 300 languages. Tabs come back next time, find and \
 replace lights every match, and Ctrl+/ comments lines in any language. It keeps a file's line endings and \
 permissions, and a system file like /etc/fstab saves with your password instead of failing."""
 icon = "rename"
-try = "Open DeckOS Editor"
+try = "Open DecKoOS Editor"
 run = ["deckos-editor"]
 
 [[highlights]]
-title = "DeckOS icons and mouse pointers"
+title = "DecKoOS icons and mouse pointers"
 image = "0.8.0/icons.png"
 text = """The everyday apps (files, terminal, settings, calculator, screenshots, archives and 70 more) and over 80 \
-kinds of file now have DeckOS's own icons: plates in each app's colour, and file sheets that say what they are \
+kinds of file now have DecKoOS's own icons: plates in each app's colour, and file sheets that say what they are \
 (PY, JSON, PDF, ZIP). New mouse pointers match, sharp at any size, with the thumbstick ring while you wait. \
 Brand apps like Firefox and Steam keep their own logos."""
 icon = "appearance"
@@ -61,22 +61,22 @@ try = "See Appearance"
 run = ["deckos-hub", "--page", "appearance"]
 
 [[highlights]]
-title = "DeckOS Retro"
+title = "DecKoOS Retro"
 image = "0.8.0/retro.png"
-text = """Your retro games in one place, from the NES to the PlayStation 2. DeckOS Retro finds the games you have \
+text = """Your retro games in one place, from the NES to the PlayStation 2. DecKoOS Retro finds the games you have \
 (by file, folder or the disc itself), installs the emulators they need in one click, checks for the BIOS \
 files some consoles need and recognises yours by their contents, and adds everything to Steam, so your \
 games are in Gaming Mode. It doesn't download games or BIOS files: it works with your own."""
 icon = "gaming"
-try = "Open DeckOS Retro"
+try = "Open DecKoOS Retro"
 run = ["deckos-retro"]
 
 [[highlights]]
-title = "DeckOS Builder, for everyone"
+title = "DecKoOS Builder, for everyone"
 image = "0.8.0/builder.png"
-text = """DeckOS Builder now comes with DeckOS. Sign in with your GitHub account to watch DeckOS being built, build \
-an ISO on your own PC and put it on a USB stick, or send a change: Builder makes your own copy of DeckOS, \
+text = """DecKoOS Builder now comes with DecKoOS. Sign in with your GitHub account to watch DecKoOS being built, build \
+an ISO on your own PC and put it on a USB stick, or send a change: Builder makes your own copy of DecKoOS, \
 checks your change and opens a pull request, which the maintainer reviews before anything goes in."""
 icon = "package"
-try = "Open DeckOS Builder"
+try = "Open DecKoOS Builder"
 run = ["deckos-builder"]

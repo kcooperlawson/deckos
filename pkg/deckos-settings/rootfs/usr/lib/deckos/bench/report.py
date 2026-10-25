@@ -1,4 +1,4 @@
-"""DeckOS Bench reports: one self-contained HTML page per run, and one per comparison.
+"""DecKoOS Bench reports: one self-contained HTML page per run, and one per comparison.
 
 No scripts or downloads: charts are inline SVG, so a report opens anywhere, offline, and can be
 attached to a bug report or a forum post as one file.
@@ -63,7 +63,7 @@ def fmt(v, unit=""):
 def page(title, body):
     return (f"<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' "
             f"content='width=device-width, initial-scale=1'><title>{esc(title)}</title><style>{CSS}</style></head>"
-            f"<body><main><div class='brand'><div class='tilelogo'></div>DeckOS Bench</div>{body}</main></body></html>")
+            f"<body><main><div class='brand'><div class='tilelogo'></div>DecKoOS Bench</div>{body}</main></body></html>")
 
 
 def spark(values, w=300, h=56, color=ACCENT):

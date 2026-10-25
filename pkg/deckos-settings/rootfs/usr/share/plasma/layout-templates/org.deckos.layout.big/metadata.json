@@ -9,7 +9,7 @@
         "Description": "Large icons and a tall dock: easy from the couch, with a controller or a touchscreen",
         "Id": "org.deckos.layout.big",
         "License": "MIT",
-        "Name": "DeckOS: Big"
+        "Name": "DecKoOS: Big"
     },
     "X-Plasma-ContainmentCategories": [
         "panel"

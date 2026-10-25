@@ -1,4 +1,4 @@
-"""DeckOS System Monitor's data: processes, processor, memory, graphics card, disks and network, read
+"""DecKoOS System Monitor's data: processes, processor, memory, graphics card, disks and network, read
 straight from /proc and /sys (no psutil, no Qt). Rates and CPU shares come from the difference between
 two samples, so the first sample has none. DECKOS_PROC / DECKOS_SYS point it at a fake tree for tests.
 """

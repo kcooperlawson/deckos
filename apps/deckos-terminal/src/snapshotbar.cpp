@@ -86,7 +86,7 @@ void SnapshotBar::undo()
     QStringList cmd{QStringLiteral("deckos"), QStringLiteral("restore"), n};
     if (m_snapshot.config != QLatin1String("home")) {
         if (QMessageBox::question(window(), tr("Undo that command?"),
-                                  tr("DeckOS goes back to snapshot #%1 when you restart: everything in the system "
+                                  tr("DecKoOS goes back to snapshot #%1 when you restart: everything in the system "
                                      "changed since then goes back too. Your home folder stays as it is.\n\n"
                                      "The system as it is now is kept, so you can change your mind.").arg(n))
             != QMessageBox::Yes)
@@ -110,7 +110,7 @@ void SnapshotBar::undo()
         } else {
             m_restart = true;
             m_undo->setText(tr("Restart now"));
-            say(tr("Restart to finish: DeckOS goes back to snapshot #%1.").arg(n), false);
+            say(tr("Restart to finish: DecKoOS goes back to snapshot #%1.").arg(n), false);
         }
     });
     proc->start(cmd.first(), cmd.mid(1));

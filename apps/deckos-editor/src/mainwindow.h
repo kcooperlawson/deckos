@@ -1,4 +1,4 @@
-// A DeckOS Editor window: the tab row with New/Open/Save, the open files, find and replace, and a
+// A DecKoOS Editor window: the tab row with New/Open/Save, the open files, find and replace, and a
 // status line (position, language, indentation, line endings) whose parts are menus.
 #pragma once
 

@@ -1,4 +1,4 @@
-// DeckOS: Konsole's dock pin becomes DeckOS Terminal's, once per user (DeckOS 0.3.17, when DeckOS
+// DecKoOS: Konsole's dock pin becomes DecKoOS Terminal's, once per user (DecKoOS 0.3.17, when DecKoOS
 // Terminal became the default terminal). Konsole stays installed and in the app menu.
 const konsole = "applications:org.kde.konsole.desktop";
 const terminal = "applications:org.deckos.terminal.desktop";

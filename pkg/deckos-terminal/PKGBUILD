@@ -1,10 +1,10 @@
 # Maintainer: kcooperlawson
-# DeckOS Terminal, the DeckOS terminal. Built from ../../apps/deckos-terminal in this repo.
+# DecKoOS Terminal, the DecKoOS terminal. Built from ../../apps/deckos-terminal in this repo.
 pkgname=deckos-terminal
 pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
 pkgver=${pkgver:-0.3.17}
 pkgrel=1
-pkgdesc="DeckOS Terminal: the DeckOS terminal, with project-aware tabs and splits (Qt 6, qtermwidget)"
+pkgdesc="DecKoOS Terminal: the DecKoOS terminal, with project-aware tabs and splits (Qt 6, qtermwidget)"
 arch=(x86_64)
 license=(MIT)
 depends=(qt6-base qt6-svg qtermwidget kconfig kcoreaddons kdbusaddons ttf-jetbrains-mono-nerd)

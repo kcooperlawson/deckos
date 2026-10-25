@@ -1,11 +1,11 @@
-# DeckOS Bench
+# DecKoOS Bench
 
 Bench has a system suite that needs no games, plus a separate game suite. It saves every
 repetition and CPU/GPU sensor readings, and writes self-contained HTML reports that work offline.
 
 ## Native application
 
-Open **DeckOS Bench** from the application launcher, `deckos-bench`, `deckos bench app`,
+Open **DecKoOS Bench** from the application launcher, `deckos-bench`, `deckos bench app`,
 or the **Benchmarks** button on the Hub's System page after installing the updated package.
 It shares the Hub's PySide6 widgets, palette, typography and icons.
 

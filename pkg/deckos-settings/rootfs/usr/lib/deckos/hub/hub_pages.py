@@ -1,4 +1,4 @@
-"""DeckOS Hub pages. Each page builds once; `refresh()` runs when it's shown, `tick(stats)` every
+"""DecKoOS Hub pages. Each page builds once; `refresh()` runs when it's shown, `tick(stats)` every
 two seconds while it's on screen."""
 import re
 import shlex
@@ -85,7 +85,7 @@ class HomePage(Page):
         self.title_label.setText(f"Good {part}")
         self.subtitle_label.setText(f"{self.hub.gpu.name}  ·  {sysinfo.cpu_name()}  ·  {sysinfo.deckos_version()}")
         self.head_actions.addWidget(button("What's new", slot=lambda: QProcess.startDetached("deckos-whatsnew", []),
-                                           icon="star", tip="What the latest DeckOS release brought"))
+                                           icon="star", tip="What the latest DecKoOS release brought"))
         self.head_actions.addWidget(button("Gaming Mode", "primary", self.hub.to_gaming, icon="play"))
 
         stats = QGridLayout()
@@ -131,9 +131,9 @@ class HomePage(Page):
                                         icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
-                                        tip="DeckOS Work: code, documents and images with your local AI"),
+                                        tip="DecKoOS Work: code, documents and images with your local AI"),
                                  button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
-                                        icon="star", tip="DeckOS Welcome: the first-login setup, again")))
+                                        icon="star", tip="DecKoOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
 
     def tick(self, stats):
@@ -364,7 +364,7 @@ class GamingPage(Page):
 
     def build(self):
         self.head_actions.addWidget(button("Retro games", slot=lambda: QProcess.startDetached("deckos-retro", []),
-                                           icon="gaming", tip="DeckOS Retro: your retro games, set up and in Steam"))
+                                           icon="gaming", tip="DecKoOS Retro: your retro games, set up and in Steam"))
         if not all(sysinfo.installed(cmd) for cmd in ("gamescope-session-plus", "steam", "gamescope", "steamos-session-select")):
             self.lay.addWidget(Empty("gaming", "Gaming isn't installed",
                                      "Add Steam, Gaming Mode, Proton, Lutris, Heroic, MangoHud and the rest.",
@@ -520,7 +520,7 @@ class GamingPage(Page):
         card.body.addLayout(grid)
         self.gpu_apply = button("Apply", "primary", self.apply_gpu, icon="check")
         self.od_btn = button("Turn on overdrive", slot=self.enable_overdrive, icon="power",
-                             tip="Lets DeckOS undervolt and set fan curves (amdgpu.ppfeaturemask); needs a restart")
+                             tip="Lets DecKoOS undervolt and set fan curves (amdgpu.ppfeaturemask); needs a restart")
         card.body.addWidget(row(self.gpu_apply, button("Reset to stock", slot=lambda: self.pick_gpu_preset(0, apply=True),
                                                        icon="undo"), self.od_btn))
         self.gpu_note = label("", "muted")
@@ -553,9 +553,9 @@ class GamingPage(Page):
             w.setEnabled(not lact)
         self.od_btn.setVisible(not od and not lact)
         self.gpu_note.setText(
-            "LACT is managing this card, so DeckOS leaves it alone. Stop LACT's service (lactd) to tune it here." if lact
+            "LACT is managing this card, so DecKoOS leaves it alone. Stop LACT's service (lactd) to tune it here." if lact
             else "Undervolting and fan curves need overdrive: turn it on, then restart." if not od
-            else "Each card undervolts differently. If games crash, step back toward 0 mV or pick Stock. If DeckOS ever "
+            else "Each card undervolts differently. If games crash, step back toward 0 mV or pick Stock. If DecKoOS ever "
                  "fails to start, press e in the boot menu and add deckos.gpu=stock to the linux line.")
 
     def show_gpu_values(self):
@@ -711,7 +711,7 @@ class DrivesPage(Page):
         self.lay.addWidget(self.card)
         movein = Card("Coming from Windows?", "Bring your stuff over", "arrow-right")
         movein.body.addWidget(label("Your Windows folders in the sidebar, your wallpaper, Firefox and Edge bookmarks, "
-                                    "your Steam games without downloading them again, and a DeckOS match for your apps. "
+                                    "your Steam games without downloading them again, and a DecKoOS match for your apps. "
                                     "Windows itself isn't changed.", "sub"))
         movein.body.addWidget(row(button("Move in from Windows", "primary",
                                          lambda: QProcess.startDetached("deckos-movein", []), icon="arrow-right")))
@@ -773,7 +773,7 @@ class AiDevPage(Page):
 
         desk = Card("Claude Desktop", "Chat, Cowork and Claude Code in a window (beta)", "ai")
         have = sysinfo.installed("claude-desktop")
-        desk.body.addWidget(label("Anthropic's Linux app is built for Ubuntu and Debian. On DeckOS it comes from the AUR "
+        desk.body.addWidget(label("Anthropic's Linux app is built for Ubuntu and Debian. On DecKoOS it comes from the AUR "
                                   "package <b>claude-desktop</b>, which repackages that official build. Sign-in is kept "
                                   "in KDE Wallet.", "sub"))
         desk.body.addWidget(row(
@@ -792,7 +792,7 @@ class AiDevPage(Page):
             self.ollama_card.body.addLayout(self.models)
             self.toggle = button("Start", slot=self.toggle_ollama, icon="play")
             self.ollama_card.body.addWidget(row(
-                button("Ask DeckOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
+                button("Ask DecKoOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
                        tip="Install and set things up by asking (Meta+Space anywhere)"),
                 self.toggle,
                 button("Link Claude Code", slot=lambda: self.hub.terminal("deckos ai claude-link"), icon="external",
@@ -808,11 +808,11 @@ class AiDevPage(Page):
                                                          icon="plus")))
         self.lay.addWidget(self.ollama_card)
 
-        work = Card("DeckOS Work", "A local workspace for bigger jobs", "code")
+        work = Card("DecKoOS Work", "A local workspace for bigger jobs", "code")
         work.body.addWidget(label("Saved project chats with your local models: read and change code, run approved "
                                   "commands, make Word, PDF, PowerPoint and spreadsheet files, and create images on "
                                   "your graphics card. No API key, nothing leaves this PC.", "sub"))
-        work.body.addWidget(row(button("Open DeckOS Work", "primary", lambda: QProcess.startDetached("deckos-work", []),
+        work.body.addWidget(row(button("Open DecKoOS Work", "primary", lambda: QProcess.startDetached("deckos-work", []),
                                        icon="code")))
         self.lay.addWidget(work)
         tools = Card("Tools", "What's installed", "code")
@@ -870,12 +870,12 @@ class SystemPage(Page):
                                            icon="list", tip="What's running and what it uses (Ctrl+Shift+Esc)"))
         self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
                                            icon="gauge"))
-        up = Card("Updates", "Keep DeckOS current", "update")
+        up = Card("Updates", "Keep DecKoOS current", "update")
         self.up_state = label("Checking…", "cardTitle")
         self.up_detail = label("", "sub")
         up.body.addWidget(self.up_state)
         up.body.addWidget(self.up_detail)
-        self.up_rows = QVBoxLayout()  # what's coming: DeckOS, system packages, AUR; after updating, what's next
+        self.up_rows = QVBoxLayout()  # what's coming: DecKoOS, system packages, AUR; after updating, what's next
         self.up_rows.setSpacing(6)
         up.body.addLayout(self.up_rows)
         self.up_list = label("", "mono")
@@ -894,7 +894,7 @@ class SystemPage(Page):
         self.up_log.hide()
         up.body.addWidget(self.up_log)
         self.up_btn = button("Update now", "primary", self.run_update, icon="update",
-                             tip="DeckOS, Arch, CachyOS and Flatpak apps; a snapshot is taken first")
+                             tip="DecKoOS, Arch, CachyOS and Flatpak apps; a snapshot is taken first")
         self.up_btn.setEnabled(False)
         up.body.addWidget(row(self.up_btn,
                               button("Check again", slot=self.check_updates, icon="refresh"),
@@ -905,13 +905,13 @@ class SystemPage(Page):
         self.auto_state = label("", "muted")
         up.body.addWidget(self.auto)
         up.body.addWidget(self.auto_state)
-        self.testing = QCheckBox("Get new DeckOS releases first (the testing channel: everyone else gets them once tried)")
+        self.testing = QCheckBox("Get new DecKoOS releases first (the testing channel: everyone else gets them once tried)")
         self.testing.clicked.connect(self.set_channel)
         up.body.addWidget(self.testing)
         self.lay.addWidget(up)
 
         snaps = Card("Undo an update", "If something broke after updating", "undo")
-        snaps.body.addWidget(label("DeckOS takes a snapshot before every update. Undo one and the system goes back to "
+        snaps.body.addWidget(label("DecKoOS takes a snapshot before every update. Undo one and the system goes back to "
                                    "how it was before it, from the next restart. Your files and settings in your home "
                                    "folder stay as they are.", "sub"))
         self.undo_note = QVBoxLayout()  # restart to finish, or delete the system an undo replaced
@@ -947,7 +947,7 @@ class SystemPage(Page):
         self.lay.addWidget(fw)
 
         sw = Card("Software", "Add what you skipped at install", "package")
-        sw.actions.addWidget(button("Open DeckOS Store", slot=lambda: QProcess.startDetached("deckos-store", []),
+        sw.actions.addWidget(button("Open DecKoOS Store", slot=lambda: QProcess.startDetached("deckos-store", []),
                                     icon="store", tip="Every app from Arch, CachyOS, Flathub and the AUR"))
         self.sw_list = QVBoxLayout()
         self.sw_list.setSpacing(6)
@@ -983,7 +983,7 @@ class SystemPage(Page):
         self.hub.data.update_list(self.show_updates, fresh=True)
 
     DECKOS_PARTS = {"deckos-settings": "Hub, Menu, Quick Settings, deckos tool, themes",
-                    "deckos-files": "DeckOS Files", "deckos-terminal": "DeckOS Terminal", "deckos-editor": "DeckOS Editor",
+                    "deckos-files": "DecKoOS Files", "deckos-terminal": "DecKoOS Terminal", "deckos-editor": "DecKoOS Editor",
                     "deckos-theme-tmpikes": "TMpikes theme"}
 
     def show_updates(self, repo, aur, err):
@@ -1000,26 +1000,26 @@ class SystemPage(Page):
             self.up_detail.setText(err)
         elif total == 0:
             self.up_state.setText("Everything is up to date")
-            self.up_detail.setText("DeckOS, Arch, CachyOS and AUR packages.")
+            self.up_detail.setText("DecKoOS, Arch, CachyOS and AUR packages.")
         else:
-            self.up_state.setText(f"DeckOS {sysinfo.plain_version(settings[2])} is ready" if settings else
+            self.up_state.setText(f"DecKoOS {sysinfo.plain_version(settings[2])} is ready" if settings else
                                   f"{total} update{'s' if total != 1 else ''} waiting")
-            self.up_detail.setText("Update now installs the DeckOS and system updates below. A snapshot is taken "
+            self.up_detail.setText("Update now installs the DecKoOS and system updates below. A snapshot is taken "
                                    "first, so you can roll back." if repo else
                                    "Only AUR apps: update them in the terminal.")
 
         if not err:
             if deck:
-                title = (f"DeckOS {sysinfo.plain_version(settings[1])} → {sysinfo.plain_version(settings[2])}"
-                         if settings else "DeckOS apps")
-                self.up_rows.addWidget(RowItem("update", title, "From the signed DeckOS repo: " + "; ".join(
+                title = (f"DecKoOS {sysinfo.plain_version(settings[1])} → {sysinfo.plain_version(settings[2])}"
+                         if settings else "DecKoOS apps")
+                self.up_rows.addWidget(RowItem("update", title, "From the signed DecKoOS repo: " + "; ".join(
                     self.DECKOS_PARTS.get(p[0], p[0]) for p in deck), S.P.accent))
             elif sysinfo.update_channel_on():
                 self.up_rows.addWidget(RowItem("check", sysinfo.deckos_version(),
-                                               "Up to date with the signed DeckOS repo", S.SUCCESS))
+                                               "Up to date with the signed DecKoOS repo", S.SUCCESS))
             else:
-                self.up_rows.addWidget(RowItem("alert", "DeckOS's own updates aren't set up",
-                                               "Run deckos dev-install once from a DeckOS checkout, or install a "
+                self.up_rows.addWidget(RowItem("alert", "DecKoOS's own updates aren't set up",
+                                               "Run deckos dev-install once from a DecKoOS checkout, or install a "
                                                "newer deckos-settings.", S.WARNING))
             if system:
                 # Name what matters first: the kernel and desktop, then the rest.
@@ -1108,7 +1108,7 @@ class SystemPage(Page):
         self.up_meter.show()
         self.up_btn.setEnabled(False)
         self.up_state.setText("Updating…")
-        self.up_detail.setText("Keep DeckOS running until this finishes.")
+        self.up_detail.setText("Keep DecKoOS running until this finishes.")
         if sysinfo.DEMO:
             self.updating.start("python", ["-c", "import time\nfor i in range(1,13):\n print(f'({i:2}/12) upgrading "
                                                  "package-{i}', flush=True); time.sleep(0.15)"])
@@ -1128,14 +1128,14 @@ class SystemPage(Page):
         self.updating = None
         self.up_meter.set(1.0 if code == 0 else self.up_meter.value, None if code == 0 else S.DANGER)
         if code == 0:
-            # a new DeckOS release: its What's New, once (it checks the notes against the last one seen)
+            # a new DecKoOS release: its What's New, once (it checks the notes against the last one seen)
             if any(p[0] == "deckos-settings" for p in self.pending[0]) and not sysinfo.DEMO:
                 QProcess.startDetached("deckos-whatsnew", ["--if-new"])
             self.notices = self.after_update(self.pending[0])
             needs = [k for k, _ in self.notices]
             self.hub.toast("Updated. Restart the PC to finish." if "reboot" in needs else
                            "Updated. Restart the desktop to load the new DeckOS." if "desktop" in needs else
-                           "DeckOS is up to date.", "ok", 7000)
+                           "DecKoOS is up to date.", "ok", 7000)
         elif code in (126, 127):
             self.hub.toast("Update cancelled.", "warn")
         else:
@@ -1143,8 +1143,8 @@ class SystemPage(Page):
             tail = "\n".join(self.up_log.toPlainText().splitlines()[-40:])
             self.notices = [("error", lambda: RowItem(
                 "alert", "The update stopped with an error", "The log shows where. The Assistant can read it with you.",
-                S.DANGER, [button("Ask DeckOS Assistant", slot=lambda: sysinfo.ask_assistant(
-                    "A DeckOS update (pacman -Syu through deckos update) stopped with an error. Explain what went "
+                S.DANGER, [button("Ask DecKoOS Assistant", slot=lambda: sysinfo.ask_assistant(
+                    "A DecKoOS update (pacman -Syu through deckos update) stopped with an error. Explain what went "
                     "wrong and how to fix it. The end of its output:\n" + tail), icon="ai")]))]
             self.up_rows.insertWidget(0, self.notices[0][1]())
         self.hub.data.invalidate()
@@ -1158,7 +1158,7 @@ class SystemPage(Page):
         desktop = [p[0] for p in done if sysinfo.DESKTOP_RE.fullmatch(p[0])]
         reboot = [p[0] for p in done if sysinfo.REBOOT_RE.fullmatch(p[0])]
         if desktop and not reboot:  # a restart covers the desktop too
-            title = f"DeckOS {sysinfo.plain_version(settings[2])} installed" if settings else "Plasma updated"
+            title = f"DecKoOS {sysinfo.plain_version(settings[2])} installed" if settings else "Plasma updated"
             notes.append(("desktop", lambda: RowItem(
                 "refresh", title, "The Menu, panel and Quick Settings switch to the new version when the desktop "
                 "restarts. Your open windows stay open.", S.SUCCESS,
@@ -1167,7 +1167,7 @@ class SystemPage(Page):
             names = ", ".join(reboot[:3]) + (f" and {len(reboot) - 3} more" if len(reboot) > 3 else "")
             notes.append(("reboot", lambda: RowItem(
                 "power", "Restart to finish", f"{names} load at the next start" +
-                (f"; so does DeckOS {sysinfo.plain_version(settings[2])}" if settings else "") + ".", S.WARNING,
+                (f"; so does DecKoOS {sysinfo.plain_version(settings[2])}" if settings else "") + ".", S.WARNING,
                 [button("Restart now", slot=lambda: self.hub.toast("Restarting (demo).") if sysinfo.DEMO else
                         QProcess.startDetached("systemctl", ["reboot"]), icon="power")])))
         return notes
@@ -1195,7 +1195,7 @@ class SystemPage(Page):
         if self.undo_pending:
             date, what = self.undo_pending
             self.undo_note.addWidget(RowItem(
-                "power", "Restart to finish the undo", f"DeckOS goes back to before {what} ({date}).", S.WARNING,
+                "power", "Restart to finish the undo", f"DecKoOS goes back to before {what} ({date}).", S.WARNING,
                 [button("Restart now", "primary", slot=lambda: self.hub.toast("Restarting (demo).") if sysinfo.DEMO else
                         QProcess.startDetached("systemctl", ["reboot"]), icon="power")]))
         elif last and not last.get("cleaned"):
@@ -1208,7 +1208,7 @@ class SystemPage(Page):
     def undo_update(self, pre, date, what):
         if QMessageBox.question(
                 self, "Undo this update?",
-                f"DeckOS goes back to how it was before {what} ({date}).\n\n"
+                f"DecKoOS goes back to how it was before {what} ({date}).\n\n"
                 "This happens when you restart; until then nothing changes. Apps and system settings changed since "
                 "then go back too. Your files and settings in your home folder stay as they are.\n\n"
                 "The system as it is now is kept, so you can change your mind.") != QMessageBox.Yes:
@@ -1301,7 +1301,7 @@ class SystemPage(Page):
 
 # ------------------------------------------------------------------ appearance
 
-ACCENTS = [("DeckOS blue", "#4C8DFF"), ("Violet", "#7A5CFF"), ("Teal", "#22C7B8"), ("Green", "#3DD68C"),
+ACCENTS = [("DecKoOS blue", "#4C8DFF"), ("Violet", "#7A5CFF"), ("Teal", "#22C7B8"), ("Green", "#3DD68C"),
            ("Amber", "#F5B84B"), ("Orange", "#FF7A45"), ("Red", "#FF5C7A"), ("Pink", "#E86BD8")]
 
 
@@ -1388,15 +1388,15 @@ class AppearancePage(Page):
         grid.addWidget(self.cursors, 2, 1)
         grid.setColumnStretch(2, 1)
         style.body.addLayout(grid)
-        style.body.addWidget(label("DeckOS icons draw the everyday apps and file types in the DeckOS style, with "
-                                   "Papirus for the rest. The login screen uses the DeckOS theme.", "muted"))
+        style.body.addWidget(label("DecKoOS icons draw the everyday apps and file types in the DecKoOS style, with "
+                                   "Papirus for the rest. The login screen uses the DecKoOS theme.", "muted"))
         self.lay.addWidget(style)
 
-        spotify = Card("Spotify", "The DeckOS look for Spotify", "music")
-        spotify.body.addWidget(label("Restyles the official Spotify app with Spicetify: DeckOS colours, bordered panels "
+        spotify = Card("Spotify", "The DecKoOS look for Spotify", "music")
+        spotify.body.addWidget(label("Restyles the official Spotify app with Spicetify: DecKoOS colours, bordered panels "
                                      "and the gradient play buttons. Spotify updates undo it; apply it again after one.",
                                      "sub"))
-        spotify.body.addWidget(row(button("Apply DeckOS look", "primary", lambda: self.hub.terminal("deckos spotify theme"),
+        spotify.body.addWidget(row(button("Apply DecKoOS look", "primary", lambda: self.hub.terminal("deckos spotify theme"),
                                           icon="appearance"),
                                    button("Back to stock", slot=lambda: self.hub.terminal("deckos spotify restore"),
                                           icon="refresh")))

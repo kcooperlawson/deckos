@@ -1,16 +1,16 @@
-# DeckOS Files: design and architecture
+# DecKoOS Files: design and architecture
 
-DeckOS Files (`deckos-files`) is DeckOS's own file manager and the default for folders
+DecKoOS Files (`deckos-files`) is DecKoOS's own file manager and the default for folders
 (`inode/directory`), replacing Dolphin. It's a native C++20 / Qt 6 Widgets app on KDE Frameworks 6.
 KIO does the work it already does well (listing, copying, trash, network, phones, thumbnails,
-archives, search, "Open with"); DeckOS Files adds the window, the views and the DeckOS look.
+archives, search, "Open with"); DecKoOS Files adds the window, the views and the DecKoOS look.
 
 ## Goals
 
 1. **Fast.** First window on screen in under 150 ms warm, folders with 50,000+ files that scroll at
    the display's refresh rate, and opening a second window costs nothing (it's the same process).
 2. **Complete for daily use.** Everything below works on day one; nothing sends you back to Dolphin.
-3. **DeckOS look.** Slate surfaces, 10px radii, accent selection, DeckOS line icons for the app's own
+3. **DecKoOS look.** Slate surfaces, 10px radii, accent selection, DecKoOS line icons for the app's own
    buttons, the system icon theme (DeckOS/Papirus) for files.
 
 Non-goals for v1: an embedded terminal panel, a folder tree panel, per-folder view settings,
@@ -84,7 +84,7 @@ PreviewPanel        selection info + large preview
 Operations          thin wrappers creating KIO jobs, registering them for undo and progress
 BatchRenameDialog
 FileManager1        org.freedesktop.FileManager1 D-Bus adaptor (ShowFolders/ShowItems/ShowItemProperties)
-Style               palette, DeckOS line icons (QSvgRenderer, recoloured, cached), small QSS for chrome
+Style               palette, DecKoOS line icons (QSvgRenderer, recoloured, cached), small QSS for chrome
 ```
 
 ### Why a flat model instead of `KDirModel`
@@ -109,13 +109,13 @@ remote protocols all stay in `KCoreDirLister`.
 - Folder item counts, image dimensions and free space are worked out off the UI thread.
 - Heavy objects (`KNewFileMenu`, `KFileItemActions`, `KPropertiesDialog`, Baloo) are created the
   first time they're needed, not at start. No KXmlGui (its XML parsing costs start time).
-- **One process.** `KDBusService` in unique mode: launching DeckOS Files again (a second window,
+- **One process.** `KDBusService` in unique mode: launching DecKoOS Files again (a second window,
   "Show in folder" from Firefox) opens a window in the running process, which is instant.
 
 ### D-Bus and defaults
 
 - `org.deckos.files.desktop`, `MimeType=inode/directory`, set as the default in
-  `/etc/xdg/mimeapps.list` so folders from any app open in DeckOS Files.
+  `/etc/xdg/mimeapps.list` so folders from any app open in DecKoOS Files.
 - `org.freedesktop.FileManager1` is claimed while it runs and D-Bus-activatable when it isn't
   (`deckos-files --daemon`: no window until asked).
 - The Hub's "Open in Files" buttons launch `deckos-files`.
@@ -125,7 +125,7 @@ remote protocols all stay in `KCoreDirLister`.
 - Source: `apps/deckos-files/` (CMake, ECM, `-O2 -flto`, `-DQT_NO_CAST_FROM_ASCII` etc. via
   `KDECompilerSettings`).
 - Package: `pkg/deckos-files/PKGBUILD`, `arch=(x86_64)`, built from `../../apps/deckos-files` like
-  `deckos-settings` reads `../../VERSION`; `pkgver` is the DeckOS `VERSION`.
+  `deckos-settings` reads `../../VERSION`; `pkgver` is the DecKoOS `VERSION`.
   Depends: `qt6-base qt6-svg kio kio-extras kio-fuse kconfig kcoreaddons kdbusaddons kiconthemes
   kwidgetsaddons baloo solid` (optional: `kio-admin`, `ffmpegthumbs`, `kdegraphics-thumbnailers`).
 - **Getting it onto systems:** `deckos-settings` depends on `deckos-files`, so existing installs get
@@ -134,7 +134,7 @@ remote protocols all stay in `KCoreDirLister`.
   it too. CI's package job builds it, so the publish job signs and publishes it with the rest.
 - **Dolphin:** dropped from `desktop.txt` and `iso/packages.live` for new installs (kio-extras,
   kio-fuse and the thumbnailers it pulled in are listed explicitly). Existing installs keep Dolphin
-  until the user removes it; DeckOS Files is the default either way.
+  until the user removes it; DecKoOS Files is the default either way.
 
 ## Testing without Linux
 

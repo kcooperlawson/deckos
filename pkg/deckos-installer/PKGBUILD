@@ -1,9 +1,9 @@
 # Maintainer: kcooperlawson
-# Live-USB only: the DeckOS installer window (it drives deckos-install). Removed from the installed system.
+# Live-USB only: the DecKoOS installer window (it drives deckos-install). Removed from the installed system.
 pkgname=deckos-installer
 pkgver=0.3.0
 pkgrel=1
-pkgdesc="DeckOS graphical installer (PySide6 front end for deckos-install)"
+pkgdesc="DecKoOS graphical installer (PySide6 front end for deckos-install)"
 arch=(any)
 license=(MIT)
 depends=(deckos-settings python pyside6 qt6-svg gum jq curl arch-install-scripts reflector btrfs-progs

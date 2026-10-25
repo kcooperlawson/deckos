@@ -6,12 +6,12 @@
             }
         ],
         "Category": "Application Launchers",
-        "Description": "DeckOS's app launcher: search, pinned apps, recent files, power and Gaming Mode",
+        "Description": "DecKoOS's app launcher: search, pinned apps, recent files, power and Gaming Mode",
         "EnabledByDefault": true,
         "Icon": "deckos",
         "Id": "org.deckos.menu",
         "License": "MIT",
-        "Name": "DeckOS Menu",
+        "Name": "DecKoOS Menu",
         "Version": "1.0",
         "Website": "https://github.com/kcooperlawson/deckos"
     },

@@ -1,4 +1,4 @@
-"""Renders DeckOS Menu without Plasma: the real plasmoid QML with stand-ins for Plasma's modules
+"""Renders DecKoOS Menu without Plasma: the real plasmoid QML with stand-ins for Plasma's modules
 (assets/preview_menu/: plasmoid, Kirigami, plasma5support, KUser) and canned kicker models (below),
 over the wallpaper and dock. Store suggestions come from the real store_find.py --demo.
     python assets/preview_menu.py [home|search|apps|all] [out.png]
@@ -36,8 +36,8 @@ ROLES = ["display", "decoration", "description", "group", "favoriteId", "url", "
          "isParent", "hasChildren", "disabled", "isNewlyInstalled"]
 APPS = [("Firefox", "firefox", "Web browser", "Internet"), ("Dolphin", "dolphin", "File manager", "System"),
         ("Konsole", "konsole", "Terminal", "System"), ("Steam", "steam", "Games", "Games"),
-        ("VS Code", "code", "Code editor", "Development"), ("DeckOS Hub", "deckos", "DeckOS settings", "System"),
-        ("DeckOS Store", "deckos-store", "Apps for DeckOS", "System"), ("System Settings", "settings", "", "Settings"),
+        ("VS Code", "code", "Code editor", "Development"), ("DecKoOS Hub", "deckos", "DecKoOS settings", "System"),
+        ("DecKoOS Store", "deckos-store", "Apps for DecKoOS", "System"), ("System Settings", "settings", "", "Settings"),
         ("Kate", "kate", "Text editor", "Development"), ("Gwenview", "gwenview", "Image viewer", "Graphics"),
         ("Spectacle", "spectacle", "Screenshots", "Graphics"), ("KCalc", "kcalc", "Calculator", "Office"),
         ("Heroic", "heroic", "Game launcher", "Games"), ("Kdenlive", "kdenlive", "Video editor", "Multimedia"),
@@ -254,7 +254,7 @@ Rectangle {
         Text { anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter
                text: "19:42"; color: "#E8EAF0"; font.pixelSize: 13 }
     }
-    Rectangle {  // the DeckOS Plasma style's dialog frame
+    Rectangle {  // the DecKoOS Plasma style's dialog frame
         id: plate; objectName: "plate"; width: 640 + 16; height: 596 + 16; radius: 14
         anchors.horizontalCenter: parent.horizontalCenter; y: dock.y - height - 10
         color: "#F2171A21"; border.color: "#262B36"

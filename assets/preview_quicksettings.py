@@ -1,6 +1,6 @@
-"""Renders DeckOS Quick Settings without Plasma: the real plasmoid QML, with stand-ins for the Plasma
+"""Renders DecKoOS Quick Settings without Plasma: the real plasmoid QML, with stand-ins for the Plasma
 modules it imports (assets/qml-stubs: Wi-Fi, Bluetooth, sound, brightness, media… with demo data),
-over the DeckOS wallpaper with the panel button below the popup. Also catches QML errors.
+over the DecKoOS wallpaper with the panel button below the popup. Also catches QML errors.
     python assets/preview_quicksettings.py [out.png]
 """
 import sys

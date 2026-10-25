@@ -1,5 +1,5 @@
-"""DeckOS Assistant's safety rules: what runs without asking (is_read_only) and what never runs (BLOCKED).
-deckos-local and DeckOS Work use the same rules, so a command wrongly counted as looking runs unasked there too."""
+"""DecKoOS Assistant's safety rules: what runs without asking (is_read_only) and what never runs (BLOCKED).
+deckos-local and DecKoOS Work use the same rules, so a command wrongly counted as looking runs unasked there too."""
 import sys
 import unittest
 from pathlib import Path

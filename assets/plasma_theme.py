@@ -1,9 +1,9 @@
-"""DeckOS Plasma style: the panel, popups, tooltips and widget backgrounds as "bolted plates".
+"""DecKoOS Plasma style: the panel, popups, tooltips and widget backgrounds as "bolted plates".
 
 Writes a Plasma desktop theme (pkg/deckos-settings/.../plasma/desktoptheme/deckos). Each frame is
 a 9-slice SVG with Plasma's element names (topleft, top, ..., center, hint-*-margin, shadow-*).
 Colours come from Plasma's colour-scheme classes, so the style follows whatever colour scheme is
-active (DeckOS, TMpikes...). Anything not drawn here falls back to Breeze. Run after changes:
+active (DecKoOS, TMpikes...). Anything not drawn here falls back to Breeze. Run after changes:
     python assets/plasma_theme.py
 """
 import json
@@ -116,7 +116,7 @@ METADATA = {
     "KPlugin": {
         "Authors": [{"Name": "DeckOS"}],
         "Category": "",
-        "Description": "DeckOS: slate plates with a 1px edge and screw heads, following your colour scheme",
+        "Description": "DecKoOS: slate plates with a 1px edge and screw heads, following your colour scheme",
         "Id": "deckos",
         "License": "MIT",
         "Name": "DeckOS",

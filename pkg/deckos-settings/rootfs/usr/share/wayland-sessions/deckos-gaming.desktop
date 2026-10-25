@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS Gaming Mode
+Name=DecKoOS Gaming Mode
 Comment=Steam Big Picture in gamescope, console style
 Exec=/usr/lib/deckos/gaming-session
 # Hidden when Gaming isn't installed.

@@ -1,4 +1,4 @@
-"""DeckOS Move In's window: what's on Windows worth bringing over, ticked, and brought over in one go.
+"""DecKoOS Move In's window: what's on Windows worth bringing over, ticked, and brought over in one go.
 
     deckos-movein                       find Windows on this PC's drives
     deckos-movein --demo [--screenshot FILE]
@@ -93,7 +93,7 @@ class MoveIn(QWidget):
         self.lay.addWidget(head)
         if not self.win:
             self.lay.addWidget(Empty("drives", "No Windows found",
-                                     "If Windows is on this PC, open its drive in DeckOS Files (or run sudo deckos drives "
+                                     "If Windows is on this PC, open its drive in DecKoOS Files (or run sudo deckos drives "
                                      "rescan), then press Look again."))
             self.lay.addStretch(1)
             self.go_btn.setEnabled(False)
@@ -200,9 +200,9 @@ def demo():
     items = [
         I("drives", "drives", "Mount your Windows drives at every start", "/run/media/alex/Games only stays until you "
           "restart; games and folders on it would vanish from Steam and the sidebar. This adds it to /mnt."),
-        I("folder:Documents", "folders", "Windows Documents", "In DeckOS Files' sidebar, straight from the Windows drive: "
+        I("folder:Documents", "folders", "Windows Documents", "In DecKoOS Files' sidebar, straight from the Windows drive: "
           "nothing is copied.", data={"path": "", "icon": ""}),
-        I("folder:Pictures", "folders", "Windows Pictures", "In DeckOS Files' sidebar, straight from the Windows drive: "
+        I("folder:Pictures", "folders", "Windows Pictures", "In DecKoOS Files' sidebar, straight from the Windows drive: "
           "nothing is copied.", data={"path": "", "icon": ""}),
         I("wallpaper", "wallpaper", "Your Windows wallpaper", "Copied to Pictures and set as the desktop background."),
         I("firefox:x", "browser", "Firefox: bookmarks, history, passwords, add-ons", "Profile tk0z.default-release, last "
@@ -213,7 +213,7 @@ def demo():
           "Horizon 6, American Truck Simulator, BeamNG.drive. Added to Steam here as a library, so nothing downloads again."),
         I("other-games", "games", "Other games: 9 folders", "007 First Light, Clone Hero and 7 more. Epic and GOG games: "
           "sign in to Heroic and use Import for each folder.", picked=False),
-        I("apps", "apps", "Your apps: 6 with a DeckOS match", "2 to get; the Store opens on each.", data={"apps": [
+        I("apps", "apps", "Your apps: 6 with a DecKoOS match", "2 to get; the Store opens on each.", data={"apps": [
             {"name": "Discord", "linux": "Discord", "search": "discord", "installed": True},
             {"name": "Visual Studio 2022", "linux": "VS Code or JetBrains Rider", "search": "code", "installed": False},
             {"name": "WinRAR", "linux": "Ark (already installed)", "search": "ark", "installed": True},
@@ -228,7 +228,7 @@ def demo():
 def main():
     args = sys.argv[1:]
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Move In")
+    app.setApplicationName("DecKoOS Move In")
     app.setDesktopFileName("deckos-movein")
     app.setFont(QFont("Inter", 10))
     w = MoveIn()

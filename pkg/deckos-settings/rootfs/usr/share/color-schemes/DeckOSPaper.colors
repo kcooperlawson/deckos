@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=122,92,255
 
 [General]
-ColorScheme=DeckOSPaper
-Name=DeckOS Paper
+ColorScheme=DecKoOSPaper
+Name=DecKoOS Paper
 shadeSortColumn=true
 
 [KDE]

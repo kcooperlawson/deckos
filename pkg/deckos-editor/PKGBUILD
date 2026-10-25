@@ -1,10 +1,10 @@
 # Maintainer: kcooperlawson
-# DeckOS Editor, the DeckOS text editor. Built from ../../apps/deckos-editor in this repo.
+# DecKoOS Editor, the DecKoOS text editor. Built from ../../apps/deckos-editor in this repo.
 pkgname=deckos-editor
 pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
 pkgver=${pkgver:-0.8.0}
 pkgrel=1
-pkgdesc="DeckOS Editor: the DeckOS text editor, with colours for 300+ languages (Qt 6, KSyntaxHighlighting)"
+pkgdesc="DecKoOS Editor: the DecKoOS text editor, with colours for 300+ languages (Qt 6, KSyntaxHighlighting)"
 arch=(x86_64)
 license=(MIT)
 depends=(qt6-base qt6-svg syntax-highlighting kconfig kcoreaddons kdbusaddons polkit ttf-jetbrains-mono-nerd)

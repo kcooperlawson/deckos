@@ -1,4 +1,4 @@
-# What's on the DeckOS USB (and copied to disk by the installer). Added to Arch's releng list
+# What's on the DecKoOS USB (and copied to disk by the installer). Added to Arch's releng list
 # after the entries in packages.drop are removed. The Software page adds the rest at install.
 
 # Kernel + firmware (CachyOS kernel, built for any x86-64; Zen 4 builds arrive after install)
@@ -17,7 +17,7 @@ ananicy-cpp
 cachyos-ananicy-rules
 paru
 
-# DeckOS
+# DecKoOS
 deckos-settings
 deckos-files
 deckos-terminal
@@ -47,7 +47,7 @@ xdg-desktop-portal-kde
 sddm
 sddm-kcm
 konsole
-# Files: DeckOS Files (deckos-settings pulls it in) runs on these KIO workers and thumbnailers
+# Files: DecKoOS Files (deckos-settings pulls it in) runs on these KIO workers and thumbnailers
 kio-extras
 kio-fuse
 kio-admin

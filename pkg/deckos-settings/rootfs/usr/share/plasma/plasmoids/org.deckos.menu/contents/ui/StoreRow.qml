@@ -1,4 +1,4 @@
-// An app from the DeckOS Store that isn't installed: icon, name, what it is and where it comes from,
+// An app from the DecKoOS Store that isn't installed: icon, name, what it is and where it comes from,
 // and "Get it", which opens the Store on it. With `line` set it's a plain link row instead.
 import QtQuick
 import org.kde.kirigami as Kirigami
@@ -7,7 +7,7 @@ Item {
     id: row
 
     property var app: ({})
-    property string line: ""  // a DeckOS line icon instead of the app's icon, and no button
+    property string line: ""  // a DecKoOS line icon instead of the app's icon, and no button
     property bool cursor: false
     readonly property bool lit: cursor || mouse.containsMouse
     signal chosen()

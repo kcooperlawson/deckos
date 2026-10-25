@@ -1,4 +1,4 @@
-// DeckOS Bench memory test: bandwidth (STREAM-style copy and triad over every core) and latency (a
+// DecKoOS Bench memory test: bandwidth (STREAM-style copy and triad over every core) and latency (a
 // random pointer chase, one load at a time, so prefetching can't hide it). Arrays are 8x the
 // biggest L3 seen in AMD and Intel desktop CPUs (X3D included), so it measures RAM, not cache.
 // Bench compiles it once: gcc -O3 -march=native -fopenmp membench.c -o membench

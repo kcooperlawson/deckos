@@ -1,4 +1,4 @@
-// Offscreen checks of DeckOS Editor's file handling, find and editing, on temporary files.
+// Offscreen checks of DecKoOS Editor's file handling, find and editing, on temporary files.
 #include "document.h"
 #include "editorview.h"
 #include "findbar.h"

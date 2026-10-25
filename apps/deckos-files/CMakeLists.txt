@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# The DeckOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
+# The DecKoOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
 if(NOT DECKOS_VERSION)
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../VERSION" DECKOS_VERSION)
   string(STRIP "${DECKOS_VERSION}" DECKOS_VERSION)
@@ -56,11 +56,11 @@ install(TARGETS deckos-files RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES data/org.deckos.files.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES data/deckos-files.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES data/org.deckos.files.FileManager1.service DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/services)
-# Folders open in DeckOS Files from every app (a user's own choice in mimeapps.list still wins).
+# Folders open in DecKoOS Files from every app (a user's own choice in mimeapps.list still wins).
 install(FILES data/mimeapps.list DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg)
 
 # Offscreen checks of copy/paste and drops through the real window (not built by the PKGBUILD).
-option(DECKOS_FILES_TESTS "Build the DeckOS Files tests" OFF)
+option(DECKOS_FILES_TESTS "Build the DecKoOS Files tests" OFF)
 if(DECKOS_FILES_TESTS)
   add_executable(clipboard_test tests/clipboard_test.cpp
     src/style.cpp src/foldermodel.cpp src/itemdelegate.cpp src/folderview.cpp src/folderpane.cpp

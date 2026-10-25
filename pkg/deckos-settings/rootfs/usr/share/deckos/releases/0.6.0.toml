@@ -1,25 +1,25 @@
-# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
 
 version = "0.6.0"
 name = "Safe to try"
-tagline = "Move in from Windows, a doctor for the whole PC, undo for updates and big deletes, and room for DeckOS on any spare disk."
+tagline = "Move in from Windows, a doctor for the whole PC, undo for updates and big deletes, and room for DecKoOS on any spare disk."
 
 fixes = [
-    "DeckOS Terminal: Ctrl+C copies when text is selected (and still stops the program when nothing is), Ctrl+V pastes, and right-click has Copy, Paste, Find and Ask DeckOS Assistant.",
+    "DecKoOS Terminal: Ctrl+C copies when text is selected (and still stops the program when nothing is), Ctrl+V pastes, and right-click has Copy, Paste, Find and Ask DecKoOS Assistant.",
     "Hard drives get their power settings again: hdparm, which a CachyOS rule runs for them, was missing.",
-    "A failed update in the Hub, or a failed install in the Store, offers to ask DeckOS Assistant about it.",
-    "DeckOS Assistant and DeckOS Work ask before more commands that change things (env, rg --pre, git branch -D, find -fprint and others ran without asking), and refuse more disasters outright.",
-    "DeckOS Work only reads the public web, and asks before opening an address it made up itself.",
+    "A failed update in the Hub, or a failed install in the Store, offers to ask DecKoOS Assistant about it.",
+    "DecKoOS Assistant and DecKoOS Work ask before more commands that change things (env, rg --pre, git branch -D, find -fprint and others ran without asking), and refuse more disasters outright.",
+    "DecKoOS Work only reads the public web, and asks before opening an address it made up itself.",
     "A fresh install no longer says \"deckos: missing required signature\" on every pacman command until the first update.",
     "The installer refuses an EFI partition the PC's firmware can't read, before changing anything.",
-    "deckos dev-install won't replace a newer DeckOS with an older checkout by accident.",
+    "deckos dev-install won't replace a newer DecKoOS with an older checkout by accident.",
 ]
 
 [[highlights]]
 title = "Move in from Windows"
 text = """Coming from Windows on the same PC? Move In finds it and brings over what's worth having: your \
 folders in the sidebar, your wallpaper, your Firefox profile and Edge bookmarks, your Steam games without \
-downloading them again, and a DeckOS match for your apps. Windows itself isn't changed."""
+downloading them again, and a DecKoOS match for your apps. Windows itself isn't changed."""
 icon = "arrow-right"
 try = "Move in from Windows"
 run = ["deckos-movein"]
@@ -35,7 +35,7 @@ run = ["deckos-sysdoctor"]
 
 [[highlights]]
 title = "Undo an update"
-text = """Something broke after updating? DeckOS Hub lists your recent updates, each with an Undo button. \
+text = """Something broke after updating? DecKoOS Hub lists your recent updates, each with an Undo button. \
 After a restart the system is back as it was before that update: apps, drivers and the kernel. Your \
 files and settings in your home folder stay as they are, and the system you left is kept until you \
 say it can go."""
@@ -46,7 +46,7 @@ run = ["deckos-hub", "--page", "system"]
 [[highlights]]
 title = "Snapshot first"
 text = """Before a big delete, like a whole folder in your home or a git repository, or system files with \
-sudo, the terminal asks whether to take a snapshot first. If it was a mistake, the Undo bar in DeckOS \
+sudo, the terminal asks whether to take a snapshot first. If it was a mistake, the Undo bar in DecKoOS \
 Terminal puts the files back straight away. Everyday deletes like a build folder don't ask, and it works in any \
 terminal."""
 icon = "snapshot"
@@ -56,6 +56,6 @@ run = ["deckos-terminal"]
 [[highlights]]
 title = "Install anywhere there's room"
 text = """The installer now also offers unallocated space and empty disks, not just a partition you made \
-beforehand. In free space it adds DeckOS's own partition and erases nothing; an empty disk gets its own \
+beforehand. In free space it adds DecKoOS's own partition and erases nothing; an empty disk gets its own \
 boot partition, so it starts without any other disk. Nothing you have is ever moved or resized."""
 icon = "drives"

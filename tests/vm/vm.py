@@ -1,4 +1,4 @@
-"""Drive an installed DeckOS test VM over its serial console, for checks that need a real system
+"""Drive an installed DecKoOS test VM over its serial console, for checks that need a real system
 (btrfs, restarts). Not a unit test: run it by hand.
 
     bash tests/install-test.sh out/deckos-X.iso out/it          # once: an installed test disk

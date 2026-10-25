@@ -1,4 +1,4 @@
-# DeckOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
 
 version = "0.5.0"
 name = "Know your machine"
@@ -7,12 +7,12 @@ tagline = "Benchmarks you can trust, games that tell you why they won't start, a
 fixes = [
     "Gaming Mode checks it's ready before closing the desktop, cleans up after itself, and VRR off now means off.",
     "A fresh install from the USB installs the TMpikes theme and the AUR apps again.",
-    "DeckOS Bench: the disk test measures the drive on btrfs, the graphics test runs on Radeon, and AI prompt speed is measured fresh every run.",
+    "DecKoOS Bench: the disk test measures the drive on btrfs, the graphics test runs on Radeon, and AI prompt speed is measured fresh every run.",
 ]
 
 [[highlights]]
 title = "Game Doctor"
-text = """When a game closes right after starting, DeckOS offers to look into it: it reads what the game \
+text = """When a game closes right after starting, DecKoOS offers to look into it: it reads what the game \
 printed, says in plain words what went wrong, and offers fixes you can undo: another Proton version, \
 the OpenGL path, a fresh Proton prefix, or checking the game files."""
 icon = "alert"
@@ -20,12 +20,12 @@ try = "Open Game Doctor"
 run = ["deckos-gamedoctor"]
 
 [[highlights]]
-title = "DeckOS Bench"
+title = "DecKoOS Bench"
 text = """Your CPU, memory, disk, graphics card and local AI, measured the same way every time, with the \
 spread of every result and a history to look back on. Compare two runs and it tells you whether a \
 difference is real or just noise."""
 icon = "gauge"
-try = "Open DeckOS Bench"
+try = "Open DecKoOS Bench"
 run = ["deckos-bench"]
 
 [[highlights]]
@@ -38,10 +38,10 @@ try = "Run an experiment"
 run = ["deckos-bench", "--page", "run"]
 
 [[highlights]]
-title = "DeckOS Work (preview)"
+title = "DecKoOS Work (preview)"
 text = """A workspace for bigger jobs with the local AI models you already have: saved project chats, \
 code changes you can undo, terminal commands you approve, Word, PDF, PowerPoint and spreadsheet files, \
 and images made on your graphics card. No API key, and your files stay on this PC."""
 icon = "code"
-try = "Open DeckOS Work"
+try = "Open DecKoOS Work"
 run = ["deckos-work"]

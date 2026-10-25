@@ -1,4 +1,4 @@
-# DeckOS: keep the file indexer out of game libraries, Wine prefixes and build output. Indexing
+# DecKoOS: keep the file indexer out of game libraries, Wine prefixes and build output. Indexing
 # their many thousands of files caused minutes-long CPU spikes. Users can still change this in
 # System Settings > File Search.
 [General]

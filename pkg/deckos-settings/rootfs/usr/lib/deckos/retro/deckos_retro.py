@@ -1,4 +1,4 @@
-"""DeckOS Retro: your retro games in one place. It finds them, installs the emulators they need, checks
+"""DecKoOS Retro: your retro games in one place. It finds them, installs the emulators they need, checks
 for BIOS files, and adds them to Steam for Gaming Mode. It never downloads games or BIOS files.
 
     deckos-retro                      the window
@@ -46,11 +46,11 @@ def play(path):
     path = Path(path).resolve()
     game = next((g for g in retro.scan(folders() + [path.parent]) if path in g.files or g.path == path), None)
     if game is None:
-        sys.exit(f"DeckOS Retro doesn't know what console {path.name} is for.")
+        sys.exit(f"DecKoOS Retro doesn't know what console {path.name} is for.")
     blocked = retro.ready(game.system)
     if blocked:
         # From Gaming Mode there's no terminal: say it where it'll be seen
-        subprocess.run(["kdialog", "--sorry", f"{retro.BY_ID[game.system].name} isn't set up yet. Open DeckOS Retro "
+        subprocess.run(["kdialog", "--sorry", f"{retro.BY_ID[game.system].name} isn't set up yet. Open DecKoOS Retro "
                         f"on the desktop to {'install its emulator' if blocked == 'emulator' else 'add its BIOS'}."])
         sys.exit(1)
     cmd = retro.command(game)
@@ -107,7 +107,7 @@ def cover(game, size=QSize(150, 200)):
     p.drawRoundedRect(0, 0, size.width(), size.height() - 4, 12, 12)
     p.setBrush(QColor(255, 255, 255, 30))
     p.drawRoundedRect(0, 0, size.width(), 34, 12, 12)
-    for x in (9, size.width() - 9):  # screw heads, the DeckOS motif
+    for x in (9, size.width() - 9):  # screw heads, the DecKoOS motif
         for y in (9, size.height() - 13):
             p.setBrush(QColor(255, 255, 255, 70))
             p.drawEllipse(x - 2.2, y - 2.2, 4.4, 4.4)
@@ -134,7 +134,7 @@ def cover(game, size=QSize(150, 200)):
 class Retro(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("DeckOS Retro")
+        self.setWindowTitle("DecKoOS Retro")
         self.setWindowIcon(QIcon.fromTheme("input-gaming"))
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -162,7 +162,7 @@ class Retro(QWidget):
             head.addWidget(b)
         head.addStretch(1)
         head.addWidget(button("Add a folder", slot=self.add_folder, icon="folder-plus",
-                              tip="A folder where you keep games: DeckOS Retro looks through it"))
+                              tip="A folder where you keep games: DecKoOS Retro looks through it"))
         self.steam_button = button("Add to Steam", "primary", self.add_to_steam, icon="gaming",
                                    tip="Puts your games in Steam, so they're in Gaming Mode")
         head.addWidget(self.steam_button)
@@ -200,7 +200,7 @@ class Retro(QWidget):
         lv.addWidget(self.list, 1)
         self.empty = Empty("gaming", "No games found yet",
                            f"Put your games in {retro.LIBRARY} (one folder per console is made for you), or add a "
-                           "folder where you already keep them. DeckOS Retro doesn't download games.")
+                           "folder where you already keep them. DecKoOS Retro doesn't download games.")
         lv.addWidget(self.empty)
         self.stack.addWidget(lib)
 
@@ -251,11 +251,11 @@ class Retro(QWidget):
         elif tag == "steam":
             added, removed = result
             self.status.setText(f"Steam: {added} added" + (f", {removed} removed" if removed else "") +
-                                ". They're under the DeckOS Retro collection.")
+                                ". They're under the DecKoOS Retro collection.")
             if QMessageBox.question(self, "Open Steam?", "Your games are in Steam now. Open Steam?") == QMessageBox.Yes:
                 QProcess.startDetached("steam", [])
         elif tag == "bios":
-            names = ", ".join(name for _, name in result) or "nothing DeckOS Retro recognises"
+            names = ", ".join(name for _, name in result) or "nothing DecKoOS Retro recognises"
             self.status.setText(f"BIOS files added: {names}")
             self.fill_consoles()
 
@@ -287,7 +287,7 @@ class Retro(QWidget):
             box.setAttribute(Qt.WA_StyledBackground, True)
             h = QHBoxLayout(box)
             h.setContentsMargins(18, 14, 18, 14)
-            h.addWidget(label(f"<b>{len(todo)} of your consoles need their emulator.</b> DeckOS Retro can install "
+            h.addWidget(label(f"<b>{len(todo)} of your consoles need their emulator.</b> DecKoOS Retro can install "
                               "them all now (from the Arch repos and Flathub).", "sub"), 1)
             h.addWidget(button("Set up everything", "primary", lambda: self.install(todo), icon="download"))
             self.consoles.addWidget(box)
@@ -415,7 +415,7 @@ def demo_bios(sid):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Retro")
+    app.setApplicationName("DecKoOS Retro")
     app.setDesktopFileName("deckos-retro")
     app.setFont(QFont("Inter", 10))
     w = Retro()

@@ -1,9 +1,9 @@
-/* DeckOS for Spotify (Spicetify).
- * Colours come from color.ini; this adds the DeckOS shape language from DeckOS Hub: bordered,
+/* DecKoOS for Spotify (Spicetify).
+ * Colours come from color.ini; this adds the DecKoOS shape language from DecKoOS Hub: bordered,
  * rounded slate panels, Inter, the blue-violet gradient on play buttons and progress, slim
  * scrollbars. Spotify renames its classes now and then, so selectors stick to the long-lived
  * Root__ / main-* names and data-testid attributes; anything that stops matching just falls
- * back to Spotify's own look in DeckOS colours. */
+ * back to Spotify's own look in DecKoOS colours. */
 
 :root {
   --deckos-radius: 10px;
@@ -73,7 +73,7 @@ h1, .main-entityHeader-title h1, .encore-text-headline-large, .encore-text-headl
   border-radius: 8px !important;
 }
 
-/* ---- play buttons: the DeckOS gradient */
+/* ---- play buttons: the DecKoOS gradient */
 
 [data-testid="play-button"] > span,
 .main-playButton-PlayButton > button > span,

@@ -1,4 +1,4 @@
-// DeckOS Files: copy/paste and drag-and-drop through the real window, actions and KIO, offscreen.
+// DecKoOS Files: copy/paste and drag-and-drop through the real window, actions and KIO, offscreen.
 // Copies a.txt from src/ to dst/ three ways (Copy + Paste actions, Cut + Paste, a drop onto the
 // view) and checks the files on disk. Run: QT_QPA_PLATFORM=offscreen ./clipboard_test
 #include "folderpane.h"

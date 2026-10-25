@@ -21,7 +21,7 @@ struct Launch {
     QString dir;
     QStringList command;  // after -e: the program and its arguments, as Konsole takes them
     bool demo = false;
-    bool hold = false;  // keep the window after the command ends (DeckOS Hub's terminal steps)
+    bool hold = false;  // keep the window after the command ends (DecKoOS Hub's terminal steps)
     QString screenshot;
 };
 
@@ -53,7 +53,7 @@ Launch parseArgs(const QStringList &args, const QString &cwd)
 }
 
 // --demo: a project folder with a git branch, a prompt like a configured shell's, and a build in a
-// split, so the screenshots show what DeckOS Terminal knows.
+// split, so the screenshots show what DecKoOS Terminal knows.
 QString makeDemoProject()
 {
     const QString root = QDir::tempPath() + QStringLiteral("/deckos-terminal-demo");
@@ -125,15 +125,15 @@ void runDemo(MainWindow *w, ModeWatch *modes, const QString &root, const QString
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
-    KAboutData about(QStringLiteral("deckos-terminal"), QStringLiteral("DeckOS Terminal"), QStringLiteral(DECKOS_VERSION),
-                     QStringLiteral("The DeckOS terminal"), KAboutLicense::MIT);
+    KAboutData about(QStringLiteral("deckos-terminal"), QStringLiteral("DecKoOS Terminal"), QStringLiteral(DECKOS_VERSION),
+                     QStringLiteral("The DecKoOS terminal"), KAboutLicense::MIT);
     about.setOrganizationDomain(QByteArrayLiteral("deckos.org"));
     about.setDesktopFileName(QStringLiteral("org.deckos.terminal"));
     KAboutData::setApplicationData(about);
 
     const Launch launch = parseArgs(QApplication::arguments(), QDir::currentPath());
     if (launch.demo) {
-        // Offscreen CI has no Plasma platform theme: pick the DeckOS font and style by hand.
+        // Offscreen CI has no Plasma platform theme: pick the DecKoOS font and style by hand.
         QApplication::setFont(QFont(QStringLiteral("Inter"), 10));
         if (QStyleFactory::keys().contains(QStringLiteral("Breeze")))
             QApplication::setStyle(QStringLiteral("Breeze"));

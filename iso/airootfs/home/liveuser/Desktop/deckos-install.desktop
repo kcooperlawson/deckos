@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Install DeckOS
-Comment=Install DeckOS to your PC
+Name=Install DecKoOS
+Comment=Install DecKoOS to your PC
 Exec=deckos-installer
 Icon=deckos
 Terminal=false

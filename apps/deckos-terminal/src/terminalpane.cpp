@@ -137,7 +137,7 @@ QMenu *TerminalPane::contextMenu(const QPoint &pos)
     menu->addSeparator();
     menu->addAction(Style::icon(QStringLiteral("search")), tr("Find…"), m_term, &QTermWidget::toggleShowSearchBar)
         ->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
-    menu->addAction(Style::icon(QStringLiteral("ai")), picked ? tr("Ask DeckOS Assistant about this") : tr("Ask DeckOS Assistant"),
+    menu->addAction(Style::icon(QStringLiteral("ai")), picked ? tr("Ask DecKoOS Assistant about this") : tr("Ask DecKoOS Assistant"),
                     this, &TerminalPane::askAssistant)
         ->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A));
     return menu;

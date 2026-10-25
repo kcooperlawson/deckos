@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the DeckOS installer window. It runs as the live user like any other app (so it opens
+# Starts the DecKoOS installer window. It runs as the live user like any other app (so it opens
 # on the Wayland desktop) and only the install itself runs as root, through sudo.
 # If the window can't start at all, the error is shown and the text installer is offered.
 err=$(mktemp)
@@ -7,7 +7,7 @@ python3 /usr/lib/deckos/installer/deckos_installer.py "$@" 2>"$err"
 status=$?
 if [[ $status -ne 0 ]]; then
   mkdir -p "$HOME/Desktop" && cp "$err" "$HOME/Desktop/installer-error.txt"
-  if kdialog --title "Install DeckOS" --yesno "The installer window stopped with an error:
+  if kdialog --title "Install DecKoOS" --yesno "The installer window stopped with an error:
 
 $(tail -n 12 "$err")
 

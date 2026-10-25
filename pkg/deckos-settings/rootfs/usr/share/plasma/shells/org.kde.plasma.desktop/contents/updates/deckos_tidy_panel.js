@@ -1,6 +1,6 @@
-// DeckOS: tidy panels made before 0.3.17, once per user (Plasma records it in plasmashellrc [Updates]).
-// The tray hides what Quick Settings already does and the rarely used (same list as the DeckOS layout);
-// the dock drops the Store launcher, since DeckOS Menu's search offers Store apps. Items someone shows
+// DecKoOS: tidy panels made before 0.3.17, once per user (Plasma records it in plasmashellrc [Updates]).
+// The tray hides what Quick Settings already does and the rarely used (same list as the DecKoOS layout);
+// the dock drops the Store launcher, since DecKoOS Menu's search offers Store apps. Items someone shows
 // again later stay shown: this never runs twice.
 const hide = [
     "org.kde.plasma.networkmanagement", "org.kde.plasma.volume", "org.kde.plasma.bluetooth",

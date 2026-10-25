@@ -1,12 +1,12 @@
-"""DeckOS Hub: one window for what DeckOS adds. A live overview, the display fix, Gaming Mode,
+"""DecKoOS Hub: one window for what DecKoOS adds. A live overview, the display fix, Gaming Mode,
 drives, AI and dev tools, updates, snapshots, firewall, software and appearance.
 
 Same visual language as Steady Downloader and the installer: slate surfaces, 1px borders, 10px
-radii, Inter, DeckOS line icons, and the accent gradient on primary actions.
+radii, Inter, DecKoOS line icons, and the accent gradient on primary actions.
     deckos-hub            the real thing
     deckos-hub --demo     canned data, for working on the UI anywhere (Windows included)
     deckos-hub --page system [--update]
-                          open on a page (DeckOS Quick Settings uses this), and start the update
+                          open on a page (DecKoOS Quick Settings uses this), and start the update
 """
 import os
 import platform
@@ -120,7 +120,7 @@ class Hub(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setWindowTitle("DeckOS Hub")
+        self.setWindowTitle("DecKoOS Hub")
         self.setWindowIcon(QIcon.fromTheme("deckos-hub", QIcon(str(S.BRANDING / "hub-logo.svg"))))
         self.resize(1180, 800)
         self.setMinimumSize(940, 620)
@@ -146,7 +146,7 @@ class Hub(QWidget):
         brand.addWidget(tile)
         names = QVBoxLayout()
         names.setSpacing(0)
-        names.addWidget(label("DeckOS Hub", "brand", wrap=False))
+        names.addWidget(label("DecKoOS Hub", "brand", wrap=False))
         names.addWidget(label("Your system, at a glance", "muted", wrap=False))
         brand.addLayout(names, 1)
         sl.addLayout(brand)
@@ -279,7 +279,7 @@ class Hub(QWidget):
         if sysinfo.DEMO:
             return
         USER_GAMING_CONF.parent.mkdir(parents=True, exist_ok=True)
-        USER_GAMING_CONF.write_text("# Written by DeckOS Hub\n" + "".join(f"{k}={v}\n" for k, v in conf.items()))
+        USER_GAMING_CONF.write_text("# Written by DecKoOS Hub\n" + "".join(f"{k}={v}\n" for k, v in conf.items()))
 
     def set_accent(self, color):
         """Restyles the Hub live with a new accent (the desktop gets it from plasma-apply-colorscheme)."""
@@ -293,7 +293,7 @@ class Hub(QWidget):
 def main():
     os.environ.setdefault("QT_QPA_PLATFORMTHEME", "kde")
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Hub")
+    app.setApplicationName("DecKoOS Hub")
     app.setDesktopFileName("deckos-hub")
     app.setFont(QFont("Inter", 10))
     app.setStyleSheet(S.qss())

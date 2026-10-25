@@ -1,5 +1,5 @@
 // One open file's editing area: line numbers, the current line, matching brackets and the language's
-// colours (KSyntaxHighlighting, the definitions Kate uses, in the DeckOS theme).
+// colours (KSyntaxHighlighting, the definitions Kate uses, in the DecKoOS theme).
 #pragma once
 
 #include <QPlainTextEdit>

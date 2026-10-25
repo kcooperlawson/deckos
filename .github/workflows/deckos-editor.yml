@@ -1,6 +1,6 @@
-name: DeckOS Editor
+name: DecKoOS Editor
 
-# Builds DeckOS Editor in an Arch container and screenshots it offscreen (--demo --screenshot), so
+# Builds DecKoOS Editor in an Arch container and screenshots it offscreen (--demo --screenshot), so
 # the app can be checked from any OS. The screenshots are the deckos-editor-screenshots artifact.
 on:
   workflow_dispatch:

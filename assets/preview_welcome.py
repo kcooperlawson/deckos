@@ -1,4 +1,4 @@
-"""Renders DeckOS Welcome on any OS from its --demo data (no system calls): assets/welcome-preview.png
+"""Renders DecKoOS Welcome on any OS from its --demo data (no system calls): assets/welcome-preview.png
 for the first step, plus one image per step with --all.
 
     python -m pip install PySide6-Essentials && python assets/preview_welcome.py [--all]

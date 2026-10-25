@@ -1,4 +1,4 @@
-"""DeckOS What's New: what a feature release brought, once, after the update.
+"""DecKoOS What's New: what a feature release brought, once, after the update.
 
 Reads the release notes in /usr/share/deckos/releases/*.toml (one per feature release: name, tagline,
 highlights with a screenshot and a "Try it" button, fixes) and shows every release newer than the one
@@ -37,7 +37,7 @@ def vkey(version):
 
 
 def installed():
-    """This PC's DeckOS version, or "" (a checkout, the demo: every release counts)."""
+    """This PC's DecKoOS version, or "" (a checkout, the demo: every release counts)."""
     try:
         return Path("/usr/share/deckos/version").read_text().strip() if not DEMO else ""
     except OSError:
@@ -125,7 +125,7 @@ class WhatsNew(QWidget):
     def __init__(self, notes):
         super().__init__()
         self.setObjectName("root")
-        self.setWindowTitle("What's new in DeckOS")
+        self.setWindowTitle("What's new in DecKoOS")
         self.setStyleSheet(S.qss() + QSS)
         self.resize(760, 820)
         outer = QVBoxLayout(self)
@@ -162,7 +162,7 @@ class WhatsNew(QWidget):
         outer.addWidget(scroll, 1)
         foot = QHBoxLayout()
         foot.setContentsMargins(24, 10, 24, 18)
-        foot.addWidget(label("Open this again from DeckOS Hub, or with deckos whatsnew.", "muted"), 1)
+        foot.addWidget(label("Open this again from DecKoOS Hub, or with deckos whatsnew.", "muted"), 1)
         foot.addWidget(button("Done", "primary", self.close))
         outer.addLayout(foot)
 
@@ -176,7 +176,7 @@ class WhatsNew(QWidget):
         hl.setSpacing(4)
         kicker = QLabel(("WHAT'S NEW IN DECKOS " if first else "ALSO NEW: DECKOS ") + rel["version"])
         kicker.setObjectName("heroKicker")
-        name = QLabel(rel.get("name", "DeckOS " + rel["version"]))
+        name = QLabel(rel.get("name", "DecKoOS " + rel["version"]))
         name.setObjectName("heroName")
         tag = QLabel(rel.get("tagline", ""))
         tag.setObjectName("heroTag")
@@ -203,7 +203,7 @@ def main():
     if not notes:
         return 1
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS What's New")
+    app.setApplicationName("DecKoOS What's New")
     app.setDesktopFileName("deckos-whatsnew")
     app.setFont(QFont("Inter", 10))
     w = WhatsNew(notes)

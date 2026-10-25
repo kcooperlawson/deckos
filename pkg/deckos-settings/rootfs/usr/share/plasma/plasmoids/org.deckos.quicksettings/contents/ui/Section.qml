@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// A bolted plate: surface card with a screw head in each corner (the DeckOS motif) and an
+// A bolted plate: surface card with a screw head in each corner (the DecKoOS motif) and an
 // optional kicker title.
 Rectangle {
     id: plate

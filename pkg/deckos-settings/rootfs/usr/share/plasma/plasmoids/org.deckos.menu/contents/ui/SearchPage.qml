@@ -1,6 +1,6 @@
 // Search results while typing: KRunner's matches grouped by kind (apps, settings, files,
-// calculator, commands…), then apps from the DeckOS Store that aren't installed, then rows that ask
-// DeckOS Assistant the search and open the Store on it. The search field keeps the keyboard: Up/Down move `cursor` over all
+// calculator, commands…), then apps from the DecKoOS Store that aren't installed, then rows that ask
+// DecKoOS Assistant the search and open the Store on it. The search field keeps the keyboard: Up/Down move `cursor` over all
 // of them, Enter runs the one it's on.
 import QtQuick
 import org.kde.kirigami as Kirigami
@@ -93,7 +93,7 @@ Item {
                 leftPadding: 8
                 verticalAlignment: Text.AlignBottom
                 bottomPadding: 4
-                text: "From the DeckOS Store"
+                text: "From the DecKoOS Store"
             }
 
             Repeater {
@@ -111,7 +111,7 @@ Item {
             // First of the two, so a question that matches nothing goes to the assistant on Enter
             StoreRow {
                 width: results.width
-                app: ({ name: "Ask DeckOS Assistant: “" + deckMenu.query.trim() + "”",
+                app: ({ name: "Ask DecKoOS Assistant: “" + deckMenu.query.trim() + "”",
                         summary: "Install, set up or find out anything, on this PC", icon: "" })
                 line: "ai"
                 cursor: page.cursor === page.total - 2
@@ -120,7 +120,7 @@ Item {
 
             StoreRow {
                 width: results.width
-                app: ({ name: "Search the DeckOS Store for “" + deckMenu.query.trim() + "”", summary: "", icon: "" })
+                app: ({ name: "Search the DecKoOS Store for “" + deckMenu.query.trim() + "”", summary: "", icon: "" })
                 line: "store"
                 cursor: page.cursor === page.total - 1
                 onChosen: deckMenu.searchStore(deckMenu.query.trim())

@@ -9,7 +9,7 @@
         "Description": "A full-width taskbar along the bottom with window names, like Windows",
         "Id": "org.deckos.layout.classic",
         "License": "MIT",
-        "Name": "DeckOS: Classic"
+        "Name": "DecKoOS: Classic"
     },
     "X-Plasma-ContainmentCategories": [
         "panel"

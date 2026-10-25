@@ -1,6 +1,6 @@
-# DeckOS Work
+# DecKoOS Work
 
-DeckOS Work is a native local workspace for coding, working with files and documents, and creating
+DecKoOS Work is a native local workspace for coding, working with files and documents, and creating
 images. It uses Ollama models and local creation tools. There are no hosted-model API keys or
 per-request credits. Model quality and hardware limits still matter: it does not reproduce every
 Claude/Codex feature or their reasoning quality.
@@ -14,7 +14,7 @@ python3 pkg/deckos-settings/rootfs/usr/lib/deckos/work/work_app.py --workspace /
 ```
 
 1. Choose a project folder and a downloaded model. `gpt-oss:20b` is the tested coding/tool model;
-   `gemma4:12b` also accepts images. Both are available through the existing DeckOS Assistant setup.
+   `gemma4:12b` also accepts images. Both are available through the existing DecKoOS Assistant setup.
 2. Describe the result you want. The agent reads files, edits them, runs approved commands and
    returns actual artifacts. A task saves automatically and can be reopened from the sidebar.
 3. Review edits under **Changes**, outputs under **Outputs**, and tool/terminal details under

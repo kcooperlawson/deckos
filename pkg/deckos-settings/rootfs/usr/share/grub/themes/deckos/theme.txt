@@ -1,9 +1,9 @@
-# DeckOS boot menu. Art comes from branding/grub-background.svg and branding/grub/select_*.svg
+# DecKoOS boot menu. Art comes from branding/grub-background.svg and branding/grub/select_*.svg
 # (rasterised at package build); fonts are Inter Display converted with grub-mkfont.
 title-text: ""
 desktop-image: "background.png"
 desktop-color: "#0F1115"
-terminal-font: "DeckOS Sans Regular 16"
+terminal-font: "DecKoOS Sans Regular 16"
 terminal-left: "10%"
 terminal-top: "10%"
 terminal-width: "80%"
@@ -14,8 +14,8 @@ terminal-height: "80%"
   top = 38%
   width = 34%
   height = 46%
-  item_font = "DeckOS Sans Regular 22"
-  selected_item_font = "DeckOS Sans Strong Regular 22"
+  item_font = "DecKoOS Sans Regular 22"
+  selected_item_font = "DecKoOS Sans Strong Regular 22"
   item_color = "#8C94A6"
   selected_item_color = "#FFFFFF"
   item_height = 48
@@ -35,6 +35,6 @@ terminal-height: "80%"
   width = 100%
   align = "center"
   color = "#5A6172"
-  font = "DeckOS Sans Regular 16"
+  font = "DecKoOS Sans Regular 16"
   text = "Starting the highlighted entry in %d s   ·   Enter to start   ·   E to edit"
 }

@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=DeckOS Builder
+Name=DecKoOS Builder
 GenericName=Build and contribute
-Comment=Watch DeckOS builds, build an ISO here, put it on a USB stick, and send changes for review
+Comment=Watch DecKoOS builds, build an ISO here, put it on a USB stick, and send changes for review
 Exec=deckos-builder
 Icon=deckos
 Terminal=false

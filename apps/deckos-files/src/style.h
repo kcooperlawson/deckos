@@ -1,4 +1,4 @@
-// DeckOS look for DeckOS Files: the Hub's palette, the DeckOS line icons and a little QSS for the
+// DecKoOS look for DecKoOS Files: the Hub's palette, the DecKoOS line icons and a little QSS for the
 // chrome. Item views never get QSS (it routes every paint through QStyleSheetStyle); they paint
 // with these colours directly.
 #pragma once
@@ -28,7 +28,7 @@ inline const QColor Muted{0x5A, 0x61, 0x72};
 inline const QColor Danger{0xFF, 0x6B, 0x6B};
 inline const QColor Warning{0xF5, 0xB8, 0x4B};
 
-// Plasma's accent colour (kdeglobals), or the DeckOS blue.
+// Plasma's accent colour (kdeglobals), or the DecKoOS blue.
 QColor accent();
 QColor accentPartner();  // the violet-shifted gradient partner
 QColor selectionFill();  // accent at ~22%
@@ -39,7 +39,7 @@ constexpr int Radius = 10;
 void apply(QApplication &app);
 QString chromeQss();
 
-// A DeckOS line icon (assets/icons.py), recoloured per state: subtext normally, text on hover,
+// A DecKoOS line icon (assets/icons.py), recoloured per state: subtext normally, text on hover,
 // muted when disabled, accent when checked.
 QIcon icon(const QString &name);
 QPixmap pixmap(const QString &name, const QColor &color, int size, qreal dpr);

@@ -1,4 +1,4 @@
-"""DeckOS Assistant: a local model (Ollama) with DeckOS's own tools, for `deckos ask` and deckos-local.
+"""DecKoOS Assistant: a local model (Ollama) with DecKoOS's own tools, for `deckos ask` and deckos-local.
 
 Everything stays on this PC. The model looks around freely (read-only commands, files, the Store's
 catalog); anything that changes the system goes through `confirm`, so the person sees the exact
@@ -232,10 +232,10 @@ class Tools:
 
     # The schemas the model sees (Ollama's tools format).
     SCHEMAS = [
-        {"name": "system_info", "description": "This PC: DeckOS version, kernel, CPU, graphics card, monitors, "
-         "memory, disks, which DeckOS software groups are installed. Call it before answering about the hardware.",
+        {"name": "system_info", "description": "This PC: DecKoOS version, kernel, CPU, graphics card, monitors, "
+         "memory, disks, which DecKoOS software groups are installed. Call it before answering about the hardware.",
          "parameters": {"type": "object", "properties": {}}},
-        {"name": "search_software", "description": "Search the DeckOS Store (Arch/CachyOS repos, Flathub, AUR) for apps "
+        {"name": "search_software", "description": "Search the DecKoOS Store (Arch/CachyOS repos, Flathub, AUR) for apps "
          "and packages. Always search before installing: never guess package names.",
          "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "app name or what it does"}},
                         "required": ["query"]}},
@@ -244,7 +244,7 @@ class Tools:
          "parameters": {"type": "object", "properties": {
              "name": {"type": "string", "description": "the key or package name from search_software"},
              "source": {"type": "string", "enum": ["repo", "flathub", "aur"]}}, "required": ["name"]}},
-        {"name": "add_software_group", "description": "Add one of DeckOS's software groups: gaming (Steam, Gaming Mode, "
+        {"name": "add_software_group", "description": "Add one of DecKoOS's software groups: gaming (Steam, Gaming Mode, "
          "Lutris, Heroic, MangoHud...), ai (Ollama and its GPU support), dev (VS Code, Docker, Node, Python/uv, .NET, "
          "Java, gh). The person confirms first.",
          "parameters": {"type": "object", "properties": {"group": {"type": "string", "enum": ["gaming", "ai", "dev"]}},
@@ -367,7 +367,7 @@ class Tools:
         if group not in ("gaming", "ai", "dev"):
             return "error: group is gaming, ai or dev"
         argv = ["pkexec", "deckos", "software", "add", group]
-        if not self.confirm(f"Add the DeckOS {group} software?", " ".join(argv)):
+        if not self.confirm(f"Add the DecKoOS {group} software?", " ".join(argv)):
             return "the person said no"
         self.say(f"Adding the {group} software (this takes a while)…")
         code, out = run(argv, timeout=3600, echo=self.echo)
@@ -376,7 +376,7 @@ class Tools:
     def t_run_command(self, command, reason=""):
         why = blocked_reason(command)
         if why:
-            return f"refused: this command {why}. DeckOS doesn't let the assistant run that; tell the person to do it themselves if they really mean to."
+            return f"refused: this command {why}. DecKoOS doesn't let the assistant run that; tell the person to do it themselves if they really mean to."
         if not is_read_only(command):
             if not self.confirm(reason or "Run this command?", command):
                 return "the person said no; don't run it"
@@ -414,7 +414,7 @@ class Tools:
         return f"wrote {p}" + (" (old one kept as .deckos-bak)" if p.with_name(p.name + ".deckos-bak").exists() else "")
 
 
-SYSTEM_PROMPT = """You are DeckOS Assistant, running locally on the person's own PC (DeckOS: Arch Linux with \
+SYSTEM_PROMPT = """You are DecKoOS Assistant, running locally on the person's own PC (DecKoOS: Arch Linux with \
 CachyOS packages, KDE Plasma 6, btrfs snapshots). You help them install software and set things up.
 
 How to work:
@@ -422,12 +422,12 @@ How to work:
 commands, read_file. Never guess what's installed, package names or file contents.
 - To install an app: search_software, then install_software with a key or package name from the results. \
 Prefer the repo, then Flathub, then the AUR. If the results say it's installed already, say so instead. \
-DeckOS's groups (gaming, ai, dev) go in with add_software_group.
+DecKoOS's groups (gaming, ai, dev) go in with add_software_group.
 - Don't ask in your reply whether to go ahead: call the tool. Tools that change things show the person the \
 exact command and ask them themselves, so asking first would ask twice.
 - Before setting something up, check what's already there (pacman -Q, systemctl status, deckos software list) \
 and only do the missing steps.
-- DeckOS's own tool is `deckos` (deckos doctor, deckos display status, deckos drives list, deckos software \
+- DecKoOS's own tool is `deckos` (deckos doctor, deckos display status, deckos drives list, deckos software \
 list, deckos mode, deckos updates). Services: systemctl; packages: pacman/paru; Flatpaks: flatpak.
 - The person confirms every change. If they say no, stop that step and say what you would have done.
 - Never try to wipe disks, repartition, or delete home or system folders.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deckos-install - installs DeckOS from the live USB onto one partition, into free space or onto an
+# deckos-install - installs DecKoOS from the live USB onto one partition, into free space or onto an
 # empty disk, next to Windows.
 #
 # Formats ONLY the partition you pick, or the one it makes in free space. An existing EFI partition is
@@ -23,7 +23,7 @@ CMDLINE="quiet splash loglevel=3 nowatchdog zswap.enabled=0"
 DECKOS_TOOL=$SRC/pkg/deckos-settings/rootfs/usr/bin/deckos
 # What gets installed: shipped in deckos-settings too, so the Hub can add groups later.
 PACKAGES=$SRC/pkg/deckos-settings/rootfs/usr/share/deckos/packages
-USB_REPO=$SRC/repo  # prebuilt DeckOS + AUR packages on the live USB (build.sh)
+USB_REPO=$SRC/repo  # prebuilt DecKoOS + AUR packages on the live USB (build.sh)
 
 export GUM_CHOOSE_CURSOR_FOREGROUND="#4C8DFF" GUM_CHOOSE_SELECTED_FOREGROUND="#4C8DFF"
 export GUM_CHOOSE_HEADER_FOREGROUND="#8C94A6" GUM_INPUT_CURSOR_FOREGROUND="#4C8DFF"
@@ -199,7 +199,7 @@ set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
   if grep -qE "^#?$1=" "$f"; then sed -i -E "s|^#?$1=.*|$1=$2|" "$f"; else echo "$1=$2" >> "$f"; fi
 }
 
-# Partitions DeckOS may go on: path, size, filesystem, label, disk model, 1 if the default, and
+# Partitions DecKoOS may go on: path, size, filesystem, label, disk model, 1 if the default, and
 # why it can't be used (empty if it can). Skips the live USB / Ventoy stick, EFI, Microsoft
 # reserved and recovery partitions. Encrypted, RAID/LVM members and anything mounted are listed
 # but blocked: the Windows check below has to mount a partition to look inside, and can't.
@@ -218,8 +218,8 @@ list_targets() {
     | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
     | (.fstype // "") as $fs
     | [.mountpoints[]? | select(. != null and . != $mnt and (startswith($mnt + "/") | not))] as $mp
-    | (if $fs == "BitLocker" then "BitLocker-encrypted, so DeckOS cannot check what is on it. Turn BitLocker off or delete this partition in Windows first."
-       elif $fs == "crypto_LUKS" then "Encrypted (LUKS), so DeckOS cannot check what is on it. Delete it in a partition manager first if you want to use it."
+    | (if $fs == "BitLocker" then "BitLocker-encrypted, so DecKoOS cannot check what is on it. Turn BitLocker off or delete this partition in Windows first."
+       elif $fs == "crypto_LUKS" then "Encrypted (LUKS), so DecKoOS cannot check what is on it. Delete it in a partition manager first if you want to use it."
        elif ($fs | endswith("_member")) then "Part of a RAID, LVM or ZFS set. Erasing it would break the whole set."
        elif ($mp | index("[SWAP]")) then "In use as swap."
        elif ($mp | length) > 0 then "Mounted at " + ($mp | join(", ")) + ". Unmount it (eject it in Dolphin), then refresh."
@@ -230,12 +230,12 @@ list_targets() {
     | @tsv'
 }
 
-# Unused space DeckOS can make its own partition in, in list_targets' columns. Nothing existing is
+# Unused space DecKoOS can make its own partition in, in list_targets' columns. Nothing existing is
 # deleted, moved or resized:
 #   free:DISK:START:SECTORS  a gap of 1 GB or more on a GPT disk (512-byte sectors, 1 MiB aligned);
-#                            DeckOS adds one partition exactly there
+#                            DecKoOS adds one partition exactly there
 #   free:DISK:disk           a disk with no partition table and no file system at all; it gets GPT,
-#                            a 1 GB EFI partition of its own and DeckOS
+#                            a 1 GB EFI partition of its own and DecKoOS
 # Gaps under MIN_GB and space on MBR disks are listed, blocked, so people see why.
 MIN_GB=64
 list_free() {
@@ -252,7 +252,7 @@ list_free() {
     | if ($parts | length) == 0 then
         select(($d.pttype // "") == "" and ($d.fstype // "") == "" and ([$d.mountpoints[]? | select(. != null)] | length) == 0)
         | ["free:" + $d.path + ":disk", ($d.size | gb), "free", "Empty disk", ($d.model // "?"), "0",
-           (if $d.size < $min * 1e9 then "Too small: DeckOS needs \($min) GB." else "" end)]
+           (if $d.size < $min * 1e9 then "Too small: DecKoOS needs \($min) GB." else "" end)]
       else
         [$parts[] | {s: .start, e: (.start + (.size / 512 | floor))}] | sort_by(.s) as $p
         | ([{e: 2048}] + $p + [{s: ($total - 34)}]) as $b
@@ -262,8 +262,8 @@ list_free() {
         | select($len * 512 >= 1e9)
         | ["free:" + $d.path + ":" + ($start | tostring) + ":" + ($len | tostring), ($len * 512 | gb), "free",
            "Free space", ($d.model // "?"), "0",
-           (if ($d.pttype // "") != "gpt" then "This disk uses the older MBR layout; DeckOS only adds partitions on GPT disks."
-            elif $len * 512 < $min * 1e9 then "Only \($len * 512 | gb) free here: DeckOS needs \($min) GB."
+           (if ($d.pttype // "") != "gpt" then "This disk uses the older MBR layout; DecKoOS only adds partitions on GPT disks."
+            elif $len * 512 < $min * 1e9 then "Only \($len * 512 | gb) free here: DecKoOS needs \($min) GB."
             else "" end)]
       end
     | @tsv'
@@ -348,7 +348,7 @@ BASH_XTRACEFD=19
 set -x
 [[ $EUID -eq 0 ]] || die "Run as root (you are root by default on the live USB)."
 [[ -d /sys/firmware/efi/efivars ]] || die "The USB was booted in legacy mode. Reboot and pick the UEFI entry for the USB."
-[[ -d $SRC/pkg/deckos-settings ]] || die "DeckOS files not found in $SRC."
+[[ -d $SRC/pkg/deckos-settings ]] || die "DecKoOS files not found in $SRC."
 
 section "Pre-flight"
 note "Checking internet..."
@@ -365,19 +365,19 @@ done
 good "internet"
 grep -qw avx512f /proc/cpuinfo && good "Zen 4 CPU (znver4-optimised packages)" || warn "CPU lacks AVX-512 - CachyOS will pick a compatible repo"
 sb=$(od -An -t u1 -j4 -N1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c 2>/dev/null | tr -d ' ' || true)
-if [[ $sb == 1 ]]; then warn "Secure Boot is ON - turn it off in the BIOS (Security > Secure Boot) before rebooting into DeckOS"
+if [[ $sb == 1 ]]; then warn "Secure Boot is ON - turn it off in the BIOS (Security > Secure Boot) before rebooting into DecKoOS"
 else good "Secure Boot off"; fi
 timedatectl set-ntp true >/dev/null 2>&1 || true
 
 # Graphics: amd, nvidia and/or intel. Picks the drivers below and the vendor lines in the package lists.
 mapfile -t GPU_VENDORS < <(bash "$DECKOS_TOOL" display vendors 2>>"$LOG" || true)
 if [[ ${#GPU_VENDORS[@]} -gt 0 ]]; then good "Graphics: ${GPU_VENDORS[*]}"
-else warn "No AMD, NVIDIA or Intel graphics found - DeckOS installs the basic Mesa drivers"; fi
+else warn "No AMD, NVIDIA or Intel graphics found - DecKoOS installs the basic Mesa drivers"; fi
 gpu_has nvidia && note "NVIDIA drivers come from CachyOS's hardware detection (chwd) later on"
 if grep -qw GenuineIntel /proc/cpuinfo; then UCODE=intel-ucode; else UCODE=amd-ucode; fi
 
 # Display blackout fix: DECKOS_DISPLAY_LEVEL if given, else what deckos recommends for this GPU
-# and these monitors (the live session runs on the same hardware DeckOS is going on).
+# and these monitors (the live session runs on the same hardware DecKoOS is going on).
 if [[ ${DECKOS_DISPLAY_LEVEL:-} =~ ^[0-4]$ ]]; then
   DISPLAY_LEVEL=$DECKOS_DISPLAY_LEVEL display_why="chosen"
 else
@@ -392,7 +392,7 @@ else good "Display: blackout fix level $DISPLAY_LEVEL ($display_why)"; fi
 
 # ------------------------------------------------------------------ target partition
 
-section "Where should DeckOS go?"
+section "Where should DecKoOS go?"
 note "Only a partition you pick is erased; free space and empty disks get a new partition. Windows, its EFI partition and your other drives stay untouched."
 
 # A failed earlier run leaves the target mounted under /mnt; free it before checking it.
@@ -403,7 +403,7 @@ mapfile -t usable < <(printf '%s\n' "${rows[@]}" | awk -F'\t' 'NF && $7 == ""')
 
 if [[ -n $GUI ]]; then
   TARGET=${DECKOS_TARGET:-}
-  printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DeckOS can use."
+  printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DecKoOS can use."
 else
   for r in "${rows[@]}"; do
     IFS=$'\t' read -r p _ _ _ _ _ why <<<"$r"
@@ -426,12 +426,12 @@ if [[ $TARGET == free:* ]]; then
   FREE=$TARGET
   IFS=: read -r _ TARGET_DISK _ <<<"$FREE"
   [[ -b $TARGET_DISK ]] || die "No disk $TARGET_DISK."
-  if [[ $FREE == *:disk ]]; then good "$TARGET_DISK is empty: DeckOS gets the whole disk"
-  else good "Free space on $TARGET_DISK: DeckOS adds a partition there; nothing on the disk is erased"; fi
+  if [[ $FREE == *:disk ]]; then good "$TARGET_DISK is empty: DecKoOS gets the whole disk"
+  else good "Free space on $TARGET_DISK: DecKoOS adds a partition there; nothing on the disk is erased"; fi
 else
   [[ -b $TARGET ]] || die "No partition selected."
 
-  # Refuse Windows and anything DeckOS can't look inside; show anything that would be lost.
+  # Refuse Windows and anything DecKoOS can't look inside; show anything that would be lost.
   # Only a partition that mounts can be checked for Windows, so one with a file system that won't
   # mount (a hibernated Windows drive, a damaged or unknown one) is refused rather than trusted.
   fstype=$(lsblk -no FSTYPE "$TARGET" | head -n1)
@@ -452,7 +452,7 @@ else
     fi
   elif [[ -n $fstype ]]; then
     rmdir "$probe"
-    die "$TARGET has a $fstype file system that DeckOS can't open to check what's on it, so it won't erase it. If it's a Windows drive, start Windows and run 'powercfg /h off' as administrator (hibernation keeps it locked), or delete the partition in Disk Management to leave it empty."
+    die "$TARGET has a $fstype file system that DecKoOS can't open to check what's on it, so it won't erase it. If it's a Windows drive, start Windows and run 'powercfg /h off' as administrator (hibernation keeps it locked), or delete the partition in Disk Management to leave it empty."
   fi
   rmdir "$probe" 2>/dev/null || true
 
@@ -483,7 +483,7 @@ else
   [[ $esp_free -ge 20 ]] || die "EFI partition $ESP has only ${esp_free} MB free (need 20 MB)."
   esp_clusters=$(fat32_clusters "$ESP")
   [[ -z $esp_clusters || $esp_clusters -ge 65525 ]] \
-    || die "EFI partition $ESP is formatted in a way the PC's firmware can't read (FAT32 with only $esp_clusters clusters), so DeckOS wouldn't start from it. Nothing was changed."
+    || die "EFI partition $ESP is formatted in a way the PC's firmware can't read (FAT32 with only $esp_clusters clusters), so DecKoOS wouldn't start from it. Nothing was changed."
   good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found')"
 fi
 # Windows may boot from its own EFI partition on another disk; any Windows decides the clock below.
@@ -501,7 +501,7 @@ done
 # ------------------------------------------------------------------ you
 
 section "You"
-# Language and keyboard first, so the password is typed on the layout DeckOS will use.
+# Language and keyboard first, so the password is typed on the layout DecKoOS will use.
 if [[ -n $GUI ]]; then
   LOCALE_=${DECKOS_LOCALE:-$DEFAULT_LOCALE} KEYMAP_=${DECKOS_KEYMAP:-$DEFAULT_KEYMAP}
 else
@@ -565,13 +565,13 @@ for g in "${CHOSEN[@]}"; do software+=", ${GROUP_DESC[$g]%%:*}"; done
 section "Ready"
 if [[ -z $FREE ]]; then
   what_line="ERASE      $(style --foreground '#FF6B6B' --bold "$TARGET") -> btrfs (snapshots on)"
-  boot_line="Boot menu  $ESP (kept; DeckOS + Windows)"
+  boot_line="Boot menu  $ESP (kept; DecKoOS + Windows)"
 elif [[ $FREE == *:disk ]]; then
-  what_line="NEW        $TARGET_DISK (empty) -> GPT: a 1 GB EFI partition + DeckOS on btrfs"
+  what_line="NEW        $TARGET_DISK (empty) -> GPT: a 1 GB EFI partition + DecKoOS on btrfs"
   boot_line="Boot menu  the new EFI partition on $TARGET_DISK"
 else
   what_line="NEW        a partition in the free space on $TARGET_DISK -> btrfs (nothing erased)"
-  boot_line="Boot menu  $ESP (kept; DeckOS + Windows)"
+  boot_line="Boot menu  $ESP (kept; DecKoOS + Windows)"
 fi
 style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0 2" \
   "$what_line" \
@@ -596,7 +596,7 @@ CHANGED=partition
 spin "Wiping $TARGET" wipefs -af "$TARGET"
 # Mark it as a Linux partition so Windows stops offering to "format" it.
 spin "Setting partition type" sfdisk --part-type "$TARGET_DISK" "$TARGET_PARTNO" "$LINUX_FS_GUID"
-spin "Creating btrfs" mkfs.btrfs -f -L DeckOS "$TARGET"
+spin "Creating btrfs" mkfs.btrfs -f -L DecKoOS "$TARGET"
 mount "$TARGET" "$MNT"
 for sv in @ @home @snapshots @log @pkg; do btrfs -q subvolume create "$MNT/$sv"; done
 umount "$MNT"
@@ -681,18 +681,18 @@ if gpu_has nvidia || gpu_has intel; then
         > "$MNT/etc/mkinitcpio.conf.d/10-chwd-kms.conf"
       good "NVIDIA open driver"
     else
-      warn "NVIDIA driver didn't install - DeckOS starts on nouveau; run 'sudo chwd -a' after first boot"
+      warn "NVIDIA driver didn't install - DecKoOS starts on nouveau; run 'sudo chwd -a' after first boot"
     fi
   else
     warn "chwd didn't finish - Intel graphics use the Mesa drivers from desktop.txt"
   fi
 fi
 for g in "${CHOSEN[@]}"; do install_group "$g"; done
-# Flathub for the DeckOS Store (apps that aren't in the Arch repos, like Spotify and Bottles).
+# Flathub for the DecKoOS Store (apps that aren't in the Arch repos, like Spotify and Bottles).
 if inchroot flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo >>"$LOG" 2>&1; then
   good "Flathub"
 else
-  warn "Flathub not added - the DeckOS Store can set it up later"
+  warn "Flathub not added - the DecKoOS Store can set it up later"
 fi
 
 section "Your account"
@@ -731,21 +731,21 @@ usb_pkg() {
   return 1
 }
 
-section "DeckOS layer"
-# deckos-settings depends on DeckOS's own apps (Files, Terminal, Editor), so they go in together.
+section "DecKoOS layer"
+# deckos-settings depends on DecKoOS's own apps (Files, Terminal, Editor), so they go in together.
 if pkgfile=$(usb_pkg deckos-settings) && filesfile=$(usb_pkg deckos-files) && termfile=$(usb_pkg deckos-terminal) \
    && editfile=$(usb_pkg deckos-editor); then
-  spin "Installing deckos-settings, DeckOS Files, Terminal and Editor" arch-chroot "$MNT" pacman -U --needed --noconfirm \
+  spin "Installing deckos-settings, DecKoOS Files, Terminal and Editor" arch-chroot "$MNT" pacman -U --needed --noconfirm \
     "$filesfile" "$termfile" "$editfile" "$pkgfile"
 else
   build=/home/$USERNAME_/.cache/deckos
   mkdir -p "$MNT$build"
   cp -a "$SRC/pkg" "$SRC/apps" "$SRC/VERSION" "$MNT$build/"
   inchroot chown -R "$USERNAME_:$USERNAME_" "/home/$USERNAME_/.cache"
-  spin "Building DeckOS Files" arch-chroot "$MNT" sudo -u "$USERNAME_" -H     bash -c "cd $build/pkg/deckos-files && makepkg -si --noconfirm"
-  spin "Building DeckOS Terminal" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
+  spin "Building DecKoOS Files" arch-chroot "$MNT" sudo -u "$USERNAME_" -H     bash -c "cd $build/pkg/deckos-files && makepkg -si --noconfirm"
+  spin "Building DecKoOS Terminal" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-terminal && makepkg -si --noconfirm"
-  spin "Building DeckOS Editor" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
+  spin "Building DecKoOS Editor" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-editor && makepkg -si --noconfirm"
   spin "Building deckos-settings (theme, tools, fixes)" arch-chroot "$MNT" sudo -u "$USERNAME_" -H \
     bash -c "cd $build/pkg/deckos-settings && makepkg -si --noconfirm"
@@ -756,7 +756,7 @@ fi
 # it's put back before the end.
 inchroot sed -i -e 's|^\[deckos\]$|#DECKOS-INSTALL# [deckos]|' \
   -e 's|^Include = /etc/pacman.d/deckos-repo$|#DECKOS-INSTALL# &|' /etc/pacman.conf
-# Extra themes, to pick in DeckOS Hub > Appearance. Optional: a USB without them is fine.
+# Extra themes, to pick in DecKoOS Hub > Appearance. Optional: a USB without them is fine.
 if pkgfile=$(usb_pkg deckos-theme-tmpikes); then
   if inchroot pacman -U --needed --noconfirm "$pkgfile" >>"$LOG" 2>&1; then good "TMpikes theme"
   else warn "TMpikes theme didn't install (see log)"; fi
@@ -794,20 +794,20 @@ elif busy "Installing Claude Code" bash -c \
      'arch-chroot "$0" sudo -u "$1" -H bash -c "curl -fsSL https://claude.ai/install.sh | bash" >>"$LOG" 2>&1' "$MNT" "$USERNAME_"; then
   good "Claude Code (run: claude)"
 else
-  warn "Claude Code install failed - DeckOS Hub has a button to retry"; FAILED+=("claude-code")
+  warn "Claude Code install failed - DecKoOS Hub has a button to retry"; FAILED+=("claude-code")
 fi
 rm -f "$MNT/etc/sudoers.d/00-deckos-install"
 # The [deckos] update repo back on (left out while the AUR apps went in, above)
 inchroot sed -i 's|^#DECKOS-INSTALL# ||' /etc/pacman.conf \
-  || warn "Turn DeckOS updates on in /etc/pacman.conf (remove the #DECKOS-INSTALL# marks)"
+  || warn "Turn DecKoOS updates on in /etc/pacman.conf (remove the #DECKOS-INSTALL# marks)"
 # pacstrap copied the live USB's unsigned [deckos] database; with the signed repo back on, every pacman
 # command would say "missing required signature" until the first update. Fetch the signed one now,
 # [deckos] alone (a pacman.conf with only that repo), so no other repo is half-updated.
 printf '[options]\nArchitecture = auto\n\n[deckos]\nInclude = /etc/pacman.d/deckos-repo\n' > "$MNT/tmp/deckos-only.conf"
-if inchroot pacman -Sy --config /tmp/deckos-only.conf >>"$LOG" 2>&1; then good "DeckOS updates on"
+if inchroot pacman -Sy --config /tmp/deckos-only.conf >>"$LOG" 2>&1; then good "DecKoOS updates on"
 else
   rm -f "$MNT"/var/lib/pacman/sync/deckos.{db,files}{,.sig}
-  warn "DeckOS updates are on but couldn't be checked yet (no connection?); the first 'deckos update' does it"
+  warn "DecKoOS updates are on but couldn't be checked yet (no connection?); the first 'deckos update' does it"
 fi
 rm -f "$MNT/tmp/deckos-only.conf"
 
@@ -853,13 +853,13 @@ chmod 750 "$MNT/.snapshots"
 sed -i -E 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="no"/; s/^NUMBER_LIMIT=.*/NUMBER_LIMIT="12"/; s/^NUMBER_LIMIT_IMPORTANT=.*/NUMBER_LIMIT_IMPORTANT="6"/; s/^ALLOW_GROUPS=.*/ALLOW_GROUPS="wheel"/' \
   "$MNT/etc/snapper/configs/root"
 
-spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DeckOS install" -u important=yes
+spin "Snapshot: fresh install" arch-chroot "$MNT" snapper --no-dbus -c root create -d "Fresh DecKoOS install" -u important=yes
 # /home gets hourly snapshots of its own (caches and Steam games left out).
 if inchroot deckos home enable >>"$LOG" 2>&1; then good "/home snapshots (hourly)"
 else warn "/home snapshots not set up - run 'sudo deckos home enable' after first boot"; fi
 CHANGED=boot
 spin "Installing GRUB to $ESP" arch-chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=DeckOS
-spin "Writing boot menu (DeckOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
+spin "Writing boot menu (DecKoOS, Windows, snapshots)" arch-chroot "$MNT" grub-mkconfig -o /boot/grub/grub.cfg
 grep -q 'Windows Boot Manager' "$MNT/boot/grub/grub.cfg" && good "Windows found for the boot menu" || warn "Windows not in the menu yet - run 'sudo grub-mkconfig -o /boot/grub/grub.cfg' after first boot"
 
 section "Services"
@@ -873,7 +873,7 @@ for s in "${services[@]}"; do
 done
 good "services enabled"
 
-# Firewall: firewalld's default zone blocks incoming connections. Open only what DeckOS's own
+# Firewall: firewalld's default zone blocks incoming connections. Open only what DecKoOS's own
 # apps need (firewall-offline-cmd edits the config without touching the live USB's firewall).
 allow=(kdeconnect)
 chosen gaming && allow+=(steam-streaming)
@@ -886,7 +886,7 @@ else warn "could not enable the firewall"; fi
 # ------------------------------------------------------------------ done
 
 cp "$LOG" "$MNT/var/log/deckos-install.log"
-trap - ERR  # DeckOS is installed; nothing below may turn that into a failure
+trap - ERR  # DecKoOS is installed; nothing below may turn that into a failure
 # pacman-key and AUR builds can leave gpg-agent and friends running inside the new system, which
 # keeps /mnt busy. End whatever still runs there, then unmount (lazily if something still holds on).
 for p in /proc/[0-9]*; do
@@ -899,16 +899,16 @@ if ! umount -R "$MNT" 2>>"$LOG"; then
   warn "The new system was still busy, so it was detached lazily; restarting finishes that"
 fi
 
-section "DeckOS is installed"
+section "DecKoOS is installed"
 if [[ ${#FAILED[@]} -gt 0 ]]; then
-  warn "These didn't install (DeckOS still works; retry later with paru -S): ${FAILED[*]}"
+  warn "These didn't install (DecKoOS still works; retry later with paru -S): ${FAILED[*]}"
 fi
 style --margin "1 2" --foreground "#8C94A6" \
-  "Before you boot DeckOS:" \
-  "  1. BIOS: Secure Boot off. DeckOS is now first in the boot order (Windows is in its menu)." \
+  "Before you boot DecKoOS:" \
+  "  1. BIOS: Secure Boot off. DecKoOS is now first in the boot order (Windows is in its menu)." \
   "  2. Windows: run 'powercfg /h off' as admin once, or your NTFS drives mount read-only." \
   "After first login:" \
-  "  - DeckOS Hub (bottom panel) - display fix level, Gaming Mode, drives." \
+  "  - DecKoOS Hub (bottom panel) - display fix level, Gaming Mode, drives." \
   "  - If a screen blinks black: Hub > Display > 'Watch for blackouts', then step up a level."
 [[ -z $GUI ]] && gum confirm "Reboot now?" && reboot
 exit 0

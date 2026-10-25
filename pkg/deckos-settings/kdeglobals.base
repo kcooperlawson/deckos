@@ -1,5 +1,5 @@
-# System-wide KDE defaults for DeckOS. The PKGBUILD appends the DeckOS color scheme groups
-# so every app starts in DeckOS colors before the user has opened System Settings.
+# System-wide KDE defaults for DecKoOS. The PKGBUILD appends the DecKoOS color scheme groups
+# so every app starts in DecKoOS colors before the user has opened System Settings.
 [General]
 AccentColor=76,141,255
 font=Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1

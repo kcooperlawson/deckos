@@ -97,7 +97,7 @@ QString makeDemoProject()
                    "# >>> DeckOS drives (managed by 'deckos drives rescan') >>>\n"
                    "UUID=4C3CACD83CACBDF8  /mnt/SSD  ntfs3  uid=1000,gid=1000,windows_names,nofail  0 0\n"
                    "# <<< DeckOS drives <<<\n");
-    write("notes.md", "# DeckOS Editor\n\nText, code and config files with **colours** for 300+ languages.\n\n"
+    write("notes.md", "# DecKoOS Editor\n\nText, code and config files with **colours** for 300+ languages.\n\n"
                       "- Find and replace with `Ctrl+H`\n- Saves `/etc` files with your password\n");
     return root;
 }
@@ -141,22 +141,22 @@ void runDemo(MainWindow *w, const QString &root, const QString &out)
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
-    KAboutData about(QStringLiteral("deckos-editor"), QStringLiteral("DeckOS Editor"), QStringLiteral(DECKOS_VERSION),
-                     QStringLiteral("The DeckOS text editor"), KAboutLicense::MIT);
+    KAboutData about(QStringLiteral("deckos-editor"), QStringLiteral("DecKoOS Editor"), QStringLiteral(DECKOS_VERSION),
+                     QStringLiteral("The DecKoOS text editor"), KAboutLicense::MIT);
     about.setOrganizationDomain(QByteArrayLiteral("deckos.org"));
     about.setDesktopFileName(QStringLiteral("org.deckos.editor"));
     KAboutData::setApplicationData(about);
 
     const Launch launch = parseArgs(QApplication::arguments(), QDir::currentPath());
     if (launch.demo) {
-        // Offscreen CI has no Plasma platform theme: pick the DeckOS font and style by hand.
+        // Offscreen CI has no Plasma platform theme: pick the DecKoOS font and style by hand.
         QApplication::setFont(QFont(QStringLiteral("Inter"), 10));
         if (QStyleFactory::keys().contains(QStringLiteral("Breeze")))
             QApplication::setStyle(QStringLiteral("Breeze"));
     }
     Style::apply(app);
 
-    // The DeckOS syntax theme sits beside KDE's: installed, or this checkout's when run from the repo
+    // The DecKoOS syntax theme sits beside KDE's: installed, or this checkout's when run from the repo
     auto *repo = new KSyntaxHighlighting::Repository;
     for (const QString &dir : {QStringLiteral("/usr/share/deckos-editor"), QStringLiteral(DECKOS_SOURCE_DATA)})
         if (QFile::exists(dir + QStringLiteral("/themes/deckos.theme")))

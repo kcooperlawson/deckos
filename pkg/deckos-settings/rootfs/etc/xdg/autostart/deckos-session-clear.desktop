@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS session cleanup
+Name=DecKoOS session cleanup
 Comment=Removes the one-shot autologin used to switch between Gaming Mode and Desktop
 Exec=sudo -n /usr/lib/deckos/session-switch --clear
 Type=Application

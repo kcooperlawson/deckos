@@ -62,7 +62,7 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     : QMainWindow(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle(QStringLiteral("DeckOS Files"));
+    setWindowTitle(QStringLiteral("DecKoOS Files"));
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-files"), QIcon::fromTheme(QStringLiteral("system-file-manager"))));
     const KConfigGroup cfg = settings();
     m_mode = FolderView::Mode(qBound(0, cfg.readEntry("ViewMode", 0), 2));
@@ -538,7 +538,7 @@ void MainWindow::syncChrome()
     FolderPane *p = activePane();
     if (!p)
         return;
-    setWindowTitle(p->title() + QStringLiteral(" — DeckOS Files"));
+    setWindowTitle(p->title() + QStringLiteral(" — DecKoOS Files"));
     Tab *t = currentTab();
     m_splitAction->setChecked(t && t->panes.size() > 1);
     const FolderView::Mode mode = p->view()->mode();

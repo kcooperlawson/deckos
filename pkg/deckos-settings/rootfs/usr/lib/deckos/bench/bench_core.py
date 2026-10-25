@@ -1,4 +1,4 @@
-"""DeckOS Bench engine: runners, sensor sampling, statistics, saved results.
+"""DecKoOS Bench engine: runners, sensor sampling, statistics, saved results.
 
 A runner measures one thing (7-Zip, memory, a game's own benchmark...) and returns one value per
 metric per repetition. The engine repeats it, samples the hardware the whole time, and keeps every

@@ -1,5 +1,5 @@
-"""DeckOS Welcome steps. Each builds once; `refresh()` runs whenever it's shown. Changes apply right
-away, through `deckos` or Plasma's own tools as DeckOS Hub does, and are noted for the summary
+"""DecKoOS Welcome steps. Each builds once; `refresh()` runs whenever it's shown. Changes apply right
+away, through `deckos` or Plasma's own tools as DecKoOS Hub does, and are noted for the summary
 (`win.note`)."""
 import shlex
 import threading
@@ -35,7 +35,7 @@ class Step(QWidget):
 
     key, nav, title, subtitle = "", "", "", ""
     hint = ""     # footer text while the step is shown
-    hub = ""      # where the same settings live in DeckOS Hub, for the summary
+    hub = ""      # where the same settings live in DecKoOS Hub, for the summary
     WIDTH = 860
 
     def __init__(self, win):
@@ -139,7 +139,7 @@ def state_row(icon, title, detail, state):
 
 class WelcomeStep(Step):
     key, nav = "welcome", "Welcome"
-    title = "Welcome to DeckOS"
+    title = "Welcome to DecKoOS"
     subtitle = "A few minutes to make it yours. Every step is optional, and changes apply as you make them."
     hint = "You can come back to any step from the list on the left."
 
@@ -154,7 +154,7 @@ class WelcomeStep(Step):
         mark.setFixedSize(306, 80)  # the wordmark's own 804×210 proportions
         v.addWidget(mark)
         v.addSpacing(4)
-        v.addWidget(label("DeckOS is an Arch Linux desktop built for gaming and local AI. It runs KDE Plasma on fast "
+        v.addWidget(label("DecKoOS is an Arch Linux desktop built for gaming and local AI. It runs KDE Plasma on fast "
                           "CachyOS packages, switches to a console-style Steam <b>Gaming Mode</b> when you want the "
                           "couch, and takes snapshots so a bad update is one reboot away from undone. Your Windows "
                           "drives stay as they are, readable and writable.", "sub"))
@@ -167,10 +167,10 @@ class WelcomeStep(Step):
         grid.setSpacing(10)
         gaming = sysinfo.installed("gamescope-session-plus")
         for i, (ic, title, text, action) in enumerate((
-                ("system", "DeckOS Hub",
+                ("system", "DecKoOS Hub",
                  "Your system at a glance: live stats, the display fix, drives, updates, snapshots, the firewall "
                  "and the look. It's in the panel.", button("Open the Hub", slot=self.win.open_hub, icon="external")),
-                ("store", "DeckOS Store",
+                ("store", "DecKoOS Store",
                  "Apps from Arch, CachyOS, Flathub and the AUR in one place: search, click Install, done.",
                  button("Open the Store", slot=lambda: launch("deckos-store"), icon="external")),
                 ("gaming", "Gaming Mode",
@@ -196,7 +196,7 @@ class WelcomeStep(Step):
         how = Card("How this works")
         for ic, text in (("check", "Changes happen as you make them. There's nothing to save at the end."),
                          ("chevron", "<b>Skip this step</b> moves on and leaves things as they are."),
-                         ("info", "Anything that needs your password asks for it, and DeckOS Hub has all of it "
+                         ("info", "Anything that needs your password asks for it, and DecKoOS Hub has all of it "
                                   "again later.")):
             h = QHBoxLayout()
             h.setSpacing(10)
@@ -254,11 +254,11 @@ class LookStep(Step):
 
         dark, light = ws.color_schemes()
         self.scheme = ws.current_scheme()
-        self.schemes = [(dark, "Dark", "DeckOS slate")] + ([(light, "Light", "Breeze Light" if light == "BreezeLight"
-                                                             else "DeckOS light")] if light else [])
+        self.schemes = [(dark, "Dark", "DecKoOS slate")] + ([(light, "Light", "Breeze Light" if light == "BreezeLight"
+                                                             else "DecKoOS light")] if light else [])
         if len(self.schemes) > 1:  # only offered when a light scheme is installed
             mode = Card("Colours", "Light or dark", "sliders")
-            note = "DeckOS's own apps (Hub, Store, this window) stay dark." if light == "BreezeLight" else ""
+            note = "DecKoOS's own apps (Hub, Store, this window) stay dark." if light == "BreezeLight" else ""
             if note:
                 mode.body.addWidget(label(note, "muted"))
             self.mode_grid = QHBoxLayout()
@@ -315,7 +315,7 @@ class LookStep(Step):
         grid.addWidget(self.icons, 1, 1)
         grid.setColumnStretch(2, 1)
         style.body.addLayout(grid)
-        style.body.addWidget(label("DeckOS icons are Papirus with folders in the DeckOS blue.", "muted"))
+        style.body.addWidget(label("DecKoOS icons are Papirus with folders in the DecKoOS blue.", "muted"))
         self.lay.addWidget(style)
 
     def apply(self, cmd, thing, text):
@@ -466,7 +466,7 @@ class DisplayStep(Step):
 
 # ------------------------------------------------------------------ 4. software
 
-# Popular apps: name, what it is, theme icon names to try, DeckOS icon when there's none, source, package.
+# Popular apps: name, what it is, theme icon names to try, DecKoOS icon when there's none, source, package.
 POPULAR = [
     ("Spotify", "Music and podcasts", ("com.spotify.Client", "spotify-client", "spotify"), "music",
      "flathub", "com.spotify.Client"),
@@ -495,7 +495,7 @@ class SoftwareStep(Step):
     hint = "Installs keep going while you carry on with the other steps."
 
     def build(self):
-        self.head_actions.addWidget(button("Open DeckOS Store", slot=lambda: launch("deckos-store"), icon="store",
+        self.head_actions.addWidget(button("Open DecKoOS Store", slot=lambda: launch("deckos-store"), icon="store",
                                            tip="Every app from Arch, CachyOS, Flathub and the AUR"))
         groups = Card("Software groups", "The installer's optional extras", "package")
         groups.body.addWidget(label("Each opens a terminal that asks for your password, then installs everything in "
@@ -510,7 +510,7 @@ class SoftwareStep(Step):
         self.app_grid.setSpacing(8)
         apps.body.addLayout(self.app_grid)
         apps.body.addWidget(label("Arch apps ask for your password; Flathub apps don't. Everything else is in the "
-                                  "DeckOS Store.", "muted"))
+                                  "DecKoOS Store.", "muted"))
         self.lay.addWidget(apps)
 
         from store_catalog import Installed  # the Store's view of what's installed (pacman, AUR, Flatpak)
@@ -757,7 +757,7 @@ class FilesStep(Step):
     key, nav, hub = "files", "Your files", "System"
     title = "Keep your files safe"
     subtitle = "Snapshots to undo mistakes, a backup on another drive, and your Windows drives."
-    hint = "Snapshots and backups can be set up later in DeckOS Hub › System."
+    hint = "Snapshots and backups can be set up later in DecKoOS Hub › System."
 
     def build(self):
         snaps = Card("Snapshots", "Undo a deleted or broken file", "snapshot")
@@ -791,7 +791,7 @@ class FilesStep(Step):
         self.clear(self.snap_box)
         if sysinfo.home_snapshots_on():
             self.snap_box.addWidget(state_row("check", "Your home folder has hourly snapshots",
-                                              "Browse them in DeckOS Hub › System, or /home/.snapshots.", "ok"))
+                                              "Browse them in DecKoOS Hub › System, or /home/.snapshots.", "ok"))
         else:
             self.snap_box.addWidget(state_row("alert", "No snapshots of your files yet",
                                               "System snapshots cover updates, not /home.", "warn"))
@@ -852,11 +852,11 @@ class FilesStep(Step):
 class UpdatesStep(Step):
     key, nav, hub = "updates", "Privacy & updates", "System"
     title = "Privacy and updates"
-    subtitle = "What DeckOS does and doesn't send, how it stays current, and the firewall."
+    subtitle = "What DecKoOS does and doesn't send, how it stays current, and the firewall."
     hint = "A snapshot is taken before every update, so a bad one can be rolled back from the boot menu."
 
     def build(self):
-        up = Card("Updates", "Arch, CachyOS, DeckOS and Flatpak apps", "update")
+        up = Card("Updates", "Arch, CachyOS, DecKoOS and Flatpak apps", "update")
         self.channel = label("", "sub")
         up.body.addWidget(self.channel)
         self.up_row = QVBoxLayout()
@@ -877,8 +877,8 @@ class UpdatesStep(Step):
 
         priv = Card("Privacy", "What leaves your computer", "eye")
         for ic, text in (
-                ("check", "DeckOS doesn't collect usage data or crash reports."),
-                ("globe", "It goes online for updates, the DeckOS Store's app lists, and the apps you install."),
+                ("check", "DecKoOS doesn't collect usage data or crash reports."),
+                ("globe", "It goes online for updates, the DecKoOS Store's app lists, and the apps you install."),
                 ("info", "KDE's own feedback is off unless you turn it on.")):
             h = QHBoxLayout()
             h.setSpacing(10)
@@ -893,9 +893,9 @@ class UpdatesStep(Step):
     def refresh(self):
         on = sysinfo.update_channel_on()
         self.channel.setText(
-            f"<span style='color:{S.SUCCESS}'>●</span> DeckOS's own updates (the Hub, tools, themes) come from the "
-            "signed DeckOS repo, along with Arch and CachyOS." if on else
-            f"<span style='color:{S.WARNING}'>●</span> DeckOS's own updates aren't set up on this install yet. "
+            f"<span style='color:{S.SUCCESS}'>●</span> DecKoOS's own updates (the Hub, tools, themes) come from the "
+            "signed DecKoOS repo, along with Arch and CachyOS." if on else
+            f"<span style='color:{S.WARNING}'>●</span> DecKoOS's own updates aren't set up on this install yet. "
             "Arch and CachyOS updates still arrive.")
         if not self.checked:
             self.check(False)
@@ -923,7 +923,7 @@ class UpdatesStep(Step):
 
     def run_update(self):
         self.win.terminal("deckos update")
-        self.note("update", "Updated DeckOS (in a terminal)", "reboot")
+        self.note("update", "Updated DecKoOS (in a terminal)", "reboot")
         self.win.toast("Updating in a terminal. Restart afterwards if the kernel was updated.", "info", 7000)
 
     def show_firewall(self, on, svcs):
@@ -982,12 +982,12 @@ def keycaps(combo):
 class ExtrasStep(Step):
     key, nav, hub = "extras", "Extras", "Appearance"
     title = "A few extras"
-    subtitle = "Spotify in the DeckOS look, Claude Code, and the shortcuts worth knowing."
+    subtitle = "Spotify in the DecKoOS look, Claude Code, and the shortcuts worth knowing."
     hint = "The Spotify look and Claude Code run in a terminal, so you can see what they do."
 
     def build(self):
-        spotify = Card("Spotify", "The DeckOS look for Spotify", "music")
-        spotify.body.addWidget(label("Restyles the official Spotify app with DeckOS colours, bordered panels and the "
+        spotify = Card("Spotify", "The DecKoOS look for Spotify", "music")
+        spotify.body.addWidget(label("Restyles the official Spotify app with DecKoOS colours, bordered panels and the "
                                      "gradient play buttons, using Spicetify. Spotify updates undo it; apply it again "
                                      "after one.", "sub"))
         self.spotify_box = QHBoxLayout()
@@ -1006,7 +1006,7 @@ class ExtrasStep(Step):
         if sysinfo.have("kdeconnect-app"):
             phone = Card("Your phone", "KDE Connect", "globe")
             phone.body.addWidget(label("Notifications, files, the clipboard and media controls between your phone and "
-                                       "DeckOS. Install KDE Connect on the phone, then pair it here. The firewall "
+                                       "DecKoOS. Install KDE Connect on the phone, then pair it here. The firewall "
                                        "already lets it through.", "sub"))
             phone.body.addWidget(row(button("Pair a phone…", slot=lambda: launch("kdeconnect-app"), icon="external")))
             self.lay.addWidget(phone)
@@ -1032,7 +1032,7 @@ class ExtrasStep(Step):
     def refresh(self):
         self.clear(self.spotify_box)
         if ws.spotify_installed():
-            self.spotify_box.addWidget(button("Apply DeckOS look", "primary", self.spotify, icon="appearance"))
+            self.spotify_box.addWidget(button("Apply DecKoOS look", "primary", self.spotify, icon="appearance"))
             self.spotify_box.addWidget(button("Back to stock", slot=lambda: self.win.terminal("deckos spotify restore"),
                                               icon="refresh"))
             self.spotify_box.addWidget(label("Open Spotify and log in once first.", "muted", wrap=False))
@@ -1052,7 +1052,7 @@ class ExtrasStep(Step):
 
     def spotify(self):
         self.win.terminal("deckos spotify theme")
-        self.note("spotify", "DeckOS look for Spotify")
+        self.note("spotify", "DecKoOS look for Spotify")
 
     def claude(self):
         self.win.terminal("curl -fsSL https://claude.ai/install.sh | bash")
@@ -1064,11 +1064,11 @@ class ExtrasStep(Step):
 class DoneStep(Step):
     key, nav = "done", "Done"
     title = "You're all set"
-    subtitle = "Here's what changed. Everything stays changeable in DeckOS Hub."
-    hint = "Finish closes this window. It's in the app menu as DeckOS Welcome if you want it again."
+    subtitle = "Here's what changed. Everything stays changeable in DecKoOS Hub."
+    hint = "Finish closes this window. It's in the app menu as DecKoOS Welcome if you want it again."
 
     def build(self):
-        self.head_actions.addWidget(button("Open DeckOS Hub", "primary", self.win.open_hub, icon="external"))
+        self.head_actions.addWidget(button("Open DecKoOS Hub", "primary", self.win.open_hub, icon="external"))
         self.changed = Card("What changed", None, "check")
         self.changed_box = QVBoxLayout()
         self.changed_box.setSpacing(6)
@@ -1092,7 +1092,7 @@ class DoneStep(Step):
         self.clear(self.changed_box)
         changes = list(self.win.changes.values())
         if not changes:
-            self.changed_box.addWidget(label("Nothing yet, and that's fine: DeckOS's defaults are ready to go.", "sub"))
+            self.changed_box.addWidget(label("Nothing yet, and that's fine: DecKoOS's defaults are ready to go.", "sub"))
         for text, needs in changes:
             detail = {"reboot": "After a restart", "relogin": "After logging out and back in"}.get(needs, "")
             self.changed_box.addWidget(RowItem("check", text, detail, S.SUCCESS))
@@ -1115,7 +1115,7 @@ class DoneStep(Step):
         self.skipped.setVisible(bool(skipped))
         for step in skipped:
             b = button("Go back", slot=lambda _c=False, k=step.key: self.win.go_to(k))
-            self.skipped_box.addWidget(RowItem("chevron", step.nav, f"Also in DeckOS Hub › {step.hub}", S.MUTED, [b]))
+            self.skipped_box.addWidget(RowItem("chevron", step.nav, f"Also in DecKoOS Hub › {step.hub}", S.MUTED, [b]))
 
     @staticmethod
     def session(action):

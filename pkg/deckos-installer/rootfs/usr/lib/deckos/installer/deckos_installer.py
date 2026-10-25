@@ -1,11 +1,11 @@
-"""DeckOS Installer — the graphical front end of deckos-install.
+"""DecKoOS Installer — the graphical front end of deckos-install.
 
 Runs as the live user like any other app (no root GUI, so it opens on the Wayland desktop),
 collects the answers, then runs `sudo deckos-install` in its unattended mode (DECKOS_GUI=1)
 and turns its output into a progress view. The install itself is the same script as the
 text installer, so both behave identically.
 
-Same visual language as DeckOS Hub and Steady Downloader: slate surfaces, 1px borders,
+Same visual language as DecKoOS Hub and Steady Downloader: slate surfaces, 1px borders,
 10px radii, Inter, and the blue-violet gradient on primary actions and progress.
 """
 import html
@@ -101,8 +101,8 @@ GROUPS = [
 ]
 # Where each section of deckos-install starts on the progress bar (Software is the long part).
 PROGRESS = [("Preparing", 0.02), ("Base system", 0.05), ("CachyOS", 0.20), ("Software", 0.25),
-            ("Your account", 0.70), ("DeckOS layer", 0.72), ("AUR", 0.78), ("Your drives", 0.88),
-            ("Boot", 0.90), ("Services", 0.97), ("DeckOS is installed", 1.0)]
+            ("Your account", 0.70), ("DecKoOS layer", 0.72), ("AUR", 0.78), ("Your drives", 0.88),
+            ("Boot", 0.90), ("Services", 0.97), ("DecKoOS is installed", 1.0)]
 NET_URLS = ["https://geo.mirror.pkgbuild.com", "https://mirror.cachyos.org", "https://archlinux.org"]
 
 
@@ -204,7 +204,7 @@ class Installer(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setWindowTitle("Install DeckOS")
+        self.setWindowTitle("Install DecKoOS")
         self.setWindowIcon(QIcon.fromTheme("deckos", QIcon(str(BRANDING / "logo.svg"))))
         self.resize(1040, 700)
         self.proc = None
@@ -265,8 +265,8 @@ class Installer(QWidget):
     # ------------------------------------------------------------- pages
 
     def build_welcome(self):
-        p = Page("Welcome to DeckOS",
-                 "DeckOS installs next to Windows, on one partition you pick. Windows, its boot files and "
+        p = Page("Welcome to DecKoOS",
+                 "DecKoOS installs next to Windows, on one partition you pick. Windows, its boot files and "
                  "your other drives are left exactly as they are.")
         hero = QSvgWidget(str(BRANDING / "installer-welcome.svg"))
         hero.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
@@ -286,9 +286,9 @@ class Installer(QWidget):
         self.stack.addWidget(p)
 
     def build_disk(self):
-        p = Page("Where should DeckOS go?",
+        p = Page("Where should DecKoOS go?",
                  "Pick a partition, free space or an empty disk. Only a partition you pick is erased; in free "
-                 "space or on an empty disk DeckOS makes a new partition and erases nothing. The EFI boot "
+                 "space or on an empty disk DecKoOS makes a new partition and erases nothing. The EFI boot "
                  "partition is shared with Windows and never formatted.")
         self.disk_area = QScrollArea()
         self.disk_area.setWidgetResizable(True)
@@ -308,7 +308,7 @@ class Installer(QWidget):
         self.stack.addWidget(p)
 
     def build_you(self):
-        p = Page("About you", "Your account on DeckOS. You'll use this password to log in and for sudo. The "
+        p = Page("About you", "Your account on DecKoOS. You'll use this password to log in and for sudo. The "
                               "keyboard layout switches right away, so you type the password the way you will at login.")
         card = Card()
         g = QGridLayout()
@@ -366,7 +366,7 @@ class Installer(QWidget):
 
     def build_software(self):
         p = Page("Choose your software",
-                 "DeckOS always installs the CachyOS kernel, the KDE Plasma desktop, Firefox, graphics drivers and "
+                 "DecKoOS always installs the CachyOS kernel, the KDE Plasma desktop, Firefox, graphics drivers and "
                  "snapshots. Add any of these now; you can install them later too.")
         ai_gpu = DEMO or self.has_ai_gpu()
         self.group_boxes = {}
@@ -438,7 +438,7 @@ class Installer(QWidget):
         self.stack.addWidget(p)
 
     def build_install(self):
-        p = Page("Installing DeckOS", "Keep the PC on and the USB plugged in. You can follow along below.")
+        p = Page("Installing DecKoOS", "Keep the PC on and the USB plugged in. You can follow along below.")
         card = Card()
         self.now = label("Starting…", "now")
         card.body.addWidget(self.now)
@@ -585,18 +585,18 @@ class Installer(QWidget):
         if DEMO:
             out = ("/dev/nvme1n1p3\t232 GB\tntfs\tNVME\tSamsung SSD 970 EVO Plus 250GB\t1\t\n"
                    "/dev/sda2\t1000 GB\tntfs\tBIG\tST1000DM010\t0\t\n"
-                   "/dev/nvme0n1p3\t500 GB\tBitLocker\t-\tWD_BLACK SN850X\t0\tBitLocker-encrypted, so DeckOS cannot "
+                   "/dev/nvme0n1p3\t500 GB\tBitLocker\t-\tWD_BLACK SN850X\t0\tBitLocker-encrypted, so DecKoOS cannot "
                    "check what is on it. Turn BitLocker off or delete this partition in Windows first.\n"
                    "free:/dev/sdb:disk\t500 GB\tfree\tEmpty disk\tCrucial MX500\t0\t\n"
                    "free:/dev/nvme0n1:976773120:629145600\t322 GB\tfree\tFree space\tWD_BLACK SN850X\t0\t\n"
                    "free:/dev/sda:1953519616:41943040\t21 GB\tfree\tFree space\tST1000DM010\t0\tOnly 21 GB free "
-                   "here: DeckOS needs 64 GB.\n")
+                   "here: DecKoOS needs 64 GB.\n")
         else:
             out = run([INSTALLER, "--list-targets"], timeout=20)
         # path, size, fs, label, model, default, and why it's blocked (empty = usable)
         rows = [(line.split("\t") + [""])[:7] for line in out.splitlines() if line.count("\t") >= 5]
         if not any(not why for *_, why in rows):
-            self.disk_list.addWidget(label("No space found that DeckOS can use. In Windows, shrink a drive in Disk "
+            self.disk_list.addWidget(label("No space found that DecKoOS can use. In Windows, shrink a drive in Disk "
                                            "Management to leave 64 GB or more of unallocated space, then press "
                                            "Refresh.", "sub"))
         default = None
@@ -622,9 +622,9 @@ class Installer(QWidget):
             if why:
                 note += f" · <span style='color:{DANGER}'>Can't install here: {html.escape(why)}</span>"
             elif path.endswith(":disk"):
-                note += f" · <span style='color:{SUCCESS}'>Nothing on it: DeckOS gets the whole disk, with its own boot partition</span>"
+                note += f" · <span style='color:{SUCCESS}'>Nothing on it: DecKoOS gets the whole disk, with its own boot partition</span>"
             elif fs == "free":
-                note += f" · <span style='color:{SUCCESS}'>DeckOS adds its own partition here; nothing is erased</span>"
+                note += f" · <span style='color:{SUCCESS}'>DecKoOS adds its own partition here; nothing is erased</span>"
             elif fs == "ntfs":
                 note += f" · <span style='color:{WARNING}'>Windows-format partition: everything on it will be erased</span>"
             elif fs != "empty":
@@ -686,17 +686,17 @@ class Installer(QWidget):
         disk = free_disk(t)
         if not disk:
             what = (f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>{t}</b> → "
-                    f"DeckOS (btrfs with snapshots)</td></tr>"
-                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and "
+                    f"DecKoOS (btrfs with snapshots)</td></tr>"
+                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DecKoOS and "
                     f"Windows</td></tr>")
         elif t.endswith(":disk"):
             what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td><b>{disk}</b>, empty → a boot partition "
-                    f"and DeckOS (btrfs with snapshots)</td></tr>"
+                    f"and DecKoOS (btrfs with snapshots)</td></tr>"
                     f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>On {disk}, so it starts without any other disk</td></tr>")
         else:
             what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td>A partition in the free space on <b>{disk}</b> "
-                    f"→ DeckOS (btrfs with snapshots); nothing is erased</td></tr>"
-                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DeckOS and "
+                    f"→ DecKoOS (btrfs with snapshots); nothing is erased</td></tr>"
+                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DecKoOS and "
                     f"Windows</td></tr>")
         self.summary_text.setText(
             f"<table cellspacing=6>" + what +
@@ -711,8 +711,8 @@ class Installer(QWidget):
             + (f", plus {', '.join(extras)}." if extras else ". Nothing extra: add software later with Discover or pacman.")
             + " Your NTFS drives are mounted as they are. It takes 20–60 minutes depending on your internet.")
         self.agree.setText(f"I understand everything on {t} will be erased" if not disk else
-                           f"I understand DeckOS will use the empty disk {disk}" if t.endswith(":disk") else
-                           f"I understand DeckOS will add a partition on {disk}")
+                           f"I understand DecKoOS will use the empty disk {disk}" if t.endswith(":disk") else
+                           f"I understand DecKoOS will add a partition on {disk}")
         self.agree.setChecked(False)
 
     # ------------------------------------------------------------- install
@@ -727,7 +727,7 @@ class Installer(QWidget):
                                     "  [ !! ] Mirror ranking failed - using a standard mirror list",
                                     "  [ .. ] Installing Arch base", "  [ OK ] Installing Arch base", "// Software",
                                     "  [ .. ] Installing gaming (40 packages) - this can take a while",
-                                    "// Services", "// DeckOS is installed"])
+                                    "// Services", "// DecKoOS is installed"])
             self.demo_timer = QTimer(self, interval=250)
             self.demo_timer.timeout.connect(self.demo_step)
             self.demo_timer.start()
@@ -783,14 +783,14 @@ class Installer(QWidget):
         self.finished_ok = code == 0
         if self.finished_ok:
             self.meter.set(1.0)
-            self.done_title.setText("DeckOS is installed")
-            self.done_text.setText("Restart, take out the USB, and DeckOS will start. Windows is in the boot menu.")
+            self.done_title.setText("DecKoOS is installed")
+            self.done_text.setText("Restart, take out the USB, and DecKoOS will start. Windows is in the boot menu.")
             self.done_body.setText(
-                "<b>Before you boot DeckOS</b><br>"
-                "1. BIOS: Secure Boot off. DeckOS is now first in the boot order.<br>"
+                "<b>Before you boot DecKoOS</b><br>"
+                "1. BIOS: Secure Boot off. DecKoOS is now first in the boot order.<br>"
                 "2. Windows: run <code>powercfg /h off</code> as admin once, or your NTFS drives open read-only.<br><br>"
                 "<b>After you log in</b><br>"
-                "DeckOS Hub (bottom panel) has the display fix level, Gaming Mode and your drives.")
+                "DecKoOS Hub (bottom panel) has the display fix level, Gaming Mode and your drives.")
         else:
             saved = self.save_log()
             reason = getattr(self, "fail_reason", "") or f"The installer stopped (exit code {code})."
@@ -813,7 +813,7 @@ class Installer(QWidget):
 
     def closeEvent(self, e):
         if self.proc and self.proc.state() != QProcess.NotRunning:
-            if QMessageBox.warning(self, "Install DeckOS", "DeckOS is still installing. Stop it?\n\n"
+            if QMessageBox.warning(self, "Install DecKoOS", "DecKoOS is still installing. Stop it?\n\n"
                                    "The partition you picked will be left unusable until you install again.",
                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 e.ignore()
@@ -825,7 +825,7 @@ class Installer(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("Install DeckOS")
+    app.setApplicationName("Install DecKoOS")
     app.setDesktopFileName("deckos-install")
     app.setStyleSheet(QSS)
     w = Installer()

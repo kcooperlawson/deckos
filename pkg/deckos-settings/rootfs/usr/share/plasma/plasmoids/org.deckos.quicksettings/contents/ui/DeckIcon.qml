@@ -1,7 +1,7 @@
 import QtQuick
 import org.kde.kirigami as Kirigami
 
-// A DeckOS line icon (drawn in #000), recoloured on the GPU.
+// A DecKoOS line icon (drawn in #000), recoloured on the GPU.
 Kirigami.Icon {
     property string name
     source: name ? Deck.icon(name) : ""

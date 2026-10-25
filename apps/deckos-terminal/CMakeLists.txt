@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# The DeckOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
+# The DecKoOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
 if(NOT DECKOS_VERSION)
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../VERSION" DECKOS_VERSION)
   string(STRIP "${DECKOS_VERSION}" DECKOS_VERSION)
@@ -24,7 +24,7 @@ find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus)
 find_package(KF6 6.0 REQUIRED COMPONENTS CoreAddons Config DBusAddons)
 find_package(qtermwidget6 2.0 REQUIRED)
 
-# The DeckOS look is DeckOS Files' (palette, line icons, chrome QSS): one copy for both apps.
+# The DecKoOS look is DecKoOS Files' (palette, line icons, chrome QSS): one copy for both apps.
 set(FILES_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../deckos-files/src)
 
 add_executable(deckos-terminal
@@ -58,7 +58,7 @@ install(FILES data/deckos-terminal.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icon
 install(FILES data/DeckOS.colorscheme DESTINATION ${CMAKE_INSTALL_DATADIR}/deckos-terminal/color-schemes)
 
 # Offscreen checks of copy, paste and the Undo bar through the real window (not built by the PKGBUILD).
-option(DECKOS_TERMINAL_TESTS "Build the DeckOS Terminal tests" OFF)
+option(DECKOS_TERMINAL_TESTS "Build the DecKoOS Terminal tests" OFF)
 if(DECKOS_TERMINAL_TESTS)
   find_package(Qt6 REQUIRED COMPONENTS Test)
   add_executable(keys_test tests/keys_test.cpp

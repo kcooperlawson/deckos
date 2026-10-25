@@ -1,4 +1,4 @@
-"""DeckOS Hub building blocks: cards, tiles, live graphs, toasts."""
+"""DecKoOS Hub building blocks: cards, tiles, live graphs, toasts."""
 from collections import deque
 
 from PySide6.QtCore import QPointF, QSize, Qt, QTimer, Signal

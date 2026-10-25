@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=DeckOS Welcome
-Comment=Opens DeckOS Welcome at a user's first login
+Name=DecKoOS Welcome
+Comment=Opens DecKoOS Welcome at a user's first login
 Exec=deckos-welcome --autostart
 Icon=deckos
 Type=Application

@@ -1,4 +1,4 @@
-// A file as DeckOS Editor holds it: the text, where it lives and how it was written (line endings,
+// A file as DecKoOS Editor holds it: the text, where it lives and how it was written (line endings,
 // a final newline, a byte-order mark), so saving writes it back the same way it came in.
 #pragma once
 

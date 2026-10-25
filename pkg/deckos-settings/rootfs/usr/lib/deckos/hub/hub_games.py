@@ -1,4 +1,4 @@
-"""DeckOS Hub's Games page: one library for Steam, Heroic (Epic, GOG) and Lutris, read straight from
+"""DecKoOS Hub's Games page: one library for Steam, Heroic (Epic, GOG) and Lutris, read straight from
 their own files (no logins, nothing running), with ProtonDB ratings and a Play button."""
 import json
 import re
@@ -157,7 +157,7 @@ def fmt_last(ts):
 
 
 def cover(game):
-    """Cover art at tile size: the launcher's own art, else a DeckOS gradient with the title."""
+    """Cover art at tile size: the launcher's own art, else a DecKoOS gradient with the title."""
     pm = QPixmap(COVER_W * 2, COVER_H * 2)
     pm.setDevicePixelRatio(2)
     pm.fill(Qt.transparent)
@@ -230,7 +230,7 @@ class GamesPage(Page):
         self.search.setFixedWidth(220)
         self.search.setStyleSheet(f"QLineEdit {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; "
                                   f"border-radius: 7px; padding: 5px 8px; }}"
-                                  f"QLineEdit:focus {{ border-color: {S.P.accent}; }}")  # as in DeckOS Store
+                                  f"QLineEdit:focus {{ border-color: {S.P.accent}; }}")  # as in DecKoOS Store
         self.search.textChanged.connect(self.layout_tiles)
         self.source = QComboBox()
         self.source.addItems(["All launchers", "Steam", "Epic", "GOG", "Lutris"])

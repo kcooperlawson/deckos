@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// The DeckOS row's tiles: icon on top, name, status. `tone` colours the status (ok/warn/bad).
+// The DecKoOS row's tiles: icon on top, name, status. `tone` colours the status (ok/warn/bad).
 Rectangle {
     id: tile
     property string icon

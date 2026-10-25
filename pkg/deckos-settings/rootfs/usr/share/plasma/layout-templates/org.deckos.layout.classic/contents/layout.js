@@ -1,4 +1,4 @@
-// Shared by the DeckOS layouts (assets/themes.py writes them).
+// Shared by the DecKoOS layouts (assets/themes.py writes them).
 function deckosMenu(panel) {
     var menu = panel.addWidget("org.deckos.menu");
     menu.currentConfigGroup = ["General"];

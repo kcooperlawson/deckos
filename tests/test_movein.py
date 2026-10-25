@@ -1,4 +1,4 @@
-"""DeckOS Move In: finding what a Windows install has, and bringing it over, on a fake Windows drive and a
+"""DecKoOS Move In: finding what a Windows install has, and bringing it over, on a fake Windows drive and a
 throwaway home folder. Windows must come out unchanged; Linux-side files keep a .deckos-bak."""
 import hashlib
 import json

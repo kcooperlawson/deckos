@@ -1,4 +1,4 @@
-"""DeckOS Store catalog: every app from the Arch/CachyOS repos and Flathub, plus AUR search.
+"""DecKoOS Store catalog: every app from the Arch/CachyOS repos and Flathub, plus AUR search.
 
 App details (name, icon, description, screenshots, categories) come from the AppStream catalogs
 Arch (archlinux-appstream-data) and Flathub (flatpak's appstream) already publish. An app that's in
@@ -42,7 +42,7 @@ CATEGORIES = [
     ("utilities", "Utilities", "sliders", {"Utility"}),
 ]
 
-# DeckOS picks for the home page (AppStream ids, matched without case).
+# DecKoOS picks for the home page (AppStream ids, matched without case).
 FEATURED = ["com.valvesoftware.steam", "com.discordapp.discord", "com.obsproject.studio", "com.spotify.client",
             "org.videolan.vlc", "org.kde.krita", "org.blender.blender", "org.gimp.gimp",
             "net.lutris.lutris", "com.heroicgameslauncher.hgl", "com.usebottles.bottles",
@@ -283,7 +283,7 @@ MENU_INDEX = CACHE / "menu-index.json"
 
 
 def write_menu_index(apps):
-    """Just the fields DeckOS Menu's search needs (store_find.py), so its lookups start in milliseconds
+    """Just the fields DecKoOS Menu's search needs (store_find.py), so its lookups start in milliseconds
     instead of reading the whole catalog with descriptions and screenshots."""
     rows = [{"key": a.key, "name": a.name, "summary": a.summary, "icon": a.icon, "desktop_id": a.desktop_id,
              "sources": a.sources} for a in apps.values()]
@@ -396,7 +396,7 @@ def demo_apps():
         apps.append(App(key=norm(app_id), name=name, summary=summary, developer=dev, categories=cats,
                         sources=dict(sources), version="1.0", license="See project",
                         homepage="https://example.org", desktop_id=app_id + ".desktop",
-                        description=f"<p>{summary}. This is demo data for working on the DeckOS Store layout.</p>"
-                                    "<ul><li>Installs from the source you pick</li><li>Updates with DeckOS</li></ul>",
+                        description=f"<p>{summary}. This is demo data for working on the DecKoOS Store layout.</p>"
+                                    "<ul><li>Installs from the source you pick</li><li>Updates with DecKoOS</li></ul>",
                         screenshots=["demo:1", "demo:2", "demo:3"]))
     return apps

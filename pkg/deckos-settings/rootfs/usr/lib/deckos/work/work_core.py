@@ -1,4 +1,4 @@
-"""DeckOS Work persistence, workspace edits, commands and local creation tools. No Qt."""
+"""DecKoOS Work persistence, workspace edits, commands and local creation tools. No Qt."""
 import ast
 import difflib
 import hashlib

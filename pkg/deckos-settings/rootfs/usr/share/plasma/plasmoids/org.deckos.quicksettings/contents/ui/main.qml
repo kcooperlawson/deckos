@@ -2,7 +2,7 @@ import QtQuick
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 
-// DeckOS Quick Settings: the everyday controls in one panel popup. The popup is built on first
+// DecKoOS Quick Settings: the everyday controls in one panel popup. The popup is built on first
 // open and kept; Plasma's models behind it are signal-driven, and the only timers (the media clock)
 // run while it's open. The update count is checked in the background every few hours.
 PlasmoidItem {
@@ -10,7 +10,7 @@ PlasmoidItem {
 
     Backend {
         // Not "backend": inside the representations below that name is their own property, so
-        // "backend: backend" bound it to itself and every DeckOS control got undefined
+        // "backend: backend" bound it to itself and every DecKoOS control got undefined
         id: deckBackend
         expanded: root.expanded
     }

@@ -6,10 +6,10 @@
                 "Name": "DeckOS"
             }
         ],
-        "Description": "One floating dock in the middle: apps, Quick Settings, the clock (the DeckOS default)",
+        "Description": "One floating dock in the middle: apps, Quick Settings, the clock (the DecKoOS default)",
         "Id": "org.deckos.layout.dock",
         "License": "MIT",
-        "Name": "DeckOS: Dock"
+        "Name": "DecKoOS: Dock"
     },
     "X-Plasma-ContainmentCategories": [
         "panel"

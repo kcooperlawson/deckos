@@ -6,12 +6,12 @@
             }
         ],
         "Category": "Windows and Tasks",
-        "Description": "DeckOS's taskbar: pinned apps and open windows in the DeckOS look",
+        "Description": "DecKoOS's taskbar: pinned apps and open windows in the DecKoOS look",
         "EnabledByDefault": true,
         "Icon": "deckos",
         "Id": "org.deckos.taskbar",
         "License": "MIT",
-        "Name": "DeckOS Taskbar",
+        "Name": "DecKoOS Taskbar",
         "Version": "1.0",
         "Website": "https://github.com/kcooperlawson/deckos"
     },

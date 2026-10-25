@@ -1,4 +1,4 @@
-"""deckos ask: talk to DeckOS Assistant in the terminal.
+"""deckos ask: talk to DecKoOS Assistant in the terminal.
 
     deckos ask "install OBS and set it up for streaming"
     deckos ask                      (a conversation; an empty line or Ctrl+D ends it)
@@ -96,7 +96,7 @@ def main():
         print("No local model is downloaded yet. Run: deckos ai setup", file=sys.stderr)
         return 1
     session = Session(model, Tools(confirm, say, echo))
-    print(f"{SUB}DeckOS Assistant · {model} · on this PC{OFF}")
+    print(f"{SUB}DecKoOS Assistant · {model} · on this PC{OFF}")
     text = " ".join(args).strip()
     try:
         if text:

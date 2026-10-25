@@ -1,11 +1,11 @@
-"""DeckOS Builder — start, watch and collect DeckOS ISO builds; put them on a Ventoy USB; review contributions.
-Comes with DeckOS (deckos-builder); everyone signs in with their own GitHub account, and sees the actions their
+"""DecKoOS Builder — start, watch and collect DecKoOS ISO builds; put them on a Ventoy USB; review contributions.
+Comes with DecKoOS (deckos-builder); everyone signs in with their own GitHub account, and sees the actions their
 account has on the repo: the maintainer releases, promotes and merges, everyone else contributes.
 
 Runs on Windows and Linux (PySide6 + the GitHub CLI `gh`, signed in with `gh auth login`).
 On an Arch/DeckOS machine it can also build the ISO locally with build.sh.
 
-Same look as Steady Downloader and DeckOS Hub: slate cards, 1px borders, Inter, and the
+Same look as Steady Downloader and DecKoOS Hub: slate cards, 1px borders, Inter, and the
 blue-violet gradient on primary actions and progress.
 """
 import email.utils
@@ -32,17 +32,17 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDia
                                QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 HERE = Path(__file__).resolve().parent
-# Installed with DeckOS (/usr/lib/deckos/builder), or run from a checkout: then the repo is the folder above
+# Installed with DecKoOS (/usr/lib/deckos/builder), or run from a checkout: then the repo is the folder above
 # this one's pkg/deckos-settings/rootfs/usr/lib/deckos/builder
 SOURCE = next((p for p in HERE.parents if (p / "pkg/deckos-settings").is_dir() and (p / "VERSION").exists()), None)
 
 
 def _share(rel):
-    """A DeckOS file: the checkout's copy when run from one, the installed one otherwise."""
+    """A DecKoOS file: the checkout's copy when run from one, the installed one otherwise."""
     return SOURCE / "pkg/deckos-settings/rootfs" / rel if SOURCE else Path("/") / rel
 
 
-# The DeckOS source Builder releases, checks and builds from: the checkout it runs from, or one picked in
+# The DecKoOS source Builder releases, checks and builds from: the checkout it runs from, or one picked in
 # the Contribute card (a fork, for anyone who isn't the maintainer). None until there is one.
 REPO_DIR = SOURCE
 
@@ -52,7 +52,7 @@ def is_checkout(path):
 
 
 def find_checkout():
-    """The newest DeckOS checkout in the usual places (an old clone left in ~/deckos mustn't win over the
+    """The newest DecKoOS checkout in the usual places (an old clone left in ~/deckos mustn't win over the
     one in use), or None."""
     home = Path.home()
     found = [p for p in (home / "Documents/DeckOS", home / "Documents/deckos", home / "deckos", home / "DeckOS",
@@ -66,7 +66,7 @@ def set_checkout(path):
 
 
 HUB = _share("usr/lib/deckos/hub")
-sys.path.insert(0, str(HUB))  # same look as DeckOS Hub: its palette, QSS, line icons and widgets
+sys.path.insert(0, str(HUB))  # same look as DecKoOS Hub: its palette, QSS, line icons and widgets
 
 import hub_style as S  # noqa: E402
 from hub_widgets import Card, Meter, RowItem, StatusTile, Toast, button, label, row  # noqa: E402
@@ -76,9 +76,9 @@ FONTS = _share("usr/share/fonts/deckos")
 UPSTREAM = "kcooperlawson/deckos"
 WORKFLOW = "build-iso.yml"
 ARTIFACT = "deckos-iso"
-# DeckOS's own apps: each has a workflow that builds it and uploads offscreen screenshots
-APP_WORKFLOWS = (("deckos-files.yml", "DeckOS Files", "folder"), ("deckos-terminal.yml", "DeckOS Terminal", "terminal"),
-                 ("deckos-editor.yml", "DeckOS Editor", "rename"))
+# DecKoOS's own apps: each has a workflow that builds it and uploads offscreen screenshots
+APP_WORKFLOWS = (("deckos-files.yml", "DecKoOS Files", "folder"), ("deckos-terminal.yml", "DecKoOS Terminal", "terminal"),
+                 ("deckos-editor.yml", "DecKoOS Editor", "rename"))
 
 
 def releases_dir():
@@ -118,7 +118,7 @@ PKG_RE = re.compile(r"^(.+)-([^-]+)-([^-]+)-([^-]+)\.pkg\.tar\.zst$")  # name-ve
 
 def git(*args, check=True):
     if REPO_DIR is None:
-        raise RuntimeError("no copy of the DeckOS source yet (Contribute › Get the source)")
+        raise RuntimeError("no copy of the DecKoOS source yet (Contribute › Get the source)")
     r = subprocess.run(["git", "-C", str(REPO_DIR), *args], capture_output=True, text=True, encoding="utf-8",
                        errors="replace", creationflags=NO_WINDOW)
     if check and r.returncode != 0:
@@ -183,7 +183,7 @@ def gh_path():
 # Local build stages: (key, name, share of the build time, log text that starts it). The live system's
 # package install is most of it; pacman's "( 812/1068)" lines move the meter through that stage.
 LOCAL_STAGES = [("tools", "Build tools", 0.05, "==> Build host"),
-                ("packages", "DeckOS packages", 0.10, "==> DeckOS packages"),
+                ("packages", "DecKoOS packages", 0.10, "==> DecKoOS packages"),
                 ("aur", "AUR apps", 0.05, "==> AUR apps"),
                 ("live", "Live system", 0.62, "Installing packages to"),
                 ("squash", "Compress", 0.13, "Creating SquashFS image"),
@@ -413,12 +413,12 @@ class ReleaseDialog(QDialog):
         super().__init__(parent)
         notes = notes or {}
         self.setObjectName("root")
-        self.setWindowTitle("Release DeckOS")
+        self.setWindowTitle("Release DecKoOS")
         self.setMinimumWidth(520)
         v = QVBoxLayout(self)
         v.setContentsMargins(22, 18, 22, 16)
         v.setSpacing(10)
-        v.addWidget(label("Release DeckOS", "title"))
+        v.addWidget(label("Release DecKoOS", "title"))
         v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and PCs on the testing "
                           "channel get the update about 5 minutes later. Stable gets it when you run Promote to "
                           "stable on GitHub. An ISO is only built when the installer or live USB changed since the "
@@ -482,7 +482,7 @@ class Builder(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("root")
-        self.setWindowTitle("DeckOS Builder")
+        self.setWindowTitle("DecKoOS Builder")
         self.setWindowIcon(QIcon(str(BRANDING / "logo.svg")))
         self.resize(1180, 920)
         self.setMinimumSize(760, 560)
@@ -567,7 +567,7 @@ class Builder(QWidget):
         h.addSpacing(12)
         t = QVBoxLayout()
         t.setSpacing(1)
-        t.addWidget(label("DeckOS Builder", "title"))
+        t.addWidget(label("DecKoOS Builder", "title"))
         self.subtitle = label("Connecting to GitHub…", "sub")
         t.addWidget(self.subtitle)
         h.addLayout(t, 1)
@@ -591,7 +591,7 @@ class Builder(QWidget):
                                   tip="Bump VERSION, tag and push: testing PCs get it about 10 minutes later")
         h.addWidget(self.release_btn)
         self.build_btn = button("Build on GitHub", "primary", self.start_build, "play",
-                                "Starts the 'Build DeckOS ISO' workflow on GitHub (about 13 minutes)")
+                                "Starts the 'Build DecKoOS ISO' workflow on GitHub (about 13 minutes)")
         h.addWidget(self.build_btn)
         return h
 
@@ -600,7 +600,7 @@ class Builder(QWidget):
         h = QHBoxLayout(w)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(14)
-        self.t_version = StatusTile("package", "DeckOS source")
+        self.t_version = StatusTile("package", "DecKoOS source")
         self.t_repo = StatusTile("download", "Update repo")
         self.t_build = StatusTile("snapshot", "Last build")
         self.t_usb = StatusTile("drives", "Ventoy USB")
@@ -647,12 +647,12 @@ class Builder(QWidget):
         src = REPO_DIR
         self.checks_btn.setEnabled(bash_exe() is not None and src is not None)
         self.checks_btn.setToolTip("tests/check.sh: everything CI checks on a pull request, run here" if src else
-                                   "Needs a copy of the DeckOS source: Contribute › Get the source")
+                                   "Needs a copy of the DecKoOS source: Contribute › Get the source")
         if hasattr(self, "lc_btn"):
             self.lc_btn.setEnabled(src is not None or self.local_proc is not None)
         if src is None:
             self.contribute_box.addWidget(label(
-                "1. Get your own copy of DeckOS: Builder makes a fork under your GitHub account and downloads it. "
+                "1. Get your own copy of DecKoOS: Builder makes a fork under your GitHub account and downloads it. "
                 "Your changes go there, never straight into DeckOS.", "sub"))
             self.contribute_box.addWidget(row(
                 button("Get the source…", "primary", self.get_source, icon="download"),
@@ -673,18 +673,18 @@ class Builder(QWidget):
             button("Change…", slot=self.pick_source, icon="folder")))
 
     def get_source(self):
-        parent = QFileDialog.getExistingDirectory(self, "Where should your copy of DeckOS go?", str(Path.home()))
+        parent = QFileDialog.getExistingDirectory(self, "Where should your copy of DecKoOS go?", str(Path.home()))
         if not parent:
             return
         target = Path(parent) / "deckos"
         if target.exists():
-            QMessageBox.warning(self, "DeckOS Builder", f"{target} already exists: pick another folder, or use it with "
+            QMessageBox.warning(self, "DecKoOS Builder", f"{target} already exists: pick another folder, or use it with "
                                 "Use a copy I have.")
             return
         self.say(f"Making your fork of {UPSTREAM} and downloading it to {target}…")
 
         def work(_):
-            # The fork is under the user's own account; origin is the fork, upstream is DeckOS
+            # The fork is under the user's own account; origin is the fork, upstream is DecKoOS
             gh("repo", "fork", UPSTREAM, "--clone", "--default-branch-only", "--remote", "--", str(target))
             return target
 
@@ -693,15 +693,15 @@ class Builder(QWidget):
                 self.say(f"Couldn't get the source: {err}")
                 return
             self.use_source(path)
-            self.say(f"Your copy of DeckOS is in {path}. Make a branch, change things, and open a pull request.")
+            self.say(f"Your copy of DecKoOS is in {path}. Make a branch, change things, and open a pull request.")
 
         self.bg(work, done)
 
     def pick_source(self):
-        folder = QFileDialog.getExistingDirectory(self, "Your copy of the DeckOS source", str(Path.home()))
+        folder = QFileDialog.getExistingDirectory(self, "Your copy of the DecKoOS source", str(Path.home()))
         if folder:
             if not is_checkout(folder):
-                QMessageBox.warning(self, "DeckOS Builder", "That folder isn't a copy of the DeckOS source (it needs "
+                QMessageBox.warning(self, "DecKoOS Builder", "That folder isn't a copy of the DecKoOS source (it needs "
                                     "VERSION, build.sh and .git).")
                 return
             self.use_source(Path(folder))
@@ -800,7 +800,7 @@ class Builder(QWidget):
         prompt = (f"Review pull request #{number} in {self.repo} with me before I decide whether to merge it. Read it "
                   f"with `gh pr view {number} --repo {self.repo}` and `gh pr diff {number} --repo {self.repo}`. Check it "
                   "against CONTRIBUTING.md and CLAUDE.md, especially the parts that need extra care (installer, root, "
-                  "packaging), look for anything that could break a DeckOS PC or sneak something in, and tell me what "
+                  "packaging), look for anything that could break a DecKoOS PC or sneak something in, and tell me what "
                   "you'd change. Don't merge, approve, comment on or push to it.")
         claude = shutil.which("claude") or str(Path.home() / ".local/bin/claude")
         if IS_WINDOWS:
@@ -816,7 +816,7 @@ class Builder(QWidget):
 
     def merge_pr(self, pr):
         n, careful = pr["number"], careful_files(pr)
-        text = (f"Merge #{n} \"{pr['title']}\" into main?\n\nIt reaches DeckOS PCs only when you next release, and "
+        text = (f"Merge #{n} \"{pr['title']}\" into main?\n\nIt reaches DecKoOS PCs only when you next release, and "
                 "stable only when you promote that release.")
         if careful:
             text += f"\n\nIt changes parts that need extra care:\n" + "\n".join(f"  {f}" for f in careful)
@@ -850,7 +850,7 @@ class Builder(QWidget):
                                 webbrowser.open(pr["url"]) if not err else None, QTimer.singleShot(2000, self.refresh)))
 
     def apps_card(self):
-        c = Card("Apps", "DeckOS Files, Terminal and Editor builds", "grid")
+        c = Card("Apps", "DecKoOS Files, Terminal and Editor builds", "grid")
         self.apps_box = QVBoxLayout()
         self.apps_box.setSpacing(6)
         c.body.addLayout(self.apps_box)
@@ -927,7 +927,7 @@ class Builder(QWidget):
         if not testing:
             return
         if QMessageBox.question(self, "Promote to stable?",
-                                f"DeckOS {testing} goes from testing to stable: new installs and every PC on the "
+                                f"DecKoOS {testing} goes from testing to stable: new installs and every PC on the "
                                 f"stable channel get it. Stable has {self.stable or 'nothing'} now.\n\nOnly do this once "
                                 f"{testing} has run on a testing PC.") != QMessageBox.Yes:
             return
@@ -1035,7 +1035,7 @@ class Builder(QWidget):
         self.usb_combo = QComboBox()
         self.usb_combo.setMinimumWidth(280)
         self.usb_info = label("", "sub")
-        self.remove_old = QCheckBox("Remove older DeckOS ISOs from the USB")
+        self.remove_old = QCheckBox("Remove older DecKoOS ISOs from the USB")
         self.remove_old.setChecked(self.settings.value("remove_old", False, type=bool))
         self.remove_old.toggled.connect(lambda v: self.settings.setValue("remove_old", v))
         self.usb_meter = Meter(6)
@@ -1096,9 +1096,9 @@ class Builder(QWidget):
         self.pool.start(task)
 
     def out_dir(self):
-        d = Path(self.settings.value("out_dir", str(REPO_DIR / "out" if REPO_DIR else Path.home() / "DeckOS ISOs")))
+        d = Path(self.settings.value("out_dir", str(REPO_DIR / "out" if REPO_DIR else Path.home() / "DecKoOS ISOs")))
         if not d.exists() and sys.platform.startswith("linux"):
-            # On DeckOS (btrfs) a subvolume of its own, so /home snapshots don't keep old ISOs.
+            # On DecKoOS (btrfs) a subvolume of its own, so /home snapshots don't keep old ISOs.
             d.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(["btrfs", "subvolume", "create", str(d)], capture_output=True)
         d.mkdir(parents=True, exist_ok=True)
@@ -1449,7 +1449,7 @@ class Builder(QWidget):
 
     def start_build(self):
         if self.current and self.current["status"] != "completed":
-            if QMessageBox.question(self, "DeckOS Builder", "A build is already running. Start another one too?") != QMessageBox.Yes:
+            if QMessageBox.question(self, "DecKoOS Builder", "A build is already running. Start another one too?") != QMessageBox.Yes:
                 return
         self.build_btn.setEnabled(False)
         self.say("Starting a new ISO build on GitHub…")
@@ -1467,7 +1467,7 @@ class Builder(QWidget):
     def release(self):
         lo = local_state()
         if lo.get("branch") not in (None, "main"):
-            QMessageBox.warning(self, "DeckOS Builder", f"Releases go out from main; this checkout is on {lo['branch']}.")
+            QMessageBox.warning(self, "DecKoOS Builder", f"Releases go out from main; this checkout is on {lo['branch']}.")
             return
         tag = lo.get("tag")
         commits = git("log", "--oneline", f"{tag}..HEAD" if tag else "-20", check=False).splitlines()
@@ -1483,7 +1483,7 @@ class Builder(QWidget):
             self.toast.show_message("Add a short summary first", "bad")
             return
         self.release_btn.setEnabled(False)
-        self.say(f"Releasing DeckOS {ver}…")
+        self.say(f"Releasing DecKoOS {ver}…")
 
         def work(progress):
             if git("tag", "-l", f"v{ver}"):
@@ -1496,7 +1496,7 @@ class Builder(QWidget):
                     tail = "\n".join(re.sub(r"\x1b\[[0-9;]*m", "", r.stdout).splitlines()[-12:])
                     raise RuntimeError(f"the checks failed, so nothing was released:\n{tail}")
             (REPO_DIR / "VERSION").write_text(ver + "\n")
-            msg = f"DeckOS {ver}: {summary}"
+            msg = f"DecKoOS {ver}: {summary}"
             git("commit", "-m", msg, "--", "VERSION")
             git("tag", "-a", f"v{ver}", "-m", msg + (" [iso]" if want_iso else ""))  # [iso]: CI's plan job builds one
             git("push", "origin", "HEAD:main")
@@ -1508,15 +1508,15 @@ class Builder(QWidget):
                 self.say(f"Release failed: {err}")
                 self.toast.show_message("Release failed: see the log", "bad", 8000)
                 return
-            self.say(f"Released DeckOS {ver} to testing: testing PCs get it in about 5 minutes; promote it to stable on GitHub once it's tried")
-            self.toast.show_message(f"DeckOS {ver} is on its way", "ok")
+            self.say(f"Released DecKoOS {ver} to testing: testing PCs get it in about 5 minutes; promote it to stable on GitHub once it's tried")
+            self.toast.show_message(f"DecKoOS {ver} is on its way", "ok")
             QTimer.singleShot(8000, self.refresh)
 
         self.bg(work, done, lambda _f, text: text and self.say(text, log=False))
 
     def cancel_build(self):
         run = self.current
-        if not run or QMessageBox.question(self, "DeckOS Builder", f"Cancel build #{run['run_number']}?") != QMessageBox.Yes:
+        if not run or QMessageBox.question(self, "DecKoOS Builder", f"Cancel build #{run['run_number']}?") != QMessageBox.Yes:
             return
         self.bg(lambda _: gh("run", "cancel", str(run["id"]), "--repo", self.repo),
                 lambda _, e: (self.say(f"Cancel failed: {e}" if e else "Cancel requested"), QTimer.singleShot(5000, self.refresh)))
@@ -1619,7 +1619,7 @@ class Builder(QWidget):
             self.t_usb.set(drives[0][0], f"{drives[0][2] / 1e9:.1f} GB free", "ok")
             path = drives[0][0]
             isos = sorted(Path(path).glob("deckos-*.iso"))
-            self.usb_info.setText("On the USB: " + (", ".join(p.name for p in isos) if isos else "no DeckOS ISOs yet"))
+            self.usb_info.setText("On the USB: " + (", ".join(p.name for p in isos) if isos else "no DecKoOS ISOs yet"))
 
         self.bg(lambda _: ventoy_drives(), done)
 
@@ -1701,7 +1701,7 @@ class Builder(QWidget):
             ask = "Build the ISO on this PC? It needs about 30 GB free and asks for your password."
             cmd = ["pkexec", "env", f"OUT={out}", f"SQUASHFS_LEVEL={LOCAL_SQUASH_LEVEL}", "bash",
                    str(REPO_DIR / "build.sh")]
-        if QMessageBox.question(self, "DeckOS Builder", ask) != QMessageBox.Yes:
+        if QMessageBox.question(self, "DecKoOS Builder", ask) != QMessageBox.Yes:
             return
         self.log.clear()
         p = QProcess(self)
@@ -1754,7 +1754,7 @@ class Builder(QWidget):
         self.say("Local build started" + (" in WSL" if IS_WINDOWS else ""))
 
     def stop_local(self):
-        if QMessageBox.question(self, "DeckOS Builder", "Stop the local build?") != QMessageBox.Yes:
+        if QMessageBox.question(self, "DecKoOS Builder", "Stop the local build?") != QMessageBox.Yes:
             return
         if IS_WINDOWS:
             # Ending wsl.exe leaves build.sh running inside; shutting the distro down stops all of it.
@@ -1765,7 +1765,7 @@ class Builder(QWidget):
     def setup_wsl(self, have_wsl):
         """One-time: WSL (if missing) and its Arch Linux, which local builds on Windows run in."""
         box = QMessageBox(self)
-        box.setWindowTitle("DeckOS Builder")
+        box.setWindowTitle("DecKoOS Builder")
         box.setText("Building on Windows needs WSL with Arch Linux")
         box.setInformativeText(
             ("WSL is set up; this adds Arch Linux to it (a few minutes). " if have_wsl else
@@ -1784,7 +1784,7 @@ class Builder(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Builder")
+    app.setApplicationName("DecKoOS Builder")
     app.setDesktopFileName("deckos-builder")
     for f in FONTS.glob("*.otf"):
         QFontDatabase.addApplicationFont(str(f))

@@ -1,5 +1,5 @@
 [Desktop Entry]
-# DeckOS Welcome replaces KDE's Welcome Center; keep Plasma's from starting at login.
+# DecKoOS Welcome replaces KDE's Welcome Center; keep Plasma's from starting at login.
 Type=Application
 Name=Welcome Center
 Exec=plasma-welcome

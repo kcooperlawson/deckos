@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS Store
+Name=DecKoOS Store
 GenericName=App Store
 Comment=Install apps and games from Arch, CachyOS, Flathub and the AUR
 Exec=deckos-store

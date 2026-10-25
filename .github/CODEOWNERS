@@ -1,7 +1,7 @@
 # Every change needs the maintainer's review before it can merge (with branch protection on main).
 * @kcooperlawson
 
-# The parts that can erase a disk, take root, or reach every DeckOS PC: called out so a review of them is
+# The parts that can erase a disk, take root, or reach every DecKoOS PC: called out so a review of them is
 # never a skim. See CONTRIBUTING.md, "Parts that need extra care".
 /installer/                                          @kcooperlawson
 /build.sh                                            @kcooperlawson

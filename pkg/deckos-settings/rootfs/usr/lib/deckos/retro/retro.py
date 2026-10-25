@@ -1,8 +1,8 @@
-"""DeckOS Retro's engine (no Qt): which consoles there are, which of your files are games for which console,
+"""DecKoOS Retro's engine (no Qt): which consoles there are, which of your files are games for which console,
 what each needs to run (an emulator from the Arch repos or Flathub, sometimes a BIOS you dump from your own
 console), how to start a game, and adding games to Steam so they're in Gaming Mode.
 
-DeckOS Retro never downloads games or BIOS files: it works with the ones you have.
+DecKoOS Retro never downloads games or BIOS files: it works with the ones you have.
 DECKOS_RETRO_HOME / DECKOS_STEAM_ROOT point it at test folders.
 """
 import hashlib
@@ -22,7 +22,7 @@ LIBRARY = HOME / "Games/Retro"  # one folder per console, made by setup_folders(
 RETROARCH_SYSTEM = HOME / ".config/retroarch/system"  # where RetroArch cores look for BIOS files
 PCSX2_BIOS = HOME / ".var/app/net.pcsx2.PCSX2/config/PCSX2/bios"
 CORES = Path("/usr/lib/libretro")
-STEAM_TAG = "DeckOS Retro"
+STEAM_TAG = "DecKoOS Retro"
 
 
 @dataclass(frozen=True)
@@ -349,7 +349,7 @@ def steam_entry(game):
 
 
 def sync_steam(games, user=None):
-    """Adds `games` to every Steam user's library (or `user`'s), and takes out DeckOS Retro games whose file
+    """Adds `games` to every Steam user's library (or `user`'s), and takes out DecKoOS Retro games whose file
     is gone. Other non-Steam games are left exactly as they are. Steam must be closed (it rewrites the file
     when it exits). Returns (added, removed)."""
     if steamfiles.steam_running():

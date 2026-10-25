@@ -1,5 +1,5 @@
-// DeckOS: administrators (wheel) at the desktop can read the firewall's settings without a password,
-// so DeckOS Hub can show what's open. Arch's firewalld uses the server policy, where even reading the
+// DecKoOS: administrators (wheel) at the desktop can read the firewall's settings without a password,
+// so DecKoOS Hub can show what's open. Arch's firewalld uses the server policy, where even reading the
 // zone asks for one, every time. Changing anything still asks.
 polkit.addRule(function (action, subject) {
   if ((action.id == "org.fedoraproject.FirewallD1.config.info" ||

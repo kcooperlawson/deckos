@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=62,198,255
 
 [General]
-ColorScheme=DeckOSAurora
-Name=DeckOS Aurora
+ColorScheme=DecKoOSAurora
+Name=DecKoOS Aurora
 shadeSortColumn=true
 
 [KDE]

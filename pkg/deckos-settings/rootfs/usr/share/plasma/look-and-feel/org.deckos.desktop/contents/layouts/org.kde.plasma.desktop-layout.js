@@ -1,4 +1,4 @@
-// DeckOS default desktop: one floating dock-style panel, DeckOS wallpaper on every screen.
+// DecKoOS default desktop: one floating dock-style panel, DecKoOS wallpaper on every screen.
 
 var panel = new Panel;
 panel.location = "bottom";
@@ -7,7 +7,7 @@ panel.floating = true;
 panel.lengthMode = "fit";
 panel.alignment = "center";
 
-var menu = panel.addWidget("org.deckos.menu");  // DeckOS Menu (replaces Kickoff; Meta opens it)
+var menu = panel.addWidget("org.deckos.menu");  // DecKoOS Menu (replaces Kickoff; Meta opens it)
 menu.currentConfigGroup = ["General"];
 menu.writeConfig("icon", "deckos");
 
@@ -20,7 +20,7 @@ tasks.writeConfig("launchers", [
     "applications:steam.desktop",
     "applications:code.desktop",
     "applications:deckos-hub.desktop"
-].join(","));  // no Store: DeckOS Menu's search offers Store apps with "Get it"
+].join(","));  // no Store: DecKoOS Menu's search offers Store apps with "Get it"
 
 panel.addWidget("org.kde.plasma.marginsseparator");
 panel.addWidget("org.deckos.quicksettings");  // Wi-Fi, sound, Gaming Mode, updates and more
@@ -49,7 +49,7 @@ for (var i = 0; i < all.length; i++) {
     d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     d.writeConfig("Image", "file:///usr/share/wallpapers/DeckOS/");
     if (i == 0) {
-        // DeckOS Performance in the top right of the first screen, clear of the desktop icons
+        // DecKoOS Performance in the top right of the first screen, clear of the desktop icons
         var g = screenGeometry(d.screen);
         d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);
     }

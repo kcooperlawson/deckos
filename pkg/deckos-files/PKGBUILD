@@ -1,10 +1,10 @@
 # Maintainer: kcooperlawson
-# DeckOS Files, the DeckOS file manager. Built from ../../apps/deckos-files in this repo.
+# DecKoOS Files, the DecKoOS file manager. Built from ../../apps/deckos-files in this repo.
 pkgname=deckos-files
 pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
 pkgver=${pkgver:-0.3.5}
 pkgrel=1
-pkgdesc="DeckOS Files: the DeckOS file manager (Qt 6, KDE Frameworks / KIO)"
+pkgdesc="DecKoOS Files: the DecKoOS file manager (Qt 6, KDE Frameworks / KIO)"
 arch=(x86_64)
 license=(MIT)
 depends=(qt6-base qt6-svg kio kio-extras kio-fuse kconfig kcoreaddons kdbusaddons kjobwidgets solid baloo

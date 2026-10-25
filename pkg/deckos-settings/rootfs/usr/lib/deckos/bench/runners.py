@@ -1,4 +1,4 @@
-"""DeckOS Bench runners: the system suite (no games needed) and the game runners.
+"""DecKoOS Bench runners: the system suite (no games needed) and the game runners.
 
 System suite: CPU (7-Zip, one core and all of them), memory (bandwidth and latency), disk (fio), GPU
 (vkmark), local AI (Ollama tokens per second). Games: titles whose own benchmark runs with nobody at
@@ -106,7 +106,7 @@ class Disk(Runner):
     def prepare(self, say):
         self.folder.mkdir(parents=True, exist_ok=True)
         self.work = tempfile.TemporaryDirectory(prefix="run-", dir=self.folder)
-        # btrfs (DeckOS's /home) compresses and copies on write: fio would measure zstd and the page cache,
+        # btrfs (DecKoOS's /home) compresses and copies on write: fio would measure zstd and the page cache,
         # not the drive. A no-copy-on-write folder gets neither, and its new files inherit that.
         if run_text(["stat", "-f", "-c", "%T", self.work.name]) == "btrfs":
             call(["chattr", "+C", self.work.name])
@@ -274,7 +274,7 @@ def steam_game(appid):
 
 
 def proton():
-    """The newest Proton we can run games' tools with: DeckOS's Proton-CachyOS first."""
+    """The newest Proton we can run games' tools with: DecKoOS's Proton-CachyOS first."""
     for d in ["/usr/share/steam/compatibilitytools.d/proton-cachyos-slr", "/usr/share/steam/compatibilitytools.d/proton-cachyos"]:
         if Path(d, "proton").exists():
             return Path(d, "proton")

@@ -1,4 +1,4 @@
-"""DeckOS Store lookup for DeckOS Menu: the Store apps a search matches that aren't installed, as JSON.
+"""DecKoOS Store lookup for DecKoOS Menu: the Store apps a search matches that aren't installed, as JSON.
 
     store_find.py [--limit N] [--demo] -- TERM
 

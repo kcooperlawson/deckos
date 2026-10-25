@@ -1,21 +1,21 @@
-# DeckOS Terminal: design and architecture
+# DecKoOS Terminal: design and architecture
 
-DeckOS Terminal (`deckos-terminal`) is DeckOS's own terminal and the default one (`kdeglobals`
-TerminalApplication), replacing Konsole. It's a native C++20 / Qt 6 Widgets app like DeckOS Files.
+DecKoOS Terminal (`deckos-terminal`) is DecKoOS's own terminal and the default one (`kdeglobals`
+TerminalApplication), replacing Konsole. It's a native C++20 / Qt 6 Widgets app like DecKoOS Files.
 `qtermwidget` (LXQt's terminal widget, Qt 6) does what's hard and already solved: the VT emulation,
-text rendering, scrollback, selection, search, input methods. DeckOS Terminal adds the window, tabs,
-splits, the DeckOS look, and what only DeckOS can know: which project a tab is in, what it's running,
+text rendering, scrollback, selection, search, input methods. DecKoOS Terminal adds the window, tabs,
+splits, the DecKoOS look, and what only DecKoOS can know: which project a tab is in, what it's running,
 and what the rest of the system is doing.
 
 ## Goals
 
-1. **Fast.** A second window or a new tab costs nothing (one process, like DeckOS Files). Typing
-   latency is qtermwidget's; DeckOS adds no work per keystroke.
+1. **Fast.** A second window or a new tab costs nothing (one process, like DecKoOS Files). Typing
+   latency is qtermwidget's; DecKoOS adds no work per keystroke.
 2. **Knows your work.** A tab shows the project it's in (the git folder's name and branch), not
    `user@host:~/some/long/path`, and the command running in it.
 3. **Part of DeckOS.** It reacts to workload modes as they happen (an `org.deckos.Mode` D-Bus signal,
    not polling) and is what "Open terminal here" opens everywhere.
-4. **DeckOS look.** Slate surfaces, accent for the active pane, JetBrains Mono, a DeckOS colour scheme.
+4. **DecKoOS look.** Slate surfaces, accent for the active pane, JetBrains Mono, a DecKoOS colour scheme.
 
 Non-goals for v1: profiles, a settings window (sensible defaults, a config file later), SSH
 bookmarks and the Claude pane (next, below).
@@ -26,14 +26,14 @@ bookmarks and the Claude pane (next, below).
 |---|---|---|
 | Tabs | Ctrl+Shift+T new tab in the current folder, Ctrl+Shift+W close, Ctrl+PgUp/PgDn or Ctrl+Tab to switch, Alt+1…9 to jump, middle-click closes, drag to reorder. A tab is named after its project and branch (`deckos ⎇ main`), or its folder, plus the running command (`cargo build`) | `QTabBar` |
 | Splits | Ctrl+Shift+D splits right, Ctrl+Shift+E splits down, Alt+arrows move between panes, the active pane has an accent outline; closing the last pane closes the tab | nested `QSplitter` |
-| Terminal | Copy/paste Ctrl+Shift+C/V, and Ctrl+C (with a selection; ^C without) / Ctrl+V, through an event filter on the display; a right-click menu (Copy, Paste, link actions, Find, Ask DeckOS Assistant); Ctrl+Shift+F find, Ctrl+= / Ctrl+- / Ctrl+0 zoom, links open with a click, 20,000 lines of scrollback, bell flashes the tab | `QTermWidget` |
+| Terminal | Copy/paste Ctrl+Shift+C/V, and Ctrl+C (with a selection; ^C without) / Ctrl+V, through an event filter on the display; a right-click menu (Copy, Paste, link actions, Find, Ask DecKoOS Assistant); Ctrl+Shift+F find, Ctrl+= / Ctrl+- / Ctrl+0 zoom, links open with a click, 20,000 lines of scrollback, bell flashes the tab | `QTermWidget` |
 | Project awareness | The shell's working folder (`/proc/PID/cwd`), its git root and branch (`.git/HEAD`, read directly: no `git` process), the foreground command (`/proc/PID/comm`). Checked when the shell's title changes and every 2 s for the visible tab only | `/proc`, `QFileInfo` |
 | Workload modes | A strip in the window's corner while a game runs ("Playing Cyberpunk 2077 · 9.1 GB freed"), updated the moment the mode changes | `org.deckos.Mode.Changed` on the session bus, `$XDG_RUNTIME_DIR/deckos-mode` |
-| Integration | `deckos-terminal --workdir DIR` / `-e CMD` (what `KTerminalLauncherJob`, DeckOS Files' Shift+F4 and Plasma's "Open terminal here" call), one process for every window | `KDBusService` |
+| Integration | `deckos-terminal --workdir DIR` / `-e CMD` (what `KTerminalLauncherJob`, DecKoOS Files' Shift+F4 and Plasma's "Open terminal here" call), one process for every window | `KDBusService` |
 
-## The shared DeckOS bus (first piece)
+## The shared DecKoOS bus (first piece)
 
-DeckOS apps learn about each other through the session bus instead of each asking `deckos` on a
+DecKoOS apps learn about each other through the session bus instead of each asking `deckos` on a
 timer. v1 has one signal: `deckos mode watch` emits
 
 ```
@@ -53,7 +53,7 @@ than the mode to keep.
   (sourced from `/etc/bash.bashrc`) asks before `rm -r` of a big folder in /home (home itself, a folder
   right inside it, a git repository) or `sudo rm -r` of system files, takes a snapper pre/post pair,
   and prints the undo: `deckos restore N` (files, no restart) or `sudo deckos undo N` (system, restart).
-  Works in any terminal. pacman isn't covered here: snap-pac snapshots it already. In DeckOS Terminal
+  Works in any terminal. pacman isn't covered here: snap-pac snapshots it already. In DecKoOS Terminal
   (`TERM_PROGRAM=deckos-terminal`) the shell also sends `ESC ]7766;deckos-snapshot=home:N BEL`, which
   the emulation ignores; `SnapshotMarker` finds it in `receivedData` (markers split across reads too)
   and `SnapshotBar` shows Undo under the pane: `deckos restore N`, or `pkexec deckos undo N` after a

@@ -1,5 +1,5 @@
-"""Generates DeckOS Pointers, the DeckOS mouse cursor theme: a slate arrow with a white rim (visible on light
-and dark alike), the DeckOS blue where a pointer means "something happens", and the thumbstick ring for busy.
+"""Generates DecKoOS Pointers, the DecKoOS mouse cursor theme: a slate arrow with a white rim (visible on light
+and dark alike), the DecKoOS blue where a pointer means "something happens", and the thumbstick ring for busy.
 
 Two forms from the same drawings, both committed:
 - cursors_scalable/NAME/*.svg + metadata.json: Plasma 6 draws these at any size and scale, sharp.
@@ -253,7 +253,7 @@ def write():
                 link = base / alias
                 if not link.exists() and not link.is_symlink():
                     link.symlink_to(name)
-    (OUT / "index.theme").write_text("[Icon Theme]\nName=DeckOS Pointers\nComment=The DeckOS mouse pointers\n"
+    (OUT / "index.theme").write_text("[Icon Theme]\nName=DecKoOS Pointers\nComment=The DecKoOS mouse pointers\n"
                                      "Inherits=breeze_cursors\n", newline="\n")
     n = len(shapes())
     print(f"{n} pointers ({sum(len(v) for v in ALIASES.values()) + n} names) -> {OUT}")

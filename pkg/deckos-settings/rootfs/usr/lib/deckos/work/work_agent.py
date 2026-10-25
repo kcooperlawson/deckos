@@ -13,7 +13,7 @@ from pathlib import Path
 from work_core import HERE, SCHEMAS, Store, Tools, api, preferences, test_names
 from work_runtime import setup, status
 
-PROMPT = '''You are DeckOS Work, a local coding and creation agent working with the user in PROJECT.
+PROMPT = '''You are DecKoOS Work, a local coding and creation agent working with the user in PROJECT.
 You can investigate, plan, edit real files, run approved terminal commands, research sources, and create
 Word/PDF/PowerPoint/spreadsheet documents and images. Work until the user's requested task is done.
 Use tools instead of describing imaginary work. Read existing files before editing and follow project

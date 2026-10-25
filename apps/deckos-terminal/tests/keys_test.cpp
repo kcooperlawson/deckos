@@ -1,4 +1,4 @@
-// DeckOS Terminal: copy, paste and Snapshot first's Undo bar through the real window, offscreen.
+// DecKoOS Terminal: copy, paste and Snapshot first's Undo bar through the real window, offscreen.
 // Keys go through Qt's shortcut handling as from a keyboard (QTest), into a real bash.
 // Run: QT_QPA_PLATFORM=offscreen ./keys_test
 #include "mainwindow.h"

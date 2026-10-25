@@ -1,4 +1,4 @@
-# DeckOS login environment.
+# DecKoOS login environment.
 
 # Composite on the 9070 XT only. Guarded, so a different GPU can't leave you at a black screen.
 if [ -e /dev/dri/deckos-dgpu ]; then

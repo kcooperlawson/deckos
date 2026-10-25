@@ -1,5 +1,5 @@
 [Unit]
-Description=DeckOS overnight update (04:00; skipped while a game runs)
+Description=DecKoOS overnight update (04:00; skipped while a game runs)
 
 [Timer]
 OnCalendar=*-*-* 04:00

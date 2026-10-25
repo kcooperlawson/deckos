@@ -49,7 +49,7 @@ QString makeDemoTree()
         touch(root + QStringLiteral("/Projects/deckos/") + f);
     for (int i = 1; i <= 12; ++i)
         touch(root + QStringLiteral("/Music/%1 - Track %1.flac").arg(i, 2, 10, QLatin1Char('0')));
-    // Photos: gradients in the DeckOS palette, so thumbnails have something to show.
+    // Photos: gradients in the DecKoOS palette, so thumbnails have something to show.
     const QList<QColor> hues = {QColor(0x4C, 0x8D, 0xFF), QColor(0x7A, 0x5C, 0xFF), QColor(0x3D, 0xD6, 0x8C), QColor(0xF5, 0xB8, 0x4B),
                                 QColor(0xFF, 0x6B, 0x6B), QColor(0x2A, 0xC3, 0xDE)};
     for (int i = 0; i < 18; ++i) {
@@ -171,8 +171,8 @@ int main(int argc, char **argv)
 {
     startClock.start();
     QApplication app(argc, argv);
-    KAboutData about(QStringLiteral("deckos-files"), QStringLiteral("DeckOS Files"), QStringLiteral(DECKOS_VERSION),
-                     QStringLiteral("The DeckOS file manager"), KAboutLicense::MIT);
+    KAboutData about(QStringLiteral("deckos-files"), QStringLiteral("DecKoOS Files"), QStringLiteral(DECKOS_VERSION),
+                     QStringLiteral("The DecKoOS file manager"), KAboutLicense::MIT);
     about.setOrganizationDomain(QByteArrayLiteral("deckos.org"));
     about.setDesktopFileName(QStringLiteral("org.deckos.files"));
     KAboutData::setApplicationData(about);
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 
     const bool demo = parser.isSet(QStringLiteral("demo"));
     if (demo) {
-        // Offscreen CI has no Plasma platform theme: pick the DeckOS fonts and icons by hand.
+        // Offscreen CI has no Plasma platform theme: pick the DecKoOS fonts and icons by hand.
         if (const QString theme = qEnvironmentVariable("DECKOS_ICON_THEME", QStringLiteral("Papirus-Dark")); !theme.isEmpty())
         {
             QIcon::setThemeSearchPaths(QIcon::themeSearchPaths() << QStringLiteral("/usr/share/icons"));

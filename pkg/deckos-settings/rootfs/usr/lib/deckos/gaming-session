@@ -45,7 +45,7 @@ movie=/usr/share/deckos/branding/deckos-startup.webm
 movies=${XDG_DATA_HOME:-$HOME/.local/share}/Steam/config/uioverrides/movies
 if [[ -r $movie && ( ! -e $movies/deck_startup.webm || -L $movies/deck_startup.webm ) ]]; then
   mkdir -p "$movies" && ln -sfn "$movie" "$movies/deck_startup.webm" ||
-    echo "Could not set the DeckOS startup movie." >&2
+    echo "Could not set the DecKoOS startup movie." >&2
 fi
 
 cleanup() {

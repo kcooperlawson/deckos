@@ -1,8 +1,8 @@
-# KDE Plasma (Wayland) desktop + DeckOS theme dependencies.
+# KDE Plasma (Wayland) desktop + DecKoOS theme dependencies.
 plasma-meta
 sddm
 konsole
-# Files: DeckOS Files (deckos-settings pulls it in) runs on these KIO workers and thumbnailers
+# Files: DecKoOS Files (deckos-settings pulls it in) runs on these KIO workers and thumbnailers
 kio-extras
 kio-fuse
 kio-admin
@@ -18,7 +18,7 @@ partitionmanager
 kdeconnect
 plasma-systemmonitor
 kdialog
-# DeckOS Store: app names, icons and screenshots for the Arch repos
+# DecKoOS Store: app names, icons and screenshots for the Arch repos
 archlinux-appstream-data
 xdg-desktop-portal-kde
 xdg-desktop-portal-gtk

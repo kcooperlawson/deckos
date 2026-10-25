@@ -1,6 +1,6 @@
 import QtQuick
 
-// A slim slider in the DeckOS look. `value` is bound from outside (the volume, the brightness);
+// A slim slider in the DecKoOS look. `value` is bound from outside (the volume, the brightness);
 // dragging shows its own value until release, so slow round trips through PipeWire or DDC don't
 // make the handle jump back.
 Item {

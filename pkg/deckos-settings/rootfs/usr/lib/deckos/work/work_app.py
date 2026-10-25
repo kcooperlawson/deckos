@@ -1,4 +1,4 @@
-"""DeckOS Work: a native, local workspace for code, documents and images."""
+"""DecKoOS Work: a native, local workspace for code, documents and images."""
 import argparse
 import json
 import os
@@ -131,7 +131,7 @@ class Work(QWidget):
         app.setPalette(palette)
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground,True)
-        self.setWindowTitle('DeckOS Work'+(' — Demo' if demo else ''))
+        self.setWindowTitle('DecKoOS Work'+(' — Demo' if demo else ''))
         self.setWindowIcon(QIcon(str(HERE.parents[2]/'share/deckos/branding/work-logo.svg')))
         self.resize(1440,930)
         self.setMinimumSize(1120,740)
@@ -143,7 +143,7 @@ class Work(QWidget):
         side.setFixedWidth(225)
         sl=QVBoxLayout(side)
         sl.setContentsMargins(15,24,15,20)
-        sl.addWidget(row(icon_label('ai',S.P.accent,30),text('DeckOS Work','brand'),stretch=False))
+        sl.addWidget(row(icon_label('ai',S.P.accent,30),text('DecKoOS Work','brand'),stretch=False))
         sl.addWidget(text('Your ideas. Your machine.','muted'))
         sl.addSpacing(24)
         self.new_button=button('New task','primary',self.new_task,icon='plus')
@@ -530,11 +530,11 @@ class Work(QWidget):
             if message.get('auto'):
                 content.append('### Quality check\n\n*'+message['content'].splitlines()[0][:300]+'*')
             elif message['role'] in ('user','assistant') and message.get('content'):
-                content.append(('### You\n\n' if message['role']=='user' else '### DeckOS Work\n\n')+message['content'])
+                content.append(('### You\n\n' if message['role']=='user' else '### DecKoOS Work\n\n')+message['content'])
         if self.pending_prompt:
             content.append('### You\n\n'+self.pending_prompt)
         if self.streaming:
-            content.append('### DeckOS Work\n\n'+self.streaming)
+            content.append('### DecKoOS Work\n\n'+self.streaming)
         self.chat.setMarkdown('\n\n---\n\n'.join(content))
         self.chat.verticalScrollBar().setValue(self.chat.verticalScrollBar().maximum())
 
@@ -715,7 +715,7 @@ class Work(QWidget):
             self.model_combo.setCurrentIndex(index if index>=0 else 0)
             self.model_combo.blockSignals(False)
             self.settings['model']=self.model_combo.currentText()
-            self.models_text.setText('\n'.join(m['name']+' · '+', '.join(m.get('capabilities',[])) for m in data['models']) or 'Ollama is unavailable or no model is downloaded. Use DeckOS Assistant setup first.')
+            self.models_text.setText('\n'.join(m['name']+' · '+', '.join(m.get('capabilities',[])) for m in data['models']) or 'Ollama is unavailable or no model is downloaded. Use DecKoOS Assistant setup first.')
             runtime=data['runtime']
             self.runtime_text.setText('Documents: '+('ready' if runtime.get('documents') else 'not installed')+' · Images: '+
                                       ('ready' if runtime.get('images') else 'not installed')+' · '+runtime.get('device','GPU not detected'))
@@ -787,7 +787,7 @@ class Work(QWidget):
 
     def demo_data(self):
         self.workspace='/home/demo/Projects/DeckOS'
-        self.folder_label.setText('DeckOS')
+        self.folder_label.setText('DecKoOS')
         self.model_combo.addItems(['gpt-oss:20b','gemma4:12b'])
         self.task=dict(id='demo',title='Refine the benchmark report',workspace=self.workspace,changes=[],artifacts=[],messages=[
             {'role':'user','content':'Review the benchmark report layout, make it easier to scan, and write a short release brief.'},
@@ -812,7 +812,7 @@ class Work(QWidget):
         self.render_chat()
 
     def closeEvent(self,event):
-        if self.busy and QMessageBox.question(self,'Task running','Stop the current task and close DeckOS Work?')!=QMessageBox.Yes:
+        if self.busy and QMessageBox.question(self,'Task running','Stop the current task and close DecKoOS Work?')!=QMessageBox.Yes:
             event.ignore()
             return
         self.closing=True
@@ -835,7 +835,7 @@ def main():
         args.demo=True
         os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
     app=QApplication(sys.argv)
-    app.setApplicationName('DeckOS Work')
+    app.setApplicationName('DecKoOS Work')
     app.setDesktopFileName('deckos-work')
     for font in (HERE.parents[2]/'share/fonts/deckos').glob('*.otf'):
         QFontDatabase.addApplicationFont(str(font))

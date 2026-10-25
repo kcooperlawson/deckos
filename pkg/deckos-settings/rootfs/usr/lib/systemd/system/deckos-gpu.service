@@ -1,5 +1,5 @@
 [Unit]
-Description=DeckOS graphics card tuning (power limit, undervolt, fan curve)
+Description=DecKoOS graphics card tuning (power limit, undervolt, fan curve)
 After=systemd-modules-load.service deckos-display.service
 ConditionPathExists=/etc/deckos/gpu.conf
 

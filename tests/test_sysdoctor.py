@@ -1,4 +1,4 @@
-"""DeckOS System Doctor: findings from canned journal, systemd and disk output; nothing real is read."""
+"""DecKoOS System Doctor: findings from canned journal, systemd and disk output; nothing real is read."""
 import json
 import os
 import subprocess
@@ -92,7 +92,7 @@ class Checkup(unittest.TestCase):
     def test_crashes_are_named_by_what_ran(self):
         found = self.findings()
         self.assertEqual(found["crash:A game"].open, ["deckos-gamedoctor"])
-        self.assertIn("DeckOS app", found["crash:DeckOS Hub"].text)
+        self.assertIn("DecKoOS app", found["crash:DecKoOS Hub"].text)
         self.assertEqual(sd.name_program("python3", "python3 /tmp/x/tool.py --demo"), ("tool.py (Python)", "app"))
 
     def test_slow_boot_and_missing_program(self):

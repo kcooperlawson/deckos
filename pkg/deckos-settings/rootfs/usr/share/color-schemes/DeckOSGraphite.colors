@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=215,220,229
 
 [General]
-ColorScheme=DeckOSGraphite
-Name=DeckOS Graphite
+ColorScheme=DecKoOSGraphite
+Name=DecKoOS Graphite
 shadeSortColumn=true
 
 [KDE]

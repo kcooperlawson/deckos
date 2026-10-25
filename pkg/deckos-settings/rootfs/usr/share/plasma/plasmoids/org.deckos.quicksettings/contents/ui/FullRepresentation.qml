@@ -32,7 +32,7 @@ Item {
         readonly property bool shown: status === Loader.Ready && item.available !== false
         source: Qt.resolvedUrl(file)
         visible: shown
-        onStatusChanged: if (status === Loader.Error) console.warn("DeckOS Quick Settings:", file, "is unavailable")
+        onStatusChanged: if (status === Loader.Error) console.warn("DecKoOS Quick Settings:", file, "is unavailable")
     }
 
     ColumnLayout {
@@ -59,14 +59,14 @@ Item {
                 round: true
                 flat: true
                 icon: "ai"
-                tip: "Ask DeckOS Assistant (Meta+Space)"
+                tip: "Ask DecKoOS Assistant (Meta+Space)"
                 onClicked: full.backend.launch("deckos-assistant")  // the popup closes as the chat box takes focus
             }
             DeckButton {
                 round: true
                 flat: true
                 icon: "system"
-                tip: "Open DeckOS Hub"
+                tip: "Open DecKoOS Hub"
                 onClicked: full.backend.openHub("home", false)
             }
             DeckButton {

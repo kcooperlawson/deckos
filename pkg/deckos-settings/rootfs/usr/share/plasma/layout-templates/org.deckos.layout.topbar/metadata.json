@@ -9,7 +9,7 @@
         "Description": "A slim bar on top (menu, clock, Quick Settings) and an app dock below, like macOS",
         "Id": "org.deckos.layout.topbar",
         "License": "MIT",
-        "Name": "DeckOS: Top bar + dock"
+        "Name": "DecKoOS: Top bar + dock"
     },
     "X-Plasma-ContainmentCategories": [
         "panel"

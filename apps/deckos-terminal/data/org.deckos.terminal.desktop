@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=DeckOS Terminal
+Name=DecKoOS Terminal
 GenericName=Terminal
-Comment=Command line, with your projects and DeckOS built in
+Comment=Command line, with your projects and DecKoOS built in
 Keywords=terminal;shell;console;command line;prompt;bash;
 Icon=deckos-terminal
 Exec=deckos-terminal

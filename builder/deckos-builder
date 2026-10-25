@@ -1,13 +1,13 @@
 #!/bin/sh
-# DeckOS Builder on Linux/DeckOS. Uses the system PySide6 (pacman -S pyside6 github-cli).
+# DecKoOS Builder on Linux/DeckOS. Uses the system PySide6 (pacman -S pyside6 github-cli).
 # ./deckos-builder --install adds it to the app menu.
 here=$(cd "$(dirname "$0")" && pwd)
 if [ "$1" = "--install" ]; then
-  # Its own name, beside the installed DeckOS Builder: a deckos-builder.desktop here would hide that one
+  # Its own name, beside the installed DecKoOS Builder: a deckos-builder.desktop here would hide that one
   mkdir -p "$HOME/.local/share/applications"
-  sed -e "s|@BUILDER@|$here/deckos-builder|" -e "s|^Name=DeckOS Builder$|Name=DeckOS Builder (this checkout)|" \
+  sed -e "s|@BUILDER@|$here/deckos-builder|" -e "s|^Name=DecKoOS Builder$|Name=DecKoOS Builder (this checkout)|" \
     "$here/deckos-builder.desktop" > "$HOME/.local/share/applications/deckos-builder-checkout.desktop"
-  echo "Added \"DeckOS Builder (this checkout)\" to the app menu."
+  echo "Added \"DecKoOS Builder (this checkout)\" to the app menu."
   exit 0
 fi
 exec python3 "$here/../pkg/deckos-settings/rootfs/usr/lib/deckos/builder/deckos_builder.py" "$@"

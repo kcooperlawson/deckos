@@ -1,4 +1,4 @@
-"""DeckOS Store widgets: app icons, cards, source badges, the responsive grid, screenshots."""
+"""DecKoOS Store widgets: app icons, cards, source badges, the responsive grid, screenshots."""
 import hashlib
 from pathlib import Path
 
@@ -241,7 +241,7 @@ class Screenshots(QScrollArea):
             pass
 
     def _demo_shot(self, n):
-        """Demo screenshots: the DeckOS wallpaper and Hub previews, so the strip has something to show."""
+        """Demo screenshots: the DecKoOS wallpaper and Hub previews, so the strip has something to show."""
         candidates = [S.BRANDING / "wallpaper.svg", Path(__file__).resolve().parents[7] / "assets/hub-preview.png",
                       S.BRANDING / "grub-background.svg"]
         src = candidates[(n - 1) % len(candidates)]

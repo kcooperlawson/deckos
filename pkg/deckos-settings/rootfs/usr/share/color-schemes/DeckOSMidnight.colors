@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=224,92,255
 
 [General]
-ColorScheme=DeckOSMidnight
-Name=DeckOS Midnight
+ColorScheme=DecKoOSMidnight
+Name=DecKoOS Midnight
 shadeSortColumn=true
 
 [KDE]

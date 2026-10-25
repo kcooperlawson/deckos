@@ -11,7 +11,7 @@ Item {
 
     property int refreshes: 0  // re-reads modelForRow() after the root model rebuilds
 
-    // DeckOS line icons for the standard menu categories; anything else keeps its theme icon.
+    // DecKoOS line icons for the standard menu categories; anything else keeps its theme icon.
     readonly property var lineIcons: ({
         "All Applications": "grid", "Development": "code", "Education": "flask", "Games": "gaming",
         "Graphics": "image", "Internet": "globe", "Multimedia": "music", "Office": "doc",

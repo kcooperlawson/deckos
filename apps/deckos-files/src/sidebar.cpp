@@ -218,7 +218,7 @@ int Sidebar::trashCount() const
 
 void Sidebar::updateHidden()
 {
-    // Recent files, search shortcuts and tags aren't part of DeckOS Files' sidebar.
+    // Recent files, search shortcuts and tags aren't part of DecKoOS Files' sidebar.
     for (int r = 0; r < m_places->rowCount(); ++r) {
         const QModelIndex idx = m_places->index(r, 0);
         const auto g = m_places->groupType(idx);

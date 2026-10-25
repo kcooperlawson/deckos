@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS Game Doctor
+Name=DecKoOS Game Doctor
 GenericName=Fix a game that won't start
 Comment=Why a game closed right after starting, and fixes you can undo
 Exec=deckos-gamedoctor

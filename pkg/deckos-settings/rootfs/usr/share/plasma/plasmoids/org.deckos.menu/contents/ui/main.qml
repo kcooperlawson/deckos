@@ -1,6 +1,6 @@
-// DeckOS Menu: DeckOS's app launcher, in the DeckOS look (slate surfaces, 1px borders, accent
-// gradient, DeckOS line icons). Apps, favourites, recent items and power actions come from Plasma's
-// own kicker backend and search from KRunner, exactly as Kickoff gets them; the DeckOS Store is
+// DecKoOS Menu: DecKoOS's app launcher, in the DecKoOS look (slate surfaces, 1px borders, accent
+// gradient, DecKoOS line icons). Apps, favourites, recent items and power actions come from Plasma's
+// own kicker backend and search from KRunner, exactly as Kickoff gets them; the DecKoOS Store is
 // asked (lazily, off the first frame) for apps a search matches that aren't installed.
 // Plain QtQuick, no Controls: fewer objects to build, so the popup is ready the moment it opens.
 // The other files reach the models and palette through the `deckMenu` id, like Kickoff's `kickoff`.
@@ -24,7 +24,7 @@ PlasmoidItem {
     readonly property color accentB: "#7A5CFF"
     readonly property color hot: Qt.rgba(0.30, 0.55, 1, 0.16)
     readonly property color hotBorder: Qt.rgba(0.30, 0.55, 1, 0.45)
-    // DeckOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
+    // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
     readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")
 
@@ -129,7 +129,7 @@ PlasmoidItem {
         expanded = false;
     }
 
-    // ---- DeckOS Store suggestions: looked up 350 ms after typing stops, never on the first frame
+    // ---- DecKoOS Store suggestions: looked up 350 ms after typing stops, never on the first frame
 
     property var storeResults: []
 
@@ -168,7 +168,7 @@ PlasmoidItem {
         launch("deckos-store --search " + quote(term));
     }
 
-    // DeckOS Assistant's chat box, asked the search as a question ("install obs", "why is my wifi slow")
+    // DecKoOS Assistant's chat box, asked the search as a question ("install obs", "why is my wifi slow")
     function askAssistant(text) {
         launch("deckos-assistant --ask " + quote(text));
     }
@@ -192,7 +192,7 @@ PlasmoidItem {
         Layout.minimumWidth: height
         Layout.preferredWidth: height
         hoverEnabled: true
-        Accessible.name: "DeckOS Menu"
+        Accessible.name: "DecKoOS Menu"
         Accessible.role: Accessible.Button
         onPressed: wasExpanded = deckMenu.expanded
         onClicked: deckMenu.expanded = !wasExpanded

@@ -1,6 +1,6 @@
-# Contributing to DeckOS
+# Contributing to DecKoOS
 
-Thanks for helping. DeckOS is a whole operating system that people install over their own disks and
+Thanks for helping. DecKoOS is a whole operating system that people install over their own disks and
 update automatically, so a few rules keep a contribution from ever breaking someone's PC. They're all here,
 and most of them are checked for you.
 
@@ -8,7 +8,7 @@ and most of them are checked for you.
 
 1. You open a pull request. CI runs every check on it (below). Pull requests can't use the signing key,
    publish packages or build release ISOs: those only run for the maintainer's version tags.
-2. It waits in the maintainer's review queue (DeckOS Builder's Contributions card), with its checks and any
+2. It waits in the maintainer's review queue (DecKoOS Builder's Contributions card), with its checks and any
    files that need extra care flagged. It's read, often with an AI review alongside, and merged only once
    the checks pass and the maintainer approves it. Nothing merges on its own.
 3. A release tag puts it on the **testing** channel first, which the maintainer's own PC runs.
@@ -19,13 +19,13 @@ So nothing you push can reach anyone's PC by itself.
 
 ## Getting set up
 
-- The easy way: open **DeckOS Builder** (it comes with DeckOS), sign in with your GitHub account, and use its
+- The easy way: open **DecKoOS Builder** (it comes with DecKoOS), sign in with your GitHub account, and use its
   **Contribute** card. It makes your fork, downloads it, runs the checks and opens the pull request for you.
 
-- On DeckOS: clone the repo, change things, and `deckos dev-install` builds and installs your checkout.
+- On DecKoOS: clone the repo, change things, and `deckos dev-install` builds and installs your checkout.
   Restart the app you changed. `sudo ./build.sh` builds an ISO; test installs in a VM (QEMU + OVMF),
   never on a disk you care about.
-- Elsewhere (Windows, macOS, other Linux): every DeckOS window has a `--demo` mode with made-up data that
+- Elsewhere (Windows, macOS, other Linux): every DecKoOS window has a `--demo` mode with made-up data that
   runs anywhere PySide6 does, e.g. `python pkg/deckos-settings/rootfs/usr/lib/deckos/hub/deckos_hub.py --demo`.
   The C++ apps (Files, Terminal, Editor) build on their own GitHub workflow, which uploads screenshots.
 
@@ -43,7 +43,7 @@ generators (`assets/*.py`: re-run a generator after changing it and commit its o
 New behaviour needs a test (`tests/test_*.py`, using fake folders and stand-in commands, never the real
 system) or, for something you see, a `--demo` screenshot in the pull request.
 
-## How DeckOS code reads
+## How DecKoOS code reads
 
 `CLAUDE.md` has the full notes; the short version:
 
@@ -60,7 +60,7 @@ system) or, for something you see, a `--demo` screenshot in the pull request.
 
 ## Parts that need extra care
 
-These can erase a disk, run as root, or reach every DeckOS PC. Changes to them get a careful review,
+These can erase a disk, run as root, or reach every DecKoOS PC. Changes to them get a careful review,
 and the pull request should say how you checked them:
 
 - **The installer** (`installer/`, `pkg/deckos-installer/`). It only ever erases the partition the person

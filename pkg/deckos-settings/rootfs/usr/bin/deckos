@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deckos — DeckOS system tool: display flicker fixes, NTFS drives, session switching, updates.
+# deckos — DecKoOS system tool: display flicker fixes, NTFS drives, session switching, updates.
 set -euo pipefail
 
 VERSION=$(cat /usr/share/deckos/version 2>/dev/null || echo rolling)
@@ -430,7 +430,7 @@ steam_ntfs() {
 
 update_cmd() {
   if [[ ${1:-} == --system ]]; then
-    # DeckOS Hub runs this through pkexec: no prompts, and no progress bars, so it can read
+    # DecKoOS Hub runs this through pkexec: no prompts, and no progress bars, so it can read
     # pacman's "(n/N)" lines for its own. AUR apps need the interactive form below.
     need_root update --system
     pacman -Syu --noconfirm --noprogressbar
@@ -440,7 +440,7 @@ update_cmd() {
   fi
   local before after
   before=$(pacman -Q deckos-settings 2>/dev/null || true)
-  section "Updating DeckOS"
+  section "Updating DecKoOS"
   sub "snap-pac takes a btrfs snapshot before and after; 'deckos undo' goes back if it goes wrong."
   if command -v paru >/dev/null; then paru -Syu; else sudo pacman -Syu; fi
   command -v flatpak >/dev/null && flatpak update -y || true
@@ -448,12 +448,12 @@ update_cmd() {
   after=$(pacman -Q deckos-settings 2>/dev/null || true)
   if [[ $after != "$before" ]]; then
     # The panel, Menu and Quick Settings keep the old version until plasmashell restarts.
-    ok "DeckOS ${after#deckos-settings } installed"
+    ok "DecKoOS ${after#deckos-settings } installed"
     sub "Restart the desktop to load it (open windows stay open): systemctl --user restart plasma-plasmashell"
   fi
 }
 
-# How many updates are waiting (DeckOS Quick Settings shows it in the panel). Checking needs the
+# How many updates are waiting (DecKoOS Quick Settings shows it in the panel). Checking needs the
 # network, so the answer is cached and reused while it's younger than --max-age seconds and pacman
 # hasn't installed anything since.
 UPDATES_CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/deckos/updates
@@ -505,7 +505,7 @@ updates_cmd() {
   cat "$UPDATES_CACHE"
 }
 
-# Everything DeckOS Quick Settings shows from the deckos side, in one quick call: no network, no root.
+# Everything DecKoOS Quick Settings shows from the deckos side, in one quick call: no network, no root.
 quick_status() {
   printf 'display=%s\n' "$(display_level)"
   if /usr/lib/deckos/gaming-session --check >/dev/null 2>&1; then echo gaming=1; else echo gaming=0; fi
@@ -519,7 +519,7 @@ quick_status() {
 
 # --------------------------------------------------------------------- software
 #
-# The installer's optional groups, added later (DeckOS Hub > System > Software). Same lists the
+# The installer's optional groups, added later (DecKoOS Hub > System > Software). Same lists the
 # installer used; services, user groups and firewall rules match what it sets up.
 
 PACKAGES=/usr/share/deckos/packages
@@ -563,7 +563,7 @@ software_add() {
     dev)
       sudo systemctl enable --now docker.socket || warn "could not start docker"
       sudo usermod -aG docker "$USER"
-      curl -fsSL https://claude.ai/install.sh | bash || warn "Claude Code install failed (DeckOS Hub can retry)" ;;
+      curl -fsSL https://claude.ai/install.sh | bash || warn "Claude Code install failed (DecKoOS Hub can retry)" ;;
   esac
   ok "$g added"
   sub "Log out and back in so new group memberships apply."
@@ -579,7 +579,7 @@ software_cmd() {
 
 # ------------------------------------------------------------------ spotify
 #
-# The DeckOS look for the official Spotify app, through Spicetify. Works with Arch's
+# The DecKoOS look for the official Spotify app, through Spicetify. Works with Arch's
 # spotify-launcher, the AUR package and the Flathub app. Spotify updates undo it: run it again.
 
 SPOTIFY_APPS=("$HOME/.local/share/spotify-launcher/install/usr/share/spotify" /opt/spotify /usr/share/spotify
@@ -591,10 +591,10 @@ spotify_theme() {
   [[ $EUID -ne 0 ]] || { err "run this as your user: Spicetify's settings live in your home folder"; exit 1; }
   local app="" prefs="" c themes
   for c in "${SPOTIFY_APPS[@]}"; do [[ -d $c/Apps ]] && { app=$c; break; }; done
-  [[ -n $app ]] || { err "Spotify isn't installed (get it from the DeckOS Store), or hasn't been opened yet"; exit 1; }
+  [[ -n $app ]] || { err "Spotify isn't installed (get it from the DecKoOS Store), or hasn't been opened yet"; exit 1; }
   for c in "${SPOTIFY_PREFS[@]}"; do [[ -f $c ]] && { prefs=$c; break; }; done
   [[ -n $prefs ]] || { err "open Spotify once and log in, close it, then run this again"; exit 1; }
-  section "DeckOS theme for Spotify"
+  section "DecKoOS theme for Spotify"
   sub "Spotify: $app"
   if ! command -v spicetify >/dev/null; then
     paru -S --needed spicetify-cli || { err "couldn't install Spicetify (spicetify-cli)"; exit 1; }
@@ -606,14 +606,14 @@ spotify_theme() {
   themes=${XDG_CONFIG_HOME:-$HOME/.config}/spicetify/Themes/DeckOS
   mkdir -p "$themes"
   cp /usr/share/deckos/spicetify/DeckOS/* "$themes/"
-  spicetify config spotify_path "$app" prefs_path "$prefs" current_theme DeckOS color_scheme deckos \
+  spicetify config spotify_path "$app" prefs_path "$prefs" current_theme DecKoOS color_scheme deckos \
     inject_css 1 replace_colors 1 >/dev/null
   if pgrep -x spotify >/dev/null; then warn "Spotify is open: it restarts to load the theme"; fi
   # First time: back up the stock files. After a Spotify update: refresh that backup first.
   spicetify backup apply >/dev/null 2>&1 || spicetify restore backup apply >/dev/null 2>&1 || spicetify apply \
     || { err "Spicetify couldn't apply the theme (see above)"; exit 1; }
-  ok "Spotify now has the DeckOS look"
-  sub "After Spotify updates itself, run this again (or DeckOS Hub > Appearance > Spotify)."
+  ok "Spotify now has the DecKoOS look"
+  sub "After Spotify updates itself, run this again (or DecKoOS Hub > Appearance > Spotify)."
 }
 
 spotify_restore() {
@@ -631,8 +631,8 @@ spotify_cmd() {
 
 # ------------------------------------------------------------------ dev-install
 #
-# Builds the DeckOS packages from a checkout of the repo and installs them: the loop for working
-# on DeckOS from DeckOS. A later release with a higher version replaces them as a normal update.
+# Builds the DecKoOS packages from a checkout of the repo and installs them: the loop for working
+# on DecKoOS from DecKoOS. A later release with a higher version replaces them as a normal update.
 
 dev_install() {
   [[ $EUID -ne 0 ]] || { err "run this as your user (makepkg won't build as root)"; exit 1; }
@@ -646,22 +646,22 @@ dev_install() {
       [[ -n $c && -f $c/VERSION && -d $c/pkg/deckos-settings ]] && { root=$c; break; }
     done
   fi
-  [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DeckOS checkout found: deckos dev-install PATH"; exit 2; }
+  [[ -f $root/VERSION && -d $root/pkg/deckos-settings ]] || { err "no DecKoOS checkout found: deckos dev-install PATH"; exit 2; }
   new=$(tr -d '[:space:]' < "$root/VERSION")
-  # An old clone found by the search above once replaced a newer DeckOS with a months-old one.
+  # An old clone found by the search above once replaced a newer DecKoOS with a months-old one.
   installed=$(pacman -Q deckos-settings 2>/dev/null | awk '{print $2}' || true)
   if [[ -n $installed && $downgrade == 0 ]] && (( $(vercmp "$new-1" "$installed") < 0 )); then
-    err "$root has DeckOS $new, older than the installed ${installed%-*}: nothing changed."
+    err "$root has DecKoOS $new, older than the installed ${installed%-*}: nothing changed."
     sub "Pick the right checkout (deckos dev-install PATH), or add --downgrade if you mean it."
     exit 1
   fi
-  section "Installing DeckOS $new from $root"
+  section "Installing DecKoOS $new from $root"
   for p in deckos-files deckos-terminal deckos-editor deckos-settings deckos-theme-tmpikes; do
     [[ -d $root/pkg/$p ]] || continue
     (cd "$root/pkg/$p" && makepkg -sif --noconfirm --clean) || { err "$p didn't build"; exit 1; }
     ok "$p"
   done
-  sub "Restart DeckOS Hub to see Hub changes."
+  sub "Restart DecKoOS Hub to see Hub changes."
 }
 
 # ------------------------------------------------------------------ home
@@ -711,7 +711,7 @@ home_enable() {
   if [[ -d /run/systemd/system ]]; then systemctl start snapper-timeline.timer snapper-cleanup.timer || true; fi
   snapper --no-dbus -c home create -d "Home snapshots turned on" || true
   ok "/home snapshots: hourly, keeping 12 hourly, 7 daily and 2 weekly"
-  sub "Browse them in /home/.snapshots/<number>/snapshot (DeckOS Hub > System > Snapshots)."
+  sub "Browse them in /home/.snapshots/<number>/snapshot (DecKoOS Hub > System > Snapshots)."
 }
 
 # Snapshots saved in a snapper config, or nothing if snapper can't read it. wheel may list without
@@ -752,7 +752,7 @@ undo_to() {
   row=$(undo_list | awk -F'\t' -v n="$n" '$1 == n {print $3; exit}')
   what=${row:-$what}
   [[ $(findmnt -no FSTYPE /) == btrfs && $(findmnt -no FSROOT /) == /@ && $(findmnt -no FSROOT /.snapshots) == /@snapshots ]] \
-    || { err "/ isn't DeckOS's btrfs layout (@ and @snapshots), so it can't be swapped safely: use GRUB's snapshots menu"; exit 1; }
+    || { err "/ isn't DecKoOS's btrfs layout (@ and @snapshots), so it can't be swapped safely: use GRUB's snapshots menu"; exit 1; }
   dev=$(findmnt -no SOURCE /); dev=${dev%%\[*}
   top=$(mktemp -d)
   mount -o subvolid=5 "$dev" "$top"
@@ -772,7 +772,7 @@ undo_to() {
     err "couldn't put the snapshot in place: nothing changed"; exit 1
   fi
   sync
-  ok "DeckOS goes back to before \"$what\" ($date) when you restart"
+  ok "DecKoOS goes back to before \"$what\" ($date) when you restart"
   sub "Until then nothing changes. /home, your files and settings aren't touched."
   sub "The system as it is now is kept as $kept: 'sudo deckos undo clean' deletes it once you're happy."
 }
@@ -790,7 +790,7 @@ undo_clean() {  # delete the systems kept by earlier undos (never the running on
     # --recursive: nested subvolumes (docker's, systemd-machined's) would block a plain delete.
     btrfs subvolume delete --recursive "$s" >/dev/null && n=$((n + 1))
   done
-  # DeckOS Hub stops offering to delete what's gone
+  # DecKoOS Hub stops offering to delete what's gone
   if (( n )) && [[ -f $UNDO_STATE ]] && ! grep -q '^cleaned=' "$UNDO_STATE"; then echo "cleaned=$(date +%s)" >> "$UNDO_STATE"; fi
   (( n )) && ok "deleted $n kept system(s)" || ok "nothing to clean"
 }
@@ -822,12 +822,12 @@ SHELL_CONF=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/shell.conf
 
 restore_cmd() {
   local n=${1:-} post what
-  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos restore NUMBER [PATH...] (the number DeckOS printed)"; exit 2; }
+  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos restore NUMBER [PATH...] (the number DecKoOS printed)"; exit 2; }
   shift
   [[ -f /etc/snapper/configs/home ]] || { err "/home has no snapshots (sudo deckos home enable)"; exit 1; }
   read -r post what < <(snapper --jsonout -c home list 2>/dev/null | jq -r --argjson n "$n" \
     '.[keys[0]][] | select(.type == "post" and ."pre-number" == $n) | "\(.number) \(.description // "")"') || true
-  [[ -n $post ]] || { err "home snapshot $n has no 'after' snapshot: give the number DeckOS printed after the command"; exit 1; }
+  [[ -n $post ]] || { err "home snapshot $n has no 'after' snapshot: give the number DecKoOS printed after the command"; exit 1; }
   if (( $# == 0 )); then
     # Only what was deleted comes back. Other programs write to /home while a command runs (Baloo's index,
     # app settings), and a plain undochange would roll those back too, under the running programs.
@@ -920,7 +920,7 @@ EOF
 # ------------------------------------------------------------------ scheduler
 #
 # sched_ext CPU schedulers (scx-tools) through scx_loader: lavd keeps frame times steady when the
-# game shares the CPU with Discord, OBS or a browser. DeckOS starts on lavd in Gaming mode.
+# game shares the CPU with Discord, OBS or a browser. DecKoOS starts on lavd in Gaming mode.
 
 SCX_CONF=/etc/scx_loader.toml
 
@@ -945,7 +945,7 @@ scheduler_set() {  # scheduler_set lavd|bpfland|rusty|off [Gaming|PowerSave|LowL
     return
   fi
   systemctl cat scx_loader.service >/dev/null 2>&1 || { err "scx_loader isn't installed (pacman -S scx-tools)"; exit 1; }
-  printf '# Written by deckos scheduler (DeckOS Hub > Gaming > Performance)\ndefault_sched = "scx_%s"\ndefault_mode = "%s"\n' \
+  printf '# Written by deckos scheduler (DecKoOS Hub > Gaming > Performance)\ndefault_sched = "scx_%s"\ndefault_mode = "%s"\n' \
     "$sched" "$mode" > "$SCX_CONF"
   systemctl enable scx_loader.service >/dev/null 2>&1
   systemctl restart scx_loader.service
@@ -965,7 +965,7 @@ scheduler_cmd() {
 # Graphics card tuning from /etc/deckos/gpu.conf, applied at boot by deckos-gpu.service: power limit,
 # undervolt (voltage offset) and fan curve, straight through amdgpu's sysfs. The undervolt and fan
 # curve need amdgpu overdrive (ppfeaturemask). Boot with deckos.gpu=stock to skip all of it. When LACT's
-# daemon runs, it owns the card and DeckOS stays out of its way.
+# daemon runs, it owns the card and DecKoOS stays out of its way.
 
 GPU_CONF=$CONF_DIR/gpu.conf
 OD_MASK=0xffffffff
@@ -1016,9 +1016,9 @@ gpu_fan_curve() {  # gpu_fan_curve DEV stock|quiet|cool
 gpu_apply() {
   need_root gpu apply
   grep -qw 'deckos.gpu=stock' /proc/cmdline && { warn "deckos.gpu=stock: leaving the card at stock"; return 0; }
-  systemctl is-active --quiet lactd 2>/dev/null && { sub "LACT manages the graphics card; DeckOS tuning skipped"; return 0; }
+  systemctl is-active --quiet lactd 2>/dev/null && { sub "LACT manages the graphics card; DecKoOS tuning skipped"; return 0; }
   local card dev hw def min max cap
-  card=$(dgpu_card) || { sub "no AMD graphics card: DeckOS tuning is for Radeon cards (LACT handles others)"; return 0; }
+  card=$(dgpu_card) || { sub "no AMD graphics card: DecKoOS tuning is for Radeon cards (LACT handles others)"; return 0; }
   dev=$card/device
   gpu_conf
   if hw=$(gpu_hwmon "$card") && [[ -w $hw/power1_cap ]]; then
@@ -1056,7 +1056,7 @@ gpu_set() {  # gpu_set KEY=VALUE... (POWER_PERCENT, VOLTAGE_OFFSET, FAN)
   done
   mkdir -p "$CONF_DIR"
   cat > "$GPU_CONF" <<EOF
-# DeckOS graphics card tuning (DeckOS Hub > Gaming > Graphics card). Applied at boot by
+# DecKoOS graphics card tuning (DecKoOS Hub > Gaming > Graphics card). Applied at boot by
 # deckos-gpu.service. Boot with deckos.gpu=stock (press e in GRUB) to skip it once.
 POWER_PERCENT=$POWER_PERCENT
 VOLTAGE_OFFSET=$VOLTAGE_OFFSET
@@ -1104,7 +1104,7 @@ controllers_pair() {  # put every Xbox wireless dongle (xone) into pairing mode 
 # ------------------------------------------------------------------ auto-update
 #
 # Overnight updates (deckos-auto-update.timer, 04:00): skipped while a game runs. Snapshots before and
-# after, like any update. The result goes to /var/lib/deckos/auto-update for DeckOS Hub.
+# after, like any update. The result goes to /var/lib/deckos/auto-update for DecKoOS Hub.
 
 AUTO_STATE=/var/lib/deckos/auto-update
 
@@ -1138,7 +1138,7 @@ auto_update_cmd() {
 
 # ------------------------------------------------------------------ update channel
 #
-# Every DeckOS release goes to the "repo-testing" release first; "repo" (stable) only changes when a
+# Every DecKoOS release goes to the "repo-testing" release first; "repo" (stable) only changes when a
 # tried release is promoted. A PC's channel is just the last part of the Server line in its
 # deckos-repo file (a backup= file, so updates keep it), which keeps forks' owner/repo as they are.
 
@@ -1166,14 +1166,14 @@ channel_cmd() {
   esac
   need_root channel "$want"
   [[ $now == stable || $now == testing ]] \
-    || { err "$REPO_CONF doesn't point at a DeckOS release ($now): fix its Server line by hand"; exit 1; }
+    || { err "$REPO_CONF doesn't point at a DecKoOS release ($now): fix its Server line by hand"; exit 1; }
   [[ $now != "$want" ]] || { ok "already on the $want channel"; return 0; }
   url=$(sed -n 's|^Server *= *\(.*/releases/download/\)[^/[:space:]]*[[:space:]]*$|\1|p' "$REPO_CONF" | head -n1)$release
   # Don't point pacman at a repo that isn't there: every update would fail on it.
   curl -fsIL --max-time 20 -o /dev/null "$url/deckos.db" \
     || { err "the $want channel isn't reachable ($url/deckos.db): nothing changed"; exit 1; }
   sed -i "s|^\(Server *= *.*/releases/download/\)[^/[:space:]]*[[:space:]]*$|\1$release|" "$REPO_CONF"
-  ok "DeckOS updates now come from the $want channel"
+  ok "DecKoOS updates now come from the $want channel"
   if [[ $want == testing ]]; then
     sub "New releases arrive here first. Run 'deckos update' to get the latest."
   else
@@ -1230,7 +1230,7 @@ mode_game() {  # the game running now, or nothing: Steam games (reaper), Lutris,
   esac
 }
 
-# Tells DeckOS apps the mode changed (DeckOS Terminal, ...): org.deckos.Mode.Changed(mode, game) on the
+# Tells DecKoOS apps the mode changed (DecKoOS Terminal, ...): org.deckos.Mode.Changed(mode, game) on the
 # session bus. The details stay in $MODE_STATE; a signal needs no service, so nobody has to be listening.
 mode_announce() {
   busctl --user emit /org/deckos/Mode org.deckos.Mode Changed ss "$1" "${2:-}" >/dev/null 2>&1 || true
@@ -1332,7 +1332,7 @@ mode_cmd() {
 
 # ------------------------------------------------------------------ local AI
 #
-# DeckOS Assistant (`deckos ask`) and deckos-local (the local model as a Claude Code MCP server) run on
+# DecKoOS Assistant (`deckos ask`) and deckos-local (the local model as a Claude Code MCP server) run on
 # Ollama. The model comes from ~/.config/deckos/ai.conf, then /etc/deckos/ai.conf, then the first of
 # gpt-oss:20b and gemma4:12b that's downloaded (tested on a 16 GB card: gpt-oss:20b follows the tools
 # best). Models are many GB, so /var/lib/ollama becomes a subvolume: system snapshots skip it.
@@ -1374,7 +1374,7 @@ ai_setup() {  # sudo deckos ai setup [MODEL]: models out of snapshots, the defau
   fi
   local i  # a restarted Ollama takes a moment before it answers
   for i in $(seq 30); do ollama list >/dev/null 2>&1 && break; sleep 1; done
-  [[ -f $AI_CONF ]] || printf '# DeckOS Assistant and deckos-local (deckos ai model NAME sets yours)\nMODEL=%s\n' "$model" > "$AI_CONF"
+  [[ -f $AI_CONF ]] || printf '# DecKoOS Assistant and deckos-local (deckos ai model NAME sets yours)\nMODEL=%s\n' "$model" > "$AI_CONF"
   ollama pull "$model"
   ok "$model is ready: deckos ask \"…\""
 }
@@ -1389,7 +1389,7 @@ ai_cmd() {
       touch "$HOME/.config/deckos/ai.conf"
       sed -i '/^MODEL=/d' "$HOME/.config/deckos/ai.conf"
       echo "MODEL=$2" >> "$HOME/.config/deckos/ai.conf"
-      ok "DeckOS Assistant uses $2" ;;
+      ok "DecKoOS Assistant uses $2" ;;
     claude-link)
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
       local claude; claude=$(command -v claude || echo "$HOME/.local/bin/claude")
@@ -1435,7 +1435,7 @@ layout_cmd() {
         if (pins !== null) taskbars(function (w) { w.writeConfig('launchers', pins); w.reloadConfig(); });" >/dev/null
       ok "desktop layout: $name" ;;
     graphs)
-      # DeckOS Performance on the first screen's desktop, top right (once: a second one isn't added)
+      # DecKoOS Performance on the first screen's desktop, top right (once: a second one isn't added)
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
       qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
         var d = desktops()[0], g = screenGeometry(d.screen);
@@ -1448,7 +1448,7 @@ layout_cmd() {
 
 # ------------------------------------------------------------------ retro games
 #
-# DeckOS Retro's installs: emulators only (RetroArch and libretro cores from the repos, standalone ones from
+# DecKoOS Retro's installs: emulators only (RetroArch and libretro cores from the repos, standalone ones from
 # Flathub). It never downloads games or BIOS files.
 
 retro_cmd() {
@@ -1459,7 +1459,7 @@ retro_cmd() {
       for p in "$@"; do
         if [[ $p =~ ^(retroarch|libretro-[a-z0-9-]+)$ ]]; then pac+=("$p")
         elif [[ $p =~ ^(net\.pcsx2\.PCSX2|org\.DolphinEmu\.dolphin-emu|org\.ppsspp\.PPSSPP|org\.duckstation\.DuckStation)$ ]]; then flat+=("$p")
-        else err "not an emulator DeckOS Retro installs: $p"; exit 2; fi
+        else err "not an emulator DecKoOS Retro installs: $p"; exit 2; fi
       done
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
       if ((${#pac[@]})); then pkexec pacman -S --needed --noconfirm "${pac[@]}" || { err "the emulators didn't install"; exit 1; }; fi
@@ -1541,7 +1541,7 @@ decky_install() {  # Decky Loader: Steam Deck plugins inside Gaming Mode
 }
 
 doctor_cmd() {
-  section "DeckOS $VERSION"
+  section "DecKoOS $VERSION"
   say "  Kernel  $(uname -r)"
   say "  Mesa    $(pacman -Q mesa 2>/dev/null | cut -d' ' -f2)"
   say "  GPUs    $(gpu_vendors | tr '\n' ' ')"
@@ -1561,8 +1561,8 @@ doctor_cmd() {
   else ok "$snaps system snapshots ${C_SUB}(snapper -c root list)${C_0}"; fi
   home_status
   section "Updates"
-  if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DeckOS update channel on: $(channel_now)"
-  else warn "DeckOS update channel not set up (reinstall deckos-settings, or deckos dev-install)"; fi
+  if grep -q '^Include = /etc/pacman.d/deckos-repo' /etc/pacman.conf; then ok "DecKoOS update channel on: $(channel_now)"
+  else warn "DecKoOS update channel not set up (reinstall deckos-settings, or deckos dev-install)"; fi
   section "Gaming"
   local sch; sch=$(scheduler_status)
   [[ $sch == *state=enabled* ]] && ok "CPU scheduler: $(sed -n 's/^running=//p' <<<"$sch")" || sub "CPU scheduler: the kernel's own (deckos scheduler set lavd)"
@@ -1580,7 +1580,7 @@ doctor_cmd() {
 
 usage() {
   cat <<EOF
-${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
+${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
 
   deckos display [status|levels|set N|watch|monitors|recommend]
                                                         display blackout fix ladder
@@ -1596,30 +1596,30 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DeckOS system tool
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
   deckos backup  [FOLDER]                               copy your home folder to another drive
-  deckos dev-install [CHECKOUT] [--downgrade]           build and install DeckOS from a repo checkout
-  deckos spotify [theme|restore]                        the DeckOS look for Spotify (Spicetify)
+  deckos dev-install [CHECKOUT] [--downgrade]           build and install DecKoOS from a repo checkout
+  deckos spotify [theme|restore]                        the DecKoOS look for Spotify (Spicetify)
   deckos scheduler [status|set lavd|bpfland|off [MODE]] gaming CPU scheduler (sched_ext)
   deckos gpu     [status|set K=V..|reset|overdrive on|off]  power limit, undervolt, fan curve
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
-  deckos channel [status|stable|testing]                where DeckOS updates come from (testing: new releases first)
+  deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
-  deckos ask     ["what you want"]                      DeckOS Assistant: install and set things up, locally
+  deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
-                                                        graphs adds DeckOS Performance to the desktop
-  deckos retro [install PKG...]                         DeckOS Retro (install: its emulators)
+                                                        graphs adds DecKoOS Performance to the desktop
+  deckos retro [install PKG...]                         DecKoOS Retro (install: its emulators)
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
-  deckos whatsnew                                       what the latest DeckOS release brought
+  deckos whatsnew                                       what the latest DecKoOS release brought
   deckos game doctor [last|APPID]                       why a game closed right after starting, and fixes
   deckos work                                          local code, documents and image workspace
   deckos movein                                        bring folders, browser, games and apps over from Windows
-  deckos bench   [system|games|run KEYS|compare A B]    DeckOS Bench: benchmarks with confidence ranges
+  deckos bench   [system|games|run KEYS|compare A B]    DecKoOS Bench: benchmarks with confidence ranges
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos doctor                                         health check (the full report)
   deckos sysdoctor                                     System Doctor: what's wrong, in plain words, with fixes
-  deckos hub                                            open DeckOS Hub
+  deckos hub                                            open DecKoOS Hub
 EOF
 }
 
@@ -1631,7 +1631,7 @@ case ${1:-} in
   steam-ntfs) steam_ntfs ;;
   update) shift; update_cmd "$@" ;;
   updates) shift; updates_cmd "$@" ;;
-  quick-status) quick_status ;;  # for DeckOS Quick Settings
+  quick-status) quick_status ;;  # for DecKoOS Quick Settings
   software) shift; software_cmd "$@" ;;
   home) shift; home_cmd "$@" ;;
   backup) shift; backup_cmd "$@" ;;

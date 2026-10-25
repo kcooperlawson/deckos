@@ -1,4 +1,4 @@
-// One terminal: a QTermWidget in the DeckOS look, plus what it's doing (ProjectInfo). The active
+// One terminal: a QTermWidget in the DecKoOS look, plus what it's doing (ProjectInfo). The active
 // pane in a split gets an accent outline.
 #pragma once
 
@@ -29,7 +29,7 @@ public:
     void zoom(int step);  // +1, -1, 0 (back to the default size)
     void focusTerminal();
     void setHold(bool hold) { m_hold = hold; }  // --hold: keep the output after the command ends
-    void askAssistant();  // DeckOS Assistant about the selection (an error, a command), or just the chat box
+    void askAssistant();  // DecKoOS Assistant about the selection (an error, a command), or just the chat box
     QMenu *contextMenu(const QPoint &pos);  // right-click: copy, paste, links, find, ask the Assistant
 
 Q_SIGNALS:

@@ -1,4 +1,4 @@
-"""What DeckOS Hub shows: hardware, live stats, drives, updates, snapshots, firewall, themes.
+"""What DecKoOS Hub shows: hardware, live stats, drives, updates, snapshots, firewall, themes.
 
 Everything here reads the system and never changes it; changes go through `deckos` (with
 pkexec where root is needed) or Plasma's own tools. `--demo` swaps in canned data, for working
@@ -84,7 +84,7 @@ def conf(path):
 
 def deckos_version():
     v = read("/usr/share/deckos/version") or (read(Path(__file__).resolve().parents[7] / "VERSION") if DEMO else "")
-    return f"DeckOS {v}" if v and v != "rolling" else "DeckOS"
+    return f"DecKoOS {v}" if v and v != "rolling" else "DeckOS"
 
 
 # ------------------------------------------------------------------ hardware
@@ -365,7 +365,7 @@ def parse_snapshots(out):
 
 DEMO_SNAPSHOTS = json.dumps({"root": [
     {"number": 0, "description": "current"},
-    {"number": 1, "date": "2026-10-24 19:02:11", "description": "Fresh DeckOS install", "userdata": {"important": "yes"}},
+    {"number": 1, "date": "2026-10-24 19:02:11", "description": "Fresh DecKoOS install", "userdata": {"important": "yes"}},
     {"number": 14, "date": "2026-10-26 21:40:03", "description": "pacman -Syu", "userdata": None},
     {"number": 15, "date": "2026-10-26 21:43:57", "description": "pacman -Syu", "userdata": None},
     {"number": 16, "date": "2026-10-28 18:12:30", "description": "pacman -S lutris", "userdata": None},
@@ -400,7 +400,7 @@ def last_undo():
 
 
 def ask_assistant(question):
-    """DeckOS Assistant's chat box, asked about something that went wrong (it runs on the local model)."""
+    """DecKoOS Assistant's chat box, asked about something that went wrong (it runs on the local model)."""
     if not DEMO:
         from PySide6.QtCore import QProcess
         QProcess.startDetached("deckos-assistant", ["--ask", question[-6000:]])
@@ -422,7 +422,7 @@ def update_channel_on():
     return DEMO or "Include = /etc/pacman.d/deckos-repo" in read("/etc/pacman.conf")
 
 
-# DeckOS's own packages, from the signed DeckOS repo; everything else comes from Arch and CachyOS.
+# DecKoOS's own packages, from the signed DecKoOS repo; everything else comes from Arch and CachyOS.
 DECKOS_PKGS = ("deckos-settings", "deckos-files", "deckos-terminal", "deckos-editor", "deckos-theme-tmpikes")
 # Updates that only take effect after a restart: the kernel and what boots with it.
 REBOOT_RE = re.compile(r"linux(-cachyos[\w-]*|-zen|-lts)?(-headers)?$|linux-firmware.*|amd-ucode|systemd|mesa|"
@@ -471,7 +471,7 @@ def _repo_share(sub):
 
 
 def look_and_feels():
-    """[(id, name, description, preview image)] for DeckOS global themes."""
+    """[(id, name, description, preview image)] for DecKoOS global themes."""
     out = []
     dirs = _dirs("plasma/look-and-feel")
     for base in dirs:
@@ -501,7 +501,7 @@ def wallpaper_previews(name):
 
 
 def wallpapers():
-    """[(package dir, name, preview)] for installed wallpaper packages, DeckOS ones first."""
+    """[(package dir, name, preview)] for installed wallpaper packages, DecKoOS ones first."""
     out = []
     dirs = _dirs("wallpapers")
     for base in dirs:
@@ -519,7 +519,7 @@ def wallpapers():
 
 
 def desktop_layouts():
-    """[(key, name, description, preview)] for the DeckOS panel layouts (deckos layout set KEY)."""
+    """[(key, name, description, preview)] for the DecKoOS panel layouts (deckos layout set KEY)."""
     out = []
     for base in _dirs("plasma/layout-templates"):
         for d in sorted(base.glob("org.deckos.layout.*")):
@@ -530,7 +530,7 @@ def desktop_layouts():
             key = d.name.rsplit(".", 1)[1]
             preview = next((b / f"deckos/layouts/{key}.svg" for b in _dirs("") if (b / f"deckos/layouts/{key}.svg").exists()), None)
             if key not in [o[0] for o in out]:
-                out.append((key, meta.get("Name", key).replace("DeckOS: ", ""), meta.get("Description", ""), preview))
+                out.append((key, meta.get("Name", key).replace("DecKoOS: ", ""), meta.get("Description", ""), preview))
     order = ["dock", "classic", "topbar", "minimal", "big"]
     return sorted(out, key=lambda o: order.index(o[0]) if o[0] in order else 99)
 
@@ -574,7 +574,7 @@ def kv(text):
 
 
 def gaming_env():
-    """The desktop + Gaming Mode environment DeckOS Hub manages (FSR 4 upgrade and friends)."""
+    """The desktop + Gaming Mode environment DecKoOS Hub manages (FSR 4 upgrade and friends)."""
     return conf(GAMING_ENV)
 
 
@@ -584,7 +584,7 @@ def write_gaming_env(values):
     if DEMO:
         return
     GAMING_ENV.parent.mkdir(parents=True, exist_ok=True)
-    GAMING_ENV.write_text("# Written by DeckOS Hub (Gaming > Performance). Gaming Mode reads it too.\n" +
+    GAMING_ENV.write_text("# Written by DecKoOS Hub (Gaming > Performance). Gaming Mode reads it too.\n" +
                           "".join(f"{k}={v}\n" for k, v in env.items()))
 
 

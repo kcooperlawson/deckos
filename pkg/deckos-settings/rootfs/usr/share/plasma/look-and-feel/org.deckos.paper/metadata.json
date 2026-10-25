@@ -7,10 +7,10 @@
             }
         ],
         "Category": "",
-        "Description": "A light theme: soft white with the DeckOS blue",
+        "Description": "A light theme: soft white with the DecKoOS blue",
         "Id": "org.deckos.paper",
         "License": "MIT",
-        "Name": "DeckOS Paper",
+        "Name": "DecKoOS Paper",
         "Version": "1.0"
     },
     "X-Plasma-APIVersion": "2"

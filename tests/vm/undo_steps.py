@@ -1,4 +1,4 @@
-# deckos undo, end to end on an installed DeckOS: an update, its undo, a restart, then clean (see vm.py).
+# deckos undo, end to end on an installed DecKoOS: an update, its undo, a restart, then clean (see vm.py).
 D = '/usr/local/bin/deckos-new'
 get = f'curl -fsS http://10.0.2.2:{vm.port}/deckos -o /tmp/deckos && echo deckos-test | sudo -S -p "" install -m755 /tmp/deckos {D}'
 

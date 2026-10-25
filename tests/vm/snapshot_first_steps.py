@@ -1,4 +1,4 @@
-# Snapshot first, end to end on an installed DeckOS (see vm.py): real snapper, real prompts on the serial
+# Snapshot first, end to end on an installed DecKoOS (see vm.py): real snapper, real prompts on the serial
 # console. A big delete in /home, put back with deckos restore; a sudo delete of system files, put back
 # with deckos undo and a restart. Serve pkg/deckos-settings/rootfs (not usr/bin) for this one.
 import re

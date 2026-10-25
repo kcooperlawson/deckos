@@ -1,4 +1,4 @@
-"""DeckOS Game Doctor: why a game closed right after starting, and one-click fixes that can be undone.
+"""DecKoOS Game Doctor: why a game closed right after starting, and one-click fixes that can be undone.
 
 Steam logs every game launch and exit ("Game process added/removed" in logs/console_log.txt) and the
 game's own Proton and Wine output (logs/console-linux.txt). A game that's gone within QUICK seconds
@@ -172,7 +172,7 @@ def pretty_tool(name):
 
 
 def other_proton(appid):
-    """The compatibility tool to try instead of the current one: DeckOS's Proton-CachyOS, else Experimental."""
+    """The compatibility tool to try instead of the current one: DecKoOS's Proton-CachyOS, else Experimental."""
     current = sf.compat_tool(appid)
     tools = sf.compat_tools()
     for t in [t for t in tools if "cachyos" in t] + ["proton_experimental"] + list(tools):

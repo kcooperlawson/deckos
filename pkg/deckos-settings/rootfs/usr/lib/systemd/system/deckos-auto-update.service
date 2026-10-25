@@ -1,5 +1,5 @@
 [Unit]
-Description=DeckOS overnight update
+Description=DecKoOS overnight update
 After=network-online.target
 Wants=network-online.target
 

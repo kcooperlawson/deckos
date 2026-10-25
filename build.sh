@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the DeckOS live USB: a KDE Plasma live desktop with the DeckOS installer, on top of
+# Builds the DecKoOS live USB: a KDE Plasma live desktop with the DecKoOS installer, on top of
 # Arch's official "releng" profile and the CachyOS kernel.
 #
 # Needs Arch Linux: a real install, WSL "archlinux", or the archlinux Docker image used by CI.
@@ -10,10 +10,10 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 OUT=${OUT:-$ROOT/out}
 WORK=${WORK:-/var/tmp/deckos-build}
-# A folder of DeckOS packages already built (CI's package job): used instead of building them again.
+# A folder of DecKoOS packages already built (CI's package job): used instead of building them again.
 PREBUILT=${PREBUILT:-}
 # zstd level for the live system's squashfs: 15 for releases, lower for quick local test builds
-# (DeckOS Builder's "Build on this PC" uses 6: a slightly bigger ISO, compressed in a fraction of the time).
+# (DecKoOS Builder's "Build on this PC" uses 6: a slightly bigger ISO, compressed in a fraction of the time).
 SQUASHFS_LEVEL=${SQUASHFS_LEVEL:-15}
 # Display blackout fix level 1 on the live USB only, so it never blacks out mid-install. The
 # installer picks the level for the installed system from the GPU and monitors it finds.
@@ -25,7 +25,7 @@ nocomments() { grep -vE '^\s*(#|$)' "$1"; }
 # AUR apps shipped prebuilt in the on-USB [deckos] repo; the installer installs these copies.
 mapfile -t AUR_PKGS < <(nocomments "$ROOT/pkg/deckos-settings/rootfs/usr/share/deckos/packages/aur.txt" | awk '{print $1}')
 
-# On btrfs (DeckOS), the work and output folders are subvolumes of their own: snapshots of / and
+# On btrfs (DecKoOS), the work and output folders are subvolumes of their own: snapshots of / and
 # /home skip those, so they don't keep old builds (20+ GB each) alive.
 on_btrfs() { [[ $(stat -f -c %T "$1" 2>/dev/null) == btrfs ]]; }
 fresh_dir() {  # fresh_dir DIR - an empty DIR, as a subvolume when it can be
@@ -57,7 +57,7 @@ if ! grep -q '^\[cachyos\]' /etc/pacman.conf; then
 fi
 pacman -Syu --noconfirm --needed archiso git base-devel librsvg grub papirus-icon-theme cachyos-keyring
 
-# WSL building a checkout on the Windows drive (DeckOS Builder's "Build on this PC" on Windows): every
+# WSL building a checkout on the Windows drive (DecKoOS Builder's "Build on this PC" on Windows): every
 # file there reads as 777 and the drive is slow, so build from a Linux copy with git's file modes.
 if [[ $(findmnt -no FSTYPE -T "$ROOT" 2>/dev/null) =~ ^(9p|drvfs|v9fs)$ ]]; then
   step "Copying the checkout off the Windows drive"
@@ -82,12 +82,12 @@ chown -R builder: "$BUILD" "$REPO"
 as_builder() { sudo -u builder -H env PKGDEST="$REPO" "$@"; }
 
 # ------------------------------------------------------------------ packages
-step "DeckOS packages"
+step "DecKoOS packages"
 for p in deckos-files deckos-terminal deckos-editor deckos-settings deckos-theme-tmpikes deckos-installer; do
   if [[ -n $PREBUILT ]] && pkgs=$(find "$PREBUILT" -name "$p-[0-9]*.pkg.tar.zst" -print -quit) && [[ -n $pkgs ]]; then
     cp "$pkgs" "$REPO/" && echo "$p: prebuilt ${pkgs##*/}"
   elif [[ $p == deckos-files || $p == deckos-terminal || $p == deckos-editor ]]; then
-    # DeckOS Files, Terminal and Editor are compiled (Qt/KDE): their build dependencies come from the repos.
+    # DecKoOS Files, Terminal and Editor are compiled (Qt/KDE): their build dependencies come from the repos.
     as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --syncdeps --noconfirm --clean --force"
   else
     as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"
@@ -103,14 +103,14 @@ repo-add -q "$REPO/deckos.db.tar.gz" "$REPO"/*.pkg.tar.zst
 ls -lh "$REPO"
 
 # ------------------------------------------------------------------ profile
-step "Profile (releng + DeckOS)"
+step "Profile (releng + DecKoOS)"
 P=$WORK/profile
 cp -r /usr/share/archiso/configs/releng "$P"
 
 sed -i -e 's/^iso_name=.*/iso_name="deckos"/' \
        -e 's/^iso_label="ARCH_/iso_label="DECKOS_/' \
        -e 's|^iso_publisher=.*|iso_publisher="DeckOS"|' \
-       -e 's|^iso_application=.*|iso_application="DeckOS live desktop and installer"|' \
+       -e 's|^iso_application=.*|iso_application="DecKoOS live desktop and installer"|' \
        -e "s|^iso_version=.*|iso_version=\"$VERSION\"|" \
        -e "s|^airootfs_image_tool_options=.*|airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '$SQUASHFS_LEVEL' '-b' '1M')|" \
        "$P/profiledef.sh"
@@ -126,7 +126,7 @@ sed -i '/^file_permissions=(/a\
   ["/usr/local/bin/deckos-install"]="0:0:755"\
   ["/usr/local/bin/deckos-autoinstall"]="0:0:755"' "$P/profiledef.sh"
 
-# Boot menus: DeckOS titles, the CachyOS kernel, the Samsung fix from the first boot.
+# Boot menus: DecKoOS titles, the CachyOS kernel, the Samsung fix from the first boot.
 boot_cfgs=("$P/efiboot" "$P/grub" "$P/syslinux")
 rm -f "$P"/efiboot/loader/entries/*speech*
 grep -rlZ 'Arch Linux' "${boot_cfgs[@]}" | xargs -0 -r sed -i 's/Arch Linux install medium/DeckOS live/g; s/Arch Linux/DeckOS/g'
@@ -134,7 +134,7 @@ grep -rlZ 'vmlinuz-linux\|initramfs-linux' "${boot_cfgs[@]}" \
   | xargs -0 -r sed -i 's/vmlinuz-linux\b/vmlinuz-linux-cachyos/g; s/initramfs-linux\.img/initramfs-linux-cachyos.img/g'
 grep -rlZ 'archisobasedir=' "${boot_cfgs[@]}" | xargs -0 -r sed -i "/archisobasedir=/ s/[[:space:]]*\$/ $LIVE_KERNEL_PARAMS/"
 
-# Packages: releng minus the rescue/server bits, plus the DeckOS desktop.
+# Packages: releng minus the rescue/server bits, plus the DecKoOS desktop.
 grep -vxF -f <(nocomments "$ROOT/iso/packages.drop") "$P/packages.x86_64" > "$P/packages.tmp" || true
 nocomments "$ROOT/iso/packages.live" >> "$P/packages.tmp"
 sort -u "$P/packages.tmp" > "$P/packages.x86_64"
@@ -161,7 +161,7 @@ EOF
 step "Live session"
 A=$P/airootfs
 S=$A/etc/systemd/system
-# releng services DeckOS doesn't want (NetworkManager replaces networkd/iwd; no sshd, VM tools).
+# releng services DecKoOS doesn't want (NetworkManager replaces networkd/iwd; no sshd, VM tools).
 rm -f "$S"/multi-user.target.wants/{iwd,systemd-networkd,sshd,choose-mirror,hv_fcopy_daemon,hv_kvp_daemon,hv_vss_daemon,vboxservice,vmtoolsd,vmware-vmblock-fuse,livecd-talk}.service \
       "$S"/sockets.target.wants/systemd-networkd.socket \
       "$S"/network-online.target.wants/systemd-networkd-wait-online.service \

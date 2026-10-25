@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Install DeckOS (text mode)
+Name=Install DecKoOS (text mode)
 Comment=Backup installer that runs in a terminal
 Exec=konsole --hold -e sudo deckos-install
 Icon=utilities-terminal

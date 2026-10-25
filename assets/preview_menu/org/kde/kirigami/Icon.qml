@@ -1,4 +1,4 @@
-// Stand-in for Kirigami.Icon: DeckOS line icons through the preview's recolouring provider; app
+// Stand-in for Kirigami.Icon: DecKoOS line icons through the preview's recolouring provider; app
 // icons (names from the canned models) as coloured tiles with a line icon, like the mock.
 import QtQuick
 Item {

@@ -1,4 +1,4 @@
-# DeckOS Work handoff — October 24, 2026
+# DecKoOS Work handoff — October 24, 2026
 
 The user wants a dedicated local alternative to Claude/Codex coding and coworking: persistent
 project chats, files and code, terminal commands, office documents, and image generation.

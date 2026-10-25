@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=255,122,182
 
 [General]
-ColorScheme=DeckOSCrimson
-Name=DeckOS Crimson
+ColorScheme=DecKoOSCrimson
+Name=DecKoOS Crimson
 shadeSortColumn=true
 
 [KDE]

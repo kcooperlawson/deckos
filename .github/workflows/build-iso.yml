@@ -1,4 +1,4 @@
-name: Build DeckOS ISO
+name: Build DecKoOS ISO
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           bash tests/check.sh generated
 
   package:
-    # Proves the DeckOS packages (theme, icons, fonts, splash, Hub, tools, installer) build on Arch.
+    # Proves the DecKoOS packages (theme, icons, fonts, splash, Hub, tools, installer) build on Arch.
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
@@ -60,7 +60,7 @@ jobs:
           done
           files=$(pacman -Qlp /home/builder/src/pkg/deckos-settings/*.pkg.tar.zst)
           echo "$files" | grep -cE '\.(png|pf2)$'
-          echo "DeckOS folder icons: $(echo "$files" | grep -c 'usr/share/icons/DeckOS/.*\.svg$')"
+          echo "DecKoOS folder icons: $(echo "$files" | grep -c 'usr/share/icons/DeckOS/.*\.svg$')"
           echo "$files" | grep -q 'usr/share/icons/DeckOS/index.theme'
           echo "$files" | grep -q 'usr/share/sddm/themes/deckos/Main.qml'
       - uses: actions/upload-artifact@v4
@@ -72,7 +72,7 @@ jobs:
     # Whether this run builds an ISO. Installed systems get a release through the update repo, so a
     # tag only builds one when the installer or the live USB changed since the last ISO this workflow
     # actually built (not the last tag: a tag whose run was cancelled or failed built none), or when
-    # the tag or commit message says [iso]. Build ISO in DeckOS Builder (workflow_dispatch) always does.
+    # the tag or commit message says [iso]. Build ISO in DecKoOS Builder (workflow_dispatch) always does.
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -141,7 +141,7 @@ jobs:
     # Installs the new ISO onto a blank virtual disk in QEMU (OVMF, KVM), boots the installed system
     # and waits for its login screen. Fails with both serial consoles in the log and as an artifact.
     # Two disks: a partition next to an EFI partition (the usual Windows PC), and an empty disk
-    # DeckOS gets whole (its own EFI partition).
+    # DecKoOS gets whole (its own EFI partition).
     needs: iso
     runs-on: ubuntu-latest
     timeout-minutes: 150
@@ -177,7 +177,7 @@ jobs:
           retention-days: 14
 
   publish:
-    # The DeckOS testing channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal, deckos-editor and the
+    # The DecKoOS testing channel: on a version tag (v0.3.1), sign deckos-settings, deckos-files, deckos-terminal, deckos-editor and the
     # themes and publish them as a pacman repo in the "repo-testing" release. PCs on the testing channel
     # (deckos channel testing) pull from https://github.com/<owner>/<repo>/releases/download/repo-testing within minutes,
     # so failing unit tests stop the release. Stable ("repo") only changes through the "Promote to stable" workflow.

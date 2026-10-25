@@ -53,7 +53,7 @@ assert code != 0 and 'changed since it was listed' in out, out
 _, again = vm.sudo(f'sfdisk -d {gpt}')
 assert again == after, 'a refused make must not touch the disk'
 
-# an empty disk: GPT, a FAT32 EFI partition the firmware can read, DeckOS
+# an empty disk: GPT, a FAT32 EFI partition the firmware can read, DecKoOS
 _, out = vm.sudo(f'{H} make free:{empty}:disk')
 assert f'ESP={empty}1' in out and f'TARGET={empty}2' in out, out
 vm.sudo(f'sfdisk -l {empty}')

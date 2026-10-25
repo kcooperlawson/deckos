@@ -1,4 +1,4 @@
-// A DeckOS Terminal window: the tab row (tabs named after their project, the new-tab button, the
+// A DecKoOS Terminal window: the tab row (tabs named after their project, the new-tab button, the
 // workload mode strip) over the tabs' pages.
 #pragma once
 

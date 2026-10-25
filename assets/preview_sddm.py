@@ -1,4 +1,4 @@
-"""Renders the DeckOS login screen without SDDM: stand-ins for SDDM's objects (users, sessions,
+"""Renders the DecKoOS login screen without SDDM: stand-ins for SDDM's objects (users, sessions,
 keyboard, power), then a screenshot. Also writes the theme's preview.png (System Settings shows it).
     python assets/preview_sddm.py [out.png] [--failed]
 """
@@ -69,7 +69,7 @@ def main():
     sddm = Sddm()
     users = Model(["name", "realName", "icon", "needsPassword"], [["keagan", "Keagan", "", True]])
     # SDDM's order: alphabetical by file, so Gaming Mode is first and lastIndex is 0 on a first login.
-    sessions = Model(["name", "file"], [["DeckOS Gaming Mode", "deckos-gaming.desktop"],
+    sessions = Model(["name", "file"], [["DecKoOS Gaming Mode", "deckos-gaming.desktop"],
                                        ["Plasma (Wayland)", "plasma.desktop"]], last=0)
     ctx.setContextProperty("sddm", sddm)
     ctx.setContextProperty("userModel", users)

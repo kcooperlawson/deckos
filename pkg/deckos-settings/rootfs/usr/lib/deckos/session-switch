@@ -33,7 +33,7 @@ if systemctl is-active --quiet deckos-session-switch.timer deckos-session-switch
 fi
 
 mkdir -p /etc/sddm.conf.d
-printf '# One-shot session switch written by DeckOS; removed on next login.\n[Autologin]\nUser=%s\nSession=%s\nRelogin=false\n' \
+printf '# One-shot session switch written by DecKoOS; removed on next login.\n[Autologin]\nUser=%s\nSession=%s\nRelogin=false\n' \
   "$user" "$session" > "$CONF"
 # AccuracySec: timers default to 1 minute of slack, so "in 1 s" could take up to a minute, and people
 # click again. A fixed unit name makes a second schedule fail instead of stacking a second restart.

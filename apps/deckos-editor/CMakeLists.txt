@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# The DeckOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
+# The DecKoOS release (VERSION at the top of the repo) unless the PKGBUILD passes one.
 if(NOT DECKOS_VERSION)
   file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../VERSION" DECKOS_VERSION)
   string(STRIP "${DECKOS_VERSION}" DECKOS_VERSION)
@@ -22,7 +22,7 @@ list(APPEND CMAKE_MODULE_PATH ${ECM_FIND_MODULE_DIR})
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus)
 find_package(KF6 6.0 REQUIRED COMPONENTS CoreAddons Config DBusAddons SyntaxHighlighting)
 
-# The DeckOS look is DeckOS Files' (palette, line icons, chrome QSS): one copy for every app.
+# The DecKoOS look is DecKoOS Files' (palette, line icons, chrome QSS): one copy for every app.
 set(FILES_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../deckos-files/src)
 
 set(EDITOR_SOURCES
@@ -53,7 +53,7 @@ install(FILES data/deckos-editor.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/
 install(FILES data/themes/deckos.theme DESTINATION ${CMAKE_INSTALL_DATADIR}/deckos-editor/themes)
 
 # Offscreen checks of loading, saving and editing through the real classes (not built by the PKGBUILD).
-option(DECKOS_EDITOR_TESTS "Build the DeckOS Editor tests" OFF)
+option(DECKOS_EDITOR_TESTS "Build the DecKoOS Editor tests" OFF)
 if(DECKOS_EDITOR_TESTS)
   find_package(Qt6 REQUIRED COMPONENTS Test)
   add_executable(editor_test tests/editor_test.cpp ${EDITOR_SOURCES})

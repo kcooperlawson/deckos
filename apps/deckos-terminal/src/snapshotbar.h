@@ -1,4 +1,4 @@
-// Snapshot first's Undo bar. In DeckOS Terminal, the shell (snapshot-first.bash) follows a command it
+// Snapshot first's Undo bar. In DecKoOS Terminal, the shell (snapshot-first.bash) follows a command it
 // snapshotted with a private OSC, ESC ] 7766 ; deckos-snapshot=home:16 BEL, which the emulation
 // ignores; SnapshotMarker finds it in the pane's raw output and SnapshotBar offers the undo.
 #pragma once

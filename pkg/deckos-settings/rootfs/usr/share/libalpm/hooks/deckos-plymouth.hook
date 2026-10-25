@@ -4,6 +4,6 @@ Type = Path
 Target = usr/share/plymouth/themes/deckos/*
 
 [Action]
-Description = Updating the DeckOS boot splash...
+Description = Updating the DecKoOS boot splash...
 When = PostTransaction
 Exec = /usr/lib/deckos/plymouth-refresh

@@ -1,4 +1,4 @@
-"""DeckOS Bench: repeatable system and game benchmarks, with offline reports."""
+"""DecKoOS Bench: repeatable system and game benchmarks, with offline reports."""
 import argparse
 import subprocess
 import sys
@@ -32,7 +32,7 @@ def show(path, open_report=True):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command")
-    commands.add_parser("app", help="open the native DeckOS Bench application")
+    commands.add_parser("app", help="open the native DecKoOS Bench application")
     commands.add_parser("list", help="show available benchmarks and saved runs")
     for command in ("system", "games", "run"):
         sub = commands.add_parser(command)

@@ -1,4 +1,4 @@
-"""DeckOS System Doctor's window: what's wrong with this PC, in plain words, with fixes and the evidence.
+"""DecKoOS System Doctor's window: what's wrong with this PC, in plain words, with fixes and the evidence.
 
     deckos-sysdoctor
     deckos-sysdoctor --demo [--screenshot FILE]
@@ -22,7 +22,7 @@ from hub_widgets import Empty, button, icon_label, label  # noqa: E402
 DEMO = "--demo" in sys.argv
 COLORS = {sd.BAD: S.DANGER, sd.WARN: S.WARNING, sd.INFO: S.SUBTEXT}
 ICONS = {sd.BAD: "alert", sd.WARN: "alert", sd.INFO: "info"}
-OPEN_LABELS = {"deckos-gamedoctor": "Open Game Doctor", "deckos-hub": "Open in DeckOS Hub", "filelight": "See what's using space"}
+OPEN_LABELS = {"deckos-gamedoctor": "Open Game Doctor", "deckos-hub": "Open in DecKoOS Hub", "filelight": "See what's using space"}
 QSS = f"""
 QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 17pt; font-weight: 600; }}
 QLabel#evidence {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace; font-size: 8.5pt;
@@ -232,7 +232,7 @@ def demo():
 def main():
     args = sys.argv[1:]
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS System Doctor")
+    app.setApplicationName("DecKoOS System Doctor")
     app.setDesktopFileName("deckos-sysdoctor")
     app.setFont(QFont("Inter", 10))
     w = Doctor()

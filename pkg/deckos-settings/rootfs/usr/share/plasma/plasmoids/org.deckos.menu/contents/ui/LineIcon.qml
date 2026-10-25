@@ -1,4 +1,4 @@
-// A DeckOS line icon (drawn in black, recoloured here).
+// A DecKoOS line icon (drawn in black, recoloured here).
 import QtQuick
 import org.kde.kirigami as Kirigami
 

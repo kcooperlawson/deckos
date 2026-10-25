@@ -1,4 +1,4 @@
-"""DeckOS line icons: the set DeckOS Hub (and anything else DeckOS draws) uses.
+"""DecKoOS line icons: the set DecKoOS Hub (and anything else DecKoOS draws) uses.
 
 24 px grid, 1.75 px round strokes, drawn in #000 so apps can recolor them per state (the Hub
 swaps the colour in when it loads one). Same family as the brand: rounded, mechanical, a gear
@@ -86,7 +86,7 @@ ICONS = {
     "calculator": ('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7h7"/>'
                    + dot(9, 11.5) + dot(12, 11.5) + dot(15, 11.5) + dot(9, 15) + dot(12, 15) + dot(15, 15)
                    + dot(9, 18) + dot(12, 18) + dot(15, 18)),
-    # DeckOS Store
+    # DecKoOS Store
     "store": ('<path d="M5 8.5h14l-1.1 10.6a1.6 1.6 0 0 1-1.6 1.4H7.7a1.6 1.6 0 0 1-1.6-1.4z"/>'
               '<path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>'),
     "search": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
@@ -114,7 +114,7 @@ ICONS = {
                'M17 9.5v3.5M6 16v2.5M10 16v2.5M14 16v2.5M18 16v2.5"/>'),
     "temp": '<path d="M10 13.6V5.5a2 2 0 1 1 4 0v8.1a4 4 0 1 1-4 0z"/><path d="M12 9v7.5"/>',
     "power": '<path d="M13.2 3 5.8 13.2h5.6L10.6 21l7.6-10.4h-5.6z"/>',
-    # DeckOS Files
+    # DecKoOS Files
     "arrow-up": '<path d="M12 19V5M6 11l6-6 6 6"/>',
     "list": '<path d="M9 6.5h11M9 12h11M9 17.5h11"/>' + dot(4.8, 6.5, 1.1) + dot(4.8, 12, 1.1) + dot(4.8, 17.5, 1.1),
     "details": ('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10"/>'
@@ -144,7 +144,7 @@ ICONS = {
     "restore": '<path d="M4.2 12a7.8 7.8 0 1 0 2.3-5.5"/><path d="M4.2 4.2v4.3h4.3"/>',
 }
 
-# DeckOS Quick Settings (the panel popup)
+# DecKoOS Quick Settings (the panel popup)
 ICONS.update({
     "wifi": ('<path d="M2.8 9.2a13.5 13.5 0 0 1 18.4 0M5.9 12.6a9 9 0 0 1 12.2 0M9 16a4.5 4.5 0 0 1 6 0"/>'
              + dot(12, 19.2, 1.1)),
@@ -182,7 +182,7 @@ STORE_LOGO = OUT.parent / "branding/store-logo.svg"
 
 
 def store_logo():
-    """The DeckOS Store app icon: the brand tile's gradient with the store bag in white."""
+    """The DecKoOS Store app icon: the brand tile's gradient with the store bag in white."""
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">'
             '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
             '<stop offset="0" stop-color="#4C8DFF"/><stop offset="1" stop-color="#7A5CFF"/></linearGradient></defs>'
@@ -195,7 +195,7 @@ FILES_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-files/data/de
 
 
 def files_logo():
-    """The DeckOS Files app icon: the same tile with the folder in white."""
+    """The DecKoOS Files app icon: the same tile with the folder in white."""
     return store_logo().replace(ICONS["store"], ICONS["folder"])
 
 
@@ -203,7 +203,7 @@ TERMINAL_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-terminal/d
 
 
 def terminal_logo():
-    """The DeckOS Terminal app icon: the same tile with the prompt in white."""
+    """The DecKoOS Terminal app icon: the same tile with the prompt in white."""
     return store_logo().replace(ICONS["store"], ICONS["terminal"]).replace('fill="#000"', 'fill="#fff"')
 
 
@@ -211,7 +211,7 @@ EDITOR_LOGO = Path(__file__).resolve().parent.parent / "apps/deckos-editor/data/
 
 
 def editor_logo():
-    """The DeckOS Editor app icon: the same tile with the pencil in white."""
+    """The DecKoOS Editor app icon: the same tile with the pencil in white."""
     return store_logo().replace(ICONS["store"], ICONS["rename"]).replace('fill="#000"', 'fill="#fff"')
 
 
@@ -222,12 +222,12 @@ WORK_LOGO = OUT.parent / "branding/work-logo.svg"
 
 
 def hub_logo():
-    """The DeckOS Hub app icon: the same tile with the gauge, so it doesn't read as the DeckOS Menu button."""
+    """The DecKoOS Hub app icon: the same tile with the gauge, so it doesn't read as the DecKoOS Menu button."""
     return store_logo().replace(ICONS["store"], ICONS["gauge"]).replace('fill="#000"', 'fill="#fff"')
 
 
 def assistant_logo():
-    """DeckOS Assistant's app icon: the same tile with the AI sparkle."""
+    """DecKoOS Assistant's app icon: the same tile with the AI sparkle."""
     return store_logo().replace(ICONS["store"], ICONS["ai"]).replace('fill="#000"', 'fill="#fff"')
 
 

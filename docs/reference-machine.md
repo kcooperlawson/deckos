@@ -1,6 +1,6 @@
 # Reference machine
 
-DeckOS is developed and tested on this PC. Its defaults (the installer's preselected partition, the
+DecKoOS is developed and tested on this PC. Its defaults (the installer's preselected partition, the
 display fix level, Gaming Mode's resolution) come from here.
 
 | | |
@@ -10,7 +10,7 @@ display fix level, Gaming Mode's resolution) come from here.
 | **Board** | ASRock B850M-C |
 | **RAM** | 32 GB DDR5-6000 (EXPO) |
 | **Monitors** | Samsung Odyssey G70B (4K 144 Hz) + LG UltraGear |
-| **Disks** | Samsung 970 EVO Plus 250 GB (Windows EFI partition + the DeckOS partition), plus NTFS drives for Windows, games and storage |
+| **Disks** | Samsung 970 EVO Plus 250 GB (Windows EFI partition + the DecKoOS partition), plus NTFS drives for Windows, games and storage |
 | **USB** | Ventoy on the SSK stick (F: in Windows) |
 
 ## Before installing (once, on Windows)
@@ -19,14 +19,14 @@ display fix level, Gaming Mode's resolution) come from here.
 2. **BitLocker:** C:, D: and E: must not be encrypted
    (*Settings › Privacy & security › Device encryption*).
 3. **BIOS:** *Security › Secure Boot* → **Disabled**. Optional: *Advanced › AMD CBS › NBIO ›
-   GFX Configuration › iGPU* → **Disabled** (DeckOS ignores the iGPU anyway). Make sure EXPO is on.
-4. **H: will disappear from Windows.** DeckOS replaces the empty 232 GB "NVME" partition on the
+   GFX Configuration › iGPU* → **Disabled** (DecKoOS ignores the iGPU anyway). Make sure EXPO is on.
+4. **H: will disappear from Windows.** DecKoOS replaces the empty 232 GB "NVME" partition on the
    970 EVO Plus. The installer preselects it. The EFI partition on that disk is reused, not formatted.
 
 ## Installing
 
 Copy `deckos-*.iso` onto the Ventoy stick, press **F11** at power-on for the boot menu, pick the stick,
-then DeckOS. In the installer, keep the preselected **NVME** partition and the America/New_York time zone.
+then DecKoOS. In the installer, keep the preselected **NVME** partition and the America/New_York time zone.
 
 ## What you get on this machine
 

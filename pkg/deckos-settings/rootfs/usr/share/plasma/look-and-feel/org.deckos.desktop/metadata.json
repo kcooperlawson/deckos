@@ -3,7 +3,7 @@
     "KPlugin": {
         "Authors": [{ "Name": "DeckOS" }],
         "Category": "",
-        "Description": "DeckOS: deep slate, blue-violet accents",
+        "Description": "DecKoOS: deep slate, blue-violet accents",
         "Id": "org.deckos.desktop",
         "License": "MIT",
         "Name": "DeckOS",

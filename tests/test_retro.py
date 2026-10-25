@@ -1,4 +1,4 @@
-"""DeckOS Retro's scanning, BIOS handling and Steam shortcuts, on fake files and a fake Steam (never the real ones)."""
+"""DecKoOS Retro's scanning, BIOS handling and Steam shortcuts, on fake files and a fake Steam (never the real ones)."""
 import dataclasses
 import hashlib
 import importlib
@@ -139,7 +139,7 @@ class RetroTests(unittest.TestCase):
         return user
 
     def test_binary_keyvalues_round_trip_exactly(self):
-        # The layout Steam writes, with a float and a 64-bit value DeckOS doesn't edit
+        # The layout Steam writes, with a float and a 64-bit value DecKoOS doesn't edit
         data = (b'\x00shortcuts\x00\x000\x00\x02appid\x00' + struct.pack('<i', -123456) +
                 b'\x01AppName\x00Doom\x00\x01Exe\x00"/usr/bin/gzdoom"\x00\x03scale\x00' + struct.pack('<f', 1.5) +
                 b'\x07big\x00' + struct.pack('<Q', 2 ** 40) + b'\x00tags\x00\x010\x00FPS\x00\x08\x08\x08\x08')
@@ -167,7 +167,7 @@ class RetroTests(unittest.TestCase):
             self.assertEqual(entries[0], other)  # the user's own non-Steam game, untouched
             names = {e['AppName']: e for e in entries[1:]}
             self.assertEqual(set(names), {'Chrono Trigger', 'Golden Sun'})
-            self.assertEqual(names['Golden Sun']['tags'], {'0': 'DeckOS Retro', '1': 'Game Boy Advance'})
+            self.assertEqual(names['Golden Sun']['tags'], {'0': 'DecKoOS Retro', '1': 'Game Boy Advance'})
             self.assertIn(str(gba), names['Golden Sun']['LaunchOptions'])
             # Steam records play time in our entry: a second sync keeps it and adds nothing
             entries[1]['LastPlayTime'] = 1710000000

@@ -1,11 +1,11 @@
 # Maintainer: kcooperlawson
-# Optional DeckOS theme: TMpikes. Deep space, electric blue to violet, the steering-wheel TM.
-# Pick it in DeckOS Hub > Appearance (or System Settings > Global Theme). Sources and the
+# Optional DecKoOS theme: TMpikes. Deep space, electric blue to violet, the steering-wheel TM.
+# Pick it in DecKoOS Hub > Appearance (or System Settings > Global Theme). Sources and the
 # brand kit it was made from are kept outside the repo (personal/tmpikes/generate.py).
 pkgname=deckos-theme-tmpikes
 pkgver=1.1
 pkgrel=1
-pkgdesc="TMpikes theme for DeckOS: colours, wallpaper, Konsole profile and global theme"
+pkgdesc="TMpikes theme for DecKoOS: colours, wallpaper, Konsole profile and global theme"
 arch=(any)
 license=(CC-BY-SA-4.0)
 depends=(deckos-settings)

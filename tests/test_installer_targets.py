@@ -1,4 +1,4 @@
-"""deckos-install --list-targets: partitions, plus free space and empty disks DeckOS could add its own
+"""deckos-install --list-targets: partitions, plus free space and empty disks DecKoOS could add its own
 partition to. A fake lsblk describes the disks; nothing is read from or written to a real one."""
 import json
 import subprocess

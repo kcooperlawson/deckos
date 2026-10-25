@@ -1,4 +1,4 @@
-"""Generates the DeckOS brand: icon, wordmark, wallpaper, GRUB theme art, installer art.
+"""Generates the DecKoOS brand: icon, wordmark, wallpaper, GRUB theme art, installer art.
 
 Same family as Steady Downloader: deep slate surfaces, quiet 1px borders, and the
 blue→violet gradient tile with a white rounded glyph. The O in "DeckOS" is a thumbstick seen
@@ -194,28 +194,87 @@ def pad_gradient(*_unused, id_="padgrad"):
     return gradient(id_, units="userSpaceOnUse", x1="0", y1="0", x2=f"{PAD_W}", y2=f"{PAD_H}")
 
 
-def wordmark(x, baseline, size, text=TEXT, stick_fill="url(#deckos-grad)", with_stick=True, glow=None):
-    """'Deck' + thumbstick-O + 'S' in Inter Display SemiBold. Returns (svg, width, stick(cx, cy, r))."""
-    s = size / INTER.upm
-    deck, w_deck = text_path(INTER, "Deck", x, baseline, size)
-    # The emblem takes the exact box of Inter's "O" so it optically matches the caps, with a
-    # little extra room each side (a full circle reads smaller than the O's slightly squared bowl).
-    ox0, oy0, ox1, oy1 = INTER.bounds("O")
-    margin = size * 0.03
-    o_left = x + w_deck + ox0 * s + margin
-    r = (oy1 - oy0) * s / 2
-    cx = o_left + (ox1 - ox0) * s / 2
-    cy = baseline - (oy0 + oy1) / 2 * s
-    stem = size * 0.112
-    S_x = x + w_deck + INTER.advance("O") * s + 2 * margin
-    S, w_S = text_path(INTER, "S", S_x, baseline, size)
-    width = S_x + w_S - x
-    parts = [f'<path fill="{text}" d="{deck}"/>', f'<path fill="{text}" d="{S}"/>']
+# The DecKoOS wordmark: blocky letters on a 100-unit cap grid (26-unit strokes, 45-degree cuts) and the
+# "oO" as a controller, the small o a thumbstick and the O the face buttons. Letter paths take x in
+# grid units; wordmark() scales them.
+
+GRID_T = 26
+GRID_GAP = 13
+
+
+def _D(x):
+    t = GRID_T
+    return (f"M{x},0 H{x + 64} L{x + 90},26 V74 L{x + 64},100 H{x} Z "
+            f"M{x + t},{t} H{x + 58} L{x + 64},32 V68 L{x + 58},74 H{x + t} Z"), 90
+
+
+def _e(x):
+    t = GRID_T
+    return f"M{x},28 H{x + 72} V72 H{x + t} V78 H{x + 72} V100 H{x} Z M{x + t},48 H{x + 46} V56 H{x + t} Z", 72
+
+
+def _c(x):
+    return f"M{x},28 H{x + 70} V50 H{x + GRID_T} V78 H{x + 70} V100 H{x} Z", 70
+
+
+def _K(x):
+    t = GRID_T
+    return f"M{x},0 H{x + t} V100 H{x} Z M{x + t + 4},42 L{x + 60},0 H{x + 92} L{x + 52},50 L{x + 92},100 H{x + 60} L{x + t + 4},58 Z", 92
+
+
+def _S(x):
+    t = GRID_T
+    return (f"M{x + 14},0 H{x + 86} V24 H{x + t} V38 H{x + 72} L{x + 86},52 V86 L{x + 72},100 H{x} V76 H{x + 60} "
+            f"V62 H{x + 14} L{x},48 V14 Z"), 86
+
+
+STICK_GRID = (36, 64, 36)    # small o: centre x offset, centre y, radius (grid units)
+BUTTONS_GRID = (50, 50, 50)  # big O
+
+
+def stick_mark(cx, cy, r, ring, cap, hole, w):
+    """The thumbstick o: ring, dark well, raised cap tilted up."""
+    return (f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w / 2:.2f}" fill="none" stroke="{ring}" stroke-width="{w:.2f}"/>'
+            f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w:.2f}" fill="{hole}"/>'
+            f'<ellipse cx="{cx + r * 0.06:.2f}" cy="{cy - r * 0.16:.2f}" rx="{r * 0.36:.2f}" ry="{r * 0.25:.2f}" fill="{cap}"/>')
+
+
+def buttons_mark(cx, cy, r, ring, btn, hole, w, g=0.30, br=0.15):
+    """The face-button O: ring, dark well, four buttons in a diamond."""
+    return (f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w / 2:.2f}" fill="none" stroke="{ring}" stroke-width="{w:.2f}"/>'
+            f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{r - w:.2f}" fill="{hole}"/>'
+            + "".join(f'<circle cx="{cx + dx * r * g:.2f}" cy="{cy + dy * r * g:.2f}" r="{r * br:.2f}" fill="{btn}"/>'
+                      for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))))
+
+
+def wordmark(x, baseline, size, text=TEXT, stick_fill="url(#deckos-grad)", with_stick=True, glow=None, hole=BG):
+    """'DecK' + stick-o + buttons-O + 'S', cap height = size * 0.73. Returns (svg, width, stick(cx, cy, r)).
+    with_stick=False leaves the stick out (the boot splash spins it separately)."""
+    k = size * 0.73 / 100
+    top = baseline - 100 * k
+    gx, letters = 0, []
+    for f in (_D, _e, _c, _K):
+        d, w = f(gx)
+        letters.append(d)
+        gx += w + GRID_GAP
+    sx, sy, sr = gx + STICK_GRID[0], STICK_GRID[1], STICK_GRID[2]
+    gx = sx + sr + GRID_GAP * 0.8
+    bx, by, brr = gx + BUTTONS_GRID[0], BUTTONS_GRID[1], BUTTONS_GRID[2]
+    gx = bx + brr + GRID_GAP
+    d, w = _S(gx)
+    letters.append(d)
+    gx += w
+    ring_w = GRID_T * 0.62
+    pos = lambda u, v: (x + u * k, top + v * k)
+    stick_c = (*pos(sx, sy), sr * k)
+    parts = [f'<path fill="{text}" fill-rule="evenodd" transform="translate({x:.2f},{top:.2f}) scale({k:.5f})" d="{" ".join(letters)}"/>']
+    marks = buttons_mark(*pos(bx, by), brr * k, stick_fill, stick_fill, hole, ring_w * k)
     if with_stick:
-        parts.insert(1, thumbstick_svg(cx, cy, r, stick_fill, weight=stem))
-        if glow:  # neon halo under the emblem (filter id supplied by the caller's defs)
-            parts.insert(0, thumbstick_svg(cx, cy, r, stick_fill, weight=stem, extra=f'opacity="0.85" filter="url(#{glow})"'))
-    return "".join(parts), width, (cx, cy, r)
+        marks = stick_mark(*stick_c, stick_fill, stick_fill, hole, ring_w * k) + marks
+    if glow:  # soft halo under the controller (filter id supplied by the caller's defs)
+        parts.insert(0, f'<g opacity="0.7" filter="url(#{glow})">{marks}</g>')
+    parts.append(marks)
+    return "".join(parts), gx * k, stick_c
 
 
 def svg(w, h, body, defs="", vb=None):
@@ -226,28 +285,43 @@ def svg(w, h, body, defs="", vb=None):
 # ------------------------------------------------------------------ pieces
 
 def icon(size=256):
-    """The DeckOS emblem as an app tile: blue-violet squircle, white thumbstick."""
-    c = size / 2
+    """The app tile: blue-violet squircle, the white oO controller."""
+    k = size / 240
+    sr, br, w = 36 * k, 50 * k, GRID_T * 0.62 * k
+    left = (size - (2 * sr + 10 * k + 2 * br)) / 2
     body = (f'<rect width="{size}" height="{size}" rx="{size * 0.22}" fill="url(#tile)"/>'
-            + thumbstick_svg(c, c, size * 0.31, "#FFFFFF"))
-    return svg(size, size, body, gradient("tile"))
+            + stick_mark(left + sr, size / 2 + 14 * k, sr, "#FFFFFF", "#FFFFFF", "url(#tile)", w)
+            + buttons_mark(left + 2 * sr + 10 * k + br, size / 2, br, "#FFFFFF", "#FFFFFF", "url(#tile)", w))
+    return svg(size, size, body, gradient("tile", units="userSpaceOnUse", x2=f"{size}", y2=f"{size}"))
+
+
+def icon_small(size=24):
+    """16-24 px: the face-button O alone, heavier, so it still reads in a taskbar or tab."""
+    c, r = size / 2, size * 0.36
+    body = (f'<rect width="{size}" height="{size}" rx="{size * 0.22}" fill="url(#tile)"/>'
+            + buttons_mark(c, c, r, "#FFFFFF", "#FFFFFF", "url(#tile)", size * 0.13, g=0.42, br=0.20))
+    return svg(size, size, body, gradient("tile", units="userSpaceOnUse", x2=f"{size}", y2=f"{size}"))
+
+
+def wordmark_defs(stick, width):
+    return gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]:.1f}", y1=f"{stick[1] - stick[2] * 2:.1f}",
+                    x2=f"{stick[0] + stick[2] * 5:.1f}", y2=f"{stick[1] + stick[2]:.1f}")
 
 
 def wordmark_file(with_stick=True, size=200):
     pad = size * 0.12
-    frag, w, stick = wordmark(pad, pad + INTER.cap * size / INTER.upm + size * 0.04, size, with_stick=with_stick)
-    h = pad * 2 + INTER.cap * size / INTER.upm + size * 0.08
-    defs = gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]:.1f}", y1=f"{stick[1] - stick[2]:.1f}",
-                    x2=f"{stick[0] + stick[2]:.1f}", y2=f"{stick[1] + stick[2]:.1f}")
-    return svg(round(w + pad * 2), round(h), frag, defs), stick, (w + pad * 2, h)
+    cap = size * 0.73
+    frag, w, stick = wordmark(pad, pad + cap, size, with_stick=with_stick)
+    h = pad * 2 + cap
+    return svg(round(w + pad * 2), round(h), frag, wordmark_defs(stick, w)), stick, (w + pad * 2, h)
 
 
-def stick_file(r_px, weight):
-    """The emblem alone, centred, for the boot splash to spin (the cap then circles the gate)."""
+def stick_file(r_px, weight=None):
+    """The thumbstick o alone, centred, for the boot splash to spin (the cap then circles the well)."""
     size = r_px * 2 + 4
     c = size / 2
-    defs = gradient("g", units="userSpaceOnUse", x1=f"{c - r_px}", y1=f"{c - r_px}", x2=f"{c + r_px}", y2=f"{c + r_px}")
-    return svg(round(size), round(size), thumbstick_svg(c, c, r_px, "url(#g)", weight=weight), defs)
+    defs = gradient("deckos-grad", units="userSpaceOnUse", x1=f"{c - r_px}", y1=f"{c - r_px * 2}", x2=f"{c + r_px * 5}", y2=f"{c + r_px}")
+    return svg(round(size), round(size), stick_mark(c, c, r_px, "url(#deckos-grad)", "url(#deckos-grad)", BG, GRID_T * 0.62 * r_px / 36), defs)
 
 
 def backdrop(w, h, glow_a=(0.18, 0.92), glow_b=(0.86, 0.12)):
@@ -352,8 +426,7 @@ def grub_background(w=1920, h=1080):
     x = (w - ww) / 2
     baseline = h * 0.25
     frag, ww, stick = wordmark(x, baseline, size, glow="glow")
-    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]}", y1=f"{stick[1] - stick[2]}",
-                     x2=f"{stick[0] + stick[2]}", y2=f"{stick[1] + stick[2]}") + glow_filter("glow", 14)
+    defs += wordmark_defs(stick, ww) + glow_filter("glow", 14)
     defs += (f'<linearGradient id="streak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{GRAD_A}" stop-opacity="0"/>'
              f'<stop offset="0.7" stop-color="{GRAD_A}"/><stop offset="1" stop-color="{GRAD_B}"/></linearGradient>')
     body += streaks(w, h, w / 3840, count=5, seed=3)
@@ -385,8 +458,7 @@ def installer_welcome(w=900, h=260):
     defs, body = backdrop(w, h, glow_a=(0.2, 1.0), glow_b=(0.9, 0.0))
     frag, ww, stick = wordmark(0, 0, 96)
     frag, ww, stick = wordmark((w - ww) / 2, h * 0.62, 96, glow="glow")
-    defs += gradient("deckos-grad", units="userSpaceOnUse", x1=f"{stick[0] - stick[2]}", y1=f"{stick[1] - stick[2]}",
-                     x2=f"{stick[0] + stick[2]}", y2=f"{stick[1] + stick[2]}") + glow_filter("glow", 12)
+    defs += wordmark_defs(stick, ww) + glow_filter("glow", 12)
     return svg(w, h, f'<rect width="{w}" height="{h}" rx="14" fill="{BG}"/>' + body + frag, defs)
 
 
@@ -444,9 +516,10 @@ def main():
     wm_bare, _, _ = wordmark_file(with_stick=False)
     files = {
         "logo.svg": icon(),
+        "logo-small.svg": icon_small(),
         "wordmark.svg": wm,
         "wordmark-bare.svg": wm_bare,
-        "stick.svg": stick_file(wm_stick[2], 200 * 0.112),
+        "stick.svg": stick_file(wm_stick[2]),
         "wallpaper.svg": wallpaper(),
         "grub-background.svg": grub_background(),
         "installer-welcome.svg": installer_welcome(),
@@ -471,7 +544,7 @@ def main():
         + files[n].replace("<svg ", '<svg style="width:100%;height:auto;display:block" ', 1) + "</div></figure>"
         for n, wd in show)
     (HERE / "preview.html").write_text(
-        '<!doctype html><meta charset="utf-8"><title>DeckOS brand preview</title>'
+        '<!doctype html><meta charset="utf-8"><title>DecKoOS brand preview</title>'
         f'<style>body{{background:{BG};color:{SUBTEXT};font:13px sans-serif;margin:16px;display:flex;flex-wrap:wrap;'
         f'gap:18px;align-items:flex-start}}figure{{margin:0}}figure div{{border:1px solid {BORDER}}}</style>' + cells,
         encoding="utf-8")

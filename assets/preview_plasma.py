@@ -1,6 +1,6 @@
-"""Preview of the DeckOS Plasma style without Plasma: draws the theme's 9-slice frames the way
+"""Preview of the DecKoOS Plasma style without Plasma: draws the theme's 9-slice frames the way
 Plasma does (corners at their own size, edges and centre stretched, shadows outside) on the
-DeckOS wallpaper, as a dock, a popup and a tooltip.
+DecKoOS wallpaper, as a dock, a popup and a tooltip.
     python assets/preview_plasma.py [out.png]
 """
 import sys
@@ -76,7 +76,7 @@ def main():
     c = draw_frame(p, dialog, pop)
     p.setPen(QColor("#8C94A6"))
     p.drawText(QRectF(c.x() + 6, c.y() + 4, 300, 20), "APPLICATIONS")
-    for i, (n, t) in enumerate((("gaming", "Steam"), ("ai", "DeckOS Hub"), ("terminal", "Konsole"),
+    for i, (n, t) in enumerate((("gaming", "Steam"), ("ai", "DecKoOS Hub"), ("terminal", "Konsole"),
                                 ("folder", "Dolphin"), ("code", "VS Code"), ("display", "System Settings"))):
         yy = c.y() + 36 + i * 50
         if i == 1:
@@ -91,7 +91,7 @@ def main():
     tt = QRectF(830, 760, 150, 40)
     tc = draw_frame(p, tip, tt)
     p.setPen(QColor("#E8EAF0"))
-    p.drawText(tc, Qt.AlignCenter, "DeckOS Hub")
+    p.drawText(tc, Qt.AlignCenter, "DecKoOS Hub")
     p.end()
     img.save(out)
     print(f"-> {out}")

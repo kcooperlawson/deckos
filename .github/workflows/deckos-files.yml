@@ -1,6 +1,6 @@
-name: DeckOS Files
+name: DecKoOS Files
 
-# Builds DeckOS Files in an Arch container and screenshots it offscreen (--demo --screenshot), so
+# Builds DecKoOS Files in an Arch container and screenshots it offscreen (--demo --screenshot), so
 # the app can be checked from any OS. The screenshots are the deckos-files-screenshots artifact.
 on:
   workflow_dispatch:

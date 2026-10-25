@@ -1,5 +1,5 @@
 [Unit]
-Description=DeckOS Game Doctor: offers help when a game closes right after starting
+Description=DecKoOS Game Doctor: offers help when a game closes right after starting
 
 [Service]
 ExecStart=/usr/bin/python3 /usr/lib/deckos/gamedoctor/gamedoctor_watch.py

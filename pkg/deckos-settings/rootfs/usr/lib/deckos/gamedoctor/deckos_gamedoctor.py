@@ -1,4 +1,4 @@
-"""DeckOS Game Doctor's window: a game that closed right after starting, what went wrong, and fixes.
+"""DecKoOS Game Doctor's window: a game that closed right after starting, what went wrong, and fixes.
 
     deckos-gamedoctor                  the most recent game that closed within 45 s of starting
     deckos-gamedoctor --appid 284160   that game's most recent launch
@@ -80,7 +80,7 @@ class FixButton(QWidget):
     def confirm(self):
         return QMessageBox.question(self, "Close Steam for a moment?",
                                     "Steam keeps this setting in files it rewrites when it closes, so it has to "
-                                    "close while DeckOS changes it. It reopens straight after.") == QMessageBox.Yes
+                                    "close while DecKoOS changes it. It reopens straight after.") == QMessageBox.Yes
 
     def toggle(self):
         if DEMO:
@@ -241,7 +241,7 @@ def demo_case():
 def main():
     args = sys.argv[1:]
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Game Doctor")
+    app.setApplicationName("DecKoOS Game Doctor")
     app.setDesktopFileName("deckos-gamedoctor")
     app.setFont(QFont("Inter", 10))
     if DEMO:

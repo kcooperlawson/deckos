@@ -1,24 +1,24 @@
 # Maintainer: kcooperlawson
 # Local package: everything it installs lives next to this file (rootfs/, kdeglobals.base).
 pkgname=deckos-settings
-# The DeckOS release (VERSION at the top of the repo), so a release is one number to bump.
+# The DecKoOS release (VERSION at the top of the repo), so a release is one number to bump.
 pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
 pkgver=${pkgver:-0.3.1}
 pkgrel=1
-pkgdesc="DeckOS branding, theme, Hub, hardware fixes and the deckos tool"
+pkgdesc="DecKoOS branding, theme, Hub, hardware fixes and the deckos tool"
 arch=(any)
 license=(MIT)
 depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit kdialog konsole
          grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib playerctl
          papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal deckos-editor ripgrep
-         github-cli  # DeckOS Builder
-         7zip fio vkmark  # DeckOS Bench's CPU, disk and graphics tests
+         github-cli  # DecKoOS Builder
+         7zip fio vkmark  # DecKoOS Bench's CPU, disk and graphics tests
          hdparm)  # cachyos-settings' hard-drive udev rule runs it; installs from before 0.6 lack it
 makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
             'lact: GPU clock/fan control GUI'
-            'gcc: DeckOS Bench memory benchmark (compiled on first use)'
-            'uv: DeckOS Work local document and image runtime setup')
+            'gcc: DecKoOS Bench memory benchmark (compiled on first use)'
+            'uv: DecKoOS Work local document and image runtime setup')
 backup=(etc/deckos/display.conf
         etc/deckos/gaming.conf
         etc/pacman.d/deckos-repo
@@ -41,7 +41,7 @@ package() {
   local b=$pkgdir/usr/share/deckos/branding
   local fonts=$pkgdir/usr/share/fonts/deckos
 
-  # The DeckOS release (VERSION at the top of the repo): os-release, the Hub, deckos doctor.
+  # The DecKoOS release (VERSION at the top of the repo): os-release, the Hub, deckos doctor.
   tr -d '[:space:]' < "$src/../../VERSION" > "$pkgdir/usr/share/deckos/version" 2>/dev/null \
     || echo rolling > "$pkgdir/usr/share/deckos/version"
 
@@ -54,9 +54,9 @@ package() {
   rsvg-convert -w 960 -h 540 "$b/wallpaper.svg" -o "$pkgdir/usr/share/wallpapers/DeckOS/contents/screenshot.png"
   rsvg-convert -w 1920 -h 1080 "$b/wallpaper.svg" -o "$b/wallpaper-1920.png"
 
-  # DeckOS icon theme: DeckOS' own app and file type icons (scalable/, from assets/icon_theme.py,
+  # DecKoOS icon theme: DecKoOS' own app and file type icons (scalable/, from assets/icon_theme.py,
   # already in rootfs), every places icon that uses Papirus' folder blue (folders, home, desktop...)
-  # recoloured to the DeckOS blue, a violet-leaning back tab and navy symbols, and the rest from Papirus-Dark.
+  # recoloured to the DecKoOS blue, a violet-leaning back tab and navy symbols, and the rest from Papirus-Dark.
   local it=$pkgdir/usr/share/icons/DeckOS dirs=() d sz hits
   for d in /usr/share/icons/Papirus-Dark/*/places; do
     sz=$(basename "$(dirname "$d")")
@@ -69,9 +69,9 @@ package() {
     sed -i 's/#5294e2/#4c8dff/gI; s/#4877b1/#4a5fe0/gI; s/#1d344f/#16234d/gI' "$it/$sz/places/"*.svg
     dirs+=("$sz/places")
   done
-  [[ ${#dirs[@]} -gt 0 ]] || { echo "papirus-icon-theme is needed to build the DeckOS icons" >&2; return 1; }
+  [[ ${#dirs[@]} -gt 0 ]] || { echo "papirus-icon-theme is needed to build the DecKoOS icons" >&2; return 1; }
   {
-    printf '[Icon Theme]\nName=DeckOS\nComment=DeckOS app and file icons, with Papirus Dark and folders in the DeckOS blue\n'
+    printf '[Icon Theme]\nName=DeckOS\nComment=DecKoOS app and file icons, with Papirus Dark and folders in the DecKoOS blue\n'
     printf 'Inherits=Papirus-Dark,breeze-dark,hicolor\nDirectories=scalable/apps,scalable/mimetypes,%s\n' "$(IFS=,; echo "${dirs[*]}")"
     printf '\n[scalable/apps]\nContext=Applications\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
     printf '\n[scalable/mimetypes]\nContext=MimeTypes\nSize=64\nMinSize=16\nMaxSize=512\nType=Scalable\n'
@@ -81,8 +81,8 @@ package() {
     done
   } > "$it/index.theme"
 
-  # Theme packs (assets/themes.py): every wallpaper in every palette, and the DeckOS icons with
-  # folders in each theme's colour, made from Papirus-Dark the same way as the DeckOS ones above.
+  # Theme packs (assets/themes.py): every wallpaper in every palette, and the DecKoOS icons with
+  # folders in each theme's colour, made from Papirus-Dark the same way as the DecKoOS ones above.
   local svgw name
   for svgw in "$pkgdir"/usr/share/deckos/wallpapers/*.svg; do
     name=$(basename "$svgw" .svg)
@@ -101,11 +101,11 @@ package() {
       cp "$it/$d/"*.svg "$vit/$d/"
       sed -i "s/#4c8dff/$folder/gI; s/#4a5fe0/$back/gI; s/#16234d/$symbol/gI" "$vit/$d/"*.svg
     done
-    sed -e "s/^Name=DeckOS$/Name=DeckOS $vname/" -e "s/^Comment=.*/Comment=Papirus Dark with $vname folders/" \
+    sed -e "s/^Name=DeckOS$/Name=DecKoOS $vname/" -e "s/^Comment=.*/Comment=Papirus Dark with $vname folders/" \
       "$it/index.theme" > "$vit/index.theme"
     # the light theme's other icons come from Papirus' light set
     [[ $vid != DeckOS-Paper ]] || sed -i 's/^Inherits=Papirus-Dark,breeze-dark,/Inherits=Papirus,breeze,/' "$vit/index.theme"
-    # the app and file type icons live once, in DeckOS: the colour variants inherit them
+    # the app and file type icons live once, in DecKoOS: the colour variants inherit them
     sed -i 's/^Inherits=/Inherits=DeckOS,/; s/^Directories=scalable\/apps,scalable\/mimetypes,/Directories=/' "$vit/index.theme"
   done < "$pkgdir/usr/share/deckos/themes/icon-variants.tsv"
 
@@ -113,12 +113,14 @@ package() {
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos.svg"
   for s in 16 24 32 48 64 128 256; do
     install -d "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps"
-    rsvg-convert -w "$s" -h "$s" "$b/logo.svg" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos.png"
+    # 16-24 px take the single-button mark: two circles blur together that small
+    local src=$b/logo.svg; ((s <= 24)) && src=$b/logo-small.svg
+    rsvg-convert -w "$s" -h "$s" "$src" -o "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/deckos.png"
   done
   rsvg-convert -w 256 -h 256 "$b/logo.svg" -o "$b/logo-256.png"
   install -Dm644 "$b/logo.svg" "$pkgdir/usr/share/pixmaps/deckos.svg"
 
-  # DeckOS Store, Hub and Assistant app icons.
+  # DecKoOS Store, Hub and Assistant app icons.
   local app
   for app in store hub assistant bench work; do
     install -Dm644 "$b/$app-logo.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/deckos-$app.svg"
@@ -147,11 +149,11 @@ package() {
     rsvg-convert "$piece" -o "$gt/$(basename "${piece%.svg}").png"
   done
   for s in 16 22; do
-    grub-mkfont -n "DeckOS Sans" -s "$s" -o "$gt/deckos-sans-$s.pf2" "$fonts/InterDisplay-Medium.otf"
+    grub-mkfont -n "DecKoOS Sans" -s "$s" -o "$gt/deckos-sans-$s.pf2" "$fonts/InterDisplay-Medium.otf"
   done
-  grub-mkfont -n "DeckOS Sans Strong" -s 22 -o "$gt/deckos-sans-strong-22.pf2" "$fonts/InterDisplay-SemiBold.otf"
+  grub-mkfont -n "DecKoOS Sans Strong" -s 22 -o "$gt/deckos-sans-strong-22.pf2" "$fonts/InterDisplay-SemiBold.otf"
 
-  # System-wide KDE defaults = base settings + the DeckOS color groups.
+  # System-wide KDE defaults = base settings + the DecKoOS color groups.
   {
     cat "$src/kdeglobals.base"
     echo

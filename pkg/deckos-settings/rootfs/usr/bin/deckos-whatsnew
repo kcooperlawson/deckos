@@ -7,7 +7,7 @@ if [ "${1:-}" = --autostart ] || [ "${1:-}" = --if-new ]; then
   latest=$(ls /usr/share/deckos/releases/*.toml 2>/dev/null | sed 's|.*/||; s|\.toml$||' | sort -V | tail -n 1)
   [ -n "$latest" ] || exit 0
   if [ ! -e "$conf/whatsnew-seen" ] && [ ! -e "$conf/welcome-done" ]; then
-    # a new user: DeckOS Welcome shows them around instead; this release counts as seen
+    # a new user: DecKoOS Welcome shows them around instead; this release counts as seen
     mkdir -p "$conf" && echo "$latest" > "$conf/whatsnew-seen"
     exit 0
   fi

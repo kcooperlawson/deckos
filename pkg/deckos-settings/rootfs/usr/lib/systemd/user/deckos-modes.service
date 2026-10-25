@@ -1,5 +1,5 @@
 [Unit]
-Description=DeckOS workload modes: free the graphics card and CPU while a game runs
+Description=DecKoOS workload modes: free the graphics card and CPU while a game runs
 
 [Service]
 ExecStart=/usr/bin/deckos mode watch

@@ -1,8 +1,8 @@
-"""DeckOS theme packs: colour schemes, wallpapers, icon colours, global themes and desktop layouts.
+"""DecKoOS theme packs: colour schemes, wallpapers, icon colours, global themes and desktop layouts.
 
-Every theme is the DeckOS look in another palette: its own colour scheme (DeckOS.colors with the
+Every theme is the DecKoOS look in another palette: its own colour scheme (DeckOS.colors with the
 palette swapped in), accent, folder colour and wallpapers, plus four wallpaper designs in every
-palette. Layouts are Plasma layout templates DeckOS Hub applies (deckos layout set NAME).
+palette. Layouts are Plasma layout templates DecKoOS Hub applies (deckos layout set NAME).
 Output is committed into pkg/deckos-settings; the PKGBUILD renders the PNGs and the icon variants.
     python assets/themes.py
 """
@@ -65,11 +65,11 @@ THEMES = [
      palette("#130C0E", "#FF4D5E", "#FF7AB6"), ("#ff4d5e", "#d63447", "#4d1219"), "deckos"),
     ("graphite", "Graphite", "Neutral greys, a quiet silver accent",
      palette("#111214", "#AAB3C2", "#D7DCE5"), ("#8e98a8", "#6f7888", "#23272e"), "deckos"),
-    ("paper", "Paper", "A light theme: soft white with the DeckOS blue",
+    ("paper", "Paper", "A light theme: soft white with the DecKoOS blue",
      palette("#F4F5F8", "#3D6FE0", "#7A5CFF", light=True), ("#3d6fe0", "#2f56b8", "#dfe7ff"), "default"),
 ]
-# The DeckOS theme itself, for its extra wallpaper designs (its colour scheme and icons already exist).
-DECKOS = ("deckos", "DeckOS", "", {**BASE, "light": False}, None, "deckos")
+# The DecKoOS theme itself, for its extra wallpaper designs (its colour scheme and icons already exist).
+DECKOS = ("deckos", "DecKoOS", "", {**BASE, "light": False}, None, "deckos")
 MOTIFS = ["orbit", "streaks", "plates", "waves"]
 MOTIF_NAMES = {"orbit": "Orbit", "streaks": "Streaks", "plates": "Plates", "waves": "Waves"}
 
@@ -207,7 +207,7 @@ DESIGNS = {"orbit": orbit, "streaks": streaks, "plates": plates, "waves": waves}
 
 
 def wallpaper_name(theme_name, motif):
-    return f"DeckOS {theme_name} {MOTIF_NAMES[motif]}" if theme_name != "DeckOS" else f"DeckOS {MOTIF_NAMES[motif]}"
+    return f"DecKoOS {theme_name} {MOTIF_NAMES[motif]}" if theme_name != "DecKoOS" else f"DecKoOS {MOTIF_NAMES[motif]}"
 
 
 def wallpaper_id(theme_id, motif):
@@ -219,7 +219,7 @@ def wallpaper_id(theme_id, motif):
 def look_and_feel(tid, name, desc, pal, style):
     meta = {"KPackageStructure": "Plasma/LookAndFeel",
             "KPlugin": {"Authors": [{"Name": "DeckOS"}], "Category": "", "Description": desc, "Id": f"org.deckos.{tid}",
-                        "License": "MIT", "Name": f"DeckOS {name}" if not name.startswith("DeckOS") else name,
+                        "License": "MIT", "Name": f"DecKoOS {name}" if not name.startswith("DecKoOS") else name,
                         "Version": "1.0"},
             "X-Plasma-APIVersion": "2"}
     a = pal["accent"]
@@ -241,7 +241,7 @@ TRAY_HIDDEN = ["org.kde.plasma.networkmanagement", "org.kde.plasma.volume", "org
 LAUNCHERS = ["preferred://filemanager", "applications:org.deckos.terminal.desktop", "preferred://browser",
              "applications:steam.desktop", "applications:deckos-hub.desktop"]
 
-JS_HELPERS = f"""// Shared by the DeckOS layouts (assets/themes.py writes them).
+JS_HELPERS = f"""// Shared by the DecKoOS layouts (assets/themes.py writes them).
 function deckosMenu(panel) {{
     var menu = panel.addWidget("org.deckos.menu");
     menu.currentConfigGroup = ["General"];
@@ -268,7 +268,7 @@ function deckosClock(panel, oneLine) {{
 """
 
 LAYOUTS = [
-    ("dock", "Dock", "One floating dock in the middle: apps, Quick Settings, the clock (the DeckOS default)",
+    ("dock", "Dock", "One floating dock in the middle: apps, Quick Settings, the clock (the DecKoOS default)",
      """var panel = new Panel;
 panel.location = "bottom";
 panel.height = 2 * Math.floor(gridUnit * 2.6 / 2);
@@ -385,7 +385,7 @@ def main():
     variants = []
     for seed_base, (tid, name, desc, pal, folders, style) in enumerate([DECKOS] + THEMES):
         if tid != "deckos":
-            write(ROOT / f"color-schemes/DeckOS{name.split()[0]}.colors", color_scheme(pal, f"DeckOS {name.split()[0]}"))
+            write(ROOT / f"color-schemes/DeckOS{name.split()[0]}.colors", color_scheme(pal, f"DecKoOS {name.split()[0]}"))
             meta, defaults = look_and_feel(tid, name, desc, pal, style)
             write(ROOT / f"plasma/look-and-feel/org.deckos.{tid}/metadata.json", meta)
             write(ROOT / f"plasma/look-and-feel/org.deckos.{tid}/contents/defaults", defaults)
@@ -395,7 +395,7 @@ def main():
             write(ROOT / f"deckos/wallpapers/{wid}.svg", DESIGNS[motif](pal, seed_base * 10 + i))
             write(ROOT / f"wallpapers/{wid}/metadata.json", json.dumps(
                 {"KPlugin": {"Authors": [{"Name": "DeckOS"}], "Id": wid, "License": "MIT",
-                             "Name": wallpaper_name(name.split()[0] if tid != "deckos" else "DeckOS", motif)}}, indent=4) + "\n")
+                             "Name": wallpaper_name(name.split()[0] if tid != "deckos" else "DecKoOS", motif)}}, indent=4) + "\n")
             walls += 1
     # main, back tab, symbol: what the PKGBUILD recolours Papirus' folder blue to, per icon theme
     write(ROOT / "deckos/themes/icon-variants.tsv", "# id\tname\tfolder\tback\tsymbol\n" + "\n".join(variants) + "\n")
@@ -404,7 +404,7 @@ def main():
         write(base / "metadata.json", json.dumps(
             {"KPackageStructure": "Plasma/LayoutTemplate",
              "KPlugin": {"Authors": [{"Name": "DeckOS"}], "Description": desc, "Id": f"org.deckos.layout.{key}",
-                         "License": "MIT", "Name": f"DeckOS: {name}"},
+                         "License": "MIT", "Name": f"DecKoOS: {name}"},
              "X-Plasma-ContainmentCategories": ["panel"], "X-Plasma-Shell": "org.kde.plasma.desktop"}, indent=4) + "\n")
         write(base / "contents/layout.js", JS_HELPERS + "\n" + js)
         write(ROOT / f"deckos/layouts/{key}.svg", layout_preview(key))

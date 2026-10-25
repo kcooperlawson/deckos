@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Load DeckOS configuration inside the user service, where gamescope actually runs.
+# Load DecKoOS configuration inside the user service, where gamescope actually runs.
 set -Eeuo pipefail
 set -a
 for f in /usr/lib/environment.d/60-deckos-gaming.conf /etc/deckos/gaming.conf \

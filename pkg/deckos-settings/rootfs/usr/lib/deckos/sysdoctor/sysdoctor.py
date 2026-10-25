@@ -1,4 +1,4 @@
-"""DeckOS System Doctor: what's wrong with this PC right now, in plain words, with fixes.
+"""DecKoOS System Doctor: what's wrong with this PC right now, in plain words, with fixes.
 
 Plain Python, no Qt (deckos_sysdoctor.py is the window). It only reads: the journal, systemd, disks.
 Fixes are commands the window runs when the person presses them (pkexec for root ones). Every check
@@ -34,7 +34,7 @@ class Finding:
     text: str
     evidence: list = field(default_factory=list)  # log lines it's based on
     fixes: list = field(default_factory=list)
-    open: list = field(default_factory=list)  # a DeckOS app that handles it: [cmd, args...]
+    open: list = field(default_factory=list)  # a DecKoOS app that handles it: [cmd, args...]
 
 
 def run(cmd, timeout=30):
@@ -73,7 +73,7 @@ def failed_units():
 
 UNIT_NAMES = {"drkonqi-coredump-pickup": "KDE's crash reporter", "NetworkManager": "Networking",
               "bluetooth": "Bluetooth", "sddm": "The login screen", "ollama": "Local AI (Ollama)",
-              "deckos-gpu": "DeckOS's graphics card tuning", "deckos-display": "DeckOS's display fix",
+              "deckos-gpu": "DecKoOS's graphics card tuning", "deckos-display": "DecKoOS's display fix",
               "snapper-timeline": "Hourly home snapshots", "docker": "Docker", "plasma-plasmashell": "The desktop panel"}
 
 
@@ -90,15 +90,15 @@ PROGRAMS = [
     (r"gamescope", "Gaming Mode (gamescope)", "gaming"),
     (r"steamwebhelper|steam\b|/Steam/", "Steam", "steam"),
     (r"\.exe\b|proton|wine", "A game", "game"),
-    (r"deckos_movein", "DeckOS Move In", "deckos"),
-    (r"deckos_hub|hub_pages", "DeckOS Hub", "deckos"),
-    (r"deckos_store", "DeckOS Store", "deckos"),
-    (r"deckos_assistant", "DeckOS Assistant", "deckos"),
-    (r"work_app", "DeckOS Work", "deckos"),
-    (r"bench_app|deckos_bench", "DeckOS Bench", "deckos"),
-    (r"deckos-terminal", "DeckOS Terminal", "deckos"),
-    (r"deckos-editor", "DeckOS Editor", "deckos"),
-    (r"deckos-files", "DeckOS Files", "deckos"),
+    (r"deckos_movein", "DecKoOS Move In", "deckos"),
+    (r"deckos_hub|hub_pages", "DecKoOS Hub", "deckos"),
+    (r"deckos_store", "DecKoOS Store", "deckos"),
+    (r"deckos_assistant", "DecKoOS Assistant", "deckos"),
+    (r"work_app", "DecKoOS Work", "deckos"),
+    (r"bench_app|deckos_bench", "DecKoOS Bench", "deckos"),
+    (r"deckos-terminal", "DecKoOS Terminal", "deckos"),
+    (r"deckos-editor", "DecKoOS Editor", "deckos"),
+    (r"deckos-files", "DecKoOS Files", "deckos"),
     (r"firefox", "Firefox", "app"),
     (r"spotify", "Spotify", "app"),
     (r"discord", "Discord", "app"),
@@ -193,7 +193,7 @@ def crashes():
         elif kind == "gaming":
             f.text += " Gaming Mode's log (~/.local/state/deckos/gaming-session.log) says what happened around it."
         elif kind == "deckos":
-            f.text += " That's a DeckOS app: please report it with the evidence below (the line shows how it was run)."
+            f.text += " That's a DecKoOS app: please report it with the evidence below (the line shows how it was run)."
         elif kind == "desktop":
             f.fixes.append(Fix("Restart the desktop panel", ["systemctl", "--user", "restart", "plasma-plasmashell.service"]))
         out.append(f)
@@ -306,7 +306,7 @@ def gpu_resets():
     return [Finding("gpu:reset", BAD, "The graphics card reset itself",
                     f"{len(lines)} times this start-up the graphics driver gave up on the card and restarted it; the "
                     "screen goes black for a moment and programs on it can crash. Undervolting or overclocking is the "
-                    "usual cause; on Radeon cards, DeckOS's display fix levels help with blackouts.",
+                    "usual cause; on Radeon cards, DecKoOS's display fix levels help with blackouts.",
                     evidence=lines[:6], open=["deckos-hub", "--page", "display"])]
 
 
@@ -365,6 +365,6 @@ def explain(finding, model=None):
     if not model:
         return "No local model to ask (sudo deckos ai setup). The finding above comes from known patterns."
     text = "\n".join(finding.evidence) or finding.text
-    return summarize(text, f"On a DeckOS (Arch Linux, KDE Plasma) PC: {finding.title}. {finding.text} In 2-4 plain "
+    return summarize(text, f"On a DecKoOS (Arch Linux, KDE Plasma) PC: {finding.title}. {finding.text} In 2-4 plain "
                      "sentences for a non-expert: what this means, whether it matters, and the most likely cause. "
                      "Quote the one line that shows it. Don't suggest commands.", model)

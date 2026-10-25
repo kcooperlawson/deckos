@@ -9,7 +9,7 @@
         "Description": "The dock hides until you move the mouse to the bottom edge: all screen, no clutter",
         "Id": "org.deckos.layout.minimal",
         "License": "MIT",
-        "Name": "DeckOS: Minimal"
+        "Name": "DecKoOS: Minimal"
     },
     "X-Plasma-ContainmentCategories": [
         "panel"

@@ -6,12 +6,12 @@
             }
         ],
         "Category": "System Information",
-        "Description": "Live graphs of your processor, graphics card, memory and network, in the DeckOS look",
+        "Description": "Live graphs of your processor, graphics card, memory and network, in the DecKoOS look",
         "EnabledByDefault": true,
         "Icon": "deckos",
         "Id": "org.deckos.perfgraphs",
         "License": "MIT",
-        "Name": "DeckOS Performance",
+        "Name": "DecKoOS Performance",
         "Version": "1.0",
         "Website": "https://github.com/kcooperlawson/deckos"
     },

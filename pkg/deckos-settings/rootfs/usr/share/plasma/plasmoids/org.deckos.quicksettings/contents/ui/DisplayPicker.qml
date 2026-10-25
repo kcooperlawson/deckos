@@ -96,7 +96,7 @@ ColumnLayout {
     DeckButton {
         flat: true
         icon: "external"
-        text: "More in DeckOS Hub"
+        text: "More in DecKoOS Hub"
         Layout.alignment: Qt.AlignRight
         onClicked: picker.backend.openHub("display", false)
     }

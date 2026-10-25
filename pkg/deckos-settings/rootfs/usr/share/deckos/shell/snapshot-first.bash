@@ -1,6 +1,6 @@
-# DeckOS "Snapshot first": before a command that deletes a lot, bash offers a snapshot to undo it with.
+# DecKoOS "Snapshot first": before a command that deletes a lot, bash offers a snapshot to undo it with.
 # Sourced from /etc/bash.bashrc (deckos-settings adds the line) in interactive shells, so it works in
-# DeckOS Terminal, Konsole or any other terminal. It asks before:
+# DecKoOS Terminal, Konsole or any other terminal. It asks before:
 #   - rm -r of your home folder, a folder right inside it (~/Documents, ~/.config) or a whole git
 #     repository: a /home snapshot, undone with `deckos restore N` (no restart);
 #   - sudo rm -r of system files: a / snapshot, undone with `sudo deckos undo N` and a restart.
@@ -81,7 +81,7 @@ __deckos_sf_debug() {
            --description "$line" --userdata deckos=snapshot-first 2>/dev/null); then
     __deckos_sf_pending="$config $n" __deckos_sf_line=$line
   else
-    printf "DeckOS: couldn't take a snapshot (snapper -c %s). Run it anyway? [y/N] " "$config" >/dev/tty
+    printf "DecKoOS: couldn't take a snapshot (snapper -c %s). Run it anyway? [y/N] " "$config" >/dev/tty
     read -r -n1 answer </dev/tty; printf '\n' >/dev/tty
     [[ $answer == [yY] ]] || { kill -INT $$; return 0; }
   fi
@@ -94,8 +94,8 @@ __deckos_sf_prompt() {
     __deckos_sf_pending=
     snapper -c "$config" create --type post --pre-number "$n" --cleanup-algorithm number \
       --description "$__deckos_sf_line" --userdata deckos=snapshot-first >/dev/null 2>&1 || true
-    # DeckOS Terminal shows an Undo bar for this (other terminals ignore an OSC they don't know, but
-    # only DeckOS Terminal gets it anyway)
+    # DecKoOS Terminal shows an Undo bar for this (other terminals ignore an OSC they don't know, but
+    # only DecKoOS Terminal gets it anyway)
     [[ ${TERM_PROGRAM:-} != deckos-terminal ]] || printf '\e]7766;deckos-snapshot=%s:%s\a' "$config" "$n"
     if [[ $config == home ]]; then
       printf '\e[38;2;76;141;255mDeckOS:\e[0m snapshot #%s is from before that. Undo it: deckos restore %s\n' "$n" "$n"

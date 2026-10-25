@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-test.sh ISO [DIR] - CI's install test. Installs DeckOS from ISO onto a blank virtual disk
+# install-test.sh ISO [DIR] - CI's install test. Installs DecKoOS from ISO onto a blank virtual disk
 # in QEMU (OVMF, KVM when the machine has it), then boots the installed system and waits for its
 # desktop target. Both serial consoles are saved in DIR (default install-test/): install.log, boot.log.
 #
@@ -15,7 +15,7 @@ INSTALL_MIN=${INSTALL_MIN:-100}
 BOOT_MIN=${BOOT_MIN:-15}
 # Optional software groups to install (comma-separated); none keeps the test quick.
 GROUPS_=${DECKOS_TEST_GROUPS:-}
-# partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DeckOS gets whole.
+# partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DecKoOS gets whole.
 LAYOUT=${DECKOS_TEST_LAYOUT:-partition}
 
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
@@ -47,12 +47,12 @@ fi
 cp "$VARS" "$W/vars.fd"  # the installed system's boot entry lands here, for the second boot
 
 # ------------------------------------------------------------------ blank disk
-# An EFI partition and an empty partition for DeckOS: the installer installs onto a partition, next
+# An EFI partition and an empty partition for DecKoOS: the installer installs onto a partition, next
 # to whatever shares the disk, and reuses the EFI partition it finds.
 rm -f "$W/disk.img"
 if [[ $LAYOUT == empty ]]; then
   # 80 GB (sparse): the installer offers empty disks of 64 GB and up
-  step "Blank 80 GB disk, no partitions: DeckOS gets the whole disk"
+  step "Blank 80 GB disk, no partitions: DecKoOS gets the whole disk"
   truncate -s 80G "$W/disk.img"
 else
   truncate -s 40G "$W/disk.img"

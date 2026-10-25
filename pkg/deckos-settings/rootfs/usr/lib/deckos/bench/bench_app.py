@@ -1,4 +1,4 @@
-"""Native DeckOS Bench: run benchmarks, explore history, and compare saved results."""
+"""Native DecKoOS Bench: run benchmarks, explore history, and compare saved results."""
 import argparse
 import json
 import os
@@ -226,7 +226,7 @@ class Bench(QWidget):
         self.busy = self.saved = False
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setWindowTitle('DeckOS Bench' + (' — Demo' if demo else ''))
+        self.setWindowTitle('DecKoOS Bench' + (' — Demo' if demo else ''))
         self.setWindowIcon(QIcon.fromTheme('deckos-bench', QIcon(str(HERE.parents[2] / 'share/deckos/branding/bench-logo.svg'))))
         self.resize(1280, 880)
         self.setMinimumSize(1050, 720)
@@ -239,7 +239,7 @@ class Bench(QWidget):
         sl = QVBoxLayout(side)
         sl.setContentsMargins(18, 23, 18, 20)
         sl.setSpacing(6)
-        brand = row(icon_label('gauge', S.P.accent, 30), plain('DeckOS Bench', 'brand'), stretch=False)
+        brand = row(icon_label('gauge', S.P.accent, 30), plain('DecKoOS Bench', 'brand'), stretch=False)
         sl.addWidget(brand)
         sl.addWidget(plain('Your performance lab', 'muted'))
         sl.addSpacing(30)
@@ -917,7 +917,7 @@ def main():
         args.demo = True
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
     app = QApplication(sys.argv)
-    app.setApplicationName('DeckOS Bench')
+    app.setApplicationName('DecKoOS Bench')
     app.setDesktopFileName('deckos-bench')
     for font in (HERE.parents[2] / 'share/fonts/deckos').glob('*.otf'):
         QFontDatabase.addApplicationFont(str(font))

@@ -1,4 +1,4 @@
-"""Renders DeckOS Performance without Plasma: the real plasmoid QML on stand-ins
+"""Renders DecKoOS Performance without Plasma: the real plasmoid QML on stand-ins
 (assets/preview_perfgraphs/: plasmoid, and a sensor module that plays a minute of desktop, then a game
 starting at 22 s and a download every 17 s) over the wallpaper. Also catches QML errors.
     python assets/preview_perfgraphs.py [out.png]

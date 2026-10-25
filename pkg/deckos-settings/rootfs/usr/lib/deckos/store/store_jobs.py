@@ -116,7 +116,7 @@ class Jobs(QObject):
         else:
             tail = " ".join(job.log[-6:]).lower()
             if "failed retrieving file" in tail or "404" in tail:
-                msg = "The package files moved on the mirrors: update DeckOS first, then try again."
+                msg = "The package files moved on the mirrors: update DecKoOS first, then try again."
             elif "conflict" in tail:
                 msg = f"{job.title} conflicts with something installed; see details."
             else:

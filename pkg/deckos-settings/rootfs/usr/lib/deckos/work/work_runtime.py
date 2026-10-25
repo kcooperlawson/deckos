@@ -1,4 +1,4 @@
-"""Optional local artifact runtime, isolated from DeckOS's system Python."""
+"""Optional local artifact runtime, isolated from DecKoOS's system Python."""
 import argparse
 import json
 import os

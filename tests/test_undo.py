@@ -1,5 +1,5 @@
 """deckos undo: which updates it offers, and what it calls them. The real deckos tool with a fake snapper.
-The swap itself (btrfs, a restart) needs an installed DeckOS: it was checked in a VM, see docs/undo.md."""
+The swap itself (btrfs, a restart) needs an installed DecKoOS: it was checked in a VM, see docs/undo.md."""
 import json
 import subprocess
 import sys
@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'pkg/deckos-settings/rootfs/usr/lib/deckos/hub'))
 
 SNAPSHOTS = {"root": [
     {"number": 0, "type": "single", "description": "current"},
-    {"number": 1, "type": "single", "date": "2026-10-24 19:02:11", "description": "Fresh DeckOS install"},
+    {"number": 1, "type": "single", "date": "2026-10-24 19:02:11", "description": "Fresh DecKoOS install"},
     {"number": 14, "type": "pre", "date": "2026-10-26 21:40:03", "description": "pacman -Syu"},
     {"number": 15, "type": "post", "pre-number": 14, "date": "2026-10-26 21:43:57", "description": "linux mesa steam"},
     {"number": 16, "type": "pre", "date": "2026-10-28 18:12:30", "description": "pacman -S lutris"},

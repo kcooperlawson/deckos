@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # publish-repo RELEASE DIR - replace the pacman repo in GitHub release RELEASE with the signed packages
-# and database in DIR. Used by "Build DeckOS ISO" (tags go to repo-testing) and "Promote to stable"
+# and database in DIR. Used by "Build DecKoOS ISO" (tags go to repo-testing) and "Promote to stable"
 # (repo-testing's contents go to repo). Needs gh with GH_TOKEN and GH_REPO.
 set -Eeuo pipefail
 
@@ -13,10 +13,10 @@ for f in deckos.db deckos.db.sig deckos.files deckos.files.sig; do
 done
 
 case $release in
-  repo-testing) title="DeckOS package repo (testing)"
-    notes="pacman repository for DeckOS's own packages, updated on every version tag. PCs on the testing channel (deckos channel testing) update from here. Not a download for people." ;;
-  *) title="DeckOS package repo"
-    notes="pacman repository for DeckOS's own packages: the stable channel, updated when a tested release is promoted. Not a download for people." ;;
+  repo-testing) title="DecKoOS package repo (testing)"
+    notes="pacman repository for DecKoOS's own packages, updated on every version tag. PCs on the testing channel (deckos channel testing) update from here. Not a download for people." ;;
+  *) title="DecKoOS package repo"
+    notes="pacman repository for DecKoOS's own packages: the stable channel, updated when a tested release is promoted. Not a download for people." ;;
 esac
 gh release view "$release" >/dev/null 2>&1 || gh release create "$release" --prerelease --title "$title" --notes "$notes"
 

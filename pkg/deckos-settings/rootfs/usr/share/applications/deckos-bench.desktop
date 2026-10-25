@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DeckOS Bench
+Name=DecKoOS Bench
 GenericName=Performance benchmarks
 Comment=Run benchmarks, explore performance history and compare results
 Exec=deckos-bench

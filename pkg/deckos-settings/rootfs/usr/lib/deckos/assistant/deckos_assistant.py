@@ -1,4 +1,4 @@
-"""DeckOS Assistant, the chat box: Meta+Space anywhere, or from DeckOS Menu, Quick Settings, the Hub.
+"""DecKoOS Assistant, the chat box: Meta+Space anywhere, or from DecKoOS Menu, Quick Settings, the Hub.
 
 Same assistant as `deckos ask` (assistant.py), in a window: the conversation, a line for each thing it
 looks at, and a card with the exact command and Do it / Not now whenever it wants to change something.
@@ -6,7 +6,7 @@ One process: launching it again shows or hides the window (Meta+Space toggles), 
 stays until "New chat".
 
     deckos-assistant                     show or hide the chat box
-    deckos-assistant --ask "TEXT"        show it and ask TEXT (DeckOS Menu's "Ask DeckOS Assistant")
+    deckos-assistant --ask "TEXT"        show it and ask TEXT (DecKoOS Menu's "Ask DecKoOS Assistant")
     deckos-assistant --demo [--screenshot DIR]
 """
 import os
@@ -184,7 +184,7 @@ class Composer(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(10, 6, 6, 6)
         self.edit = QPlainTextEdit()
-        self.edit.setPlaceholderText("Ask DeckOS to install or set up anything…")
+        self.edit.setPlaceholderText("Ask DecKoOS to install or set up anything…")
         self.edit.setFixedHeight(46)
         self.edit.installEventFilter(self)
         lay.addWidget(self.edit, 1)
@@ -213,7 +213,7 @@ class Composer(QFrame):
 
     def set_busy(self, busy):
         self.send.setEnabled(not busy)
-        self.edit.setPlaceholderText("Working on it…" if busy else "Ask DeckOS to install or set up anything…")
+        self.edit.setPlaceholderText("Working on it…" if busy else "Ask DecKoOS to install or set up anything…")
 
 
 class ChatBox(QWidget):
@@ -222,7 +222,7 @@ class ChatBox(QWidget):
     def __init__(self):
         super().__init__(None, Qt.Window | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowTitle("DeckOS Assistant")
+        self.setWindowTitle("DecKoOS Assistant")
         self.resize(660, 600)
         self.setStyleSheet(S.qss() + QSS_EXTRA)
 
@@ -249,11 +249,11 @@ class ChatBox(QWidget):
         h.addWidget(tile)
         names = QVBoxLayout()
         names.setSpacing(0)
-        names.addWidget(label("DeckOS Assistant", "cardTitle"))
+        names.addWidget(label("DecKoOS Assistant", "cardTitle"))
         self.model_label = label("", "muted")
         names.addWidget(self.model_label)
         h.addLayout(names, 1)
-        for name, tip, slot in (("code", "Bigger job? Open DeckOS Work for code, documents and images",
+        for name, tip, slot in (("code", "Bigger job? Open DecKoOS Work for code, documents and images",
                                  lambda: QProcess.startDetached("deckos-work", [])),
                                 ("refresh", "New chat", self.new_chat), ("close", "Hide (Esc). Meta+Space brings it back", self.hide)):
             b = QPushButton()
@@ -510,7 +510,7 @@ def main():
     message = ("ask:" + ask_text) if ask_text else "toggle"
 
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Assistant")
+    app.setApplicationName("DecKoOS Assistant")
     app.setDesktopFileName("org.deckos.assistant")
     app.setFont(QFont("Inter", 10))
     app.setQuitOnLastWindowClosed(False)  # hidden keeps the conversation; Meta+Space brings it back

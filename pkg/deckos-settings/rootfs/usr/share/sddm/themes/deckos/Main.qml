@@ -1,7 +1,7 @@
-// DeckOS login screen (SDDM, Qt 6 greeter).
-// A clock over the DeckOS wallpaper, one login card, and a bottom bar for the session, keyboard
+// DecKoOS login screen (SDDM, Qt 6 greeter).
+// A clock over the DecKoOS wallpaper, one login card, and a bottom bar for the session, keyboard
 // layout and power. Plain QtQuick (no Controls styling), so it looks the same whatever style the
-// greeter runs with. Colours match DeckOS Hub: slate surfaces, 1px borders, accent gradient.
+// greeter runs with. Colours match DecKoOS Hub: slate surfaces, 1px borders, accent gradient.
 import QtQuick
 import QtQuick.Effects
 

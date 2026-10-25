@@ -1,4 +1,4 @@
-// "PINNED", "RECENT"…: the small spaced capitals DeckOS uses over every group.
+// "PINNED", "RECENT"…: the small spaced capitals DecKoOS uses over every group.
 import QtQuick
 
 Text {

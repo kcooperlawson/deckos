@@ -1,4 +1,4 @@
-// DeckOS Taskbar: pinned apps and open windows in the DeckOS look (slate tiles, accent gradient
+// DecKoOS Taskbar: pinned apps and open windows in the DecKoOS look (slate tiles, accent gradient
 // pill under the active app, dots for open windows). Windows, launchers, grouping and ordering
 // all come from Plasma's own TasksModel, as the stock task managers get them; this file only
 // decides how they look and what a click does. Event-driven: no timers, nothing polled.

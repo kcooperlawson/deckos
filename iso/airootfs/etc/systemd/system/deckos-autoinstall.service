@@ -1,6 +1,6 @@
 # CI's install test only: see /usr/local/bin/deckos-autoinstall for the checks that keep it off real PCs.
 [Unit]
-Description=DeckOS unattended install (CI test VMs only)
+Description=DecKoOS unattended install (CI test VMs only)
 ConditionKernelCommandLine=deckos.autoinstall
 Wants=network-online.target
 After=network-online.target NetworkManager.service

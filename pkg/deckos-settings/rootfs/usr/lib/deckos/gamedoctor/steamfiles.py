@@ -3,7 +3,7 @@
 Steam keeps per-game launch options in userdata/<id>/config/localconfig.vdf and per-game compatibility
 tools (Proton versions) in config/config.vdf, in Valve's KeyValues text format. Steam rewrites both when
 it exits, so anything written here must be written while Steam is closed (steam_running(), close_steam()).
-Every write keeps the previous file as NAME.deckos-bak. Non-Steam games ("shortcuts", which DeckOS Retro
+Every write keeps the previous file as NAME.deckos-bak. Non-Steam games ("shortcuts", which DecKoOS Retro
 adds) live in userdata/<id>/config/shortcuts.vdf, in Valve's binary KeyValues: load_binary/dump_binary.
 """
 import os
@@ -112,7 +112,7 @@ def _ci(d, *keys):
 # ------------------------------------------------------------------ binary KeyValues (shortcuts.vdf)
 
 class Raw:
-    """A binary KeyValues value of a type DeckOS doesn't edit (floats, 64-bit ints...): kept byte for byte."""
+    """A binary KeyValues value of a type DecKoOS doesn't edit (floats, 64-bit ints...): kept byte for byte."""
 
     def __init__(self, kind, data):
         self.kind, self.data = kind, data

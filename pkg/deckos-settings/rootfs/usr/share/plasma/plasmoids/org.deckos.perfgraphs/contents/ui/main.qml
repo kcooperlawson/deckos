@@ -1,5 +1,5 @@
-// DeckOS Performance: live graphs of the processor, graphics card, memory and network on the desktop,
-// in the DeckOS look (a bolted slate plate, accent area charts). Values come from ksystemstats through
+// DecKoOS Performance: live graphs of the processor, graphics card, memory and network on the desktop,
+// in the DecKoOS look (a bolted slate plate, accent area charts). Values come from ksystemstats through
 // Plasma's sensor module, the same source as Plasma's System Monitor widgets, at one update a second;
 // the widget runs nothing of its own. Each graph has its own scale: no shared or second axis.
 import QtQuick
@@ -95,7 +95,7 @@ PlasmoidItem {
         color: Qt.rgba(0.09, 0.10, 0.13, 0.92)
         border.color: deckPerf.border
 
-        // Bolted plates: a screw head in each corner (the DeckOS motif)
+        // Bolted plates: a screw head in each corner (the DecKoOS motif)
         Repeater {
             model: 4
             Rectangle {

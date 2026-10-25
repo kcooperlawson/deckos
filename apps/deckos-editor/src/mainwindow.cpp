@@ -79,7 +79,7 @@ QPlainTextEdit { selection-background-color: #26385E; }
 MainWindow::MainWindow(KSyntaxHighlighting::Repository *repo, bool restore)
     : m_repo(repo)
 {
-    setWindowTitle(QStringLiteral("DeckOS Editor"));
+    setWindowTitle(QStringLiteral("DecKoOS Editor"));
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-editor")));
     setAcceptDrops(true);
     resize(1100, 740);
@@ -495,7 +495,7 @@ void MainWindow::tabChanged()
     m_banner->hide();
     if (current()) {
         current()->setFocus();
-        setWindowTitle(current()->title() + QStringLiteral(" — DeckOS Editor"));
+        setWindowTitle(current()->title() + QStringLiteral(" — DecKoOS Editor"));
         checkDisk(current());
     }
     updateStatus();
@@ -509,7 +509,7 @@ void MainWindow::updateTab(EditorView *view)
     // A dot before the name for unsaved changes (the close button stays where it is)
     m_tabs->setTabText(i, (view->isModified() ? QStringLiteral("● ") : QString()) + view->title());
     if (view == current())
-        setWindowTitle((view->isModified() ? QStringLiteral("● ") : QString()) + view->title() + QStringLiteral(" — DeckOS Editor"));
+        setWindowTitle((view->isModified() ? QStringLiteral("● ") : QString()) + view->title() + QStringLiteral(" — DecKoOS Editor"));
 }
 
 void MainWindow::updateStatus()

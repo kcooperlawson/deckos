@@ -1,4 +1,4 @@
-"""deckos dev-install: never replaces a newer DeckOS with an older checkout by accident. Runs the real deckos
+"""deckos dev-install: never replaces a newer DecKoOS with an older checkout by accident. Runs the real deckos
 tool with fake pacman, makepkg and vercmp; nothing is built or installed."""
 import os
 import subprocess

@@ -1,4 +1,4 @@
-// DeckOS workload modes as they change: the org.deckos.Mode.Changed signal that `deckos mode watch`
+// DecKoOS workload modes as they change: the org.deckos.Mode.Changed signal that `deckos mode watch`
 // emits on the session bus, with the details from $XDG_RUNTIME_DIR/deckos-mode. Nothing polls.
 #pragma once
 

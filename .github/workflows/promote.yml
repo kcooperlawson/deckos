@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "DeckOS version to promote (the one now on testing, e.g. 0.5.6)"
+        description: "DecKoOS version to promote (the one now on testing, e.g. 0.5.6)"
         required: true
 
 jobs:
@@ -39,4 +39,4 @@ jobs:
             || { echo "::error::testing has deckos-settings $on_testing, not $VERSION: promote what's there, or tag again"; exit 1; }
       - name: Publish to the "repo" release
         run: bash .github/publish-repo repo testing
-      - run: echo "DeckOS $VERSION is on stable" >> "$GITHUB_STEP_SUMMARY"
+      - run: echo "DecKoOS $VERSION is on stable" >> "$GITHUB_STEP_SUMMARY"

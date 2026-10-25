@@ -1,4 +1,4 @@
-"""Renders DeckOS Hub on any OS from its --demo data (no system calls): assets/hub-preview.png for
+"""Renders DecKoOS Hub on any OS from its --demo data (no system calls): assets/hub-preview.png for
 Home, plus one image per page with --all.
 
     python -m pip install PySide6-Essentials && python assets/preview_hub.py [--all]

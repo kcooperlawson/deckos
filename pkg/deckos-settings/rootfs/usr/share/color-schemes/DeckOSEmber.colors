@@ -131,8 +131,8 @@ ForegroundPositive=61,214,140
 ForegroundVisited=255,178,36
 
 [General]
-ColorScheme=DeckOSEmber
-Name=DeckOS Ember
+ColorScheme=DecKoOSEmber
+Name=DecKoOS Ember
 shadeSortColumn=true
 
 [KDE]

@@ -27,12 +27,12 @@ def frame(word, stick, t):
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.setOpacity(min(1.0, t / FADE_IN, (SECONDS - t) / FADE_OUT))
-    s = min(W * 0.4, 804) / 804  # same scale as Splash.qml
-    wx, wy = (W - 804 * s) / 2, (H - 210 * s) / 2
-    word.render(p, QRectF(wx, wy, 804 * s, 210 * s))
-    p.translate(wx + 571.0 * s, wy + 104.8 * s)
+    s = min(W * 0.4, 1008) / 1008  # same scale as Splash.qml
+    wx, wy = (W - 1008 * s) / 2, (H - 194 * s) / 2
+    word.render(p, QRectF(wx, wy, 1008 * s, 194 * s))
+    p.translate(wx + 625.5 * s, wy + 117.4 * s)
     p.rotate(-360 * (t % TURN) / TURN)
-    stick.render(p, QRectF(-77 * s, -77 * s, 154 * s, 154 * s))
+    stick.render(p, QRectF(-54.5 * s, -54.5 * s, 109 * s, 109 * s))
     p.end()
     return img
 

@@ -1,8 +1,8 @@
-# DeckOS Editor
+# DecKoOS Editor
 
-The DeckOS text editor (`apps/deckos-editor/`, package `deckos-editor`): C++/Qt 6 on `QPlainTextEdit`
-with KDE's KSyntaxHighlighting (the definitions Kate uses, 300+ languages) in a DeckOS theme
-(`data/themes/deckos.theme`). It shares DeckOS Files' `style.cpp` for the look, like DeckOS Terminal.
+The DecKoOS text editor (`apps/deckos-editor/`, package `deckos-editor`): C++/Qt 6 on `QPlainTextEdit`
+with KDE's KSyntaxHighlighting (the definitions Kate uses, 300+ languages) in a DecKoOS theme
+(`data/themes/deckos.theme`). It shares DecKoOS Files' `style.cpp` for the look, like DecKoOS Terminal.
 
 ## What it does
 
@@ -30,4 +30,4 @@ with KDE's KSyntaxHighlighting (the definitions Kate uses, 300+ languages) in a 
 
 `cmake -S apps/deckos-editor -B build -DDECKOS_EDITOR_TESTS=ON && cmake --build build --target editor_test`, then
 `QT_QPA_PLATFORM=offscreen build/editor_test`. `deckos-editor --demo --screenshot DIR` writes three screenshots;
-the "DeckOS Editor" workflow runs both on every push that touches it.
+the "DecKoOS Editor" workflow runs both on every push that touches it.

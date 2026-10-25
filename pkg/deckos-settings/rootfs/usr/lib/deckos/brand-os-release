@@ -1,11 +1,11 @@
 #!/bin/sh
 # /etc/os-release takes precedence over /usr/lib/os-release (owned by the filesystem package),
-# so DeckOS brands the system without fighting pacman. Re-run by a hook after filesystem updates.
+# so DecKoOS brands the system without fighting pacman. Re-run by a hook after filesystem updates.
 version=$(cat /usr/share/deckos/version 2>/dev/null || echo rolling)
 rm -f /etc/os-release
 cat > /etc/os-release <<EOF
 NAME="DeckOS"
-PRETTY_NAME="DeckOS $version"
+PRETTY_NAME="DecKoOS $version"
 VERSION="$version"
 VERSION_ID=$version
 ID=deckos

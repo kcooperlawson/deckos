@@ -48,7 +48,7 @@ RowLayout {
                 if (!b.modeAuto)
                     return "Games share the graphics card with Ollama and Docker";
                 if (!row.gaming)
-                    return "When a game starts, DeckOS frees graphics memory and pauses background work";
+                    return "When a game starts, DecKoOS frees graphics memory and pauses background work";
                 const parts = [];
                 if (b.modeVram > 0)
                     parts.push((b.modeVram / 1e9).toFixed(1) + " GB of graphics memory freed");

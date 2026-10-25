@@ -1,4 +1,4 @@
-"""What DeckOS Welcome reads on top of the Hub's hub_system: screens and their scale, colour
+"""What DecKoOS Welcome reads on top of the Hub's hub_system: screens and their scale, colour
 schemes, controllers, Spotify, and whether this user has seen the welcome.
 
 Apart from the welcome's own files in ~/.config/deckos it only reads, like hub_system; changes
@@ -75,7 +75,7 @@ def screens():
 # ------------------------------------------------------------------ colours
 
 def color_schemes():
-    """(dark scheme, light scheme or None): DeckOS is dark; light uses a DeckOS light scheme if one
+    """(dark scheme, light scheme or None): DecKoOS is dark; light uses a DecKoOS light scheme if one
     is installed, else Breeze Light."""
     have = {f.stem for d in sysinfo._dirs("color-schemes") if d.is_dir() for f in d.glob("*.colors")}
     if DEMO:

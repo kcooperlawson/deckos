@@ -6,12 +6,12 @@ Installing only the framework is insufficient: its `CLIENTCMD` is otherwise empt
 The Steam package is already in the optional gaming AUR list; a failed AUR installation must
 not make the Hub or session switch report Gaming Mode as ready.
 
-DeckOS uses the upstream Steam session, with these local integration points:
+DecKoOS uses the upstream Steam session, with these local integration points:
 
 - `gaming-session --check` validates required commands and the installed Steam profile without
   starting or stopping anything. The root `session-switch` helper checks it before arming
   autologin or closing the desktop. The Hub also checks it before offering the switch dialog.
-- `gaming-service` loads DeckOS's system and per-user gaming settings in the systemd service's
+- `gaming-service` loads DecKoOS's system and per-user gaming settings in the systemd service's
   process, rather than in an unrelated SDDM shell. `ADAPTIVE_SYNC=0` is unset, since upstream tests
   for a nonempty value and would otherwise enable VRR.
 - The Steam service drop-in conflicts with the previous Plasma workspace, stops the entire

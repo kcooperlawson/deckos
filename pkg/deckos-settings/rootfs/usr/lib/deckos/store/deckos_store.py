@@ -1,9 +1,9 @@
-"""DeckOS Store: apps from the Arch/CachyOS repos, Flathub and the AUR, in one place.
+"""DecKoOS Store: apps from the Arch/CachyOS repos, Flathub and the AUR, in one place.
 
-Same look as DeckOS Hub: slate surfaces, 1px borders, Inter, DeckOS line icons, accent gradient.
+Same look as DecKoOS Hub: slate surfaces, 1px borders, Inter, DecKoOS line icons, accent gradient.
     deckos-store            the real thing
     deckos-store --demo     canned apps and fake installs, for working on the UI anywhere
-    deckos-store --app ID   open on one app (its AppStream id; DeckOS Menu's "Get it")
+    deckos-store --app ID   open on one app (its AppStream id; DecKoOS Menu's "Get it")
     deckos-store --search TERM   open on a search
 """
 import sys
@@ -28,7 +28,7 @@ from store_widgets import AppCard, AppIcon, CardGrid, Screenshots, badge  # noqa
 
 
 def ask_assistant(question):
-    """DeckOS Assistant's chat box, asked about something that went wrong (the Hub has the same)."""
+    """DecKoOS Assistant's chat box, asked about something that went wrong (the Hub has the same)."""
     if not DEMO:
         QProcess.startDetached("deckos-assistant", ["--ask", question[-6000:]])
 
@@ -58,7 +58,7 @@ class Store(QWidget):
         super().__init__()
         self.setObjectName("root")
         self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setWindowTitle("DeckOS Store")
+        self.setWindowTitle("DecKoOS Store")
         self.setWindowIcon(QIcon.fromTheme("deckos-store", QIcon(str(S.BRANDING / "store-logo.svg"))))
         self.resize(1200, 820)
         self.setMinimumSize(960, 640)
@@ -104,7 +104,7 @@ class Store(QWidget):
         brand.addWidget(logo)
         names = QVBoxLayout()
         names.setSpacing(0)
-        names.addWidget(label("DeckOS Store", "brand", wrap=False))
+        names.addWidget(label("DecKoOS Store", "brand", wrap=False))
         names.addWidget(label("Apps for your PC", "muted", wrap=False))
         brand.addLayout(names, 1)
         sl.addLayout(brand)
@@ -280,7 +280,7 @@ class Store(QWidget):
         hv = QVBoxLayout(hero)
         hv.setContentsMargins(28, 24, 28, 24)
         hv.setSpacing(4)
-        t = label("Apps for DeckOS", "title")
+        t = label("Apps for DecKoOS", "title")
         t.setStyleSheet("color: white; background: transparent;")
         hv.addWidget(t)
         s = label("Games, creative tools and everything else, from Arch and CachyOS, Flathub and the AUR. "
@@ -533,8 +533,8 @@ class Store(QWidget):
                 self.actions.addWidget(label(f"From {SOURCE_NAMES[available[0]]}", "muted", wrap=False))
         if job and job.ok is False and job.text != "Cancelled.":
             log = "\n".join(job.log[-40:])
-            self.actions.addWidget(button("Ask DeckOS Assistant", slot=lambda: ask_assistant(
-                f"On DeckOS, {'installing' if job.action == 'install' else 'removing'} {app.name} from "
+            self.actions.addWidget(button("Ask DecKoOS Assistant", slot=lambda: ask_assistant(
+                f"On DecKoOS, {'installing' if job.action == 'install' else 'removing'} {app.name} from "
                 f"{SOURCE_NAMES.get(job.source, job.source)} failed. Explain what went wrong and how to fix it. "
                 f"The end of its output:\n{log}"), icon="ai"))
         self.actions.addStretch(1)
@@ -590,7 +590,7 @@ class Store(QWidget):
 
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("DeckOS Store")
+    app.setApplicationName("DecKoOS Store")
     app.setDesktopFileName("deckos-store")
     app.setFont(QFont("Inter", 10))
     app.setStyleSheet(S.qss())

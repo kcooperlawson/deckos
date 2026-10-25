@@ -1,4 +1,4 @@
-"""Renders DeckOS Taskbar without Plasma: the real plasmoid QML on stand-ins for Plasma's modules
+"""Renders DecKoOS Taskbar without Plasma: the real plasmoid QML on stand-ins for Plasma's modules
 (assets/preview_taskbar/) and canned apps, as the dock (icons) and the Classic panel (titles) over the
 wallpaper. Also catches QML errors.
     python assets/preview_taskbar.py [out.png]
@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SHARE = ROOT / "pkg/deckos-settings/rootfs/usr/share"
 MAIN = SHARE / "plasma/plasmoids/org.deckos.taskbar/contents/ui/main.qml"
 
-# icon: (DeckOS line icon, tile colour)
+# icon: (DecKoOS line icon, tile colour)
 ICONS = {"dolphin": ("folder", "#2563EB"), "terminal": ("terminal", "#1F2937"), "firefox": ("globe", "#C2410C"),
          "steam": ("gaming", "#1E3A5F"), "deckos": ("system", "#4C5BD4"), "code": ("code", "#1D6FB8"),
          "discord": ("music", "#5865F2"), "kate": ("doc", "#0E7490")}
@@ -29,11 +29,11 @@ def app(name, icon, title="", launcher=False, active=False, windows=1, attention
                 LauncherUrlWithoutIcon=f"applications:{icon}.desktop")
 
 
-APPS = [app("Files", "dolphin", "Downloads — DeckOS Files"),
-        app("DeckOS Terminal", "terminal", launcher=True),
-        app("Firefox", "firefox", "DeckOS 0.7.0 release — Mozilla Firefox", active=True, windows=3),
+APPS = [app("Files", "dolphin", "Downloads — DecKoOS Files"),
+        app("DecKoOS Terminal", "terminal", launcher=True),
+        app("Firefox", "firefox", "DecKoOS 0.7.0 release — Mozilla Firefox", active=True, windows=3),
         app("Steam", "steam"),
-        app("DeckOS Hub", "deckos", launcher=True),
+        app("DecKoOS Hub", "deckos", launcher=True),
         app("VS Code", "code", "Task.qml — deckos — Visual Studio Code", windows=2),
         app("Discord", "discord", "#general — Discord", attention=True),
         app("Kate", "kate", starting=True)]

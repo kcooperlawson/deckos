@@ -1,4 +1,4 @@
-// Right-click menu for an app or file, drawn inside the popup in the DeckOS look: pin/unpin and
+// Right-click menu for an app or file, drawn inside the popup in the DecKoOS look: pin/unpin and
 // move for pinned apps, then whatever the kicker model offers (jump-list actions, add to panel or
 // desktop, edit, open folder…). Clicking outside, Escape or picking an entry closes it.
 import QtQuick
