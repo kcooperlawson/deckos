@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "gamedoctor"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pulse"))
 import steamfiles  # noqa: E402
 
 HOME = Path(os.environ.get("DECKOS_RETRO_HOME") or Path.home())
@@ -372,4 +373,11 @@ def sync_steam(games, user=None):
                     removed += 1
         added += sum(1 for o in wanted if o not in ours)
         steamfiles.write_shortcuts(u, keep + list(wanted.values()))
+    if added or removed:
+        try:
+            import pulse
+            pulse.emit("retro", f"Steam: {added} retro game{'s' if added != 1 else ''} added"
+                       + (f", {removed} removed" if removed else ""), app="DecKoOS Retro")
+        except (ImportError, OSError, ValueError):
+            pass
     return added, removed

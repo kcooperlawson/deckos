@@ -135,6 +135,9 @@ class HomePage(Page):
                                  button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
                                         icon="star", tip="DecKoOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
+        from hub_timeline import RecentCard  # here: hub_timeline builds on this module's Page
+        self.recent = RecentCard(self.hub)
+        self.lay.addWidget(self.recent)
 
     def tick(self, stats):
         for key, tile in self.tiles.items():

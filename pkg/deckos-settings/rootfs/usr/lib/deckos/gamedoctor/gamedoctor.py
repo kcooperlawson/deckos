@@ -9,11 +9,18 @@ import json
 import os
 import re
 import shutil
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 import steamfiles as sf
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pulse"))
+try:
+    import pulse  # the DecKoOS timeline (absent in an old checkout's tests: then fixes just aren't recorded)
+except ImportError:
+    pulse = None
 
 QUICK = 45  # seconds: a game gone sooner than this didn't really start
 LOGS = sf.STEAM / "logs"
@@ -219,7 +226,21 @@ def _add_launch_env(appid, env):
 
 
 def apply(fix, appid, confirm_steam_restart=lambda: True):
-    """Applies a fix; returns a sentence for the window. Raises with a reason if it can't."""
+    """Applies a fix; returns a sentence for the window. Raises with a reason if it can't. The fix goes in the
+    DecKoOS timeline, with an undo unless it's one that can't be (checking files)."""
+    done = _apply(fix, appid, confirm_steam_restart)
+    if pulse:
+        game = (sf.game(appid) or {}).get("name", f"App {appid}")
+        title = describe_fix(fix, appid)[0]
+        try:
+            pulse.emit("gamedoctor", f"{game}: {title}", app="Game Doctor",
+                       undo=None if fix == "verify" else ["deckos", "gamedoctor", "undo", str(appid), fix])
+        except (OSError, ValueError):
+            pass
+    return done
+
+
+def _apply(fix, appid, confirm_steam_restart=lambda: True):
     g = sf.game(appid)
     if fix == "verify":
         sf.start_steam(f"steam://validate/{appid}")
@@ -301,3 +322,14 @@ def cleanup_old_prefixes(appid, keep_days=30):
     for d in g["compatdata"].parent.glob(f"{appid}.deckos-*"):
         if time.time() - d.stat().st_mtime > keep_days * 86400:
             shutil.rmtree(d, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    # The timeline's Undo: gamedoctor.py undo APPID FIX (through `deckos gamedoctor undo`)
+    if len(sys.argv) == 4 and sys.argv[1] == "undo":
+        try:
+            print(undo(sys.argv[3], sys.argv[2]))
+        except (OSError, RuntimeError, ValueError) as e:
+            sys.exit(str(e))
+        sys.exit(0)
+    sys.exit("usage: gamedoctor.py undo APPID FIX")

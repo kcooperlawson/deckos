@@ -1,0 +1,12 @@
+# DecKoOS Pulse: the system timeline gets "remove" with an undo to the snapshot snap-pac took before it.
+# zzz: after snap-pac's post snapshot (zz-snap-pac-post.hook).
+[Trigger]
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Adding this to the DecKoOS timeline...
+When = PostTransaction
+Exec = /usr/bin/python3 /usr/lib/deckos/pulse/pulse.py pacman remove
+NeedsTargets

@@ -70,6 +70,9 @@ QLabel#sub, QLabel#value {{ color: {SUBTEXT}; }}
 QLabel#muted {{ color: {MUTED}; font-size: 9pt; }}
 QLabel#kicker {{ color: {SUBTEXT}; font-size: 8.5pt; font-weight: 600; }}
 QLabel#cardTitle {{ font-size: 10.5pt; font-weight: 600; }}
+QPushButton#seg {{ padding: 6px 14px; border-radius: 8px; background: transparent; border: 1px solid transparent; }}
+QPushButton#seg:hover {{ background: {RAISED}; }}
+QPushButton#seg:checked {{ background: {RAISED}; border-color: {BORDER}; color: {TEXT}; }}
 QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 15pt; font-weight: 600; }}
 QLabel#mono {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace; font-size: 9pt; color: {SUBTEXT}; }}
 #card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}

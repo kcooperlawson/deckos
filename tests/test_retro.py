@@ -26,6 +26,8 @@ class RetroTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.home = Path(self.temp.name)
         os.environ['DECKOS_RETRO_HOME'] = str(self.home)
+        os.environ['DECKOS_PULSE_USER'] = str(self.home / 'timeline.jsonl')  # never the real timeline
+        os.environ['DECKOS_PULSE_SYSTEM'] = str(self.home / 'system-timeline.jsonl')
         os.environ['DECKOS_STEAM_ROOT'] = str(self.home / 'steam')
         import steamfiles
         import retro

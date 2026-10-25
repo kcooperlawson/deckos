@@ -25,6 +25,9 @@ ok()   { printf '  %s✔%s %s\n' "$C_OK" "$C_0" "$*"; }
 warn() { printf '  %s!%s %s\n' "$C_WARN" "$C_0" "$*"; }
 err()  { printf '%serror:%s %s\n' "$C_ERR" "$C_0" "$*" >&2; }
 sub()  { printf '  %s%s%s\n' "$C_SUB" "$*" "$C_0"; }
+# DecKoOS Pulse: a line in the timeline (best effort: a timeline problem never stops the command itself)
+pulse() { python3 "${DECKOS_PULSE_DIR:-/usr/lib/deckos/pulse}/pulse.py" emit "$@" >/dev/null 2>&1 || true; }
+
 need_root() { [[ $EUID -eq 0 ]] || { err "this needs root: sudo deckos $*"; exit 1; }; }
 
 # ---------------------------------------------------------------- GPU helpers
@@ -318,6 +321,7 @@ drives_rescan() {
   systemctl daemon-reload
   mount -a 2>/dev/null || true
   ok "fstab updated (backup: /etc/fstab.deckos-bak)"
+  pulse drives "Drives linked: $(grep -c '^UUID=' <<<"$block" || true)" --app Drives
   drives_list
 }
 
@@ -1300,9 +1304,10 @@ mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, n
     game=$(mode_game)
     if [[ -n $game ]]; then
       misses=0
-      (( gaming )) || { mode_enter "$game"; gaming=1; }
+      (( gaming )) || { mode_enter "$game"; gaming=1; pulse game-start "Playing $game" --app "Workload modes"; }
     elif (( gaming )) && (( ++misses >= 2 )); then  # a launcher that restarts the game isn't the end of it
       mode_leave; gaming=0; misses=0
+      pulse game-stop "Stopped playing" --app "Workload modes"
     fi
     sleep 5 & wait $!
   done
@@ -1522,7 +1527,15 @@ accent_cmd() {
     apply)
       [[ ${2:-} =~ ^#[0-9A-Fa-f]{6}$ ]] || { err "usage: deckos accent apply '#RRGGBB'"; exit 2; }
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      local was
+      was=$(kreadconfig6 --file kdeglobals --group General --key AccentColor 2>/dev/null || true)
       accent_apply "$2"
+      if [[ $was =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]]; then
+        pulse accent "Accent colour changed" --app Appearance --undo deckos accent apply \
+          "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")"
+      else
+        pulse accent "Accent colour changed" --app Appearance
+      fi
       ok "accent: $2" ;;
     *) err "usage: deckos accent apply '#RRGGBB'"; exit 2 ;;
   esac
@@ -1538,7 +1551,9 @@ theme_cmd() {
         [[ -f $d/contents/defaults ]] && break
       done
       [[ -f $d/contents/defaults ]] || { err "no global theme called '$id'"; exit 2; }
-      local defaults=$d/contents/defaults scheme accent wall cursor
+      local defaults=$d/contents/defaults scheme accent wall cursor was name
+      was=$(kreadconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage 2>/dev/null || true)
+      name=$(jq -r '.KPlugin.Name // empty' "$d/metadata.json" 2>/dev/null || true)
       plasma-apply-lookandfeel --apply "$id" >/dev/null
       scheme=$(theme_default "$defaults" "[kdeglobals][General]" ColorScheme)
       accent=$(theme_default "$defaults" "[kdeglobals][General]" AccentColor)
@@ -1555,6 +1570,9 @@ theme_cmd() {
       [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || plasma-apply-wallpaperimage "/usr/share/wallpapers/$wall" >/dev/null
       cursor=$(theme_default "$defaults" "[kcminputrc][Mouse]" cursorTheme)
       [[ -z $cursor || ! -d /usr/share/icons/$cursor ]] || plasma-apply-cursortheme "$cursor" >/dev/null 2>&1 || true
+      if [[ -n $was && $was != "$id" && $was =~ ^[A-Za-z0-9._-]+$ ]]; then
+        pulse theme "Theme: ${name:-$id}" --app Appearance --undo deckos theme apply "$was"
+      fi
       ok "theme: $id" ;;
     *) err "usage: deckos theme apply ID"; exit 2 ;;
   esac
@@ -1699,6 +1717,10 @@ case ${1:-} in
   accent) shift; accent_cmd "$@" ;;
   retro) shift; retro_cmd "$@" ;;
   whatsnew) shift; exec deckos-whatsnew "$@" ;;
+  gamedoctor)  # the timeline's undo for a fix: deckos gamedoctor undo APPID FIX
+    shift
+    [[ ${1:-} == undo && ${2:-} =~ ^[0-9]+$ && ${3:-} =~ ^[a-z0-9-]+$ ]] || { err "usage: deckos gamedoctor undo APPID FIX"; exit 2; }
+    exec python3 /usr/lib/deckos/gamedoctor/gamedoctor.py undo "$2" "$3" ;;
   game)
     shift
     case ${1:-} in
