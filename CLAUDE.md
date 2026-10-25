@@ -244,6 +244,8 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   ends them before unmounting.
 - Spotify's MPRIS reports position 0 and old art URLs (`open.spotify.com/image/…`): the Now Playing card
   keeps its own clock and rewrites them to `i.scdn.co/image/…`.
+- util-linux 2.42's `lsblk -J` nests partitions under disks only when NAME is a column; without it the list is
+  flat and `.children` is empty (NTFS drives went missing at install). `tests/test_lsblk_tree.py` guards it.
 - `sed` with `|` as delimiter breaks on text containing `|` (usage strings): edit those directly.
 - `mkfs.fat --offset` into a big disk image sizes clusters for the whole image: a small EFI partition
   ends up with too few clusters for FAT32, which Linux mounts but UEFI can't read. Pass `-S 512 -s 1`.
@@ -296,5 +298,4 @@ llama.cpp engine ignores `OLLAMA_GPU_OVERHEAD`); a full card made KWin stall. Wo
 
 An NVIDIA and an Intel test install (the chwd
 path has only been checked with `bash -n`/shellcheck); the free-space and empty-disk modes through
-the whole installer on real hardware (CI installs into all three layouts: partition, empty, free); why NTFS drives weren't detected on
-the reference machine (likely BitLocker).
+the whole installer on real hardware (CI installs into all three layouts: partition, empty, free).
