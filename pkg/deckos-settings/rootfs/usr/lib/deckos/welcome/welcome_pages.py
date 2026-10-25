@@ -374,7 +374,7 @@ class LookStep(Step):
 class DisplayStep(Step):
     key, nav, hub = "display", "Display", "Display"
     title = "Your screens"
-    subtitle = "Sharp text at the right size, and no blackouts on Radeon cards."
+    subtitle = "Sharp text at the right size, and screens that stay on."
     hint = "Screen scale changes right away. The blackout fix takes effect after a restart."
 
     def build(self):
@@ -652,7 +652,7 @@ class GamingStep(Step):
         grid.addWidget(self.rate, 1, 1)
         grid.setColumnStretch(2, 1)
         mode.body.addLayout(grid)
-        self.vrr = QCheckBox("Variable refresh rate (FreeSync)")
+        self.vrr = QCheckBox("Variable refresh rate (FreeSync, G-Sync)")
         self.vrr.setChecked(conf.get("ADAPTIVE_SYNC") == "1")
         self.vrr.toggled.connect(lambda on: self.save("ADAPTIVE_SYNC", "1" if on else "0", "vrr",
                                                       f"Gaming Mode VRR {'on' if on else 'off'}"))

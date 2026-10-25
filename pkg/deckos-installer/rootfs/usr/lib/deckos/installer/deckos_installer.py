@@ -9,6 +9,7 @@ Same visual language as DecKoOS Hub: slate surfaces, 1px borders,
 10px radii, Inter, and the blue-violet gradient on primary actions and progress.
 """
 import html
+import json
 import os
 import re
 import shutil
@@ -533,7 +534,9 @@ class Installer(QWidget):
                        "" if sudo_ok else "The live user should have passwordless sudo; this USB may be damaged.")
         sb = self.secure_boot()
         self.set_check(2, None if sb else True, "Secure Boot is on" if sb else "Secure Boot is off",
-                       "Turn it off in the BIOS before you restart into DecKoOS." if sb else "")
+                       ("Turn it off in the BIOS before you restart into DecKoOS: NVIDIA's driver doesn't load with it "
+                        "on, and the screen stays black." if self.nvidia() else
+                        "Turn it off in the BIOS before you restart into DecKoOS.") if sb else "")
         self.set_check(3, None, "Checking internet…")
         self.uefi_sudo = uefi and sudo_ok
         self.net_ok = False
@@ -557,6 +560,17 @@ class Installer(QWidget):
                            + (f"<br>{err[-1]}" if err else ""))
         self.net_ok = code == 0 and self.uefi_sudo
         self.update_nav()
+
+    @staticmethod
+    def nvidia():
+        """An NVIDIA graphics card in this PC (PCI vendor 10de, display class)."""
+        for dev in Path("/sys/bus/pci/devices").glob("*"):
+            try:
+                if (dev / "vendor").read_text().strip() == "0x10de" and (dev / "class").read_text().startswith("0x03"):
+                    return True
+            except OSError:
+                pass
+        return False
 
     @staticmethod
     def secure_boot():
@@ -778,6 +792,8 @@ class Installer(QWidget):
             self.now_sub.setText(s[6:].strip() + "…")
         elif s.startswith("[FAIL]"):
             self.fail_reason = s[6:].strip()
+        elif s.startswith("[HINT]"):
+            self.fail_hint = s[6:].strip()
 
     def install_finished(self, code, _status):
         self.finished_ok = code == 0
@@ -794,22 +810,52 @@ class Installer(QWidget):
         else:
             saved = self.save_log()
             reason = getattr(self, "fail_reason", "") or f"The installer stopped (exit code {code})."
+            hint = getattr(self, "fail_hint", "")
             self.done_title.setText("The install didn't finish")
-            self.done_text.setText(reason)
+            self.done_text.setText(f"{hint}\n\n{reason}" if hint else reason)
             tail = "<br>".join(html.escape(x) for x in self.log_view.toPlainText().splitlines()[-14:]).replace(" ", "&nbsp;")
             self.done_body.setText(f"<span style='color:{SUBTEXT}'>{saved}</span><br><br>"
                                    f"<span style='font-family:monospace; font-size:8.5pt'>{tail}</span>")
         self.go(DONE)
 
     def save_log(self):
-        """Copies the full log to the desktop, where it survives a reboot onto the USB stick only if copied."""
+        """Copies the full log to the desktop, and onto the USB stick when it has room for files (a Ventoy stick,
+        or one with a FAT/exFAT partition): the desktop is gone after a restart, the stick isn't."""
         desk = Path.home() / "Desktop"
         desk.mkdir(exist_ok=True)
         (desk / "installer-output.txt").write_text(self.log_view.toPlainText() + "\n")
         full = run(["sudo", "-n", "cat", INSTALL_LOG], timeout=10)
         if full:
             (desk / "deckos-install.log").write_text(full)
-        return "The full log is on the desktop: deckos-install.log and installer-output.txt."
+        usb = self.copy_to_usb([desk / "deckos-install.log", desk / "installer-output.txt"])
+        if usb:
+            return f"The full log is on the desktop and on the USB stick ({usb}): send deckos-install.log to whoever helps."
+        return "The full log is on the desktop: deckos-install.log and installer-output.txt. Copy it to a USB stick before restarting."
+
+    @staticmethod
+    def copy_to_usb(files):
+        """A writable partition on a USB stick, mounted only for the copy; the stick's name, or ''."""
+        try:
+            devs = json.loads(run(["lsblk", "-J", "-o", "NAME,PATH,TRAN,FSTYPE,LABEL,MOUNTPOINTS"], timeout=10) or "{}")
+        except ValueError:
+            return ""
+        for disk in devs.get("blockdevices", []):
+            if disk.get("tran") != "usb":
+                continue
+            for part in disk.get("children") or []:
+                # Not the boot partitions of a Ventoy stick or a written ISO: only one meant for files
+                if part.get("fstype") not in ("vfat", "exfat") or (part.get("label") or "").startswith(("VTOYEFI", "ARCHISO")):
+                    continue
+                mnt = "/run/deckos-usb-log"
+                if subprocess.call(["sudo", "-n", "mkdir", "-p", mnt]) != 0:
+                    continue
+                if subprocess.call(["sudo", "-n", "mount", part["path"], mnt], stderr=subprocess.DEVNULL) != 0:
+                    continue
+                ok = all(subprocess.call(["sudo", "-n", "cp", str(f), mnt + "/"]) == 0 for f in files if f.exists())
+                subprocess.call(["sudo", "-n", "umount", mnt])
+                if ok:
+                    return part.get("label") or part["path"]
+        return ""
 
     def closeEvent(self, e):
         if self.proc and self.proc.state() != QProcess.NotRunning:

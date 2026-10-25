@@ -66,9 +66,28 @@ section() { echo; style --foreground "#4C8DFF" --bold "// $*"; }
 note()    { style --foreground "#8C94A6" "  $*"; }
 good()    { style --foreground "#3DD68C" "  [ OK ] $*"; }
 warn()    { style --foreground "#F5B84B" "  [ !! ] $*"; }
+# What to do about a failure, in plain words, from the end of the log: the usual causes have a clear next step.
+fail_hint() {
+  local tail; tail=$(tail -n 60 "$LOG" 2>/dev/null || true)
+  case $tail in
+    *"Could not resolve host"*|*"failed retrieving file"*|*"Temporary failure in name resolution"*|*"Network is unreachable"*)
+      echo "The internet connection dropped or is too slow. Check the connection (top right), then install again." ;;
+    *"No space left on device"*)
+      echo "The partition is too small for what you picked. Choose a bigger one, or leave out Local AI or Development." ;;
+    *"invalid or corrupted package"*|*"signature from"*|*"unknown trust"*|*"keyring"*)
+      echo "A download didn't match its signature, usually a mirror that's mid-update. Wait a few minutes and install again." ;;
+    *"Input/output error"*|*"I/O error"*|*"Buffer I/O error"*)
+      echo "The disk or the USB stick reported read/write errors. Try another USB port, or write the USB stick again." ;;
+    *"could not satisfy dependencies"*|*"conflicting dependencies"*|*"target not found"*)
+      echo "The package lists changed upstream. Install again later, or use the newest DecKoOS USB stick." ;;
+  esac
+}
 die() {
+  local hint
   { set +x; } 2>/dev/null
   style --foreground "#FF6B6B" --bold "  [FAIL] $*"
+  hint=$(fail_hint)
+  [[ -z $hint ]] || style --foreground "#F5B84B" "  [HINT] $hint"
   [[ -s $LOG ]] && { echo; note "Last lines of $LOG:"; tail -n 25 "$LOG"; }
   exit 1
 }
@@ -376,6 +395,9 @@ mapfile -t GPU_VENDORS < <(bash "$DECKOS_TOOL" display vendors 2>>"$LOG" || true
 if [[ ${#GPU_VENDORS[@]} -gt 0 ]]; then good "Graphics: ${GPU_VENDORS[*]}"
 else warn "No AMD, NVIDIA or Intel graphics found - DecKoOS installs the basic Mesa drivers"; fi
 gpu_has nvidia && note "NVIDIA drivers come from CachyOS's hardware detection (chwd) later on"
+if gpu_has nvidia && [[ $sb == 1 ]]; then
+  warn "With Secure Boot on, NVIDIA's driver won't load and the screen stays black: turn it off before restarting"
+fi
 if grep -qw GenuineIntel /proc/cpuinfo; then UCODE=intel-ucode; else UCODE=amd-ucode; fi
 
 # Display blackout fix: DECKOS_DISPLAY_LEVEL if given, else what deckos recommends for this GPU

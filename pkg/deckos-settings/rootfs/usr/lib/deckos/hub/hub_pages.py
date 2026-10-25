@@ -414,7 +414,7 @@ class GamingPage(Page):
         grid.addWidget(self.rate, 1, 1)
         grid.setColumnStretch(2, 1)
         settings.body.addLayout(grid)
-        self.vrr = QCheckBox("Variable refresh rate (FreeSync)")
+        self.vrr = QCheckBox("Variable refresh rate (FreeSync, G-Sync)")
         self.vrr.setChecked(conf.get("ADAPTIVE_SYNC") == "1")
         self.vrr.toggled.connect(lambda on: self.save("ADAPTIVE_SYNC", "1" if on else "0"))
         self.hdr = QCheckBox("HDR (turn it on in the monitor's menu too)")
