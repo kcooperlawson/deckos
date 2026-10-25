@@ -1,28 +1,44 @@
+<div align="center">
+
 # DeckOS
 
-**DeckOS is a Linux distribution for people who game and build things on the same PC.** It's Arch Linux
-with CachyOS's optimised packages, a KDE Plasma desktop that boots or switches into a console-style Steam
-**Gaming Mode**, a local AI assistant that runs on your own graphics card, and a set of tools of its own
-that make the gaming, development and AI sides work together instead of fighting over the hardware.
+**One PC for gaming, building and local AI, without them fighting over the hardware.**
 
-**Who it's for:** PC gamers on AMD Radeon who also code, stream, or run local AI models; anyone moving
-from Windows who wants Steam, their games and their Windows drives to just work; people who want a fast,
-recoverable Arch system without assembling it by hand.
+Arch Linux · CachyOS-optimised packages · KDE Plasma 6 · Steam Gaming Mode · On-device AI
 
-### What only DeckOS has
+[Get DeckOS](#get-deckos) · [Install](#install) · [What's different](#why-deckos) · [Known limitations](#known-limitations)
+
+</div>
+
+---
+
+DeckOS is a desktop Linux distribution for people who play games and build things on the same machine.
+It pairs a fast, CPU-optimised Arch base with a polished KDE Plasma desktop that switches into a
+console-style Steam **Gaming Mode**, a private AI assistant that runs on your own graphics card, and a
+suite of first-party tools that coordinate all three. When a game starts, the AI steps out of video
+memory and background work pauses; when the game ends, everything comes back.
+
+**Built for** PC gamers on AMD Radeon who also code, stream or run local models; people moving from
+Windows who want Steam, their library and their existing drives to work on day one; and anyone who wants
+Arch's speed without assembling and babysitting it by hand.
+
+## Why DeckOS
+
+Most gaming distributions tune the kernel and ship Steam. DeckOS goes further: it treats the whole PC,
+games, development and AI, as one system, and ships its own tools to keep that system healthy.
 
 | | |
 |---|---|
-| **Game Doctor** | When a game closes right after starting, DeckOS reads why and offers fixes you can undo |
-| **DeckOS Bench** | Benchmarks for CPU, memory, disk, graphics, local AI and games, with confidence ranges, history and A/B experiments |
-| **Workload modes** | When a game starts, the AI model leaves graphics memory and background work pauses; it all comes back after |
-| **DeckOS Assistant** | Meta+Space: ask your PC to install or set something up, in plain words, on your own GPU; every change shown first |
-| **DeckOS Terminal** | Tabs named after your project and git branch, splits, and the assistant one shortcut away |
-| **DeckOS Files, Hub, Store, Menu, Quick Settings, Welcome, What's New** | DeckOS's own apps for files, settings, software, the launcher and updates |
-| **Its own installer** | Installs next to Windows without touching Windows drives; tested by installing itself in a VM on every release |
-| **Boot and recovery** | The DeckOS boot splash and boot menu, btrfs snapshots before every update, and one-click Undo for an update that broke something (DeckOS Hub or `deckos undo`) |
-| **The display fix ladder** | Fixes the RX 9000 DisplayPort blackouts on high-refresh monitors, one level at a time |
-| **Eight themes, 28 wallpapers, five layouts** | A dock, a classic taskbar, a top bar, a hidden dock or a big one for the couch |
+| **Workload modes** | The PC reacts to what you're doing. Launch a game and AI models are unloaded from VRAM, Docker pauses and indexing stops; quit and it's all restored |
+| **Game Doctor** | When a game closes right after launch, DeckOS reads Steam's and Proton's logs, explains the cause in plain language and offers one-click fixes, every one of them undoable |
+| **DeckOS Assistant** | Press Meta+Space and ask your PC to install, configure or explain something. It runs locally on your GPU, needs no account or subscription, and shows every change before making it |
+| **DeckOS Bench** | CPU, memory, disk, graphics, AI and game benchmarks with confidence ranges, history and A/B comparisons, so tuning decisions are measured rather than guessed |
+| **Updates you can undo** | A btrfs snapshot before every update, and one-click Undo in DeckOS Hub (or `deckos undo`) if something breaks. Older snapshots boot straight from the boot menu |
+| **A safe installer** | Installs beside Windows without touching Windows drives, refuses BitLocker and in-use partitions, and installs itself in a VM in CI before every release |
+| **Move in from Windows** | Finds your Windows drives, Steam libraries and files and brings them across; Windows itself is only ever read |
+| **Fixes for real hardware** | A step-by-step fix ladder for the RX 9000 DisplayPort blackouts on high-refresh monitors, dual-boot clock correction and Steam libraries on NTFS |
+| **Its own desktop apps** | DeckOS Files, Terminal, Editor, Hub, Store, Menu, Quick Settings, System Monitor and System Doctor: one consistent design, built for this system |
+| **Make it yours** | Eight themes, 28 wallpapers and five layouts: dock, classic taskbar, top bar, auto-hiding dock, or a big-screen layout for the couch |
 
 ### How it's made
 
