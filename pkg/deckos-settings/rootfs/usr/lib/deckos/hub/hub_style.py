@@ -1,6 +1,6 @@
 """DecKoOS Hub look: palette, stylesheet and the DecKoOS line icons.
 
-Same visual language as Steady Downloader: slate surfaces, 1px borders, 10px radii, Inter, and
+The DecKoOS visual language: slate surfaces, 1px borders, 10px radii, Inter, and
 a gradient on primary actions. The accent follows Plasma's accent colour (Appearance page), so
 the Hub matches whatever the rest of the desktop uses.
 """

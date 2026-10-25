@@ -5,7 +5,7 @@ collects the answers, then runs `sudo deckos-install` in its unattended mode (DE
 and turns its output into a progress view. The install itself is the same script as the
 text installer, so both behave identically.
 
-Same visual language as DecKoOS Hub and Steady Downloader: slate surfaces, 1px borders,
+Same visual language as DecKoOS Hub: slate surfaces, 1px borders,
 10px radii, Inter, and the blue-violet gradient on primary actions and progress.
 """
 import html

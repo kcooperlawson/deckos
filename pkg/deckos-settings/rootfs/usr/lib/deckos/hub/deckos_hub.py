@@ -1,7 +1,7 @@
 """DecKoOS Hub: one window for what DecKoOS adds. A live overview, the display fix, Gaming Mode,
 drives, AI and dev tools, updates, snapshots, firewall, software and appearance.
 
-Same visual language as Steady Downloader and the installer: slate surfaces, 1px borders, 10px
+Same visual language as the installer: slate surfaces, 1px borders, 10px
 radii, Inter, DecKoOS line icons, and the accent gradient on primary actions.
     deckos-hub            the real thing
     deckos-hub --demo     canned data, for working on the UI anywhere (Windows included)

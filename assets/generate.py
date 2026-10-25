@@ -1,8 +1,7 @@
 """Generates the DecKoOS brand: icon, wordmark, wallpaper, GRUB theme art, installer art.
 
-Same family as Steady Downloader: deep slate surfaces, quiet 1px borders, and the
-blue→violet gradient tile with a white rounded glyph. The O in "DeckOS" is a thumbstick seen
-from above: its gate ring, and the cap (raised rim, dished centre) tilted slightly up-right.
+The DecKoOS look: deep slate surfaces, quiet 1px borders, the blue→violet gradient, and blocky
+letters whose oO is a controller: the small o a thumbstick, the O the four face buttons.
 
 Run with fontTools available (the outputs are committed, so builds don't need it):
     python -m pip install fonttools && python assets/generate.py
@@ -21,7 +20,7 @@ FONTS = HERE.parent / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos"
 FONT = FONTS / "InterDisplay-SemiBold.otf"
 FONT_MEDIUM = FONTS / "InterDisplay-Medium.otf"
 
-# Steady Downloader palette (App.xaml) + its icon gradient.
+# The DecKoOS palette and its blue-violet gradient.
 BG = "#0F1115"
 BG_DEEP = "#0B0D11"
 SURFACE = "#171A21"

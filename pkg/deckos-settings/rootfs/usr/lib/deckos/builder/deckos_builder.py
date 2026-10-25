@@ -5,7 +5,7 @@ account has on the repo: the maintainer releases, promotes and merges, everyone 
 Runs on Windows and Linux (PySide6 + the GitHub CLI `gh`, signed in with `gh auth login`).
 On an Arch/DeckOS machine it can also build the ISO locally with build.sh.
 
-Same look as Steady Downloader and DecKoOS Hub: slate cards, 1px borders, Inter, and the
+Same look as DecKoOS Hub: slate cards, 1px borders, Inter, and the
 blue-violet gradient on primary actions and progress.
 """
 import email.utils

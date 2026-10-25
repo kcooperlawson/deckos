@@ -438,9 +438,9 @@ partition DecKoOS goes on, the drive layout).
 
 ## Development
 
-The look shares its design language with Steady Downloader (slate `#0F1115` / `#171A21`, `#262B36`
-borders, `#4C8DFF` accent), reworked mechanically: stencil letters, a thumbstick for the O (gate ring
-and tilted cap), bolted plates, hazard stripes.
+The look grew out of the design language of the MES and logging system its author built for work
+(slate `#0F1115` / `#171A21`, `#262B36` borders, `#4C8DFF` accent), reworked for a gaming PC: blocky
+letters, the oO as a controller (a thumbstick and the face buttons), bolted plates, hazard stripes.
 
 **DecKoOS Builder** (`builder/`) is a desktop app that starts GitHub builds, downloads ISOs and copies them
 to a Ventoy stick. See [builder/README.md](builder/README.md).
