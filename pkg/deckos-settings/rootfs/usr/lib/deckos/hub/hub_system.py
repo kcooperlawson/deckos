@@ -402,6 +402,17 @@ def parse_undoable(out):
     return rows
 
 
+def booted_snapshot():
+    """The snapshot GRUB's snapshots menu started, or None (grub-btrfs runs it read-only under an overlay)."""
+    if DEMO:
+        return 42 if "--demo-snapshot" in sys.argv else None
+    try:
+        m = re.search(r'rootflags=\S*subvol="?/?@snapshots/(\d+)/snapshot', Path("/proc/cmdline").read_text())
+    except OSError:
+        return None
+    return int(m.group(1)) if m else None
+
+
 DEMO_UNDOABLE = ("42\t2026-10-28 18:12\tlutris python-moddb\n"
                  "38\t2026-10-26 21:40\tlinux-cachyos mesa vulkan-radeon steam and 41 more\n"
                  "30\t2026-10-24 19:02\tdeckos-settings\n")

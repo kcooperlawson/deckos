@@ -743,21 +743,12 @@ undo_list() {  # the last updates that can be undone: PRE<TAB>DATE<TAB>WHAT (WHA
     | [($p.number | tostring), ($p.date // "" | .[:16]), (if $what != "" then $what else $p.description end)] | @tsv' <<<"$json"
 }
 
-undo_to() {
-  local n=$1 row type date what dev top kept stamp
-  need_root undo "$n"
-  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos undo NUMBER (see deckos undo list)"; exit 2; }
-  [[ ! -e /var/lib/pacman/db.lck ]] || { err "an update is running right now: try again when it's done"; exit 1; }
-  row=$(snapper --jsonout -c root list 2>/dev/null | jq -r --argjson n "$n" \
-    '.root[] | select(.number == $n) | [.type, (.date // "" | .[:16]), (.description // "")] | @tsv') || true
-  IFS=$'\t' read -r type date what <<<"$row"
-  [[ $type == pre ]] || { err "snapshot $n isn't the 'before' snapshot of an update (deckos undo list shows those)"; exit 1; }
-  # The packages it changed (from the post snapshot) say more than the pacman command line
-  row=$(undo_list | awk -F'\t' -v n="$n" '$1 == n {print $3; exit}')
-  what=${row:-$what}
-  [[ $(findmnt -no FSTYPE /) == btrfs && $(findmnt -no FSROOT /) == /@ && $(findmnt -no FSROOT /.snapshots) == /@snapshots ]] \
-    || { err "/ isn't DecKoOS's btrfs layout (@ and @snapshots), so it can't be swapped safely: use GRUB's snapshots menu"; exit 1; }
-  dev=$(findmnt -no SOURCE /); dev=${dev%%\[*}
+# Puts a writable copy of snapshot N in place of @ for the next start, keeping the current @ as @.undone-DATE.
+swap_in() {
+  local n=$1 date=$2 what=$3 dev top kept stamp
+  [[ $(findmnt -no FSTYPE /.snapshots) == btrfs && $(findmnt -no FSROOT /.snapshots) == /@snapshots ]] \
+    || { err "/.snapshots isn't DecKoOS's @snapshots subvolume, so nothing can be swapped safely"; exit 1; }
+  dev=$(findmnt -no SOURCE /.snapshots); dev=${dev%%\[*}
   top=$(mktemp -d)
   mount -o subvolid=5 "$dev" "$top"
   # shellcheck disable=SC2064  # expand now: $top is local
@@ -776,9 +767,46 @@ undo_to() {
     err "couldn't put the snapshot in place: nothing changed"; exit 1
   fi
   sync
+  KEPT=$kept
+}
+
+# The snapshot GRUB's snapshots menu started (grub-btrfs boots it read-only under an overlay), or nothing.
+booted_snapshot() {
+  sed -nE 's/.*rootflags=([^ ]*,)?subvol="?\/?@snapshots\/([0-9]+)\/snapshot.*/\2/p' "${DECKOS_CMDLINE:-/proc/cmdline}"
+}
+
+# Started from a snapshot after an update broke start-up: make it the system for good.
+undo_keep() {
+  local n date what
+  n=$(booted_snapshot)
+  [[ -n $n ]] || { err "DecKoOS wasn't started from a snapshot (pick one in the boot menu's DecKoOS snapshots)"; exit 1; }
+  need_root undo keep
+  IFS=$'\t' read -r date what < <(snapper --jsonout -c root list 2>/dev/null | jq -r --argjson n "$n" \
+    '.root[] | select(.number == $n) | [(.date // "" | .[:16]), (.description // "")] | @tsv' || true) || true
+  swap_in "$n" "$date" "${what:-snapshot $n}"
+  pulse undo "Kept snapshot $n as the system" --detail "$date"
+  ok "DecKoOS keeps this snapshot ($date) as the system from the next start"
+  sub "The system that didn't start is kept as $KEPT: 'sudo deckos undo clean' deletes it once you're happy."
+}
+
+undo_to() {
+  local n=$1 row type date what
+  need_root undo "$n"
+  [[ $n =~ ^[1-9][0-9]*$ ]] || { err "usage: deckos undo NUMBER (see deckos undo list)"; exit 2; }
+  [[ ! -e /var/lib/pacman/db.lck ]] || { err "an update is running right now: try again when it's done"; exit 1; }
+  row=$(snapper --jsonout -c root list 2>/dev/null | jq -r --argjson n "$n" \
+    '.root[] | select(.number == $n) | [.type, (.date // "" | .[:16]), (.description // "")] | @tsv') || true
+  IFS=$'\t' read -r type date what <<<"$row"
+  [[ $type == pre ]] || { err "snapshot $n isn't the 'before' snapshot of an update (deckos undo list shows those)"; exit 1; }
+  # The packages it changed (from the post snapshot) say more than the pacman command line
+  row=$(undo_list | awk -F'\t' -v n="$n" '$1 == n {print $3; exit}')
+  what=${row:-$what}
+  [[ $(findmnt -no FSTYPE /) == btrfs && $(findmnt -no FSROOT /) == /@ ]] \
+    || { err "/ isn't DecKoOS's btrfs layout (@ and @snapshots), so it can't be swapped safely: use GRUB's snapshots menu"; exit 1; }
+  swap_in "$n" "$date" "$what"
   ok "DecKoOS goes back to before \"$what\" ($date) when you restart"
   sub "Until then nothing changes. /home, your files and settings aren't touched."
-  sub "The system as it is now is kept as $kept: 'sudo deckos undo clean' deletes it once you're happy."
+  sub "The system as it is now is kept as $KEPT: 'sudo deckos undo clean' deletes it once you're happy."
 }
 
 undo_clean() {  # delete the systems kept by earlier undos (never the running one)
@@ -812,6 +840,8 @@ undo_cmd() {
       fi ;;
     --tsv) undo_list ;;
     clean) undo_clean ;;
+    keep) undo_keep ;;
+    booted) booted_snapshot ;;
     *) undo_to "$1" ;;
   esac
 }

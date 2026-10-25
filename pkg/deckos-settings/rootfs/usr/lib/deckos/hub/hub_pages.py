@@ -89,6 +89,20 @@ class HomePage(Page):
                                            icon="star", tip="What the latest DecKoOS release brought"))
         self.head_actions.addWidget(button("Gaming Mode", "primary", self.hub.to_gaming, icon="play"))
 
+        snap = sysinfo.booted_snapshot()
+        if snap:
+            # Started from GRUB's snapshots menu, usually because an update broke start-up: say so, offer to keep it
+            card = Card("Running a snapshot", f"DecKoOS started from snapshot {snap}", "snapshot")
+            card.body.addWidget(label("Changes you make now are lost at the next restart. If this works and the normal "
+                                      "start-up didn't, keep it: DecKoOS makes this snapshot the system from the next "
+                                      "start, and keeps the one that didn't start in case you want it back.", "muted"))
+            card.body.addWidget(row(button("Keep this system", "primary", lambda: self.hub.privileged(
+                ["undo", "keep"], lambda ok: self.hub.toast("Kept. Restart to start this system for good." if ok else
+                                                           "Couldn't keep this snapshot.", "ok" if ok else "error")),
+                icon="snapshot"), button("Restart normally", slot=lambda: QProcess.startDetached("systemctl", ["reboot"]),
+                                         icon="power")))
+            self.lay.addWidget(card)
+
         stats = QGridLayout()
         stats.setSpacing(10)
         self.tiles = {}

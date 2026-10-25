@@ -227,6 +227,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   runs System Doctor's quick checks after system changes; says each thing once in a while.
 - **Game profiles** (`usr/lib/deckos/profiles/`): per-game power, Do Not Disturb, AI/Docker freeing; workload modes apply
   them on game start (`mode_game` prints `ID<TAB>NAME`) and restore on stop. Hub > Games > sliders button.
+- **Recovery**: GRUB's snapshots menu (grub-btrfs, overlayfs) starts a snapshot read-only; `deckos undo booted` names it
+  (from `rootflags=…subvol=@snapshots/N/snapshot`), the Hub's Home banner and System Doctor offer `deckos undo keep`,
+  which swaps it in as @ through the same `swap_in` as `deckos undo N`. Tests: `tests/test_recovery.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

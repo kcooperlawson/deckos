@@ -375,6 +375,18 @@ def intel_microcode():
                                                              "intel-ucode"], "Takes effect after a restart")])]
 
 
+def snapshot_boot():
+    m = re.search(r'rootflags=\S*subvol="?/?@snapshots/(\d+)/snapshot', read(PROC / "cmdline"))
+    if not m:
+        return []
+    return [Finding("snapshot-boot", WARN, f"DecKoOS started from snapshot {m.group(1)}",
+                    "This is a copy of the system from before a change, started from the boot menu. What you change "
+                    "now is lost at the next restart. If the normal start-up is broken, keep this one.",
+                    fixes=[Fix("Keep this system", ["pkexec", "deckos", "undo", "keep"],
+                               "From the next start; the system that didn't start is kept too"),
+                           Fix("Restart normally", ["systemctl", "reboot"])])]
+
+
 def restart_pending():
     running = os.uname().release
     if Path(f"/usr/lib/modules/{running}").is_dir():
@@ -405,7 +417,7 @@ def journal_errors(known):
                     "what they mean for you.", evidence=[f"{n}×  {l}" for l, n in top])]
 
 
-CHECKS = [failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
+CHECKS = [snapshot_boot, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
           restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 
