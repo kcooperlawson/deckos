@@ -14,6 +14,7 @@
   <a href="docs/install.md"><b>Install</b></a> &nbsp;·&nbsp;
   <a href="docs/guide.md"><b>Guide</b></a> &nbsp;·&nbsp;
   <a href="#known-limitations"><b>Known limitations</b></a> &nbsp;·&nbsp;
+  <a href="CHANGELOG.md"><b>Changelog</b></a> &nbsp;·&nbsp;
   <a href="CONTRIBUTING.md"><b>Contribute</b></a>
 </p>
 
@@ -22,6 +23,11 @@ CPU-optimised Arch base and a polished KDE Plasma desktop that switches into a c
 **Gaming Mode**, a private AI assistant that runs on your own graphics card, and a suite of first-party
 apps that make all of it work together. When a game starts, the AI steps out of video memory and
 background work pauses; when the game ends, everything comes back.
+
+> **New in 0.13: "Make it yours".** One-click **Vibes** (Lo-fi, Neon, Midnight, Cozy) with animated wallpapers,
+> a music visualizer and desktop widgets; **Kid mode**, an account per child with only the apps you pick and a
+> filtered web; DecKoOS's own **sounds**; and **every setting in one place** in DecKoOS Hub.
+> [All releases →](CHANGELOG.md)
 
 <p align="center">
   <img src="docs/screenshots/desktop.png" alt="The DecKoOS desktop: taskbar with pinned apps and the performance widget" width="100%">
@@ -43,7 +49,10 @@ and AI, as one system, and ships its own tools to keep that system healthy.
 | **Move in from Windows** | Finds your Windows drives, Steam libraries and files and brings them across; Windows itself is only ever read |
 | **Fixes for real hardware** | A step-by-step fix ladder for the RX 9000 DisplayPort blackouts on high-refresh monitors, dual-boot clock correction and Steam libraries on NTFS |
 | **Its own desktop apps** | DecKoOS Files, Terminal, Editor, Hub, Store, Menu, Quick Settings, System Monitor and System Doctor: one consistent design, built for this system |
-| **Make it yours** | Eight themes, 28 wallpapers and five layouts: dock, classic taskbar, top bar, auto-hiding dock, or a big-screen layout for the couch |
+| **Vibes** | A whole mood in one click: an animated wallpaper with a music visualizer that dances to what's playing, matching colours and taskbar, and desktop widgets (clock, Now Playing, weather, focus timer, note). Everything pauses in games |
+| **Kid mode** | An account per child: big tiles for only the apps you pick, a family-filtered web, Retro games, time limits and bedtimes a child can't switch off. Your session stays locked underneath |
+| **Every setting in one place** | DecKoOS Hub searches its own pages, DecKoOS's actions and Plasma's settings; More settings names Plasma's panels for what they do |
+| **Make it yours** | Eight themes, 28 wallpapers, five layouts, your own accent colour, DecKoOS's own sounds, and the corners, text size and taskbar you like |
 
 ## A look around
 
