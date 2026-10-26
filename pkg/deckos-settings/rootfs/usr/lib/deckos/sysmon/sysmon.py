@@ -341,3 +341,19 @@ def size(n):
 
 def gib(n):
     return f"{n / 1073741824:.1f} GB"
+
+
+def mode(path=None):
+    """DecKoOS's workload mode (deckos mode writes it): {"mode": "gaming", "game": ..., "vram": bytes freed, ...} while
+    a game runs, {"mode": "normal"} otherwise."""
+    f = Path(path or os.environ.get("DECKOS_MODE_FILE") or
+             Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}") / "deckos-mode")
+    out = {"mode": "normal"}
+    try:
+        for line in f.read_text().splitlines():
+            k, sep, v = line.partition("=")
+            if sep:
+                out[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return out

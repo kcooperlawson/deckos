@@ -15,19 +15,23 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
 
-from PySide6.QtCore import QEvent, Qt, QTimer  # noqa: E402
-from PySide6.QtGui import QFont, QIcon, QKeySequence, QShortcut  # noqa: E402
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer  # noqa: E402
+from PySide6.QtGui import (QColor, QFont, QIcon, QKeySequence, QLinearGradient, QPainter, QPainterPath,  # noqa: E402
+                           QPen, QShortcut)
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QFrame, QGridLayout, QHBoxLayout,  # noqa: E402
                                QHeaderView, QLineEdit, QMenu, QMessageBox, QPushButton, QScrollArea,
-                               QStackedWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
+                               QStackedWidget, QStyledItemDelegate, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 import hub_style as S  # noqa: E402
 import sysmon as sm  # noqa: E402
-from hub_widgets import Sparkline, button, icon_label, label, restyle  # noqa: E402
+from hub_widgets import Sparkline, button, icon_label, label  # noqa: E402
 
 DEMO = "--demo" in sys.argv
 COLS = ["Name", "CPU", "Memory", "Disk", "User"]
-UPLOAD = "#0EA08E"  # the second network line (same validated pair as DecKoOS Performance)
+# One colour per kind of resource, the same everywhere in the window (and fixed, so they stay apart whatever the
+# accent): processor blue, memory violet, graphics green, disks amber, network cyan.
+KIND = {"cpu": "#4C8DFF", "mem": "#A27BFF", "gpu": "#3DD68C", "disk": "#F5B84B", "net": "#2AC3DE"}
+UPLOAD = "#7BE0F0"  # the network's second line: upload, beside cyan download
 
 QSS = f"""
 QTreeWidget {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 10px; padding: 4px;
@@ -38,8 +42,16 @@ QTreeWidget::item:hover {{ background: {S.RAISED}; }}
 QHeaderView::section {{ background: transparent; color: {S.SUBTEXT}; border: none; border-bottom: 1px solid {S.BORDER};
     padding: 6px 8px; font-weight: 600; }}
 QFrame#device {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 10px; }}
-QFrame#device[picked="true"] {{ background: rgba(76, 141, 255, 0.10); border-color: rgba(76, 141, 255, 0.45); }}
+QFrame#device:hover {{ background: {S.RAISED}; }}
 QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 22pt; font-weight: 600; }}
+QLabel#headline {{ font-family: "Inter Display", "Inter"; font-size: 26pt; font-weight: 700; }}
+QLabel#devValue {{ font-weight: 700; }}
+QFrame#stat {{ background: {S.RAISED}; border: 1px solid {S.BORDER}; border-radius: 9px; }}
+QFrame#stat QLabel {{ background: transparent; }}
+QLabel#statValue {{ font-family: "Inter Display", "Inter"; font-size: 14pt; font-weight: 600; }}
+QLabel#chip {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 9px; padding: 5px 11px; }}
+QLabel#mode {{ background: rgba(61, 214, 140, 0.12); border: 1px solid rgba(61, 214, 140, 0.35); color: #9BEBC4;
+    border-radius: 9px; padding: 5px 11px; font-weight: 600; }}
 QPushButton#danger:disabled {{ background: {S.RAISED}; color: {S.MUTED}; }}
 QPushButton#seg {{ padding: 6px 14px; border-radius: 8px; background: transparent; border: 1px solid transparent; }}
 QPushButton#seg:checked {{ background: {S.RAISED}; border-color: {S.BORDER}; color: {S.TEXT}; }}
@@ -52,6 +64,91 @@ def pct(v):
 
 def rate(v):
     return sm.size(v) + "/s"
+
+
+def tint(color, alpha):
+    c = QColor(color)
+    c.setAlphaF(alpha)
+    return c
+
+
+class Graph(QWidget):
+    """The large graph: a scale, the last 60 seconds as smooth lines with a glow, and a dot where each is now.
+    series: [(values 0..1, colour)]; the first one also gets a soft fill."""
+
+    def __init__(self):
+        super().__init__()
+        self.series, self.ticks = [], ("100%", "50%", "0%")
+        self.setMinimumHeight(250)
+
+    def set(self, series, ticks):
+        self.series, self.ticks = series, ticks
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        area = QRectF(2, 8, self.width() - 58, self.height() - 34)
+        p.setFont(QFont("Inter", 8))
+        for i in range(5):
+            y = area.top() + area.height() * i / 4
+            p.setPen(QPen(QColor(S.BORDER), 1, Qt.SolidLine if i == 4 else Qt.DashLine))
+            p.drawLine(QPointF(area.left(), y), QPointF(area.right(), y))
+            if i % 2 == 0:
+                p.setPen(QColor(S.MUTED))
+                p.drawText(QRectF(area.right() + 8, y - 9, 50, 18), Qt.AlignLeft | Qt.AlignVCenter, self.ticks[i // 2])
+        p.setPen(QColor(S.MUTED))
+        p.drawText(QRectF(area.left(), area.bottom() + 6, 120, 18), Qt.AlignLeft, "60 seconds ago")
+        p.drawText(QRectF(area.right() - 120, area.bottom() + 6, 120, 18), Qt.AlignRight, "now")
+        for n, (values, color) in enumerate(self.series):
+            if len(values) < 2:
+                continue
+            step = area.width() / 59
+            x0 = area.right() - step * (len(values) - 1)
+            pts = [QPointF(x0 + i * step, area.bottom() - v * area.height()) for i, v in enumerate(values)]
+            line = QPainterPath(pts[0])
+            for a, b in zip(pts, pts[1:]):  # smooth, without overshooting the samples
+                line.cubicTo(QPointF(a.x() + step / 2, a.y()), QPointF(b.x() - step / 2, b.y()), b)
+            if n == 0:
+                fill = QPainterPath(line)
+                fill.lineTo(pts[-1].x(), area.bottom())
+                fill.lineTo(pts[0].x(), area.bottom())
+                fill.closeSubpath()
+                grad = QLinearGradient(0, area.top(), 0, area.bottom())
+                grad.setColorAt(0, tint(color, 0.32))
+                grad.setColorAt(1, tint(color, 0.0))
+                p.fillPath(fill, grad)
+            p.setBrush(Qt.NoBrush)
+            p.setPen(QPen(tint(color, 0.16), 6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.drawPath(line)
+            p.setPen(QPen(QColor(color), 2.2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.drawPath(line)
+            p.setPen(Qt.NoPen)
+            p.setBrush(tint(color, 0.25))
+            p.drawEllipse(pts[-1], 8, 8)
+            p.setBrush(QColor(color))
+            p.drawEllipse(pts[-1], 4, 4)
+        p.end()
+
+
+class Heat(QStyledItemDelegate):
+    """Shades the CPU, memory and disk cells by how much they use, in that resource's colour, so the heavy apps stand
+    out at a glance."""
+
+    def __init__(self, mon):
+        super().__init__()
+        self.mon = mon
+
+    def paint(self, painter, option, index):
+        num = index.data(SORT)
+        col = index.column()
+        if num and col in (1, 2, 3) and self.mon.snap:
+            total = self.mon.snap.mem_total or 1
+            frac = {1: num / 100, 2: num / total, 3: num / 1e8}[col]
+            if frac > 0.002:
+                color = {1: KIND["cpu"], 2: KIND["mem"], 3: KIND["disk"]}[col]
+                painter.fillRect(option.rect.adjusted(1, 2, -1, -2), tint(color, min(0.5, 0.06 + 0.55 * min(1, frac) ** 0.6)))
+        super().paint(painter, option, index)
 
 
 # ------------------------------------------------------------------ demo data
@@ -91,6 +188,9 @@ class DemoSampler:
                            mem_total=int(32.6e9), swap_used=0, swap_total=int(16.3e9), gpus=[gpu, igpu],
                            disks={"nvme0n1": (wave(4.1e7, 3e7, 4), wave(2e6, 1.5e6, 6)), "sda": (0.0, 0.0)},
                            net=(wave(3.1e7, 6e6, 3), wave(4.2e5, 1e5, 5)), procs=procs, uptime=3 * 3600 + 1240)
+
+
+DEMO_MODE = {"mode": "gaming", "game": "Cyberpunk 2077", "vram": "9100000000"}
 
 
 # ------------------------------------------------------------------ processes
@@ -142,9 +242,10 @@ class ProcessesPage(QWidget):
         h = self.tree.header()
         h.setStretchLastSection(False)
         h.setSectionResizeMode(0, QHeaderView.Stretch)
-        for c, width in zip(range(1, len(COLS)), (90, 100, 110, 120)):
+        for c, width in zip(range(1, len(COLS)), (110, 140, 140, 110)):
             h.setSectionResizeMode(c, QHeaderView.Fixed)
             self.tree.setColumnWidth(c, width)
+        self.tree.setItemDelegate(Heat(mon))
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.menu)
         self.tree.itemSelectionChanged.connect(self.selection_changed)
@@ -216,7 +317,7 @@ class ProcessesPage(QWidget):
         found = next((icon for app, icon, *_ in DemoSampler.APPS if app == name and icon), None) if DEMO else None
         if found and QIcon.hasThemeIcon(found):
             return QIcon.fromTheme(found)
-        return S.icon("grid", S.SUBTEXT, 18)
+        return S.icon("system", S.MUTED, 18)  # a background program, not an app
 
     def selected_pids(self):
         pids = []
@@ -267,29 +368,34 @@ class ProcessesPage(QWidget):
 # ------------------------------------------------------------------ performance
 
 class Device(QFrame):
-    """A row in the device list: name, the value now, a small graph. Click to see it large."""
+    """A row in the device list, in its resource's colour: name, the value now, a small graph. Click to see it large."""
 
-    def __init__(self, key, icon, name, mon, color=None):
+    def __init__(self, key, icon, name, mon, color):
         super().__init__()
-        self.key, self.mon = key, mon
+        self.key, self.mon, self.color = key, mon, color
         self.setObjectName("device")
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setCursor(Qt.PointingHandCursor)
-        self.setProperty("picked", False)
         v = QVBoxLayout(self)
         v.setContentsMargins(12, 10, 12, 8)
-        v.setSpacing(2)
+        v.setSpacing(4)
         head = QHBoxLayout()
-        head.setSpacing(7)
-        head.addWidget(icon_label(icon, S.SUBTEXT, 15))
-        self.name = label(self.fontMetrics().elidedText(name, Qt.ElideRight, 140), None, wrap=False)
+        head.setSpacing(8)
+        head.addWidget(icon_label(icon, color, 16))
+        self.name = label(self.fontMetrics().elidedText(name, Qt.ElideRight, 130), None, wrap=False)
         self.name.setToolTip(name)
         head.addWidget(self.name, 1)
-        self.value = label("—", "sub", wrap=False)
+        self.value = label("—", "devValue", wrap=False)
         head.addWidget(self.value)
         v.addLayout(head)
-        self.spark = Sparkline(points=60, height=28, fixed=True, color=color)
+        self.spark = Sparkline(points=60, height=30, fixed=True, color=color)
         v.addWidget(self.spark)
+        self.picked(False)
+
+    def picked(self, on):
+        c = QColor(self.color)
+        self.setStyleSheet(f"QFrame#device {{ background: rgba({c.red()},{c.green()},{c.blue()},0.10); "
+                           f"border: 1px solid rgba({c.red()},{c.green()},{c.blue()},0.55); }}" if on else "")
 
     def mousePressEvent(self, _e):
         self.mon.perf.pick(self.key)
@@ -324,29 +430,32 @@ class PerformancePage(QWidget):
         d = QVBoxLayout(detail)
         d.setContentsMargins(22, 18, 22, 18)
         d.setSpacing(10)
+        top = QHBoxLayout()
+        names = QVBoxLayout()
+        names.setSpacing(2)
         self.title = label("", "cardTitle", wrap=False)
         self.subtitle = label("", "sub", wrap=False)
-        d.addWidget(self.title)
-        d.addWidget(self.subtitle)
-        self.big = Sparkline(points=60, height=0, fixed=True)
-        self.big.setMinimumHeight(220)
+        names.addWidget(self.title)
+        names.addWidget(self.subtitle)
+        top.addLayout(names, 1)
+        self.headline = label("", "headline", wrap=False)
+        top.addWidget(self.headline, 0, Qt.AlignTop)
+        d.addLayout(top)
+        self.big = Graph()
         d.addWidget(self.big, 1)
-        self.second = Sparkline(points=60, height=0, fixed=True, color=UPLOAD)  # network upload, drawn over
-        self.second.setParent(self.big)
         self.scale = label("", "muted", wrap=False)
         d.addWidget(self.scale)
         self.cores = QGridLayout()
         self.cores.setSpacing(6)
         d.addLayout(self.cores)
-        self.stats = QGridLayout()
-        self.stats.setHorizontalSpacing(28)
-        self.stats.setVerticalSpacing(4)
+        self.stats = QHBoxLayout()
+        self.stats.setSpacing(10)
         d.addLayout(self.stats)
         h.addWidget(detail, 1)
         self.core_sparks = []
         self.stat_labels = []
 
-    def device(self, key, icon, name, color=None):
+    def device(self, key, icon, name, color):
         if key not in self.devices:
             dev = Device(key, icon, name, self.mon, color)
             self.side.insertWidget(self.side.count() - 1, dev)
@@ -363,57 +472,61 @@ class PerformancePage(QWidget):
 
     def show(self, snap):
         info = {}
-        dev = self.device("cpu", "cpu", "Processor")
+        dev = self.device("cpu", "cpu", "Processor", KIND["cpu"])
         dev.value.setText(pct(snap.cpu))
         dev.spark.push(snap.cpu / 100)
         self.push("cpu", snap.cpu / 100)
-        info["cpu"] = ("Processor", f"{pct(snap.cpu)} in use" + (f" · {snap.cpu_temp:.0f} °C" if snap.cpu_temp else ""),
-                       "0–100% of all cores",
+        info["cpu"] = ("Processor", f"{len(snap.cores)} cores" + (f" · {snap.cpu_temp:.0f} °C" if snap.cpu_temp else ""),
+                       "0–100% of all cores", pct(snap.cpu), KIND["cpu"], ("100%", "50%", "0%"),
                        [("Speed", f"{snap.cpu_mhz / 1000:.2f} GHz" if snap.cpu_mhz else "—"),
                         ("Cores", str(len(snap.cores)) or "—"),
                         ("Processes", str(len(snap.procs))),
                         ("Up for", self.uptime(snap.uptime))])
 
         mem = snap.mem_used / snap.mem_total if snap.mem_total else 0
-        dev = self.device("mem", "memory", "Memory")
+        dev = self.device("mem", "memory", "Memory", KIND["mem"])
         dev.value.setText(f"{sm.gib(snap.mem_used)}")
         dev.spark.push(mem)
         self.push("mem", mem)
-        info["mem"] = ("Memory", f"{sm.gib(snap.mem_used)} of {sm.gib(snap.mem_total)} in use", "0 – all memory",
+        info["mem"] = ("Memory", f"of {sm.gib(snap.mem_total)} in use", "0 – all memory", sm.gib(snap.mem_used), KIND["mem"],
+                       (sm.gib(snap.mem_total), sm.gib(snap.mem_total / 2), "0"),
                        [("Available", sm.gib(snap.mem_total - snap.mem_used)),
                         ("Swap", f"{sm.gib(snap.swap_used)} of {sm.gib(snap.swap_total)}" if snap.swap_total else "Off")])
 
         for i, g in enumerate(snap.gpus):
             key = f"gpu{i}"
-            dev = self.device(key, "gpu", g.name if len(snap.gpus) == 1 or i else g.name)
+            dev = self.device(key, "gpu", g.name, KIND["gpu"])
             dev.value.setText(pct(g.busy))
             dev.spark.push(g.busy / 100)
             self.push(key, g.busy / 100)
-            info[key] = (g.name, f"{pct(g.busy)} busy" + (f" · {g.temp:.0f} °C" if g.temp else ""), "0–100% busy",
+            info[key] = (g.name, "busy" + (f" · {g.temp:.0f} °C" if g.temp else "") + (f" · {g.power:.0f} W" if g.power else ""),
+                         "0–100% busy", pct(g.busy), KIND["gpu"], ("100%", "50%", "0%"),
                          [("Video memory", f"{sm.gib(g.vram_used)} of {sm.gib(g.vram_total)}"),
                           ("Power", f"{g.power:.0f} W" if g.power else "—"),
                           ("Card", g.card)])
 
         for name, (r, w) in sorted(snap.disks.items()):
             key = f"disk:{name}"
-            dev = self.device(key, "drives", f"Disk {name}")
+            dev = self.device(key, "drives", f"Disk {name}", KIND["disk"])
             dev.value.setText(rate(r + w))
             busy = r + w
             # Disks have no fixed top: scale to 3 GB/s, a fast NVMe's sustained speed
             dev.spark.push(min(1.0, busy / 3e9) ** 0.5)
             self.push(key, min(1.0, r / 3e9) ** 0.5, min(1.0, w / 3e9) ** 0.5)
-            info[key] = (f"Disk {name}", f"Reading {rate(r)} · writing {rate(w)}",
-                         "0 – 3 GB/s (square-root scale, so small activity still shows)",
+            info[key] = (f"Disk {name}", f"reading {rate(r)} · writing {rate(w)}",
+                         "0 – 3 GB/s (square-root scale, so small activity still shows) · amber read, white write",
+                         rate(r + w), KIND["disk"], ("3 GB/s", "750 MB/s", "0"),
                          [("Read", rate(r)), ("Write", rate(w))])
 
         down, up = snap.net
-        dev = self.device("net", "network", "Network", None)
+        dev = self.device("net", "network", "Network", KIND["net"])
         dev.value.setText(rate(down))
         # 0 – 1 Gbit/s on a square-root scale
         dev.spark.push(min(1.0, down / 1.25e8) ** 0.5)
         self.push("net", min(1.0, down / 1.25e8) ** 0.5, min(1.0, up / 1.25e8) ** 0.5)
-        info["net"] = ("Network", f"Down {rate(down)} · up {rate(up)}",
-                       "0 – 1 Gbit/s (square-root scale) · blue down, teal up",
+        info["net"] = ("Network", f"down · up {rate(up)}",
+                       "0 – 1 Gbit/s (square-root scale) · cyan down, light up", rate(down), KIND["net"],
+                       ("1 Gbit/s", "250 Mbit/s", "0"),
                        [("Download", rate(down)), ("Upload", rate(up))])
 
         self.info = info
@@ -432,50 +545,44 @@ class PerformancePage(QWidget):
 
     def render(self, snap):
         for k, dev in self.devices.items():
-            if dev.property("picked") != (k == self.current):
-                dev.setProperty("picked", k == self.current)
-                restyle(dev)
-        title, sub, scale, stats = self.info[self.current]
+            dev.picked(k == self.current)
+        title, sub, scale, headline, color, ticks, stats = self.info[self.current]
         self.title.setText(title)
         self.subtitle.setText(sub)
+        self.headline.setText(headline)
+        self.headline.setStyleSheet(f"color: {color};")
         self.scale.setText(f"Last 60 seconds · {scale}")
         hist, hist2 = self.history.get(self.current, ([], []))
-        self.big.data.clear()
-        self.big.data.extend(hist)
-        self.big.update()
-        self.second.setVisible(bool(hist2))
-        self.second.setGeometry(self.big.rect())
-        self.second.data.clear()
-        self.second.data.extend(hist2)
-        self.second.update()
-        # The labels are made once and reused: rebuilding them every second flickers
+        second = UPLOAD if self.current == "net" else S.TEXT
+        self.big.set([(list(hist), color)] + ([(list(hist2), second)] if hist2 else []), ticks)
+        # The tiles are made once and reused: rebuilding them every second flickers
         while len(self.stat_labels) < len(stats):
-            i = len(self.stat_labels)
-            pair = (label("", "muted", wrap=False), label("", None, wrap=False))
-            self.stats.addWidget(pair[0], 0, i)
-            self.stats.addWidget(pair[1], 1, i)
+            tile = QFrame()
+            tile.setObjectName("stat")
+            tile.setAttribute(Qt.WA_StyledBackground, True)
+            t = QVBoxLayout(tile)
+            t.setContentsMargins(12, 9, 12, 9)
+            t.setSpacing(1)
+            pair = (label("", "muted", wrap=False), label("", "statValue", wrap=False), tile)
+            t.addWidget(pair[0])
+            t.addWidget(pair[1])
+            self.stats.addWidget(tile, 1)
             self.stat_labels.append(pair)
-        for i, (name, value) in enumerate(self.stat_labels):
-            shown = i < len(stats)
-            name.setVisible(shown)
-            value.setVisible(shown)
-            if shown:
+        for i, (name, value, tile) in enumerate(self.stat_labels):
+            tile.setVisible(i < len(stats))
+            if i < len(stats):
                 name.setText(stats[i][0])
-                value.setText(f"<b>{stats[i][1]}</b>")
+                value.setText(stats[i][1])
         # one small graph per core under the processor
         show_cores = self.current == "cpu" and snap is not None and snap.cores
         while len(self.core_sparks) < (len(snap.cores) if show_cores else 0):
-            sp = Sparkline(points=30, height=26, fixed=True)
+            sp = Sparkline(points=30, height=26, fixed=True, color=KIND["cpu"])
             self.cores.addWidget(sp, len(self.core_sparks) // 8, len(self.core_sparks) % 8)
             self.core_sparks.append(sp)
         for i, sp in enumerate(self.core_sparks):
             sp.setVisible(self.current == "cpu")
             if show_cores and i < len(snap.cores):
                 sp.push(snap.cores[i] / 100)
-
-    def resizeEvent(self, e):
-        super().resizeEvent(e)
-        self.second.setGeometry(self.big.rect())
 
 
 # ------------------------------------------------------------------ window
@@ -508,9 +615,17 @@ class Monitor(QWidget):
             self.segs.addButton(b, i)
             head.addWidget(b)
         head.addStretch(1)
-        self.summary = label("", "sub", wrap=False)
-        head.addWidget(self.summary)
+        self.chips = {}
+        for key, name in (("cpu", "CPU"), ("mem", "RAM"), ("gpu", "GPU")):
+            chip = label("", "chip", wrap=False)
+            chip.setTextFormat(Qt.RichText)
+            self.chips[key] = (chip, name)
+            head.addWidget(chip)
         v.addLayout(head)
+        # While a game runs: what DecKoOS did to make room for it, on a line of its own
+        self.mode = label("", "mode")  # wraps rather than widen the window
+        self.mode.hide()
+        v.addWidget(self.mode)
 
         self.stack = QStackedWidget()
         self.procs = ProcessesPage(self)
@@ -543,10 +658,29 @@ class Monitor(QWidget):
         if not s:
             return
         gpu = s.gpus[0] if s.gpus else None
-        self.summary.setText(f"Processor {pct(s.cpu)}   ·   Memory {sm.gib(s.mem_used)}"
-                             + (f"   ·   Graphics {pct(gpu.busy)}" if gpu else ""))
+        values = {"cpu": pct(s.cpu), "mem": sm.gib(s.mem_used), "gpu": pct(gpu.busy) if gpu else None}
+        for key, (chip, name) in self.chips.items():
+            chip.setVisible(values[key] is not None)
+            if values[key] is not None:
+                chip.setText(f'<span style="color:{KIND[key]}">●</span>&nbsp; {name} <b>{values[key]}</b>')
+        m = DEMO_MODE if DEMO else sm.mode()
+        if m.get("mode") == "gaming":
+            freed = float(m.get("vram") or 0)
+            game = m.get("game") or "a game"
+            self.mode.setText(f"Gaming mode · {game}  ·  " +
+                              (f"{freed / 1e9:.1f} GB of graphics memory freed, " if freed >= 1e8 else "local AI unloaded, ") +
+                              "Docker paused, indexing stopped until it ends")
+        self.mode.setVisible(m.get("mode") == "gaming")
+        self.tree_totals(s)
         self.perf.show(s)
         self.procs.show(s)
+
+    def tree_totals(self, s):
+        """The column headers carry the PC's totals, as a reminder of what the rows add up to."""
+        head = self.procs.tree.headerItem()
+        head.setText(1, f"CPU  {pct(s.cpu)}")
+        head.setText(2, f"Memory  {sm.gib(s.mem_used)}")
+        head.setText(3, f"Disk  {rate(sum(r + w for r, w in s.disks.values()))}")
 
     # No sampling while nobody can see the window (as in DecKoOS Hub)
     def changeEvent(self, e):
@@ -570,6 +704,9 @@ class Monitor(QWidget):
 
 def main():
     app = QApplication(sys.argv)
+    if DEMO and QIcon.themeName() in ("", "hicolor"):  # offscreen: no Plasma theme to pick the icons
+        QIcon.setThemeSearchPaths(QIcon.themeSearchPaths() + ["/usr/share/icons"])
+        QIcon.setThemeName("Papirus-Dark")
     app.setApplicationName("DecKoOS System Monitor")
     app.setDesktopFileName("deckos-sysmon")
     app.setFont(QFont("Inter", 10))

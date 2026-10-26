@@ -132,5 +132,18 @@ class SysmonTests(unittest.TestCase):
         self.assertEqual(self.sm.size(4.4e9), '4.4 GB')
 
 
+class ModeTests(unittest.TestCase):
+    def test_reads_the_workload_mode(self):
+        import sysmon as sm
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / 'deckos-mode'
+            self.assertEqual(sm.mode(f), {'mode': 'normal'})  # no file: nothing is happening
+            f.write_text('mode=gaming\ngame=Cyberpunk 2077\nsince=1\nollama=gpt-oss:20b\nvram=9100000000\ndocker=\n')
+            m = sm.mode(f)
+            self.assertEqual((m['mode'], m['game'], m['vram']), ('gaming', 'Cyberpunk 2077', '9100000000'))
+            f.write_text('mode=normal\n')
+            self.assertEqual(sm.mode(f)['mode'], 'normal')
+
+
 if __name__ == '__main__':
     unittest.main()

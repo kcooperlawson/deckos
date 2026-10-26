@@ -330,7 +330,10 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 grouped by the program they run, named from .desktop files (so Firefox's tab processes stay with Firefox).
 `deckos_sysmon.py` is the window (`deckos-sysmon`, Ctrl+Shift+Esc, `--demo --screenshot DIR`): Processes
 (tree updated in place, numeric sort via `Row.__lt__`; other users' processes end through pkexec kill) and
-Performance (fixed-scale `Sparkline`s). GPU figures are amdgpu (`gpu_busy_percent`) and NVIDIA (NVML); Intel cards are
+Performance (fixed-scale `Sparkline`s and the big `Graph`, with a scale and a dot where it is now). Each resource has its
+own colour everywhere (`KIND`: CPU blue, memory violet, graphics green, disks amber, network cyan; fixed, not the accent),
+process cells are heat-shaded by use (`Heat` delegate), the headers carry the totals, and `sysmon.mode()` (the
+`deckos mode` state file) shows Gaming mode. GPU figures are amdgpu (`gpu_busy_percent`) and NVIDIA (NVML); Intel cards are
 left out rather than guessed. pci.ids has comments inside vendor blocks: skip them when scanning.
 
 ## DeckOS Bench
