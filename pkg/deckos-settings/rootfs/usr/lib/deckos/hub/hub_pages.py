@@ -1428,6 +1428,20 @@ class AppearancePage(Page):
     title = "Appearance"
     subtitle = "Theme, accent colour, wallpaper and desktop style."
 
+    def set_sounds(self, theme, name):
+        if not sysinfo.DEMO:
+            sysinfo.set_sound_theme(theme)
+        self.hub.toast(f"System sounds: {name}", "ok")
+        if theme != "off":
+            self.play_sample()
+
+    def play_sample(self):
+        theme = sysinfo.sound_theme()
+        if theme != "off" and not sysinfo.DEMO:
+            sample = Path(f"/usr/share/sounds/{theme}/stereo/theme-demo.oga")
+            if sample.exists():
+                QProcess.startDetached("pw-play", [str(sample)])
+
     def set_style(self, key, value):
         S.save_style(**{key: value})
         self.hub.set_accent(S.P.accent)  # the same live restyle: stylesheet, logos, repaint
@@ -1495,6 +1509,23 @@ class AppearancePage(Page):
             name.setFixedWidth(90)
             style.body.addWidget(row(name, *buttons))
         self.lay.addWidget(style)
+
+        sounds = Card("Sounds", "System sounds", "volume")
+        sounds.body.addWidget(label("Notifications, devices, errors and logging in. DecKoOS's own: glass tones, "
+                                    "with a bolted-plate accent for the bigger moments.", "sub"))
+        group = QButtonGroup(self)
+        now = sysinfo.sound_theme()
+        buttons = []
+        for value, text in (("deckos", "DecKoOS"), ("ocean", "Plasma (Ocean)"), ("off", "Off")):
+            b = QPushButton(text)
+            b.setObjectName("seg")
+            b.setCheckable(True)
+            b.setChecked(now == value)
+            b.clicked.connect(lambda _c, v=value, t=text: self.set_sounds(v, t))
+            group.addButton(b)
+            buttons.append(b)
+        sounds.body.addWidget(row(*buttons, button("Play a sample", slot=self.play_sample, icon="play")))
+        self.lay.addWidget(sounds)
 
         walls = Card("Wallpaper", "Desktop background", "image")
         self.wall_grid = QGridLayout()

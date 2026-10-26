@@ -1,0 +1,9 @@
+[Sound Theme]
+Name=DecKoOS
+Comment=Glass tones and a bolted-plate accent, made for DecKoOS
+Inherits=ocean
+Directories=stereo
+Example=theme-demo
+
+[stereo]
+OutputProfile=stereo

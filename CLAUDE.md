@@ -127,6 +127,9 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   else uses the installed Hub/branding. Everyone signs in with their own GitHub (`gh auth login --web`); `github_role()`
   asks GitHub for the account's permission: admin/maintain see Release, Promote, Build on GitHub and merging,
   everyone else gets Contribute (fork + clone with gh, checks, `gh pr create --web`). GitHub enforces the same rules.
+- DecKoOS Sounds: `assets/sounds.py` synthesises the sound theme (numpy + ffmpeg; glass tones, a metal-plate accent for
+  big events) into `usr/share/sounds/deckos/` (`Inherits=ocean`); `kdeglobals.base` makes it the default; Hub > Appearance
+  > Sounds switches it (kwriteconfig6). Not in check.sh's generated check: Vorbis output varies between ffmpeg versions.
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 

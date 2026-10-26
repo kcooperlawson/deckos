@@ -402,6 +402,32 @@ def parse_undoable(out):
     return rows
 
 
+def sound_theme():
+    """deckos, ocean or another sound theme from kdeglobals (the user's, then the system default); off when muted."""
+    if DEMO:
+        return "deckos"
+    theme, enabled = "", "true"
+    for path in (Path("/etc/xdg/kdeglobals"), Path.home() / ".config/kdeglobals"):  # the user's file wins
+        try:
+            text = path.read_text()
+        except OSError:
+            continue
+        m = re.search(r"^\[Sounds\]\n((?:[^\[].*\n?)*)", text, re.M)
+        if m:
+            theme = (re.search(r"^Theme=(.*)$", m.group(1), re.M) or [None, theme])[1] or theme
+            enabled = (re.search(r"^Enable=(.*)$", m.group(1), re.M) or [None, enabled])[1] or enabled
+    return "off" if enabled.strip().lower() == "false" else (theme.strip() or "ocean")
+
+
+def set_sound_theme(theme):
+    """Plasma's own setting (kdeglobals [Sounds]), as System Settings writes it: no root, applies to new sounds."""
+    if theme == "off":
+        subprocess.run(["kwriteconfig6", "--file", "kdeglobals", "--group", "Sounds", "--key", "Enable", "false"])
+        return
+    subprocess.run(["kwriteconfig6", "--file", "kdeglobals", "--group", "Sounds", "--key", "Enable", "true"])
+    subprocess.run(["kwriteconfig6", "--file", "kdeglobals", "--group", "Sounds", "--key", "Theme", theme])
+
+
 def booted_snapshot():
     """The snapshot GRUB's snapshots menu started, or None (grub-btrfs runs it read-only under an overlay)."""
     if DEMO:

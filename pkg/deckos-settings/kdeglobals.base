@@ -20,3 +20,6 @@ AnimationDurationFactor=0.5
 
 [Icons]
 Theme=DeckOS
+
+[Sounds]
+Theme=deckos
