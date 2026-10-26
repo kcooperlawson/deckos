@@ -5,6 +5,8 @@ account has on the repo: the maintainer releases, promotes and merges, everyone 
 Runs on Windows and Linux (PySide6 + the GitHub CLI `gh`, signed in with `gh auth login`).
 On an Arch/DeckOS machine it can also build the ISO locally with build.sh.
 
+    deckos-builder --demo [--demo-role=contributor] [--screenshot DIR]
+
 Same look as DecKoOS Hub: slate cards, 1px borders, Inter, and the
 blue-violet gradient on primary actions and progress.
 """
@@ -18,11 +20,12 @@ import shutil
 import string
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import webbrowser
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, QRunnable, QSettings, Qt, QThreadPool, QTimer, Signal
@@ -32,6 +35,8 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QDia
                                QLineEdit, QMessageBox, QPlainTextEdit, QScrollArea, QSplitter, QVBoxLayout, QWidget)
 
 HERE = Path(__file__).resolve().parent
+DEMO = "--demo" in sys.argv  # canned data, no gh, git or drives: for screenshots and review
+DEMO_ROLE = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--demo-role=")), "maintainer")
 # Installed with DecKoOS (/usr/lib/deckos/builder), or run from a checkout: then the repo is the folder above
 # this one's pkg/deckos-settings/rootfs/usr/lib/deckos/builder
 SOURCE = next((p for p in HERE.parents if (p / "pkg/deckos-settings").is_dir() and (p / "VERSION").exists()), None)
@@ -486,7 +491,8 @@ class Builder(QWidget):
         self.setWindowIcon(S.brand_icon("logo.svg"))
         self.resize(1180, 920)
         self.setMinimumSize(760, 560)
-        self.settings = QSettings("DeckOS", "Builder")
+        self.settings = QSettings(os.path.join(tempfile.mkdtemp(), "demo.ini"), QSettings.IniFormat) if DEMO \
+            else QSettings("DeckOS", "Builder")
         # The source to work on: the one picked before, else the checkout Builder runs from, else the newest
         # one in the usual places
         set_checkout(self.settings.value("checkout", "") or SOURCE or find_checkout())
@@ -534,9 +540,9 @@ class Builder(QWidget):
         cols.addWidget(left_scroll, 5)
         right = QVBoxLayout()
         right.setSpacing(14)
-        right.addWidget(self.contrib_card(), 3)
+        right.addWidget(self.contrib_card(), 4)
         right.addWidget(self.history_card(), 3)
-        right.addWidget(self.repo_card(), 2)
+        right.addWidget(self.repo_card(), 1)
         cols.addLayout(right, 6)
         split.addWidget(top)
         self.log = QPlainTextEdit()
@@ -566,13 +572,13 @@ class Builder(QWidget):
         h.addSpacing(12)
         t = QVBoxLayout()
         t.setSpacing(1)
-        t.addWidget(label("DecKoOS Builder", "title"))
-        self.subtitle = label("Connecting to GitHub…", "sub")
+        t.addWidget(label("DecKoOS Builder", "title", wrap=False))
+        self.subtitle = label("Connecting to GitHub…", "sub", wrap=False)
         t.addWidget(self.subtitle)
         h.addLayout(t, 1)
         self.repo_box = QLineEdit(self.settings.value("repo", "") or "")
         self.repo_box.setPlaceholderText("owner/repo")
-        self.repo_box.setFixedWidth(200)
+        self.repo_box.setFixedWidth(150)
         self.repo_box.editingFinished.connect(self.repo_changed)
         h.addWidget(self.repo_box)
         self.account_btn = button("Sign in with GitHub", "primary", self.account, icon="user",
@@ -657,7 +663,7 @@ class Builder(QWidget):
                 button("Get the source…", "primary", self.get_source, icon="download"),
                 button("Use a copy I have…", slot=self.pick_source, icon="folder")))
             return
-        branch = git("rev-parse", "--abbrev-ref", "HEAD", check=False) or "?"
+        branch = "fix-wifi-icon" if DEMO else git("rev-parse", "--abbrev-ref", "HEAD", check=False) or "?"
         self.contribute_box.addWidget(RowItem("folder", str(src), f"on branch {branch}", S.P.accent))
         self.contribute_box.addWidget(label(
             "2. Make your change on a branch of its own (not main), and run the checks.<br>"
@@ -743,6 +749,7 @@ class Builder(QWidget):
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setWidget(holder)
         scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
+        scroll.setMinimumHeight(200)  # one pull request with its buttons, at least
         c.body.addWidget(scroll, 1)
         return c
 
@@ -1110,6 +1117,10 @@ class Builder(QWidget):
     # ---- startup / repo
 
     def startup(self):
+        if DEMO:
+            self.demo()
+            return
+
         def work(_):
             Clock.sync()
             if not gh_path():
@@ -1138,8 +1149,11 @@ class Builder(QWidget):
         self.bg(work, done)
 
     def repo_changed(self):
+        if DEMO:
+            return
         self.settings.setValue("repo", self.repo)
-        self.subtitle.setText(f"github.com/{self.repo}  ·  {WORKFLOW}  ·  times use GitHub's clock")
+        self.subtitle.setText(f"github.com/{self.repo}")
+        self.subtitle.setToolTip(f"Builds come from {WORKFLOW}; times use GitHub's clock")
         repo = self.repo
 
         def done(res, err):
@@ -1157,7 +1171,11 @@ class Builder(QWidget):
         maint = role == "maintainer"
         signed_in = role in ("maintainer", "contributor")
         self.account_btn.setText({"signed-out": "Sign in with GitHub", "no-gh": "GitHub CLI missing"}.get(
-            role, f"{login} · {'maintainer' if maint else 'contributor'}"))
+            role, login or ""))
+        if signed_in:
+            self.account_btn.setToolTip(f"Signed in as {login}, a {'maintainer' if maint else 'contributor'} on "
+                                        f"{self.repo}. Click to sign out.")
+        self.account_btn.setMinimumWidth(self.account_btn.sizeHint().width())
         self.account_btn.setObjectName("primary" if not signed_in else "")
         self.account_btn.style().unpolish(self.account_btn)
         self.account_btn.style().polish(self.account_btn)
@@ -1201,6 +1219,24 @@ class Builder(QWidget):
         if e.type() == e.Type.ActivationChange and self.isActiveWindow() and getattr(self, "waiting_sign_in", False):
             self.waiting_sign_in = False
             self.repo_changed()
+
+    def demo(self):
+        self.repo_box.setText(UPSTREAM)
+        self.subtitle.setText(f"github.com/{UPSTREAM}  ·  demo")
+        d = demo_data()
+        (self.runs, self.current, self.jobs, self.assets, self.stable, self.local, self.iso_runs, self.app_runs,
+         self.prs) = (d["runs"], d["runs"][0], d["jobs"], d["assets"], d["stable"], d["local"], d["iso_runs"],
+                      d["apps"], d["prs"])
+        self.typical = 1740
+        login = "kcooperlawson" if DEMO_ROLE == "maintainer" else "a-contributor"
+        self.set_role(login, DEMO_ROLE)
+        self.render_history()
+        self.render_repo()
+        self.render_apps()
+        testing = self.testing_version()
+        self.promote_btn.setEnabled(bool(testing) and testing != self.stable)
+        self.scan_usb()
+        self.say("Demo: canned builds, packages and pull requests; nothing is asked of GitHub.")
 
     # ---- polling
 
@@ -1381,11 +1417,11 @@ class Builder(QWidget):
             newest = max((parse_ts(a["updated_at"]) for a in self.assets), default=None)
             when = f"published {fmt_ago(newest)}" if newest else ""
             stable = "stable has it" if self.stable == pub else f"stable: {self.stable or 'none'}" + (
-                " · Promote… moves it" if maint else "")
+                " · Promote moves it" if maint else "")
             if lo and pub != lo["version"] and vkey(lo["version"]) > vkey(pub) and not lo.get("ahead"):
                 self.t_repo.set(pub, f"{lo['version']} is on its way · {when}", "info")
             else:
-                self.t_repo.set(pub, f"testing · {when} · {stable}", "ok" if self.stable == pub else "info")
+                self.t_repo.set(pub, f"{when} · {stable}", "ok" if self.stable == pub else "info")
         if self.current:
             state, _ = run_state(self.current)
             (u_text, u_col), (i_text, _) = phases(self.current, self.jobs)
@@ -1604,6 +1640,13 @@ class Builder(QWidget):
         return max(isos, key=lambda p: p.stat().st_mtime, default=None)
 
     def scan_usb(self):
+        if DEMO:
+            self.usb_combo.clear()
+            self.usb_combo.addItem("/run/media/you/Ventoy  (Ventoy, 41.8 GB free)", "/run/media/you/Ventoy")
+            self.usb_info.setText("On the USB: deckos-0.13.0-x86_64.iso")
+            self.t_usb.set("/run/media/you/Ventoy", "41.8 GB free", "ok")
+            return
+
         def done(drives, err):
             self.usb_combo.clear()
             if err or not drives:
@@ -1781,6 +1824,65 @@ class Builder(QWidget):
         self.say("Setting up WSL with Arch Linux in a new window…")
 
 
+# ------------------------------------------------------------------ demo
+
+def demo_data():
+    now = datetime.now(timezone.utc)
+
+    def ts(minutes):
+        return (now - timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def run(n, title, tag, ago, took, concl="success", status="completed"):
+        return {"id": 9000 + n, "run_number": n, "status": status, "conclusion": concl if status == "completed" else None,
+                "event": "push", "head_branch": tag, "display_title": title, "head_commit": {"message": title},
+                "created_at": ts(ago), "run_started_at": ts(ago), "updated_at": ts(ago - took),
+                "html_url": f"https://github.com/{UPSTREAM}/actions/runs/{9000 + n}"}
+
+    runs = [run(212, "DecKoOS 0.13.2: Builder demo, calmer System page", "v0.13.2", 18, 0, status="in_progress"),
+            run(211, "DecKoOS 0.13.1: the weather widget's first fetch", "v0.13.1", 60 * 26, 9),
+            run(210, "DecKoOS 0.13.0: Make it yours", "v0.13.0", 60 * 50, 31),
+            run(209, "installer: free space on disks with a recovery partition", "main", 60 * 75, 4, "failure"),
+            run(208, "DecKoOS 0.12.4: Game Doctor reads Proton 10 logs", "v0.12.4", 60 * 120, 8)]
+
+    def job(name, concl=None, status="completed", steps=()):
+        return {"name": name, "status": status, "conclusion": concl if status == "completed" else None,
+                "steps": [{"name": n, "status": st, "conclusion": c, "started_at": ts(m)} for n, st, c, m in steps]}
+
+    jobs = [job("plan", "success"), job("lint", "success"), job("package", "success"), job("publish", "success"),
+            job("iso", status="in_progress", steps=[("Build the ISO", "completed", "success", 12),
+                                                    ("Run build.sh", "in_progress", None, 7),
+                                                    ("Upload the ISO", "queued", None, 0)])]
+    pkgs = [("deckos-settings", "0.13.2", 4.8), ("deckos-files", "0.13.2", 1.9), ("deckos-terminal", "0.13.2", 0.7),
+            ("deckos-editor", "0.13.2", 0.9), ("deckos-theme-tmpikes", "1.4", 6.2)]
+    assets = [{"name": f"{n}-{v}-1-x86_64.pkg.tar.zst", "size": mb * 1e6, "updated_at": ts(9)} for n, v, mb in pkgs]
+    apps = {"deckos-files.yml": run(87, "files: rename in place", "main", 60 * 5, 6),
+            "deckos-terminal.yml": run(41, "terminal: tab names from .git/HEAD", "main", 60 * 30, 5),
+            "deckos-editor.yml": None}
+
+    def pr(n, title, who, ago, files, add, rem, checks, draft=False):
+        return {"number": n, "title": title, "author": {"login": who}, "url": f"https://github.com/{UPSTREAM}/pull/{n}",
+                "isDraft": draft, "createdAt": ts(ago), "additions": add, "deletions": rem,
+                "files": [{"path": f} for f in files], "statusCheckRollup": [{"conclusion": c} for c in checks],
+                "mergeable": "MERGEABLE", "headRefName": f"pr-{n}"}
+
+    prs = [pr(48, "store: Flathub search finds apps by their old names", "sam-plays", 180,
+              ["pkg/deckos-settings/rootfs/usr/lib/deckos/store/deckos_store.py", "tests/test_store.py"], 64, 12,
+              ["SUCCESS", "SUCCESS"]),
+           pr(47, "installer: keep the Windows recovery partition's label", "ruth-k", 60 * 9,
+              ["installer/deckos-install", "tests/vm/partition_steps.py"], 31, 4, ["SUCCESS", "IN_PROGRESS"]),
+           pr(45, "retro: Saturn BIOS checksums for the JP model", "pixelcat", 60 * 50,
+              ["pkg/deckos-settings/rootfs/usr/lib/deckos/retro/retro.py"], 9, 1, ["FAILURE"], draft=True)]
+    return {"runs": runs, "jobs": jobs, "assets": assets, "stable": "0.13.1", "apps": apps, "prs": prs,
+            "local": {"version": "0.13.2", "tag": "v0.13.2", "ahead": 0, "unpushed": 0, "branch": "main"},
+            "iso_runs": {9211: 0, 9210: 1740, 9209: 0, 9208: 0}}
+
+
+def screenshot(w, out):
+    out.mkdir(parents=True, exist_ok=True)
+    w.grab().save(str(out / f"builder-{DEMO_ROLE}.png"))
+    QApplication.quit()
+
+
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("DecKoOS Builder")
@@ -1795,6 +1897,9 @@ QLineEdit:focus {{ border-color: {ACCENT}; }}
     app.setFont(QFont("Inter Display" if IS_WINDOWS else "Inter", 10))
     w = Builder()
     w.show()
+    if DEMO and "--screenshot" in sys.argv:
+        out = Path(sys.argv[sys.argv.index("--screenshot") + 1])
+        QTimer.singleShot(800, lambda: screenshot(w, out))
     sys.exit(app.exec())
 
 
