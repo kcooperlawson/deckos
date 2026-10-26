@@ -278,7 +278,8 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.
   `deckos heal`, the Assistant's `use_fix`. Never loosen the walls for a model, however big. `heal_report.py`: outcomes
   per fix (the asking user's file, even from pkexec), `report [--open]` (scrubbed; opens the heal.yml issue form, the
-  person submits; DecKoOS sends nothing), `triage` (gh; groups `heal-report` issues). Tests: `tests/test_heal.py`.
+  person submits; DecKoOS sends nothing), `triage` (gh; groups `heal-report` issues), `draft N` (local model proposes; `heal.check_recipe` must pass: `PROGRAMS` and each
+  one's allowed first argument, whole-word blanks, DENY; saved for review, never added). Tests: `tests/test_heal.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

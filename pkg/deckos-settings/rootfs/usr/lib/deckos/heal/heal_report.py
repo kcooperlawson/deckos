@@ -5,7 +5,7 @@ whether it worked, a scrubbed hardware summary), and a person writes any new rec
 Nothing is ever sent by DecKoOS: `report` shows the text and, if asked, opens a pre-filled GitHub issue in the
 browser, where the person reads it and presses Submit themselves.
 
-    heal_report.py outcome ID worked|failed [FINDING] | history | report [--open] | triage [--json]
+    heal_report.py outcome ID worked|failed [FINDING] | history | report [--open] | triage [--json] | draft N
 """
 import json
 import os
@@ -129,6 +129,69 @@ def triage(issues):
     return sorted(groups.values(), key=lambda g: (-g["reports"], g["finding"]))
 
 
+DRAFTS = Path.home() / ".local/share/deckos/heal-drafts"
+
+DRAFT_PROMPT = """You maintain DecKoOS's library of fixes. Reports from users' PCs were grouped:
+
+{group}
+
+Propose ONE recipe for the library, as JSON only (no other text), in exactly this shape:
+{{"id": "lowercase-with-dashes", "title": "Short, plain, like a button", "why": "One plain sentence: when it helps",
+  "root": true or false, "params": {{"name": "repo-package" | ["allowed", "values"] | ["int", min, max]}},
+  "steps": [["program", "arg", "{{name}}"]]}}
+
+Rules: steps start with one of these programs: {programs}. A blank ({{name}}) is a whole argument, never part of one.
+Nothing may touch sudo, polkit, PAM, SSH, users, passwords, the firewall, the bootloader or pacman's keys, and
+nothing downloads from the internet. Prefer an existing recipe if one already fits: {existing}. If none can be written
+within these rules, answer {{"none": "why"}}."""
+
+
+def describe_group(g):
+    vendors = ", ".join(f"{v} {n}" for v, n in sorted(g["vendors"].items()))
+    return (f"Problem (System Doctor key): {g['finding']}\nFix people tried: {g['recipe']}\n"
+            f"PCs: {g['reports']}, it worked on {g['worked']}\nGraphics vendors: {vendors}")
+
+
+def parse_draft(reply):
+    """A model's reply to a recipe: the first JSON object in it, ["int", a, b] turned into the library's tuple."""
+    m = re.search(r"\{.*\}", reply or "", re.S)
+    if not m:
+        raise ValueError("no JSON in the answer")
+    d = json.loads(m.group(0))
+    if "none" in d:
+        return None, str(d["none"])
+    params = {k: (tuple(v) if isinstance(v, list) and v[:1] == ["int"] else v) for k, v in (d.get("params") or {}).items()}
+    rid = d.pop("id", "")
+    return rid, {"title": d.get("title"), "why": d.get("why"), "root": d.get("root"), "params": params,
+                 "steps": d.get("steps")}
+
+
+def draft(group, ask, save=True):
+    """Asks a model (ask(prompt) -> text) for a recipe for one triage group; returns (id, recipe) once the recipe
+    passes heal.check_recipe, saved for a person to review. Never added to the library by itself."""
+    sys.path.insert(0, str(HERE))
+    import heal
+    prompt = DRAFT_PROMPT.format(group=describe_group(group), programs=", ".join(sorted(heal.PROGRAMS)),
+                                 existing=", ".join(heal.RECIPES))
+    rid, recipe = parse_draft(ask(prompt))
+    if rid is None:
+        raise heal.Refused(f"the model found no fix within the rules: {recipe}")
+    if rid in heal.RECIPES:
+        return rid, heal.RECIPES[rid]  # an existing recipe fits: nothing new to review
+    heal.check_recipe(rid, recipe)
+    if save:
+        DRAFTS.mkdir(parents=True, exist_ok=True)
+        (DRAFTS / f"{rid}.json").write_text(json.dumps({"id": rid, "group": group, **recipe}, indent=2))
+    return rid, recipe
+
+
+def local_model(prompt):
+    sys.path.insert(0, str(HERE.parent / "assistant"))
+    import assistant
+    model = assistant.pick_model()
+    return assistant.chat(model, [{"role": "user", "content": prompt}]).get("content", "")
+
+
 def main(argv):
     if argv[:1] == ["outcome"] and len(argv) >= 3 and argv[2] in ("worked", "failed"):
         record(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
@@ -167,6 +230,25 @@ def main(argv):
             vendors = ", ".join(f"{v} {n}" for v, n in sorted(g["vendors"].items()))
             print(f"  {g['reports']:>3} PCs  {g['worked']}/{g['reports']} worked  {g['finding']} → {g['recipe']}  "
                   f"({vendors})  #{', #'.join(str(i) for i in g['issues'][:5])}")
+        return 0
+    if argv[:1] == ["draft"] and len(argv) > 1 and argv[1].isdigit():
+        sys.path.insert(0, str(HERE))
+        import heal
+        out = subprocess.run(["gh", "issue", "list", "-R", REPO, "--label", LABEL, "--state", "open", "--limit", "500",
+                              "--json", "number,title,body"], capture_output=True, text=True)
+        groups = triage(json.loads(out.stdout or "[]")) if out.returncode == 0 else []
+        n = int(argv[1])
+        if not 1 <= n <= len(groups):
+            print(f"no group {n} (deckos heal triage lists {len(groups)})", file=sys.stderr)
+            return 1
+        try:
+            rid, recipe = draft(groups[n - 1], local_model)
+        except (heal.Refused, ValueError) as e:
+            print(f"no draft: {e}", file=sys.stderr)
+            return 3
+        print(f"Draft '{rid}' passed the checks. To add it, review it and paste into RECIPES in heal.py:\n")
+        print(f'    "{rid}": {recipe!r},')
+        print(f"\n(saved: {DRAFTS / (rid + '.json')})")
         return 0
     print(__doc__.split("\n\n")[-1].strip(), file=sys.stderr)
     return 2

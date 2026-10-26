@@ -83,8 +83,18 @@ RECIPES = {
 # Second wall: whatever a recipe says, never these
 DENY = re.compile(r"sudoers|polkit|pam\.d|/etc/(shadow|passwd|group|gshadow)|\bssh|authorized_keys|firewall|nft\b|"
                   r"iptables|usermod|useradd|passwd|chmod|chown|visudo|curl|wget|\bsh\b|bash|eval|pacman\.conf|"
-                  r"mirrorlist|pacman-key|gpg|/boot|grub|\.\.|[;&|`$<>]")
+                  r"mirrorlist|pacman-key|gpg|/boot|grub|\.\.|[;&|`$<>]|://|\.pkg\.tar")
 PKG_RE = re.compile(r"^[a-z0-9@][a-z0-9@._+-]{0,99}$")
+
+
+# The programs a recipe may run: a new one is a code change for a person to review, never something a draft adds
+# and what each may do: its first argument. pacman only installs from the official repos (-S), never -U (a file or
+# URL) or -R; systemctl only starts things; deckos only its fix commands. Checked on every run, not just for drafts.
+PROGRAMS = {"pacman": {"-S"}, "systemctl": {"restart", "start", "enable", "disable", "--user"},
+            "deckos": {"display", "drives", "undo"}, "chwd": {"-a"}, "paccache": {"-rk1"}, "find": None,
+            "fc-cache": {"-f"}, "flatpak": {"repair"}}
+ID_RE = re.compile(r"^[a-z][a-z0-9-]{2,40}$")
+LITERAL_RE = re.compile(r"^[A-Za-z0-9@%+=:,./_-]+$")
 
 
 class Refused(Exception):
@@ -115,6 +125,72 @@ def fill(spec, value, check=None):
     raise Refused("unknown blank")
 
 
+def check_recipe(rid, r):
+    """A recipe's shape, whoever wrote it (the library's are checked by the tests; a model's draft must pass too):
+    a known program first, blanks only as whole arguments ({name}, or {home} at the start of a path), blanks of a
+    known kind, nothing on the deny list with sample values in. Raises Refused with the reason."""
+    if not ID_RE.match(rid or ""):
+        raise Refused(f"'{rid}' isn't a recipe name (lowercase words with dashes)")
+    if not isinstance(r, dict) or not isinstance(r.get("title"), str) or not isinstance(r.get("why"), str):
+        raise Refused("a recipe needs a title and a why")
+    if not isinstance(r.get("root"), bool):
+        raise Refused("a recipe must say whether it needs root")
+    params = r.get("params")
+    if not isinstance(params, dict):
+        raise Refused("params must be a mapping")
+    samples = {}
+    for name, spec in params.items():
+        if not re.fullmatch(r"[a-z]{2,20}", name) or name == "home":
+            raise Refused(f"'{name}' isn't a blank name")
+        if spec == "repo-package":
+            samples[name] = "vlc"
+        elif isinstance(spec, list) and spec and all(isinstance(x, str) and LITERAL_RE.match(x) for x in spec):
+            samples[name] = spec[0]
+        elif isinstance(spec, tuple) and len(spec) == 3 and spec[0] == "int" and all(isinstance(x, int) for x in spec[1:]) \
+                and 0 <= spec[1] <= spec[2] <= 10_000_000:
+            samples[name] = str(spec[1])
+        else:
+            raise Refused(f"blank '{name}' must be a repo package, a list of plain words, or a number range")
+    steps = r.get("steps")
+    if not isinstance(steps, list) or not steps or len(steps) > 4:
+        raise Refused("a recipe has 1 to 4 steps")
+    for step in steps:
+        if not isinstance(step, list) or not step or not all(isinstance(x, str) for x in step):
+            raise Refused("each step is a list of words")
+        if step[0] not in PROGRAMS:
+            raise Refused(f"'{step[0]}' isn't one of the programs fixes may run ({', '.join(sorted(PROGRAMS))})")
+        for part in step:
+            if re.fullmatch(r"\{[a-z]+\}", part):
+                if part[1:-1] not in params:
+                    raise Refused(f"{part} isn't one of this recipe's blanks")
+            elif part.startswith("{home}/"):
+                if not LITERAL_RE.match(part[len("{home}/"):]):
+                    raise Refused(f"'{part}' isn't a plain path")
+            elif "{" in part or not LITERAL_RE.match(part):
+                raise Refused(f"'{part}': a blank must be a whole word, and words plain")
+    with patch_recipes({rid: r}):
+        plan(rid, samples, check=lambda _n: True, home="/home/someone")
+    return True
+
+
+class patch_recipes:
+    """Plans a recipe that isn't in the library (a draft), for check_recipe."""
+
+    def __init__(self, extra):
+        self.extra = extra
+
+    def __enter__(self):
+        self.saved = {k: RECIPES.get(k) for k in self.extra}
+        RECIPES.update(self.extra)
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            if v is None:
+                RECIPES.pop(k, None)
+            else:
+                RECIPES[k] = v
+
+
 def plan(recipe_id, values=None, check=None, home=None):
     """{"id", "title", "why", "root", "snapshot", "steps"}: the finished commands, every blank checked. Raises Refused."""
     r = RECIPES.get(recipe_id)
@@ -128,6 +204,9 @@ def plan(recipe_id, values=None, check=None, home=None):
     filled["home"] = str(home or Path.home())
     steps = [[part.format(**filled) for part in step] for step in r["steps"]]
     for step in steps:
+        allowed = PROGRAMS.get(step[0], set())
+        if step[0] not in PROGRAMS or (allowed is not None and (len(step) < 2 or step[1] not in allowed)):
+            raise Refused(f"refused: '{' '.join(step[:2])}' isn't something a fix may run")
         joined = " ".join(step).replace(filled["home"], "~")
         if DENY.search(joined):
             raise Refused(f"refused: '{joined}' touches something no fix may")
@@ -194,7 +273,7 @@ def main(argv):
                     blanks = " ".join(f"{p}=…" for p in r["params"])
                     print(f"  {k:<24} {r['title']}  {blanks}")
             return 0
-        if argv[:1] in (["outcome"], ["history"], ["report"], ["triage"]):
+        if argv[:1] in (["outcome"], ["history"], ["report"], ["triage"], ["draft"]):
             sys.path.insert(0, str(HERE))
             import heal_report
             return heal_report.main(argv)
