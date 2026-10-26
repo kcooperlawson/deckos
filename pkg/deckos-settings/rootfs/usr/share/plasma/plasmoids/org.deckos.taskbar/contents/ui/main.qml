@@ -47,6 +47,7 @@ PlasmoidItem {
     // `deckos accent` bumps iconEpoch after it recolours the icons: the tiles keep the icons they were
     // made with, so they're made again (no restart of Plasma needed)
     readonly property int iconEpoch: Plasmoid.configuration.iconEpoch
+    readonly property bool lockedPins: Plasmoid.configuration.lockedPins  // Kid mode: a child can't add apps
     onIconEpochChanged: {
         repeater.model = null;
         repeater.model = deckModel;
@@ -149,6 +150,8 @@ PlasmoidItem {
         return deckModel.launcherPosition(url) !== -1;
     }
     function togglePin(url) {
+        if (lockedPins)
+            return;
         if (pinned(url))
             deckModel.requestRemoveLauncher(url);
         else
@@ -159,14 +162,15 @@ PlasmoidItem {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.RightButton
-        onClicked: barMenu.openRelative()
+        onClicked: if (!deckTasks.lockedPins) barMenu.openRelative()
     }
     // Any type filter here let the panel take the drop instead (it then failed to add an icon widget)
     DropArea {
         anchors.fill: parent
         onEntered: drag => drag.accepted = drag.hasUrls
         onDropped: drop => {
-            for (const u of drop.urls) {
+            // Locked (Kid mode): still taken here, so the panel doesn't add the app as a widget instead
+            for (const u of (deckTasks.lockedPins ? [] : drop.urls)) {
                 const url = String(u);
                 if (url.endsWith(".desktop") || url.startsWith("applications:"))
                     deckModel.requestAddLauncher(url);
@@ -195,6 +199,8 @@ PlasmoidItem {
     }
     // A searchable list of installed apps; click one to pin it (pinned ones are ticked, click again to unpin)
     function pickApp() {
+        if (lockedPins)
+            return;
         appSource.connectSource("python3 '" + Qt.resolvedUrl("../code/apps.py").toString().replace("file://", "") + "'");
         search.text = "";
         appDialog.visible = true;

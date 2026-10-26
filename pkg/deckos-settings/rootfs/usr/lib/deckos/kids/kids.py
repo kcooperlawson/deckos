@@ -172,6 +172,7 @@ lock_screen=false
 logout=true
 plasma/allow_configure_when_locked=false
 plasma-desktop/add_activities=false
+plasma/plasmashell/unlockedDesktop=false
 
 [KDE Control Module Restrictions][$i]
 kcm_users.desktop=false

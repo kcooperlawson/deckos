@@ -1568,13 +1568,21 @@ kids_cmd() {
              chown -R "$name:$name" "$(getent passwd "$name" | cut -d: -f6)/.mozilla" ;;
       esac
       ok "$name: $what updated" ;;
+    refresh)  # rewrite a child's Kid mode settings in their home (after a DecKoOS update changed them)
+      local name=${2:-} home
+      need_root kids refresh "$name"
+      [[ -f /etc/deckos/kids/$name.conf ]] || { err "$name isn't set up for Kid mode (deckos kids list)"; exit 1; }
+      home=$(getent passwd "$name" | cut -d: -f6)
+      python3 "$KIDS" seed "$name" "$home"
+      chown -R "$name:$name" "$home/.config" "$home/.mozilla"
+      ok "$name's Kid mode settings are up to date (from their next login)" ;;
     start)  # Kid mode now: lock this session, show the login screen (the parent's password brings this back)
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
       loginctl lock-session 2>/dev/null || true
       busctl call org.freedesktop.DisplayManager /org/freedesktop/DisplayManager/Seat0 \
         org.freedesktop.DisplayManager.Seat SwitchToGreeter >/dev/null
       ok "Kid mode: your session is locked; pick a child on the login screen" ;;
-    *) err "usage: deckos kids [list|add NAME [DISPLAY]|remove NAME [--keep-files]|apps NAME IDS|limit NAME MIN|bedtime NAME HH:MM|web NAME filtered|open|off|start]"; exit 2 ;;
+    *) err "usage: deckos kids [list|add NAME [DISPLAY]|remove NAME [--keep-files]|apps NAME IDS|limit NAME MIN|bedtime NAME HH:MM|web NAME filtered|open|off|refresh NAME|start]"; exit 2 ;;
   esac
 }
 

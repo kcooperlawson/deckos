@@ -123,6 +123,8 @@ class KidMode(QWidget):
         v.addWidget(scroll, 1)
 
         self.ended = False
+        self.leaving = False  # logging out: let the window close, or Plasma says an app is blocking the logout
+        QApplication.instance().commitDataRequest.connect(self.session_ending)
         self.tick()
         self.timer = QTimer(self, timeout=lambda: self.tick(add=1.0), interval=60_000)
         self.timer.start()
@@ -153,21 +155,25 @@ class KidMode(QWidget):
             if not DEMO:
                 QTimer.singleShot(60_000, self.finish)
 
+    def session_ending(self, *_):
+        self.leaving = True
+
     def finish(self):
         if DEMO:
             return
+        self.leaving = True
         # Log out without asking: back to the login screen, where a grown-up's password brings their session back
         QProcess.startDetached("qdbus6", ["org.kde.Shutdown", "/Shutdown", "logout"])
 
     def closeEvent(self, e):
-        if not DEMO:  # it's the child's desktop: minimise instead of going away
+        if not DEMO and not self.leaving:  # it's the child's desktop: minimise instead of going away
             e.ignore()
             self.showMinimized()
 
 
 def first_login():
     """The child's panel: a taskbar and a clock, no menu (it would show every app). Once, then it's theirs."""
-    mark = Path.home() / ".config/deckos/kids-layout-done"
+    mark = Path.home() / ".config/deckos/kids-layout-2"  # -2: the panel with locked pins
     if mark.exists():
         return
     # This starts with the session, often before the desktop shell can take a layout: wait for it (up to 30 s);

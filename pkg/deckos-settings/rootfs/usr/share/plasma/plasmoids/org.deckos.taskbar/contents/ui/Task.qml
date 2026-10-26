@@ -227,12 +227,13 @@ Item {
         PlasmaExtras.MenuItem {
             text: deckTasks.pinned(task.url) ? "Unpin from taskbar" : "Pin to taskbar"
             icon: deckTasks.pinned(task.url) ? "window-unpin" : "window-pin"
-            visible: task.url !== ""
+            visible: task.url !== "" && !deckTasks.lockedPins
             onClicked: deckTasks.togglePin(task.url)
         }
         PlasmaExtras.MenuItem {
             text: "Pin another app…"
             icon: "list-add"
+            visible: !deckTasks.lockedPins
             onClicked: deckTasks.pickApp()
         }
         PlasmaExtras.MenuItem { separator: true; visible: !task.launcherOnly }

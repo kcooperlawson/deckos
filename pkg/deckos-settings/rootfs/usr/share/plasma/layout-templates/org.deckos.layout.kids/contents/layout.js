@@ -10,6 +10,7 @@ var tasks = panel.addWidget("org.deckos.taskbar");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", ["applications:deckos-kids.desktop"]);
 tasks.writeConfig("showLabels", "false");
+tasks.writeConfig("lockedPins", "true");  // no pinning, unpinning or dropping apps on
 panel.addWidget("org.kde.plasma.volume");
 var clock = panel.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];

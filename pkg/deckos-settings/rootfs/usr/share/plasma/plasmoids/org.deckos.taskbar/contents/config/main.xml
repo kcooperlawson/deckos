@@ -16,6 +16,10 @@
       <label>Bumped by deckos accent when the icons are recoloured, so the tiles reload them</label>
       <default>0</default>
     </entry>
+    <entry name="lockedPins" type="Bool">
+      <label>Kid mode: the pinned apps can't be changed (no pinning, unpinning or dropping apps on)</label>
+      <default>false</default>
+    </entry>
     <entry name="onlyThisScreen" type="Bool">
       <label>Only show windows on the screen this taskbar is on (off: one taskbar shows every screen's windows)</label>
       <default>false</default>
