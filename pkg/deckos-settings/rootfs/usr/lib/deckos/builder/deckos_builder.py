@@ -520,7 +520,7 @@ class Builder(QWidget):
         cols = QHBoxLayout(top)
         cols.setContentsMargins(0, 0, 0, 0)
         cols.setSpacing(14)
-        # Three cards on the left: they scroll rather than squash when the window is short.
+        # The cards on the left scroll rather than squash when the window is short.
         left_host = QWidget()
         left = QVBoxLayout(left_host)
         left.setContentsMargins(0, 0, 0, 0)
@@ -531,26 +531,27 @@ class Builder(QWidget):
         left.addWidget(self.current_card())
         left.addWidget(self.usb_card())
         left.addWidget(self.apps_card())
+        left.addWidget(self.repo_card())
         left.addStretch(1)
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.NoFrame)
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         left_scroll.setWidget(left_host)
-        cols.addWidget(left_scroll, 5)
+        cols.addWidget(left_scroll, 1)
         right = QVBoxLayout()
         right.setSpacing(14)
-        right.addWidget(self.contrib_card(), 4)
-        right.addWidget(self.history_card(), 3)
-        right.addWidget(self.repo_card(), 1)
-        cols.addLayout(right, 6)
+        # Pull requests and builds are what changes from minute to minute: they get the whole right column.
+        right.addWidget(self.contrib_card(), 1)
+        right.addWidget(self.history_card(), 1)
+        cols.addLayout(right, 1)
         split.addWidget(top)
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText("Build logs and messages appear here.")
         self.log.setMaximumBlockCount(5000)
         split.addWidget(self.log)
-        split.setSizes([740, 110])
+        split.setSizes([780, 70])
         outer.addWidget(split, 1)
         self.status = label("", "sub")
         outer.addWidget(self.status)
@@ -627,13 +628,7 @@ class Builder(QWidget):
         self.pkgs.setContentsMargins(0, 0, 0, 0)
         self.pkgs.setSpacing(6)
         self.pkgs.addStretch(1)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setWidget(holder)
-        scroll.setStyleSheet(f"QScrollArea, QScrollArea > QWidget > QWidget {{ background: {SURFACE}; }}")
-        c.body.addWidget(scroll, 1)
+        c.body.addWidget(holder)  # the left column scrolls, so the list shows in full
         return c
 
     def contribute_card(self):
@@ -666,8 +661,8 @@ class Builder(QWidget):
         branch = "fix-wifi-icon" if DEMO else git("rev-parse", "--abbrev-ref", "HEAD", check=False) or "?"
         self.contribute_box.addWidget(RowItem("folder", str(src), f"on branch {branch}", S.P.accent))
         self.contribute_box.addWidget(label(
-            "2. Make your change on a branch of its own (not main), and run the checks.<br>"
-            "3. Open a pull request: it lands in the maintainer's review queue, with the checks run on it.", "sub"))
+            "Make your change on a branch of its own (not main), and run the checks. "
+            "Then open a pull request: it lands in the maintainer's review queue, with the checks run on it.", "sub"))
         pr = button("Open a pull request", "primary", self.open_pr, icon="arrow-up",
                     tip="Pushes your branch to your fork and opens GitHub's pull request page")
         pr.setEnabled(branch not in ("main", "?"))
@@ -786,7 +781,7 @@ class Builder(QWidget):
                 v.addWidget(label(f"<span style='color:{WARNING}'>Needs extra care: {shown}</span>", "sub", wrap=False))
             n = pr["number"]
             mergeable = state == "passed" and not pr.get("isDraft") and pr.get("mergeable") != "CONFLICTING"
-            merge = button("Approve and merge…", "primary", lambda _=False, p=pr: self.merge_pr(p), icon="check",
+            merge = button("Merge…", "primary", lambda _=False, p=pr: self.merge_pr(p), icon="check",
                            tip="Only once the checks pass and you've read the change")
             merge.setEnabled(mergeable)
             if not mergeable:
@@ -794,8 +789,8 @@ class Builder(QWidget):
                                   "none": "No checks have run on it yet"}.get(state, "It's a draft, or it conflicts with main"))
             actions = [button("Changes", slot=lambda _=False, u=pr["url"]: webbrowser.open(u + "/files"),
                               icon="details", tip="Read the diff on GitHub"),
-                       button("Review with Claude", slot=lambda _=False, p=n: self.claude_review(p), icon="ai",
-                              tip="Opens Claude Code in a terminal to review this pull request with you")]
+                       button("Review", slot=lambda _=False, p=n: self.claude_review(p), icon="ai",
+                              tip="Review with Claude: opens Claude Code in a terminal to review this pull request with you")]
             if getattr(self, "role", "") == "maintainer":  # merging and closing are the maintainer's
                 actions += [merge, button("Close…", slot=lambda _=False, p=pr: self.close_pr(p), icon="close")]
             v.addWidget(row(*actions))
@@ -1143,6 +1138,7 @@ class Builder(QWidget):
                 return
             if not self.repo:
                 self.repo_box.setText(repo)
+                self.repo_box.setCursorPosition(0)  # the owner is the part worth seeing
             self.repo_changed()
             self.scan_usb()
 
@@ -1222,6 +1218,7 @@ class Builder(QWidget):
 
     def demo(self):
         self.repo_box.setText(UPSTREAM)
+        self.repo_box.setCursorPosition(0)  # the owner is the part worth seeing
         self.subtitle.setText(f"github.com/{UPSTREAM}  ·  demo")
         d = demo_data()
         (self.runs, self.current, self.jobs, self.assets, self.stable, self.local, self.iso_runs, self.app_runs,
