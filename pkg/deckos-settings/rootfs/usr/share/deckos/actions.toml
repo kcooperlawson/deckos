@@ -109,6 +109,14 @@ icon = "gauge"
 run = ["deckos-sysmon"]
 
 [[action]]
+id = "disks"
+title = "Manage disks"
+summary = "DecKoOS Disks: drives, partitions, health, and what mounts at start-up"
+keywords = "disk drive partition mount fstab startup gparted ssd hdd nvme usb health smart format"
+icon = "drives"
+run = ["deckos-disks"]
+
+[[action]]
 id = "graphs"
 title = "Add performance graphs to the desktop"
 summary = "Live processor, graphics, memory and network graphs"

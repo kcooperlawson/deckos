@@ -312,7 +312,12 @@ drives_rescan() {
   local user=${SUDO_USER:-}
   [[ -z $user && -n ${PKEXEC_UID:-} ]] && user=$(id -nu "$PKEXEC_UID")
   [[ -n $user ]] || user=$(id -nu 1000 2>/dev/null || echo root)
-  local block; block=$(drives_fstab --uid "$(id -u "$user")" --gid "$(id -g "$user")")
+  local block kept
+  block=$(drives_fstab --uid "$(id -u "$user")" --gid "$(id -g "$user")")
+  # Drives added in DecKoOS Disks that aren't NTFS (ext4, exFAT...) stay, with their comment line
+  kept=$(awk -v b="$FSTAB_BEGIN" -v e="$FSTAB_END" '$0==b{f=1;next} $0==e{f=0} f' /etc/fstab |
+    awk '/^UUID=/ && $3 !~ /^ntfs/ {if (prev ~ /^#/) print prev; print} {prev=$0}')
+  [[ -z $kept ]] || block=$(printf '%s\n' "$block" | sed '$d'; printf '%s\n%s\n' "$kept" "$FSTAB_END")
   cp /etc/fstab /etc/fstab.deckos-bak
   awk -v b="$FSTAB_BEGIN" -v e="$FSTAB_END" '$0==b{skip=1} !skip{print} $0==e{skip=0}' \
     /etc/fstab.deckos-bak > /etc/fstab
@@ -2084,6 +2089,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
   deckos wallpaper IMAGE|FOLDER                         the desktop and the lock screen together
   deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
+  deckos disks [list|verify|startup add|remove UUID|repair UUID|health]  disks, and whether drives mount at start-up
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
@@ -2132,6 +2138,7 @@ case ${1:-} in
   channel) shift; channel_cmd "$@" ;;
   wallpaper) shift; wallpaper_cmd "$@" ;;
   heal) shift; exec python3 "${DECKOS_HEAL_DIR:-/usr/lib/deckos/heal}/heal.py" "$@" ;;  # vetted fixes only
+  disks) shift; exec python3 "${DECKOS_DISKS_DIR:-/usr/lib/deckos/disks}/disks.py" "$@" ;;
   vibe) shift; vibe_cmd "$@" ;;
   taskbar) shift; taskbar_cmd "$@" ;;
   kids) shift; kids_cmd "$@" ;;

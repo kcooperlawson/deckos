@@ -116,6 +116,21 @@ def ntfs_drives():
     return out
 
 
+def startup_drives():
+    """Drives in fstab that won't mount after a restart (DecKoOS Disks' start-up check), except the dirty and
+    hibernated NTFS ones ntfs_drives already covers with its own fix. Disks shows each one and what to do."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "disks"))
+    import disks
+    disks.run = run  # the same commands System Doctor reads (and tests feed)
+    out = []
+    for c in disks.startup(disks.inventory(), disks.fstab(), disks.context()):
+        if c.state not in (disks.BAD, disks.WARN) or "dirty" in c.title or "held by Windows" in c.title:
+            continue
+        out.append(Finding(f"startup:{c.target}", BAD if c.state == disks.BAD else WARN, c.title, c.text,
+                           open=["deckos-disks"]))
+    return out
+
+
 UNIT_NAMES = {"drkonqi-coredump-pickup": "KDE's crash reporter", "NetworkManager": "Networking",
               "bluetooth": "Bluetooth", "sddm": "The login screen", "ollama": "Local AI (Ollama)",
               "deckos-gpu": "DecKoOS's graphics card tuning", "deckos-display": "DecKoOS's display fix",
@@ -463,7 +478,7 @@ def journal_errors(known):
                     "what they mean for you.", evidence=[f"{n}×  {l}" for l, n in top])]
 
 
-CHECKS = [snapshot_boot, ntfs_drives, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
+CHECKS = [snapshot_boot, ntfs_drives, startup_drives, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
           restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 

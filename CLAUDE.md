@@ -142,6 +142,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   release's ISO to it (`builder/site_publish.py`, no Qt; `tests/test_site_publish.py`): only from runs that passed,
   install tests included; missing ones come from `iso-version.yml`, which builds an old tag and never publishes
   (running build-iso.yml on an old tag would: its publish job follows the tag).
+- DecKoOS Disks: `usr/lib/deckos/disks/` (`deckos-disks`, `deckos disks`; design in `docs/disks.md`). `disks.py` (no Qt)
+  reads lsblk (NAME as a column: see Gotchas), fstab and this boot's log into `startup()` checks (will each drive mount
+  after a restart, and why not); `add()` test-mounts before keeping an entry and restores fstab exactly if it fails;
+  changes only inside the `deckos drives` block (rescan keeps non-NTFS entries there). `unit()` must match
+  `systemd-escape -p --suffix=mount`. System Doctor's `startup_drives` uses it (`disks.run = run`). Partition editing
+  (create/delete/resize/format) isn't built yet: it needs the installer's safety rules. Tests: `tests/test_disks.py`.
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 

@@ -103,7 +103,7 @@ READ_ONLY_SUB = {
     "xdg-mime": {"query"},
 }
 READ_ONLY_DECKOS = {("display", "status"), ("display", "recommend"), ("display", "vendors"), ("drives", "list"),
-                    ("drives", "doctor"), ("scheduler", "status"), ("gpu", "status"), ("auto-update", "status"),
+                    ("drives", "doctor"), ("drives", "dirty"), ("disks", "list"), ("disks", "verify"), ("scheduler", "status"), ("gpu", "status"), ("auto-update", "status"),
                     ("home", "status"), ("software", "list"), ("mode", "status")}
 READ_ONLY_FLAGS = {"pacman": re.compile(r"^-(Q|S[si]|F)"), "paru": re.compile(r"^-(Q|S[si])")}
 # Options that make a looking tool write files, delete things or run another program.

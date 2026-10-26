@@ -1005,6 +1005,8 @@ class SystemPage(Page):
                                            icon="list", tip="What's running and what it uses (Ctrl+Shift+Esc)"))
         self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
                                            icon="gauge"))
+        self.head_actions.addWidget(button("Disks", slot=lambda: QProcess.startDetached("deckos-disks", []),
+                                           icon="drives", tip="Drives, partitions, health, and what mounts at start-up"))
         up = Card("Updates", "Keep DecKoOS current", "update")
         self.up_state = label("Checking…", "cardTitle")
         self.up_detail = label("", "sub")

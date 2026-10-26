@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DecKoOS Disks
+GenericName=Disk manager
+Comment=Your drives and partitions, their health, and whether they'll mount after a restart
+Exec=deckos-disks
+Icon=deckos-hub
+Type=Application
+Categories=System;Utility;
+Keywords=disk;drive;partition;mount;fstab;startup;boot;ssd;hdd;nvme;usb;health;smart;gparted;ntfs;ext4;
