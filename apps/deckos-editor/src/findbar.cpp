@@ -54,7 +54,7 @@ FindBar::FindBar(QWidget *parent)
     m_count->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     row->addWidget(m_count);
     auto *prev = new QToolButton(this);
-    prev->setIcon(Style::icon(QStringLiteral("arrow-up")));
+    prev->setIcon(Style::icon(QStringLiteral("chevron-left")));
     prev->setToolTip(QStringLiteral("Previous (Shift+Enter)"));
     prev->setAutoRaise(true);
     auto *nextB = new QToolButton(this);

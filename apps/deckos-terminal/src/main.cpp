@@ -72,7 +72,7 @@ QString makeDemoProject()
     // A stand-in for cargo, so a tab has a build running in it.
     write(root + QStringLiteral("/bin/cargo"),
           "#!/bin/sh\nfor c in deckos-core deckos-files deckos-terminal; do\n"
-          "  printf '\\033[1;32m   Compiling\\033[0m %s v0.3.16 (~/deckos/apps/%s)\\n' $c $c; sleep 0.2\ndone\nsleep 60\n");
+          "  printf '\\033[1;32m   Compiling\\033[0m %s v0.13.1 (~/deckos/apps/%s)\\n' $c $c; sleep 0.2\ndone\nsleep 60\n");
     QFile::setPermissions(root + QStringLiteral("/bin/cargo"), QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
     return root;
 }
