@@ -3,6 +3,23 @@
 What each release brought, newest first. Feature releases (X.Y.0) have the notes DecKoOS shows in What's New;
 patch releases (X.Y.Z) are fixes. Generated from the release notes by `assets/changelog.py`.
 
+## 0.15.0: Know your PC
+
+A disk manager that keeps your drives there after every restart, one score for your whole PC, and a livelier System Monitor.
+
+- **DecKoOS Disks**: Every disk and partition, each drive's health, and a start-up check that tells you when a drive won't be there after a restart, and why, with the fix. Mount at start-up tests the drive before keeping the setting. You can also format, make, resize and delete partitions: DecKoOS never touches Windows, encrypted drives or the system, asks you to type the partition's name first, and saves the partition table before every change.
+- **The DecKoOS Score**: One number for the whole PC: CPU, graphics, local AI, memory and storage against a reference PC that scores 5,000. Bench opens on it, with your best score and every score over time, so you can see what a change really did.
+- **A livelier System Monitor**: Each resource has its own colour everywhere, the big graph has a scale and shows where it is now, and the busiest apps are shaded by how much they use. When Gaming mode makes room for a game, System Monitor says so.
+
+Fixes:
+
+- NTFS drives left marked dirty by a forced restart are found and repaired, and System Doctor offers the fix.
+- Running DecKoOS's own tests no longer leaves "Did that fix it?" notifications on the desktop.
+
+### 0.14.2 (2026-10-26)
+
+Fixes and polish.
+
 ### 0.14.1 (2026-10-26)
 
 Fixes and polish.
