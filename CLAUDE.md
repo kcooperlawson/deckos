@@ -249,8 +249,13 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   their home: KDE kiosk restrictions, the `deckos-kids --session` autostart (big tiles, minutes used, logout at the end of
   the time), and a Firefox profile with CleanBrowsing's family DoH (trr mode 3). The first login sets the `kids` panel
   layout (no menu; hidden from grown-up layout lists). `deckos kids start` locks the parent and shows the login screen
-  (SDDM's SwitchToGreeter). Hub > System > Kids. Limits are enforced by the child's own session: fine for young children,
-  not a security boundary for a determined teenager. Tests: `tests/test_kids.py`.
+  (SDDM's SwitchToGreeter). Hub > System > Kids. Time is counted and enforced by `deckos-kids-time.service` (root, `kids.py watch`: one
+  minute at a time for a child's session that's on screen and unlocked, `/var/lib/deckos/kids/NAME.json`, logout after a
+  grace minute); the launcher only shows it. Retro games are shared as copies in `/srv/deckos-kids/games` (`deckos kids
+  games`; children can't read a parent's home), each a tile straight into RetroArch. Steam games can't be tiles (Steam is
+  per account). polkit `49-deckos-kids.rules` refuses shutdown/reboot/sleep to `deckos-kids`; the launcher caps volume
+  (pactl subscribe, no polling) and takes a controller (the Gaming Mode panel's `Pad`). The login screen shows children
+  under the card and keeps the card on a grown-up. Tests: `tests/test_kids.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

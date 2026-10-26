@@ -1,0 +1,8 @@
+// DecKoOS Kid mode: a child can't shut down, restart or put the PC to sleep (a grown-up's session is usually
+// running underneath, locked). Logging out stays allowed. 49: before rules that would let active users do it.
+polkit.addRule(function (action, subject) {
+  if (subject.isInGroup("deckos-kids") &&
+      /^org\.freedesktop\.login1\.(power-off|reboot|halt|suspend|hibernate|set-reboot|set-wall)/.test(action.id)) {
+    return polkit.Result.NO;
+  }
+});

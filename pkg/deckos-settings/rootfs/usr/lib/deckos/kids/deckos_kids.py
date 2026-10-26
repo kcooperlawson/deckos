@@ -6,20 +6,22 @@ minutes used today and, at the end of the time, says so kindly and logs out.
 """
 import os
 import pwd
+import re
 import shlex
 import sys
 import time
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout,
                                QWidget)
 
 HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
+sys.path[:0] = [str(HERE), str(HERE.parent / "hub"), str(HERE.parent / "gamepanel")]
 import hub_style as S  # noqa: E402
 import kids  # noqa: E402
+from deckos_gamepanel import Pad  # noqa: E402  the Gaming Mode panel's controller reader (evdev)
 
 DEMO = "--demo" in sys.argv
 # Bright, friendly tile colours (one per tile, in turn)
@@ -41,6 +43,9 @@ class Tile(QPushButton):
             else QIcon(app["icon"])
         self.setFocusPolicy(Qt.StrongFocus)
 
+    def keyPressEvent(self, e):  # arrows and Enter go to KidMode, which moves by rows and columns
+        e.ignore()
+
     def paintEvent(self, _e):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -49,8 +54,8 @@ class Tile(QPushButton):
         path.addRoundedRect(r, S.corner(28), S.corner(28))
         c = self.colour.lighter(112) if self.underMouse() or self.hasFocus() else self.colour
         p.fillPath(path, c)
-        if self.hasFocus():
-            p.setPen(QColor("#FFFFFF"))
+        if self.hasFocus():  # thick enough to see from the couch
+            p.setPen(QPen(QColor("#FFFFFF"), 5))
             p.drawPath(path)
         pm = self.icon_.pixmap(QSize(104, 104))
         if not pm.isNull():
@@ -106,6 +111,7 @@ class KidMode(QWidget):
         grid = QGridLayout(grid_holder)
         grid.setSpacing(18)
         tiles = DEMO_TILES if DEMO else kids.approved(self.name)
+        self.tiles, self.cols = [], 5
         if not tiles:
             empty = QLabel("No apps yet. Ask a grown-up to pick some in DecKoOS Hub.")
             empty.setStyleSheet(f"font-size: 18pt; color: {S.SUBTEXT};")
@@ -113,7 +119,8 @@ class KidMode(QWidget):
         for i, app in enumerate(tiles):
             t = Tile(app, COLOURS[i % len(COLOURS)])
             t.clicked.connect(lambda _c=False, a=app: self.launch(a))
-            grid.addWidget(t, i // 5, i % 5)
+            self.tiles.append(t)
+            grid.addWidget(t, i // self.cols, i % self.cols)
         grid.setColumnStretch(5, 1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -122,23 +129,69 @@ class KidMode(QWidget):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         v.addWidget(scroll, 1)
 
+        if self.tiles:
+            self.tiles[0].setFocus()
+        # A controller works like the arrow keys and Enter: from the couch, no mouse needed
+        self.pad = Pad()
+        self.pad.key.connect(self.pad_key)
+        if not DEMO:
+            self.pad.start()
+        self.cap = int(self.conf.get("volume") or 100) / 100
+        if self.cap < 1 and not DEMO:
+            # Volume changes as they happen (pactl subscribe), not polling: anything over the cap goes back to it
+            self.volume = QProcess(self)
+            self.volume.readyReadStandardOutput.connect(self.volume_changed)
+            self.volume.start("pactl", ["subscribe"])
+            self.volume_changed()
         self.ended = False
         self.leaving = False  # logging out: let the window close, or Plasma says an app is blocking the logout
         QApplication.instance().commitDataRequest.connect(self.session_ending)
         self.tick()
-        self.timer = QTimer(self, timeout=lambda: self.tick(add=1.0), interval=60_000)
+        # The time service (root) counts the minutes; this only shows them
+        self.timer = QTimer(self, timeout=self.tick, interval=30_000)
         self.timer.start()
+
+    def volume_changed(self):
+        if hasattr(self, "volume"):
+            out = bytes(self.volume.readAllStandardOutput()).decode(errors="replace")
+            if out and "sink" not in out:
+                return
+        r = QProcess()
+        r.start("wpctl", ["get-volume", "@DEFAULT_AUDIO_SINK@"])
+        r.waitForFinished(2000)
+        m = re.search(r"Volume: ([\d.]+)", bytes(r.readAllStandardOutput()).decode())
+        if m and float(m.group(1)) > self.cap + 0.005:
+            QProcess.execute("wpctl", ["set-volume", "@DEFAULT_AUDIO_SINK@", f"{self.cap:.2f}"])
+
+    def pad_key(self, key):
+        if self.isActiveWindow():  # not while a game has the controller
+            self.move(key)
+
+    def move(self, key):
+        if not self.tiles:
+            return
+        i = next((n for n, t in enumerate(self.tiles) if t.hasFocus()), 0)
+        if key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            self.tiles[i].click()
+            return
+        step = {Qt.Key_Left: -1, Qt.Key_Right: 1, Qt.Key_Up: -self.cols, Qt.Key_Down: self.cols}.get(key)
+        if step is not None:
+            self.tiles[max(0, min(len(self.tiles) - 1, i + step))].setFocus()
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            self.move(e.key())
+        else:
+            super().keyPressEvent(e)
 
     def launch(self, app):
         if DEMO or self.ended:
             return
-        argv = shlex.split(app["exec"])
+        argv = app.get("argv") or shlex.split(app["exec"])
         if argv:
             QProcess.startDetached(argv[0], argv[1:])
 
-    def tick(self, add=0.0):
-        if add and not DEMO:
-            kids.add_minutes(self.state, add)
+    def tick(self):
         used = 20.0 if DEMO else kids.minutes_used(self.state)
         left = kids.time_left(self.conf, used)
         if left is None:
@@ -152,8 +205,8 @@ class KidMode(QWidget):
             self.ended = True
             self.banner.setText("Time's up for today! Saving and logging out in a minute.")
             self.banner.show()
-            if not DEMO:
-                QTimer.singleShot(60_000, self.finish)
+            if not DEMO:  # the time service ends the session; this is in case it isn't running
+                QTimer.singleShot(150_000, self.finish)
 
     def session_ending(self, *_):
         self.leaving = True

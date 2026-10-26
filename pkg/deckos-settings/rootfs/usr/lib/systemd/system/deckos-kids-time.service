@@ -1,0 +1,17 @@
+[Unit]
+Description=DecKoOS Kid mode: daily time limits and bedtimes
+Documentation=man:deckos(1)
+ConditionPathExistsGlob=/etc/deckos/kids/*.conf
+
+[Service]
+# As root, outside the children's sessions: a child can't stop it or change what it counted
+ExecStart=/usr/bin/python3 /usr/lib/deckos/kids/kids.py watch
+StateDirectory=deckos/kids
+Restart=on-failure
+Nice=10
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/deckos/kids
+
+[Install]
+WantedBy=multi-user.target

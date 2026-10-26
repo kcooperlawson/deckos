@@ -6,7 +6,7 @@ files, apps or settings.
 Settings per child are in /etc/deckos/kids/NAME.conf (root-owned: a child can't change their own limits). Root
 work (accounts, settings) goes through `deckos kids`, which calls this file. No Qt.
 
-    kids.py list [--json] | show NAME | apps | seed NAME | used NAME | check NAME
+    kids.py list [--json] | show NAME | apps | seed NAME HOME | check NAME | watch
 """
 import json
 import os
@@ -16,6 +16,11 @@ import time
 from pathlib import Path
 
 CONF = Path(os.environ.get("DECKOS_KIDS_DIR") or "/etc/deckos/kids")
+# Minutes used per child and day: written by the root service (deckos-kids-time), read by the child's launcher
+STATE = Path(os.environ.get("DECKOS_KIDS_STATE") or "/var/lib/deckos/kids")
+# Retro games a parent shared (Hub > System > Kids > Games): copies, since a child can't read the parent's home
+GAMES = Path(os.environ.get("DECKOS_KIDS_GAMES") or "/srv/deckos-kids/games")
+GRACE = 1.0  # minutes between "time's up" and the session ending, to save a drawing
 APPS_DIRS = [Path(p) for p in os.environ.get("DECKOS_APPS_DIRS", "/usr/share/applications:/var/lib/flatpak/exports/share"
                                              "/applications").split(":")]
 GROUP = "deckos-kids"
@@ -29,7 +34,10 @@ SUGGESTED = ["org.kde.kolourpaint", "tuxpaint", "org.kde.gcompris", "org.kde.ktu
              "org.kde.kpat", "org.kde.blinken", "org.kde.klettres", "org.kde.kgeography", "supertux", "supertuxkart",
              "deckos-kids-browser"]
 
-DEFAULTS = {"display": "", "apps": "", "minutes": "0", "bedtime": "", "web": "filtered"}
+DEFAULTS = {"display": "", "apps": "", "minutes": "0", "bedtime": "", "web": "filtered", "games": "on", "volume": "100"}
+
+# Hub > Kids > Limits presets: (minutes a day, bedtime, max volume %)
+PRESETS = {"4–6": (45, "19:00", 60), "7–9": (60, "19:30", 70), "10+": (90, "20:30", 80)}
 
 
 def valid_name(name):
@@ -100,13 +108,61 @@ def installed_apps():
     return apps
 
 
+def _retro():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "retro"))
+    import retro
+    return retro
+
+
+def shared_games(root=None):
+    """The shared retro games as tiles: each starts its emulator straight into the game (no menus)."""
+    root = Path(root or GAMES)
+    if not root.is_dir():
+        return []
+    try:
+        retro = _retro()
+        games = retro.scan([root])
+    except Exception:  # a broken game file mustn't take the child's whole desktop with it
+        return []
+    return [{"id": f"game:{g.path.relative_to(root)}", "name": g.title, "icon": "applications-games",
+             "argv": retro.command(g), "exec": "", "comment": retro.BY_ID[g.system].name} for g in games]
+
+
+def sync_games(paths, root=None):
+    """Makes the shared folder hold exactly these games (paths of games in a parent's Retro library), copying
+    each game's files into a folder per console. Run as root by `deckos kids games`."""
+    import shutil
+    retro = _retro()
+    root = Path(root or GAMES)
+    wanted = {}
+    for p in paths:
+        p = Path(p)
+        for g in retro.scan([p.parent]):
+            if g.path == p:
+                folder = root / retro.BY_ID[g.system].folders[0]
+                for f in g.files:
+                    wanted[folder / Path(f).name] = Path(f)
+    root.mkdir(parents=True, exist_ok=True)
+    for dest, src in wanted.items():
+        if not dest.exists() or dest.stat().st_size != src.stat().st_size:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+    for f in [f for f in root.rglob("*") if f.is_file() and f not in wanted]:
+        f.unlink()
+    for d in sorted((d for d in root.rglob("*") if d.is_dir()), reverse=True):
+        if not any(d.iterdir()):
+            d.rmdir()
+    return len(wanted)
+
+
 def approved(name, apps=None):
     """The child's tiles: the approved ids that are installed, in the parent's order. No web tile when the
     parent turned the web off."""
     conf = read_conf(name) or DEFAULTS
     apps = installed_apps() if apps is None else apps
     ids = [i for i in conf["apps"].split(",") if i and not (i == "deckos-kids-browser" and conf["web"] == "off")]
-    return [apps[i] for i in ids if i in apps]
+    tiles = [apps[i] for i in ids if i in apps]
+    return tiles + (shared_games() if conf.get("games", "on") != "off" else [])
 
 
 def suggested(apps=None):
@@ -117,7 +173,7 @@ def suggested(apps=None):
 # ------------------------------------------------------------------ time
 
 def state_file(name):
-    return Path.home() / ".local/state/deckos/kids-time.json"
+    return STATE / f"{name}.json"
 
 
 def minutes_used(path, today=None):
@@ -142,6 +198,19 @@ def add_minutes(path, minutes, today=None):
     path.write_text(json.dumps(data))
 
 
+def week(name, today=None):
+    """[(day, minutes)] for the last 7 days, oldest first (the time service's count; 0 for days without any)."""
+    today = today or time.time()
+    days = [time.strftime("%Y-%m-%d", time.localtime(today - n * 86400)) for n in range(6, -1, -1)]
+    f = state_file(name)
+    return [(d, minutes_used(f, today=d)) for d in days]
+
+
+def fmt_minutes(m):
+    m = int(round(m))
+    return f"{m // 60} h {m % 60} min" if m >= 60 else f"{m} min"
+
+
 def time_left(conf, used, now=None):
     """Minutes left today (None when there's no limit at all): the daily limit and bedtime, whichever is sooner."""
     now = now or time.localtime()
@@ -158,6 +227,55 @@ def time_left(conf, used, now=None):
         until = 0.0 if now_min >= bed_min or now_min < 5 * 60 else float(bed_min - now_min)
         left = until if left is None else min(left, until)
     return left
+
+
+def active_children(run=None):
+    """Children whose session is the one on screen now (switched away or locked doesn't count)."""
+    import subprocess
+    run = run or (lambda cmd: subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout)
+    names = {k["name"] for k in kids()}
+    out = set()
+    for line in run(["loginctl", "list-sessions", "--no-legend"]).splitlines():
+        cols = line.split()
+        if len(cols) >= 3 and cols[2] in names:
+            props = run(["loginctl", "show-session", cols[0], "-p", "Active", "-p", "Type", "-p", "LockedHint"])
+            if "Active=yes" in props and "LockedHint=yes" not in props and re.search(r"Type=(wayland|x11)", props):
+                out.add(cols[2])
+    return out
+
+
+def step(minutes=1.0, now=None, run=None, end=None):
+    """One minute of the time service: count it for children on screen, end the sessions whose time is up.
+    `end(name)` logs a child out (loginctl terminate-user); returns what it did, for the log and tests."""
+    import subprocess
+    end = end or (lambda n: subprocess.run(["loginctl", "terminate-user", n], timeout=30))
+    done = []
+    for name in sorted(active_children(run)):
+        conf = read_conf(name)
+        f = state_file(name)
+        add_minutes(f, minutes)
+        left = time_left(conf, minutes_used(f), now)
+        if left is not None and left <= 0:
+            # Time's up: the child sees it, and after the grace minute(s) on screen the session ends
+            today = time.strftime("%Y-%m-%d", now) if now else None
+            key = f"{today or time.strftime('%Y-%m-%d')}:over"
+            add_minutes(f, minutes, today=key)
+            if minutes_used(f, today=key) > GRACE:
+                end(name)
+                done.append(f"{name}: time's up, logged out")
+                continue
+        if left is not None:
+            done.append(f"{name}: {left:.0f} min left")
+    return done
+
+
+def watch():
+    """The time service (deckos-kids-time.service, as root): once a minute, while there are children set up."""
+    while True:
+        time.sleep(60)
+        if kids():
+            for line in step():
+                print(line, flush=True)
 
 
 # ------------------------------------------------------------------ the child's home
@@ -197,6 +315,8 @@ def seed(home, name, web="filtered"):
     cfg = home / ".config"
     cfg.mkdir(parents=True, exist_ok=True)
     (cfg / "kdeglobals").write_text(KIOSK)
+    # The logout screen offers only logging out (polkit refuses the rest for children anyway)
+    (cfg / "ksmserverrc").write_text("[General]\nofferShutdown=false\n")
     # The Kid mode desktop: the big-tile launcher at login, a taskbar without a menu, Welcome not shown
     (cfg / "deckos").mkdir(exist_ok=True)
     (cfg / "deckos/welcome-done").touch()
@@ -225,6 +345,12 @@ def main(argv):
                 bed = f", bedtime {k['bedtime']}" if k["bedtime"] else ""
                 print(f"  {k['name']:<12} {k['display'] or k['name']}: {len([a for a in k['apps'].split(',') if a])} "
                       f"apps, {limit}{bed}, web {k['web']}")
+        return 0
+    if cmd == "sync-games":
+        print(f"{sync_games(argv[1:])} files shared")
+        return 0
+    if cmd == "watch":
+        watch()
         return 0
     if cmd == "apps":
         print(json.dumps({"installed": installed_apps(), "suggested": suggested()}))

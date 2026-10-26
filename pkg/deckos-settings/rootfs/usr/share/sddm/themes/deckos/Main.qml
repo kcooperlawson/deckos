@@ -40,6 +40,7 @@ Rectangle {
                 required property string icon
                 required property bool needsPassword
             }
+            onCountChanged: Qt.callLater(root.pickUser)
         }
         Repeater {
             id: sessions
@@ -421,6 +422,21 @@ Rectangle {
         Pill { visible: sddm.canPowerOff; icon: "power-off"; label: "Shut down"; onClicked: sddm.powerOff() }
     }
 
+    // The card is for grown-ups: when the last login was a child's (after "I'm done"), show the last grown-up
+    // instead; the children stay in their row under the card.
+    function pickUser() {
+        var last = userModel.lastIndex
+        var lastItem = last >= 0 ? users.itemAt(last) : null
+        if (!lastItem || !lastItem.realName.endsWith(kidTag))
+            return
+        for (var i = 0; i < users.count; i++) {
+            var u = users.itemAt(i)
+            if (u && !u.realName.endsWith(kidTag)) {
+                userIndex = i
+                return
+            }
+        }
+    }
     function shown(u) {
         var n = u.realName || u.name
         return n.endsWith(kidTag) ? n.slice(0, -kidTag.length) : n

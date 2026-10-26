@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt
@@ -11,9 +12,10 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, 
                                QMessageBox, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "kids"))
+import hub_style as S  # noqa: E402
 import hub_system as sysinfo  # noqa: E402
 import kids  # noqa: E402
-from hub_widgets import Card, RowItem, button, label  # noqa: E402
+from hub_widgets import Card, Meter, RowItem, button, label, row  # noqa: E402
 
 DEMO_KIDS = [{"name": "mia", "display": "Mia", "apps": "org.kde.kolourpaint,tuxpaint,deckos-kids-browser",
               "minutes": "60", "bedtime": "19:30", "web": "filtered"},
@@ -26,14 +28,27 @@ DEMO_APPS = {i: {"id": i, "name": n, "icon": "", "exec": "", "comment": ""} for 
 WEB = {"filtered": "Filtered web", "open": "Open web", "off": "No web"}
 
 
+def demo_week(name):
+    mins = [35, 50, 0, 62, 41, 90, 25] if name == "mia" else [20, 0, 15, 30, 0, 45, 10]
+    return [(f"2026-10-{19 + i}", m) for i, m in enumerate(mins)]
+
+
+def week_of(name):
+    return demo_week(name) if sysinfo.DEMO else kids.week(name)
+
+
 def summary(k):
     apps = len([a for a in k["apps"].split(",") if a])
     bits = [f"{apps} app{'s' if apps != 1 else ''}",
             f"{k['minutes']} min a day" if k["minutes"] not in ("", "0") else "no daily limit"]
     if k["bedtime"]:
         bits.append(f"bedtime {k['bedtime']}")
+    if k.get("volume", "100") not in ("", "100"):
+        bits.append(f"volume up to {k['volume']}%")
     bits.append(WEB.get(k["web"], k["web"]).lower())
-    return ", ".join(bits)
+    w = week_of(k["name"])
+    used = f"Today {kids.fmt_minutes(w[-1][1])}, this week {kids.fmt_minutes(sum(m for _, m in w))}"
+    return ", ".join(bits) + "<br>" + used
 
 
 class AppsDialog(QDialog):
@@ -74,11 +89,78 @@ class AppsDialog(QDialog):
         return [i for i, b in self.boxes.items() if b.isChecked()]
 
 
+class GamesDialog(QDialog):
+    """Retro games to share with every child: ticked ones are copied to Kid mode's games folder."""
+
+    def __init__(self, parent, games, shared):
+        super().__init__(parent)
+        self.setWindowTitle("Games for Kid mode")
+        self.resize(500, 560)
+        v = QVBoxLayout(self)
+        v.addWidget(label("From your DecKoOS Retro library. Ticked games are copied for the children: each "
+                          "becomes a tile that starts straight into the game.", "sub"))
+        holder = QWidget()
+        lay = QVBoxLayout(holder)
+        lay.setSpacing(2)
+        self.boxes = []
+        if not games:
+            lay.addWidget(label("No games in your Retro library yet (DecKoOS Retro, or ~/Games/Retro).", "muted"))
+        for g in games:
+            b = QCheckBox(f"{g['title']}  ·  {g['system']}")
+            b.setChecked(g["title"] in shared)
+            self.boxes.append((g["path"], b))
+            lay.addWidget(b)
+        lay.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(holder)
+        v.addWidget(scroll, 1)
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def paths(self):
+        return [p for p, b in self.boxes if b.isChecked()]
+
+
+class WeekDialog(QDialog):
+    """Minutes on screen per day, the last 7 days (counted by the time service while their session is shown)."""
+
+    def __init__(self, parent, kid):
+        super().__init__(parent)
+        self.setWindowTitle(f"{kid['display'] or kid['name']}'s week")
+        self.setMinimumWidth(480)
+        f = QFormLayout(self)
+        f.setVerticalSpacing(10)
+        w = week_of(kid["name"])
+        top = max([m for _, m in w] + [60])
+        limit = int(kid["minutes"] or 0)
+        for day, m in w:
+            name = time.strftime("%A", time.strptime(day, "%Y-%m-%d"))
+            bar = Meter(10)
+            bar.setMinimumWidth(240)
+            bar.set(m / top, S.WARNING if limit and m >= limit else None)  # amber: the whole limit used
+            f.addRow(name, row(bar, label(kids.fmt_minutes(m), "muted", wrap=False), stretch=False))
+        note = label("Time on screen in Kid mode. Which apps and sites aren't recorded.", "muted")
+        note.setMinimumHeight(note.sizeHint().height() * 2)  # room for the wrapped second line
+        f.addRow(note)
+        bb = QDialogButtonBox(QDialogButtonBox.Close)
+        bb.rejected.connect(self.reject)
+        f.addRow(bb)
+
+
 class LimitsDialog(QDialog):
     def __init__(self, parent, kid):
         super().__init__(parent)
         self.setWindowTitle(f"Limits for {kid['display'] or kid['name']}")
         f = QFormLayout(self)
+        self.preset = QComboBox()
+        self.preset.addItem("Pick for an age…", None)
+        for age in kids.PRESETS:
+            self.preset.addItem(f"Ages {age}", age)
+        self.preset.currentIndexChanged.connect(self.use_preset)
+        f.addRow("Start from", self.preset)
         self.minutes = QSpinBox()
         self.minutes.setRange(0, 1440)
         self.minutes.setSingleStep(15)
@@ -94,12 +176,27 @@ class LimitsDialog(QDialog):
             self.web.addItem(text, key)
         self.web.setCurrentIndex(max(0, self.web.findData(kid["web"])))
         f.addRow("The web", self.web)
+        self.volume = QSpinBox()
+        self.volume.setRange(10, 100)
+        self.volume.setSingleStep(10)
+        self.volume.setSuffix(" %")
+        self.volume.setSpecialValueText("")
+        self.volume.setValue(int(kid.get("volume") or 100))
+        f.addRow("Loudest volume", self.volume)
         f.addRow(label("Filtered: a family filter blocks adult and unsafe sites in their Firefox. They get a warning "
                        "5 minutes before the time's up, then Kid mode logs out.", "muted"))
         bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         bb.accepted.connect(self.check)
         bb.rejected.connect(self.reject)
         f.addRow(bb)
+
+    def use_preset(self):
+        age = self.preset.currentData()
+        if age:
+            minutes, bed, vol = kids.PRESETS[age]
+            self.minutes.setValue(minutes)
+            self.bedtime.setText(bed)
+            self.volume.setValue(vol)
 
     def check(self):
         if self.bedtime.text().strip() and not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", self.bedtime.text().strip()):
@@ -120,12 +217,13 @@ class KidsCard(Card):
         self.body.addLayout(self.rows)
         self.start = button("Start Kid mode", "primary", self.start_kid_mode, icon="play",
                             tip="Locks your session and shows the login screen; tap a child's picture")
-        self.body.addWidget(self.row_of(self.start, button("Add a child…", slot=self.add, icon="plus")))
+        self.body.addWidget(self.row_of(self.start, button("Add a child…", slot=self.add, icon="plus"),
+                                        button("Games…", slot=self.pick_games, icon="gaming",
+                                               tip="Share games from your DecKoOS Retro library with Kid mode")))
         self.refresh()
 
     @staticmethod
     def row_of(*widgets):
-        from hub_widgets import row
         return row(*widgets)
 
     def kids_list(self):
@@ -147,8 +245,9 @@ class KidsCard(Card):
         if not found:
             self.rows.addWidget(label("No children set up yet.", "muted"))
         for k in found:
-            right = (button("Apps…", slot=lambda _=False, k=k: self.pick_apps(k), icon="grid"),
-                     button("Limits…", slot=lambda _=False, k=k: self.limits(k), icon="clock"),
+            right = (button("Week…", slot=lambda _=False, k=k: WeekDialog(self, k).exec(), icon="clock"),
+                     button("Apps…", slot=lambda _=False, k=k: self.pick_apps(k), icon="grid"),
+                     button("Limits…", slot=lambda _=False, k=k: self.limits(k), icon="sliders"),
                      button("Remove", slot=lambda _=False, k=k: self.remove(k), icon="trash"))
             self.rows.addWidget(RowItem("user", k["display"] or k["name"], summary(k), right=right))
 
@@ -174,6 +273,21 @@ class KidsCard(Card):
         if d.exec() == QDialog.Accepted:
             self.run(["apps", k["name"], ",".join(d.ids())], f"{k['display'] or k['name']}'s apps saved")
 
+    def pick_games(self):
+        if sysinfo.DEMO:
+            games = [{"title": t, "system": s, "path": f"/home/you/Games/Retro/{t}"} for t, s in (
+                ("Super Mario Bros.", "Nintendo (NES)"), ("Kirby's Adventure", "Nintendo (NES)"),
+                ("Sonic the Hedgehog", "Sega Genesis"), ("Pokemon Yellow", "Game Boy Color"))]
+            shared = {"Super Mario Bros.", "Sonic the Hedgehog"}
+        else:
+            retro = kids._retro()
+            games = [{"title": g.title, "system": retro.BY_ID[g.system].name, "path": str(g.path)}
+                     for g in retro.scan([retro.LIBRARY])]
+            shared = {t["name"] for t in kids.shared_games()}
+        d = GamesDialog(self, games, shared)
+        if d.exec() == QDialog.Accepted:
+            self.run(["games", *d.paths()], "Kid mode's games are up to date")
+
     def limits(self, k):
         d = LimitsDialog(self, k)
         if d.exec() != QDialog.Accepted:
@@ -182,7 +296,8 @@ class KidsCard(Card):
         # One password prompt for all three (each value is checked above or comes from a fixed list)
         self.hub.privileged_cmd(["sh", "-c", f"{sysinfo.DECKOS} kids limit {name} {d.minutes.value()} && "
                                  f"{sysinfo.DECKOS} kids bedtime {name} '{d.bedtime.text().strip()}' && "
-                                 f"{sysinfo.DECKOS} kids web {name} {d.web.currentData()}"],
+                                 f"{sysinfo.DECKOS} kids web {name} {d.web.currentData()} && "
+                                 f"{sysinfo.DECKOS} kids volume {name} {d.volume.value()}"],
                                 lambda ok: (self.hub.toast(f"{k['display'] or name}'s limits saved" if ok else
                                                            "Limits not changed", "ok" if ok else "warn"),
                                             self.refresh()))
