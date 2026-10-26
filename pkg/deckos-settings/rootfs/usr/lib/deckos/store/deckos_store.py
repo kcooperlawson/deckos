@@ -264,7 +264,7 @@ class Store(QWidget):
         else:
             cat = next(c for c in CATEGORIES if c[0] == key)
             apps = self.catalog.in_category(key)
-            self.show_page(self.list_page(cat[1], f"{len(apps):,} apps", apps), key)
+            self.show_page(self.list_page(cat[1], f"{len(apps):,} app{'' if len(apps) == 1 else 's'}", apps), key)
 
     def card(self, app):
         c = AppCard(app, self.installed)
@@ -319,7 +319,7 @@ class Store(QWidget):
             tv.setSpacing(0)
             tv.addWidget(label(title, "cardTitle", wrap=False))
             n = sum(1 for a in self.catalog.apps.values() if a.section() == key)
-            tv.addWidget(label(f"{n:,} apps", "muted", wrap=False))
+            tv.addWidget(label(f"{n:,} app{'' if n == 1 else 's'}", "muted", wrap=False))
             th.addLayout(tv, 1)
             tile.mousePressEvent = lambda _e, k=key: self.open_section(k)
             cats.addWidget(tile, i // 3, i % 3)
@@ -363,7 +363,7 @@ class Store(QWidget):
                 self.open_section("home")
             return
         apps = self.catalog.search(term)
-        page = self.list_page(f"Results for “{term}”", f"{len(apps)} apps" if apps else "No apps in the catalog "
+        page = self.list_page(f"Results for “{term}”", f"{len(apps)} app{'' if len(apps) == 1 else 's'}" if apps else "No apps in the catalog "
                               "match; the AUR is being searched too.", apps, aur_slot=True)
         page.search_page = True
         replacing = self.current and getattr(self.current[0], "search_page", False)
@@ -403,7 +403,8 @@ class Store(QWidget):
         for name, version, desc, votes in res:
             key = f"aur:{name}"
             installed = name in self.installed.aur
-            btn = button("Installed" if installed else "Install", None if installed else "primary",
+            # Plain, not the bright primary: community packages aren't checked, so they shouldn't look like the safe pick
+            btn = button("Installed" if installed else "Install", None,
                          lambda _c=False, n=name: self.jobs.add(f"aur:{n}", "install", "aur", n, n),
                          icon=None if installed else "download")
             btn.setEnabled(not installed and not self.jobs.busy(key))
