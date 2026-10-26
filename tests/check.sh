@@ -98,6 +98,8 @@ unit_tests() {
   # Anything a test records in the DecKoOS timeline goes to a throwaway folder, never the real timelines
   local pulse_dir; pulse_dir=$(mktemp -d)
   export DECKOS_PULSE_USER=$pulse_dir/user.jsonl DECKOS_PULSE_SYSTEM=$pulse_dir/system.jsonl
+  # A test that reaches a real fix's follow-up mustn't put "Did that fix it?" on this desktop
+  export DECKOS_HEAL_ASK=off
   QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p 'test_*.py' || fail "unit tests"
 }
 

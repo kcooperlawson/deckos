@@ -2,6 +2,7 @@
 and anything touching sudo, polkit, PAM, SSH, passwords or the firewall are refused, and the Assistant runs nothing
 the person declines."""
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -175,6 +176,9 @@ class EverydayTests(unittest.TestCase):
         self.assertEqual(heal_report.ask('skip-network-wait', 'slow-boot', notify=lambda: 'worked'), 'worked')
         self.assertEqual(heal_report.history(self.hist)[-1]['result'], 'worked')
         self.assertIsNone(heal_report.ask('skip-network-wait', notify=lambda: ''))  # dismissed: nothing recorded
+        with patch.dict(os.environ, {'DECKOS_HEAL_ASK': 'off'}), patch.object(heal_report.subprocess, 'run') as real:
+            self.assertIsNone(heal_report.ask('skip-network-wait'))  # check.sh's switch: no real notification
+        real.assert_not_called()
         self.assertEqual(len(heal_report.history(self.hist)), 1)
 
     def test_not_asked_when_not_remembering(self):
@@ -293,9 +297,12 @@ class AssistantTests(unittest.TestCase):
 
     def test_root_fix_goes_through_pkexec(self):
         t, _ = self.tools(True)
-        with patch.object(assistant, 'run', return_value=(0, 'ok')) as run:
+        # The follow-up "Did that fix it?" is caught here: a real one would reach the desktop of whoever runs the tests
+        with patch.object(assistant, 'run', return_value=(0, 'ok')) as run, \
+                patch.object(assistant.subprocess, 'Popen') as popen:
             t.call('use_fix', {'fix': 'skip-network-wait'})
         self.assertEqual(run.call_args[0][0][:4], ['pkexec', 'deckos', 'heal', 'apply'])
+        self.assertEqual(popen.call_args[0][0], ['deckos', 'heal', 'ask', 'skip-network-wait'])
 
 
 if __name__ == '__main__':

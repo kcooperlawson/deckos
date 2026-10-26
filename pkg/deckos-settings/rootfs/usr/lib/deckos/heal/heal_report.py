@@ -157,6 +157,8 @@ def ask(recipe, finding="", notify=None):
     import heal
     if not heal.is_on("remember") or recipe not in heal.RECIPES:
         return None
+    if notify is None and os.environ.get("DECKOS_HEAL_ASK") == "off":  # tests/check.sh: never on a real desktop
+        return None
     title = heal.RECIPES[recipe]["title"].split("{")[0].strip() or recipe
     notify = notify or (lambda: subprocess.run(
         ["notify-send", "--app-name=DecKoOS", "--icon=deckos", "--expire-time=0", "--action=worked=Yes, fixed",
