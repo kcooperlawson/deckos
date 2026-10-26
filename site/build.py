@@ -24,6 +24,8 @@ SHARE = ROOT / "pkg/deckos-settings/rootfs/usr/share/deckos"
 REPO = "kcooperlawson/deckos"
 GITHUB = f"https://github.com/{REPO}"
 PIN = ROOT / "out/site-iso"  # the ISO the site offers, when one was picked (DecKoOS Builder's Website card)
+# Inter, where Arch and DecKoOS install it; without it the site uses the system's fonts
+FONT_SOURCES = [Path("/usr/share/fonts/inter/InterVariable.ttf"), Path("/usr/share/fonts/TTF/InterVariable.ttf")]
 FINGERPRINT = "F67E15FABF95D2DA72BE5D3F6322881773088C41"
 NAME = "DecKoOS"
 
@@ -275,6 +277,7 @@ class Site:
         self.iso = self.find_iso(iso)
         self.pages = []
         self.css = "/style.css"
+        self.font_url = None  # set by font(): what pages preload, if anything
         self.js = "/site.js"
         self.doc_titles = {n: DOC_META[n][0] for n in DOC_NAMES}
 
@@ -310,6 +313,8 @@ class Site:
             shutil.copy(SHARE / "branding" / f, self.out / "img" / f)
         shutil.copy(SHARE / "branding/logo.svg", self.out / "favicon.svg")
         self.font()
+        # Stamped after font(), which may rewrite the stylesheet
+        self.css = f"/style.css?v={hashlib.sha256((self.out / 'style.css').read_bytes()).hexdigest()[:10]}"
         for name, _, _ in SHOTS:
             self.image(ROOT / "docs/screenshots" / f"{name}.png", f"shot-{name}")
         for r in self.releases:
@@ -343,10 +348,13 @@ class Site:
 
     def font(self):
         """Inter (SIL Open Font License) from this PC, subset to Latin as WOFF2: no font requests to anyone else."""
-        src = next((p for p in (Path("/usr/share/fonts/inter/InterVariable.ttf"), Path("/usr/share/fonts/TTF/InterVariable.ttf"))
-                    if p.exists()), None)
+        src = next((p for p in FONT_SOURCES if p.exists()), None)
         dst = self.out / "fonts/inter.woff2"
+        css = self.out / "style.css"
         if not src:
+            # No Inter here: no @font-face pointing at a missing file; the font stack falls back to the system's
+            text = css.read_text()
+            css.write_text(re.sub(r"@font-face\s*\{[^}]*\}\s*", "", text, count=1))
             return
         try:
             from fontTools import subset
@@ -359,11 +367,12 @@ class Site:
                          0x201C, 0x201D, 0x2022, 0x2026, 0x2192, 0x2190, 0x2191, 0x2193, 0x00D7, 0x2212, 0x2122, 0x20AC])
             sub.subset(font)
             subset.save_font(font, str(dst), opts)
+            self.font_url = ("/fonts/inter.woff2", "font/woff2")
         except Exception:
             shutil.copy(src, self.out / "fonts/inter.ttf")
-            css = (self.out / "style.css").read_text().replace('url("/fonts/inter.woff2") format("woff2")',
-                                                                 'url("/fonts/inter.ttf") format("truetype")')
-            (self.out / "style.css").write_text(css)
+            css.write_text(css.read_text().replace('url("/fonts/inter.woff2") format("woff2")',
+                                                   'url("/fonts/inter.ttf") format("truetype")'))
+            self.font_url = ("/fonts/inter.ttf", "font/ttf")
         (self.out / "fonts/LICENSE-Inter.txt").write_text(
             "Inter by Rasmus Andersson, licensed under the SIL Open Font License 1.1: https://openfontlicense.org\n")
 
@@ -424,7 +433,7 @@ class Site:
 {og_image}
 {canonical}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+{f'<link rel="preload" href="{self.font_url[0]}" as="font" type="{self.font_url[1]}" crossorigin>' if self.font_url else ""}
 <link rel="stylesheet" href="{self.css}">
 </head>
 <body>

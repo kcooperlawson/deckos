@@ -5,6 +5,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import unittest.mock
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -58,6 +59,15 @@ class SiteTests(unittest.TestCase):
                 # A canonical link names this site's own address: it isn't a request
                 self.assertNotRegex(h, r'<(script|img)\b[^>]*src="https?://|<link\b(?![^>]*rel="canonical")[^>]*href="https?://',
                                     'no third-party requests')
+
+    def test_without_inter_installed(self):
+        # CI and other PCs may not have Inter: no font links to a file that isn't there
+        with tempfile.TemporaryDirectory() as tmp, unittest.mock.patch.object(build, 'FONT_SOURCES', []):
+            out = Path(tmp) / 'public'
+            site = build.Site(out, iso=False)
+            site.build()
+            self.assertNotIn('inter.woff2', (out / 'index.html').read_text())
+            self.assertNotIn('@font-face', (out / 'style.css').read_text())
 
     def test_markdown_escapes_html(self):
         out = build.Markdown().render('# Hi\n\n<script>alert(1)</script> and `<b>` and **bold**')
