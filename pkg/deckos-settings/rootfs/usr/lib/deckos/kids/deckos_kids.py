@@ -8,6 +8,7 @@ import os
 import pwd
 import shlex
 import sys
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QSize, Qt, QTimer
@@ -169,6 +170,12 @@ def first_login():
     mark = Path.home() / ".config/deckos/kids-layout-done"
     if mark.exists():
         return
+    # This starts with the session, often before the desktop shell can take a layout: wait for it (up to 30 s);
+    # if it still fails, the next login tries again
+    for _ in range(30):
+        if QProcess.execute("qdbus6", ["org.kde.plasmashell", "/PlasmaShell"]) == 0:
+            break
+        time.sleep(1)
     if QProcess.execute("deckos", ["layout", "set", "kids"]) == 0:
         mark.parent.mkdir(parents=True, exist_ok=True)
         mark.touch()
