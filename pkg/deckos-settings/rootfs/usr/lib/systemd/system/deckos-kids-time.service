@@ -1,6 +1,5 @@
 [Unit]
 Description=DecKoOS Kid mode: daily time limits and bedtimes
-Documentation=man:deckos(1)
 ConditionPathExistsGlob=/etc/deckos/kids/*.conf
 
 [Service]
