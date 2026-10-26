@@ -97,13 +97,15 @@ def chord(*sounds):
 def sounds():
     up = lambda a, b, g=0.09: seq((g, glass(note(a))), glass(note(b)))  # noqa: E731
     down = lambda a, b, g=0.09: seq((g, glass(note(a))), glass(note(b)))  # noqa: E731
-    success = seq((0.07, glass(note("C6"), 0.35)), (0.07, glass(note("E6"), 0.35)), glass(note("G6"), 0.6, 0.22))
-    login = seq((0.0, plate(note("C4"), 1.2, 0.35, 0.55)),
-                (0.06, silence(0)), (0.0, glass(note("G5"), 1.4, 0.45, 0.5)),
-                (0.12, glass(note("C6"), 1.3, 0.42, 0.45)), (0.12, glass(note("E6"), 1.2, 0.4, 0.4)),
-                glass(note("G6"), 1.2, 0.38, 0.35))
-    logout = seq((0.12, glass(note("G6"), 0.9, 0.3, 0.4)), (0.12, glass(note("E6"), 0.9, 0.3, 0.4)),
-                 (0.08, glass(note("C6"), 1.0, 0.32, 0.45)), plate(note("C4"), 1.0, 0.3, 0.45))
+    success = seq((0.05, glass(note("C6"), 0.3)), (0.05, glass(note("E6"), 0.3)), (0.05, glass(note("G6"), 0.3)),
+                  glass(note("C7"), 0.6, 0.22))
+    # The signature: a plate bolt, then a wide rise over two octaves into a high shimmer
+    login = seq((0.0, plate(note("C4"), 1.6, 0.45, 0.8, 0.6)),
+                (0.10, glass(note("C5"), 1.6, 0.5, 0.45)), (0.13, glass(note("G5"), 1.5, 0.48, 0.45)),
+                (0.13, glass(note("E6"), 1.4, 0.45, 0.45)), (0.16, glass(note("C7"), 1.3, 0.42, 0.35)),
+                glass(note("G7"), 1.0, 0.3, 0.12))
+    logout = seq((0.14, glass(note("C7"), 0.9, 0.3, 0.3)), (0.14, glass(note("E6"), 0.9, 0.3, 0.4)),
+                 (0.12, glass(note("G5"), 1.0, 0.32, 0.45)), plate(note("C4"), 1.2, 0.35, 0.7, 0.5))
     return {
         "bell": glass(note("E6"), 0.4, 0.13),
         "bell-window-system": glass(note("E6"), 0.4, 0.13, 0.8),
@@ -111,14 +113,15 @@ def sounds():
         "button-pressed-modifier": glass(note("E6"), 0.08, 0.025, 0.45),
         "audio-volume-change": glass(note("C7"), 0.12, 0.04, 0.6),
         "dialog-information": glass(note("G5"), 0.5, 0.18),
-        "dialog-question": up("E5", "A5"),
-        "dialog-warning": down("A5", "F5"),
+        "dialog-question": seq((0.06, glass(note("D5"), 0.3, 0.1, 0.8)), glass(note("A5"), 0.5, 0.18)),
+        "dialog-warning": seq((0.16, glass(note("F5"), 0.35, 0.11)), glass(note("F5"), 0.5, 0.16)),
         "dialog-warning-auth": seq((0.08, plate(note("F4"), 0.4, 0.12, 0.5, 0.2)), glass(note("C6"), 0.5, 0.17)),
-        "dialog-error": seq((0.0, plate(note("D4"), 0.6, 0.2, 0.6)), (0.05, silence(0)), down("D5", "A4")),
+        "dialog-error": seq((0.09, plate(note("D3"), 0.5, 0.16, 0.9, 0.6)), (0.12, plate(note("Eb3"), 0.6, 0.2, 0.85, 0.5)),
+                             glass(note("A4"), 0.7, 0.25, 0.6)),
         "dialog-error-serious": seq((0.14, plate(note("D4"), 0.5, 0.17, 0.6)), plate(note("A3"), 0.7, 0.22, 0.65)),
         "dialog-error-critical": seq((0.12, plate(note("D4"), 0.45, 0.15, 0.65)), (0.12, plate(note("D4"), 0.45, 0.15, 0.65)),
                                      plate(note("A3"), 0.8, 0.25, 0.7)),
-        "message-new-instant": up("C6", "G6", 0.08),
+        "message-new-instant": seq((0.06, glass(note("E7"), 0.25, 0.07, 0.8)), glass(note("B7"), 0.35, 0.1, 0.7)),
         "message-sent-instant": glass(note("G6"), 0.25, 0.08, 0.6),
         "message-new-email": seq((0.1, glass(note("G5"))), glass(note("D6"))),
         "message-attention": seq((0.08, glass(note("E6"))), (0.08, glass(note("E6"))), glass(note("B6"))),
@@ -133,9 +136,10 @@ def sounds():
         "completion-fail": seq((0.1, glass(note("G5"))), (0.1, glass(note("Eb5"))), glass(note("C5"), 0.6, 0.2)),
         "outcome-failure": seq((0.1, glass(note("G5"))), glass(note("C5"), 0.6, 0.2)),
         "complete-media-error": seq((0.0, plate(note("C4"), 0.5, 0.16, 0.5)), (0.04, silence(0)), down("G5", "C5")),
-        "device-added": seq((0.05, plate(note("G4"), 0.35, 0.1, 0.55, 0.45)), up("G5", "D6", 0.07)),
-        "device-removed": seq((0.16, seq((0.07, glass(note("D6"))), glass(note("G5")))),
-                              plate(note("G4"), 0.35, 0.1, 0.5, 0.45)),
+        "device-added": seq((0.07, plate(note("G4"), 0.4, 0.1, 0.9, 0.8)), (0.08, glass(note("G5"), 0.3, 0.09)),
+                             glass(note("G6"), 0.5, 0.16)),
+        "device-removed": seq((0.08, glass(note("G6"), 0.3, 0.09)), (0.12, glass(note("G5"), 0.35, 0.11)),
+                              plate(note("G4"), 0.4, 0.1, 0.9, 0.8)),
         "power-plug": seq((0.05, plate(note("C4"), 0.4, 0.12, 0.5, 0.4)), up("C5", "G5", 0.07)),
         "power-unplug": seq((0.16, seq((0.07, glass(note("G5"))), glass(note("C5")))),
                             plate(note("C4"), 0.4, 0.12, 0.45, 0.4)),
