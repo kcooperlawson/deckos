@@ -1432,6 +1432,18 @@ class AppearancePage(Page):
     title = "Appearance"
     subtitle = "Theme, accent colour, wallpaper and desktop style."
 
+    def taskbar_colors(self, mode, text):
+        if mode != "custom":
+            self.apply(["deckos", "taskbar", "colors", mode], f"Taskbar colours: {text}")
+            return
+        from PySide6.QtWidgets import QColorDialog
+        a = QColorDialog.getColor(QColor(S.P.accent), self, "Taskbar colour")
+        if not a.isValid():
+            return
+        b = QColorDialog.getColor(a, self, "Second colour (for the gradient)")
+        self.apply(["deckos", "taskbar", "colors", "custom", a.name().upper(), (b if b.isValid() else a).name().upper()],
+                   "Taskbar colours: your own")
+
     def set_sounds(self, theme, name):
         if not sysinfo.DEMO:
             sysinfo.set_sound_theme(theme)
@@ -1461,6 +1473,29 @@ class AppearancePage(Page):
             self.set_accent(c.name().upper(), "Custom")
 
     def build(self):
+        vibes = Card("Vibes", "A whole mood, in one go", "star")
+        vibes.body.addWidget(label("Colours, an animated wallpaper and a music visualizer that dances to what's "
+                                   "playing. It pauses during games and full-screen videos.", "sub"))
+        self.vibe_grid = QGridLayout()
+        self.vibe_grid.setSpacing(10)
+        vibes.body.addLayout(self.vibe_grid)
+        group = QButtonGroup(self)
+        buttons = []
+        shown = sysinfo.visualizer_style()
+        for value, text in (("bars", "Bars"), ("wave", "Wave"), ("ring", "Ring"), ("none", "Off")):
+            b = QPushButton(text)
+            b.setObjectName("seg")
+            b.setCheckable(True)
+            b.setChecked(value == shown)
+            b.clicked.connect(lambda _c, v=value, t=text: self.apply(["deckos", "vibe", "visualizer", v],
+                                                                      f"Music visualizer: {t}"))
+            group.addButton(b)
+            buttons.append(b)
+        name = label("Music visualizer")
+        name.setFixedWidth(140)
+        vibes.body.addWidget(row(name, *buttons))
+        self.lay.addWidget(vibes)
+
         themes = Card("Theme", "Global theme", "appearance")
         themes.body.addWidget(label("Sets colours, wallpaper and the desktop layout's look in one go.", "sub"))
         self.theme_grid = QGridLayout()
@@ -1513,6 +1548,34 @@ class AppearancePage(Page):
             name.setFixedWidth(90)
             style.body.addWidget(row(name, *buttons))
         self.lay.addWidget(style)
+
+        bar = Card("Taskbar", "Size, colours and motion", "panel-right")
+        tb = sysinfo.taskbar_settings()
+        size = "small" if 0 < tb["height"] <= 42 else "large" if tb["height"] >= 56 else "medium"
+
+        def segs(title, options, current, slot):
+            group = QButtonGroup(self)
+            buttons = []
+            for value, text in options:
+                b = QPushButton(text)
+                b.setObjectName("seg")
+                b.setCheckable(True)
+                b.setChecked(value == current)
+                b.clicked.connect(lambda _c, v=value, t=text: slot(v, t))
+                group.addButton(b)
+                buttons.append(b)
+            name = label(title)
+            name.setFixedWidth(140)
+            return row(name, *buttons)
+        bar.body.addWidget(segs("Height", (("small", "Small"), ("medium", "Medium"), ("large", "Large")), size,
+                                lambda v, t: self.apply(["deckos", "taskbar", "height", v], f"Taskbar: {t.lower()}")))
+        bar.body.addWidget(segs("Colours", (("accent", "Accent"), ("vibe", "Vibe"), ("custom", "Custom…")),
+                                tb["colorMode"], self.taskbar_colors))
+        bar.body.addWidget(segs("Motion", (("on", "On"), ("off", "Off")), "on" if tb["motion"] else "off",
+                                lambda v, t: self.apply(["deckos", "taskbar", "motion", v], f"Taskbar motion: {v}")))
+        bar.body.addWidget(label("Your own colours stay when you change Vibes. Motion: the active app's light "
+                                 "breathes and icons lift as you point at them.", "muted"))
+        self.lay.addWidget(bar)
 
         sounds = Card("Sounds", "System sounds", "volume")
         sounds.body.addWidget(label("Notifications, devices, errors and logging in. DecKoOS's own: glass tones, "
@@ -1609,6 +1672,11 @@ class AppearancePage(Page):
             self.hub.toast(f"Couldn't run {Path(cmd[0]).name}.", "warn"), proc.deleteLater()))
         proc.start(cmd[0], cmd[1:])
 
+    def apply_vibe(self, key, name):
+        self.demo_vibe = key
+        args = ["deckos", "vibe", "off"] if key == "off" else ["deckos", "vibe", "apply", key]
+        self.apply(args, f"Vibe: {name}", self.after_theme)
+
     def apply_theme(self, tid, name):
         self.demo_look = tid
         self.demo_wall = None
@@ -1641,6 +1709,13 @@ class AppearancePage(Page):
     def refresh(self):
         self._cols = (self.columns(), self.columns(True))
         big, small = self._cols
+        self.clear(self.vibe_grid)
+        current = sysinfo.current_vibe()
+        for i, (key, name, summary, preview) in enumerate(sysinfo.vibes()):
+            self.vibe_grid.addWidget(self.preview_tile(preview, name, summary, key == current,
+                                                       lambda k=key, n=name: self.apply_vibe(k, n), small=True),
+                                     i // small, i % small, Qt.AlignTop)
+        self.vibe_grid.setColumnStretch(small, 1)
         self.clear(self.theme_grid)
         demo = sysinfo.DEMO and hasattr(self, "demo_look")
         current = self.demo_look if demo else sysinfo.current_look()

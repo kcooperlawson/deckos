@@ -256,6 +256,16 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   per account). polkit `49-deckos-kids.rules` refuses shutdown/reboot/sleep to `deckos-kids`; the launcher caps volume
   (pactl subscribe, no polling) and takes a controller (the Gaming Mode panel's `Pad`). The login screen shows children
   under the card and keeps the card on a grown-up. Tests: `tests/test_kids.py`.
+- **Vibes** (`usr/lib/deckos/vibes/`): `vibes.py` (no Qt) lists each Vibe: a DecKoOS theme, accent, scene, visualizer
+  style, colours, corners. `deckos vibe apply|visualizer|off` applies them as the user and records undo. The look is the
+  `org.deckos.vibe` Plasma wallpaper (QML scenes over CC0/public-domain photos credited in `contents/images/CREDITS.md`;
+  only ship photos with a licence like that) with `Visualizer.qml` on top, so it's under every window and stops while
+  a window is full screen. `visualizer.py serve` (user unit `deckos-visualizer`) reads the default output's monitor
+  through parec, numpy FFT to 48 bars, sends bytes over a localhost-only WebSocket, only while the wallpaper is
+  connected, silent after 3 s of quiet and off during games. `assets/preview_vibes.py` renders them (and the Hub's tile
+  previews). Tests: `tests/test_vibes.py`.
+- **Taskbar settings**: `deckos taskbar height|colors|motion` writes every DecKoOS taskbar (`colorMode` accent|vibe|custom;
+  a Vibe never overrides custom). `deckos layout set` saves pins to `~/.config/deckos/pins` before replacing panels.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

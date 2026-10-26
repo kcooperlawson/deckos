@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DecKoOS"
+            }
+        ],
+        "Description": "DecKoOS Vibes: an animated scene with a music visualizer, under your windows",
+        "Icon": "preferences-desktop-wallpaper",
+        "Id": "org.deckos.vibe",
+        "License": "MIT",
+        "Name": "DecKoOS Vibe"
+    }
+}

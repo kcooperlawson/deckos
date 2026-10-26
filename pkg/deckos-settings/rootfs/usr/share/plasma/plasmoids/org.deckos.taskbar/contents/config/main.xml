@@ -16,6 +16,16 @@
       <label>Bumped by deckos accent when the icons are recoloured, so the tiles reload them</label>
       <default>0</default>
     </entry>
+    <entry name="colorMode" type="String">
+      <label>accent (the desktop's), vibe (the Vibe's two colours) or custom (yours: deckos taskbar colors)</label>
+      <default>accent</default>
+    </entry>
+    <entry name="colorA" type="Color"><default>#4C8DFF</default></entry>
+    <entry name="colorB" type="Color"><default>#7A5CFF</default></entry>
+    <entry name="motion" type="Bool">
+      <label>Gentle motion: the active app's pill breathes, icons lift on hover, a soft glow behind the tiles</label>
+      <default>true</default>
+    </entry>
     <entry name="lockedPins" type="Bool">
       <label>Kid mode: the pinned apps can't be changed (no pinning, unpinning or dropping apps on)</label>
       <default>false</default>

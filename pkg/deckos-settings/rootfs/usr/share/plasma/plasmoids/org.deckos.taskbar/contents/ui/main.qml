@@ -20,10 +20,14 @@ PlasmoidItem {
     // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
     readonly property color text: Kirigami.Theme.textColor
     readonly property color subtext: Kirigami.Theme.disabledTextColor
-    readonly property color accent: Kirigami.Theme.highlightColor
-    // The gradient partner: the accent shifted towards violet, like the brand tile
-    readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
-                                             accent.hsvValue, 1)
+    // The desktop's accent, or the Vibe's colours, or the person's own (Hub > Appearance > Taskbar)
+    readonly property string colorMode: Plasmoid.configuration.colorMode || "accent"
+    readonly property color accent: colorMode === "accent" ? Kirigami.Theme.highlightColor : Plasmoid.configuration.colorA
+    // The gradient partner: the accent shifted towards violet, like the brand tile (or the Vibe's/custom second colour)
+    readonly property color accentB: colorMode === "accent"
+        ? Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04), accent.hsvValue, 1)
+        : Plasmoid.configuration.colorB
+    readonly property bool motion: Plasmoid.configuration.motion !== false
     readonly property color raised: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.08))
     readonly property color border: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.13))
     readonly property color attention: "#F5A524"
@@ -270,6 +274,19 @@ PlasmoidItem {
         }
     }
 
+    // Following a Vibe (or the person's own colours): a faint wash of its two colours behind the apps
+    Rectangle {
+        visible: deckTasks.colorMode !== "accent"
+        anchors.fill: strip
+        anchors.margins: -2
+        radius: 12
+        opacity: 0.12
+        gradient: Gradient {
+            orientation: deckTasks.vertical ? Gradient.Vertical : Gradient.Horizontal
+            GradientStop { position: 0; color: deckTasks.accent }
+            GradientStop { position: 1; color: deckTasks.accentB }
+        }
+    }
     Grid {
         id: strip
         anchors.left: deckTasks.vertical ? undefined : parent.left

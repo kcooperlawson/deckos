@@ -13,6 +13,7 @@ depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit k
          papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal deckos-editor ripgrep
          github-cli  # DecKoOS Builder
          7zip fio vkmark  # DecKoOS Bench's CPU, disk and graphics tests
+         python-numpy qt6-websockets libpulse  # Vibes' music visualizer: the analysis, the wallpaper's feed, parec
          hdparm)  # cachyos-settings' hard-drive udev rule runs it; installs from before 0.6 lack it
 makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <!-- Written by `deckos vibe` (DecKoOS Hub > Appearance > Vibes) -->
+  <group name="General">
+    <entry name="Scene" type="String"><default>lofi</default></entry>
+    <entry name="Visualizer" type="String"><default>bars</default></entry>
+    <entry name="ColorA" type="Color"><default>#FF9E7A</default></entry>
+    <entry name="ColorB" type="Color"><default>#B36BFF</default></entry>
+    <entry name="Animate" type="Bool"><default>true</default></entry>
+  </group>
+</kcfg>

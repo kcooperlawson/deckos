@@ -1,3 +1,4 @@
 module org.kde.plasma.core
 Types 1.0 Types.qml
 ToolTipArea 1.0 ToolTipArea.qml
+Dialog 1.0 Dialog.qml

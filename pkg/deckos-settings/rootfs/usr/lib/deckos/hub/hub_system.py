@@ -570,6 +570,63 @@ def wallpapers():
     return sorted(out, key=lambda w: (w[0].name not in ("DeckOS", "TMpikes"), w[1].lower()))
 
 
+def vibes():
+    """[(key, name, summary, preview)]: the Vibes (vibes.py), then "DecKoOS" to turn them off."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
+    import vibes as v
+    out = []
+    for key, x in v.VIBES.items():
+        preview = next((b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg" for b in _dirs("")
+                        if (b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg").exists()), None)
+        out.append((key, x["name"], x["summary"], preview))
+    home = next((p for tid, _n, _d, p in look_and_feels() if tid == "org.deckos.desktop"), None)
+    out.append(("off", "DecKoOS", "No Vibe: the DecKoOS look", home))
+    return out
+
+
+def taskbar_settings():
+    """{"height", "colorMode", "motion"} of the first DecKoOS taskbar, from Plasma's own files."""
+    if DEMO:
+        return {"height": 48, "colorMode": "vibe", "motion": True}
+    out = {"height": 0, "colorMode": "accent", "motion": True}
+    cfg = Path.home() / ".config"
+    try:
+        text = (cfg / "plasma-org.kde.plasma.desktop-appletsrc").read_text()
+        m = re.search(r"^\[Containments\]\[(\d+)\]\[Applets\]\[(\d+)\]\n(?:[^\[].*\n)*?plugin=org\.deckos\.taskbar", text, re.M)
+        if m:
+            grp = re.escape(f"[Containments][{m.group(1)}][Applets][{m.group(2)}][Configuration][General]")
+            body = re.search(rf"^{grp}\n((?:[^\[].*\n?)*)", text, re.M)
+            if body:
+                mode = re.search(r"^colorMode=(\w+)", body.group(1), re.M)
+                motion = re.search(r"^motion=(\w+)", body.group(1), re.M)
+                out["colorMode"] = mode.group(1) if mode else "accent"
+                out["motion"] = not (motion and motion.group(1) == "false")
+        thick = re.search(r"^thickness=(\d+)", (cfg / "plasmashellrc").read_text(), re.M)
+        out["height"] = int(thick.group(1)) if thick else 0
+    except OSError:
+        pass
+    return out
+
+
+def visualizer_style():
+    """bars, wave, ring or none: what `deckos vibe` last set (~/.config/deckos/visualizer)."""
+    if DEMO:
+        return "bars"
+    try:
+        return (Path.home() / ".config/deckos/visualizer").read_text().strip() or "none"
+    except OSError:
+        return "none"
+
+
+def current_vibe():
+    if DEMO:
+        return "lofi"
+    try:
+        return (Path.home() / ".config/deckos/vibe").read_text().strip() or "off"
+    except OSError:
+        return "off"
+
+
 def desktop_layouts():
     """[(key, name, description, preview)] for the DecKoOS panel layouts (deckos layout set KEY)."""
     out = []

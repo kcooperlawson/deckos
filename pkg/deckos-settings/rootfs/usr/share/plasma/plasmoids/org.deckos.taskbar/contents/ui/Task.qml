@@ -95,8 +95,9 @@ Item {
                 Layout.preferredHeight: Layout.preferredWidth
                 source: model.decoration
                 active: mouse.containsMouse
-                scale: mouse.pressed ? 0.9 : 1
-                Behavior on scale { NumberAnimation { duration: 90 } }
+                // Pressed: a little in; hovered (with motion on): a little lift
+                scale: mouse.pressed ? 0.9 : deckTasks.motion && mouse.containsMouse ? 1.08 : 1
+                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
                 // An app that's starting bounces gently until its window shows
                 transform: Translate { id: bounce }
                 SequentialAnimation {
@@ -119,6 +120,26 @@ Item {
         }
     }
 
+    // Motion: under the active app's pill, a soft glow in its colours that breathes slowly
+    Rectangle {
+        visible: task.active && deckTasks.motion && !deckTasks.vertical && !task.launcherOnly
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        width: 30
+        height: 7
+        radius: 3.5
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0; color: deckTasks.accent }
+            GradientStop { position: 1; color: deckTasks.accentB }
+        }
+        SequentialAnimation on opacity {
+            running: parent.visible
+            loops: Animation.Infinite
+            NumberAnimation { from: 0.15; to: 0.45; duration: 1800; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 0.45; to: 0.15; duration: 1800; easing.type: Easing.InOutSine }
+        }
+    }
     // The active app gets the accent gradient pill; other open apps a dot per window (up to 3)
     Rectangle {
         visible: !task.launcherOnly
