@@ -22,6 +22,9 @@ Item {
     readonly property int childCount: model.IsGroupParent ? model.ChildCount : 0
     readonly property int row: index
     readonly property bool dragging: mouse.drag.active || mouse.reordering
+    // Playing sound now (Plasma's audio streams; deckTasks.audioEpoch makes this look again when they change)
+    readonly property bool playing: !launcherOnly && deckTasks.audioEpoch >= 0
+        && deckTasks.isPlaying(model.AppPid || 0, model.AppName, model.AppId)
 
     width: deckTasks.labels ? deckTasks.labelWidth : deckTasks.tile
     height: deckTasks.vertical ? deckTasks.width : deckTasks.tile
@@ -117,6 +120,25 @@ Item {
                 font.family: "Inter"
                 font.pixelSize: 13
             }
+        }
+    }
+
+    // Playing sound: a ring in the colours around the tile, pulsing gently (still, when motion is off)
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: 2
+        radius: 11
+        visible: task.playing
+        color: "transparent"
+        border.width: 2
+        border.color: deckTasks.accentB
+        opacity: 0.55
+        SequentialAnimation on opacity {
+            running: task.playing && deckTasks.motion
+            loops: Animation.Infinite
+            alwaysRunToEnd: true
+            NumberAnimation { from: 0.2; to: 0.75; duration: 900; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 0.75; to: 0.2; duration: 900; easing.type: Easing.InOutSine }
         }
     }
 

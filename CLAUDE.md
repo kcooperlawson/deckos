@@ -266,6 +266,8 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   previews). Tests: `tests/test_vibes.py`.
 - **Taskbar settings**: `deckos taskbar height|colors|motion` writes every DecKoOS taskbar (`colorMode` accent|vibe|custom;
   a Vibe never overrides custom). `deckos layout set` saves pins to `~/.config/deckos/pins` before replacing panels.
+  A tile pulses while its app plays sound: `org.kde.plasma.private.volume`'s SinkInputModel (not corked), matched by pid,
+  else by name/binary (Flatpak Spotify plays from pid 4 in its sandbox; browsers from helper processes).
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

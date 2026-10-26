@@ -12,6 +12,7 @@ import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
+import org.kde.plasma.private.volume as PlasmaPa
 
 PlasmoidItem {
     id: deckTasks
@@ -28,6 +29,47 @@ PlasmoidItem {
         ? Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04), accent.hsvValue, 1)
         : Plasmoid.configuration.colorB
     readonly property bool motion: Plasmoid.configuration.motion !== false
+
+    // Apps playing sound right now (Plasma's audio streams, as the stock task manager reads them; events, not
+    // polling). A tile pulses while its app plays: matched by process, or by name, since browsers and Spotify
+    // play from a helper process rather than the window's own.
+    PlasmaPa.PulseObjectFilterModel {
+        id: audioStreams
+        filters: [{ role: "VirtualStream", value: false }]
+        sourceModel: PlasmaPa.SinkInputModel {}
+    }
+    property int audioEpoch: 0  // bumped when streams change, so the tiles look again
+    Instantiator {
+        id: playing
+        model: audioStreams
+        delegate: QtObject {
+            required property var model
+            readonly property int pid: Number(model.Client?.properties["application.process.id"] ?? 0)
+            readonly property string name: String(model.Client?.properties["application.name"] ?? "")
+            readonly property string binary: String(model.Client?.properties["application.process.binary"] ?? "")
+            readonly property bool corked: model.Corked === true
+            onCorkedChanged: deckTasks.audioEpoch++
+        }
+        onObjectAdded: deckTasks.audioEpoch++
+        onObjectRemoved: deckTasks.audioEpoch++
+    }
+    function plain(s) {
+        return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+    function isPlaying(pid, appName, appId) {
+        const name = plain(appName), id = plain(String(appId || "").replace(/\.desktop$/, "").split(".").pop());
+        for (let i = 0; i < playing.count; i++) {
+            const s = playing.objectAt(i);
+            if (!s || s.corked)
+                continue;
+            if (pid > 0 && s.pid === pid)
+                return true;
+            const sn = plain(s.name), sb = plain(s.binary);
+            if (sn && (sn === name || sn === id) || sb && (sb === id || sb === name))
+                return true;
+        }
+        return false;
+    }
     readonly property color raised: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.08))
     readonly property color border: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.13))
     readonly property color attention: "#F5A524"
