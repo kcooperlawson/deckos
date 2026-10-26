@@ -273,6 +273,10 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   widget ID on|off` places them, `deckos vibe weather TOWN` geocodes through Open-Meteo. `assets/preview_widgets.py
   --check` loads every one for real on stand-ins (it caught an infinite timer loop and names that clash with Item's own:
   `focus`, `left`, `running`). The real lint is `/usr/lib/qt6/bin/qmllint` (not on PATH).
+- **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
+  a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
+  unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.
+  `deckos heal`, the Assistant's `use_fix`. Never loosen the walls for a model, however big. Tests: `tests/test_heal.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

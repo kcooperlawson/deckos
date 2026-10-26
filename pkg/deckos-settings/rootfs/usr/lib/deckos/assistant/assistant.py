@@ -235,6 +235,20 @@ def _actions():
     except (ImportError, OSError, ValueError):
         return []
 
+def _heal():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "heal"))
+    try:
+        import heal
+        return heal
+    except ImportError:
+        return None
+
+
+def _fixes():
+    heal = _heal()
+    return heal.RECIPES if heal else {}
+
+
 class Tools:
     """The assistant's tools. `confirm(title, detail) -> bool` asks the person; `say(text)` shows progress."""
 
@@ -293,6 +307,19 @@ class Tools:
                 "first. Actions: " + catalog,
                 "parameters": {"type": "object", "properties": {"id": {"type": "string", "enum": [a["id"] for a in acts]}},
                                "required": ["id"]}}})
+        fixes = _fixes()
+        if fixes:
+            # Fixes come only from DecKoOS's reviewed recipes: the model picks one and fills its blanks, never a command
+            out.append({"type": "function", "function": {
+                "name": "use_fix", "description": "Fix a problem with one of DecKoOS's reviewed fixes. Prefer this to "
+                "run_command for any change it covers. The person sees the exact commands and confirms first; fixes that "
+                "need administrator rights take a snapshot first, so they can be undone. Fixes (blanks in brackets): "
+                + "; ".join(f"{k} = {v['title']}" + (f" [{', '.join(v['params'])}]" if v["params"] else "")
+                            for k, v in fixes.items()),
+                "parameters": {"type": "object", "properties": {
+                    "fix": {"type": "string", "enum": list(fixes)},
+                    "values": {"type": "object", "description": "the fix's blanks, e.g. {\"package\": \"vlc\"}"}},
+                    "required": ["fix"]}}})
         out.append({"type": "function", "function": {
             "name": "what_changed", "description": "What changed on this PC recently (updates, installs, game fixes, "
             "theme changes, drives, games played), newest first, with whether each can be undone in the Hub's "
@@ -405,6 +432,24 @@ class Tools:
         except (ImportError, KeyError, OSError) as e:
             return f"error: {e}"
         return f"started: {a['title']}" + (" (in a terminal window)" if a.get("how") == "terminal" else "")
+
+    def t_use_fix(self, fix, values=None):
+        heal = _heal()
+        if heal is None:
+            return "error: DecKoOS's fixes aren't installed"
+        try:
+            p = heal.plan(fix, values if isinstance(values, dict) else {})
+        except heal.Refused as e:
+            return f"refused: {e}"
+        detail = p["why"] + "\n\n" + "\n".join(" ".join(step) for step in p["steps"])
+        if p["snapshot"]:
+            detail += "\n\nA snapshot is taken first: it can be undone from the Timeline."
+        if not self.confirm(f"{p['title']}?", detail):
+            return "the person said no"
+        cmd = (["pkexec"] if p["root"] else []) + ["deckos", "heal", "apply", fix] + \
+            [f"{k}={v}" for k, v in (values or {}).items()]
+        code, out = run(cmd, timeout=900, echo=self.echo)
+        return (f"done: {p['title']}\n" if code == 0 else f"failed (exit {code}): {p['title']}\n") + out
 
     def t_what_changed(self, limit=15):
         try:

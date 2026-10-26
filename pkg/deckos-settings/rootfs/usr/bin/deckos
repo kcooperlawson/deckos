@@ -2016,6 +2016,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
   deckos wallpaper IMAGE|FOLDER                         the desktop and the lock screen together
+  deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
@@ -2063,6 +2064,7 @@ case ${1:-} in
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
   wallpaper) shift; wallpaper_cmd "$@" ;;
+  heal) shift; exec python3 "${DECKOS_HEAL_DIR:-/usr/lib/deckos/heal}/heal.py" "$@" ;;  # vetted fixes only
   vibe) shift; vibe_cmd "$@" ;;
   taskbar) shift; taskbar_cmd "$@" ;;
   kids) shift; kids_cmd "$@" ;;
