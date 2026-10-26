@@ -21,12 +21,15 @@ the walls stop bad changes before they run rather than relying on Undo afterward
 
 ## Phases
 
-1. **Done (0.14):** the recipe library, `deckos heal`, and the Assistant's `use_fix` tool.
-2. **Reports, not patches.** When no recipe fits, or one fixes something new, the person can send an anonymous
-   evidence bundle (`deckos report`'s scrubbing; previewed, opt-in every time): the symptom, the hardware, what
-   helped.
-3. **Maintainer triage.** A maintainer model groups reports ("37 RX 9070 PCs, same blackout"), drafts a candidate
-   recipe and flags conflicts. A person approves every recipe; CI tests it.
+1. **Done:** the recipe library, `deckos heal`, and the Assistant's `use_fix` tool.
+2. **Done: reports, not patches.** Every fix is remembered on the PC (`deckos heal history`; the outcome with
+   `deckos heal outcome ID worked|failed`). `deckos heal report` shows the whole report (the problem, the fix, the
+   result, scrubbed processor and graphics names); `--open` opens it in the "DecKoOS fix report" form on GitHub
+   (`.github/ISSUE_TEMPLATE/heal.yml`, label `heal-report`), where the person submits it themselves. DecKoOS sends
+   nothing.
+3. **Started: maintainer triage.** `deckos heal triage` (gh, maintainer) groups open reports by problem and fix: how
+   many PCs, how often it worked, on which graphics vendors. Next: a maintainer model drafting candidate recipes from
+   a group, for a person to review.
 4. **Staged rollout.** New recipes reach the testing channel, then a share of stable PCs, and are pulled back
    automatically if Care sees crashes rise after them.
 

@@ -276,7 +276,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
   a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.
-  `deckos heal`, the Assistant's `use_fix`. Never loosen the walls for a model, however big. Tests: `tests/test_heal.py`.
+  `deckos heal`, the Assistant's `use_fix`. Never loosen the walls for a model, however big. `heal_report.py`: outcomes
+  per fix (the asking user's file, even from pkexec), `report [--open]` (scrubbed; opens the heal.yml issue form, the
+  person submits; DecKoOS sends nothing), `triage` (gh; groups `heal-report` issues). Tests: `tests/test_heal.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

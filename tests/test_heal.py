@@ -9,6 +9,7 @@ from unittest.mock import patch
 LIB = Path(__file__).resolve().parents[1] / 'pkg/deckos-settings/rootfs/usr/lib/deckos'
 sys.path[:0] = [str(LIB / 'heal'), str(LIB / 'assistant')]
 import heal  # noqa: E402
+import heal_report  # noqa: E402
 import assistant  # noqa: E402
 
 IN_REPOS = {'vlc', 'mesa', 'intel-ucode'}.__contains__
@@ -51,6 +52,49 @@ class RecipeTests(unittest.TestCase):
         p = heal.plan('skip-network-wait', {})
         with patch.object(heal.os, 'geteuid', return_value=1000), self.assertRaises(heal.Refused):
             heal.apply(p)
+
+
+class ReportTests(unittest.TestCase):
+    HW = {'deckos': '0.13.1', 'kernel': '6.18', 'cpu': 'AMD Ryzen 7 7800X3D', 'gpu': 'AMD Radeon RX 9070 XT'}
+
+    def test_outcomes_are_remembered(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / 'heal.jsonl'
+            heal_report.record('skip-network-wait', 'worked', 'slow-boot', path=f)
+            heal_report.record('clear-shader-cache', 'failed', '', path=f)
+            h = heal_report.history(f)
+        self.assertEqual([(e['recipe'], e['result']) for e in h],
+                         [('skip-network-wait', 'worked'), ('clear-shader-cache', 'failed')])
+
+    def test_report_is_scrubbed_and_complete(self):
+        entry = {'recipe': 'skip-network-wait', 'result': 'worked', 'finding': 'slow-boot', 'time': 0}
+        hw = dict(self.HW, gpu='AMD Radeon RX 9070 XT at 192.168.1.20 for /home/alex')
+        with patch.dict(heal_report.os.environ, {'USER': 'alex'}):
+            title, body = heal_report.report_text(entry, hw)
+        self.assertIn('slow-boot', title)
+        self.assertIn('it worked', body)
+        self.assertNotIn('192.168', body)
+        self.assertNotIn('/home/alex', body)
+        url = heal_report.issue_url(title, body)
+        self.assertIn('template=heal.yml', url)
+        self.assertIn('report=', url)
+
+    def test_triage_groups_reports(self):
+        def issue(n, finding, recipe, result, gpu):
+            _, body = heal_report.report_text({'recipe': recipe, 'result': result, 'finding': finding, 'time': 0},
+                                              dict(self.HW, gpu=gpu))
+            return {'number': n, 'title': 't', 'body': '### Report\n\n' + body}
+        groups = heal_report.triage([
+            issue(1, 'slow-boot', 'skip-network-wait', 'worked', 'AMD Radeon RX 9070 XT'),
+            issue(2, 'slow-boot', 'skip-network-wait', 'worked', 'NVIDIA GeForce RTX 5070 Ti'),
+            issue(3, 'slow-boot', 'skip-network-wait', 'failed', 'AMD Radeon 780M'),
+            issue(4, 'gpu-reset', 'display-fix-level', 'worked', 'AMD Radeon RX 9070 XT'),
+            {'number': 5, 'title': 'not a report', 'body': 'hello'}])
+        self.assertEqual([(g['finding'], g['reports'], g['worked']) for g in groups],
+                         [('slow-boot', 3, 2), ('gpu-reset', 1, 1)])
+        self.assertEqual(groups[0]['vendors'], {'amd': 2, 'nvidia': 1})
+        self.assertEqual(groups[0]['issues'], [1, 2, 3])
 
 
 class AssistantTests(unittest.TestCase):

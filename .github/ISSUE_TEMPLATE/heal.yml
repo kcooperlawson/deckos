@@ -1,0 +1,21 @@
+name: DecKoOS fix report
+description: Made by `deckos heal report`. What a DecKoOS fix did on one PC, with no personal details.
+title: "[heal] "
+labels: ["heal-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This was filled in by `deckos heal report` on your PC. Read it below: it's everything that will be sent.
+        Names, serial numbers and addresses were taken out. Submit only if you're happy to.
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Please leave the comment lines in; they help group reports from different PCs.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything to add? (optional)

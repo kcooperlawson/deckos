@@ -7,7 +7,8 @@ checked against a deny list (sudo, polkit, PAM, SSH, passwords, the firewall), a
 New recipes are written by people and reviewed like any code: that's the line between "self-healing" and an AI
 with root. No Qt; tests/test_heal.py throws hostile input at it.
 
-    heal.py list [--json] | plan ID [KEY=VALUE...] | apply ID [KEY=VALUE...]   (root recipes: as root)
+    heal.py list [--json] | plan ID [KEY=VALUE...] | apply ID [KEY=VALUE...] [--finding=KEY]   (root recipes: as root)
+    heal.py outcome ID worked|failed [FINDING] | history | report [--open] | triage    (heal_report.py)
 """
 import json
 import os
@@ -141,13 +142,23 @@ def snapshot_before(title):
     return int(out.stdout.strip()) if out.returncode == 0 and out.stdout.strip().isdigit() else None
 
 
-def apply(p):
+def remember(recipe, result, finding=""):
+    try:
+        sys.path.insert(0, str(HERE))
+        import heal_report
+        heal_report.record(recipe, result, finding)
+    except Exception:  # remembering is a help; a fix never fails over it
+        pass
+
+
+def apply(p, finding=""):
     if p["root"] and os.geteuid() != 0:
         raise Refused("this fix needs administrator rights: run it through pkexec deckos heal apply")
     pre = snapshot_before(p["title"]) if p["snapshot"] else None
     for step in p["steps"]:
         r = subprocess.run(step)
         if r.returncode != 0:
+            remember(p["id"], "failed", finding)
             raise Refused(f"'{' '.join(step)}' failed (exit {r.returncode})"
                           + (f"; sudo deckos undo {pre} puts things back" if pre else ""))
     try:
@@ -157,6 +168,7 @@ def apply(p):
                    undo=["deckos", "undo", str(pre)] if pre else None)
     except Exception:
         pass
+    remember(p["id"], "applied", finding)
     return pre
 
 
@@ -182,12 +194,17 @@ def main(argv):
                     blanks = " ".join(f"{p}=…" for p in r["params"])
                     print(f"  {k:<24} {r['title']}  {blanks}")
             return 0
+        if argv[:1] in (["outcome"], ["history"], ["report"], ["triage"]):
+            sys.path.insert(0, str(HERE))
+            import heal_report
+            return heal_report.main(argv)
         if argv[:1] in (["plan"], ["apply"]) and len(argv) > 1:
-            p = plan(argv[1], parse(argv[2:]))
+            finding = next((a.split("=", 1)[1] for a in argv[2:] if a.startswith("--finding=")), "")
+            p = plan(argv[1], parse([a for a in argv[2:] if not a.startswith("--finding=")]))
             if argv[0] == "plan":
                 print(json.dumps(p))
                 return 0
-            pre = apply(p)
+            pre = apply(p, finding)
             print(f"done: {p['title']}" + (f" (undo: sudo deckos undo {pre})" if pre else ""))
             return 0
     except Refused as e:
