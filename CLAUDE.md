@@ -244,6 +244,13 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Lock screen**: Plasma 6 keeps the lock screen's QML in the plasma-workspace shell package (a theme can't replace it;
   don't overwrite its files). DecKoOS owns its wallpaper: `deckos wallpaper` sets the desktop and kscreenlockerrc together
   (Hub, Welcome, Move In and theme changes use it); `/etc/xdg/kscreenlockerrc` defaults it to the DecKoOS wallpaper.
+- **Kid mode** (`usr/lib/deckos/kids/`): an account per child (no password, not wheel, group `deckos-kids`), settings
+  root-owned in `/etc/deckos/kids/NAME.conf` (`kids.py`, no Qt; `deckos kids` does the root work). `kids.py seed` writes
+  their home: KDE kiosk restrictions, the `deckos-kids --session` autostart (big tiles, minutes used, logout at the end of
+  the time), and a Firefox profile with CleanBrowsing's family DoH (trr mode 3). The first login sets the `kids` panel
+  layout (no menu; hidden from grown-up layout lists). `deckos kids start` locks the parent and shows the login screen
+  (SDDM's SwitchToGreeter). Hub > System > Kids. Limits are enforced by the child's own session: fine for young children,
+  not a security boundary for a determined teenager. Tests: `tests/test_kids.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

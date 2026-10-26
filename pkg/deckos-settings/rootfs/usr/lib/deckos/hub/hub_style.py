@@ -163,6 +163,7 @@ def _qss():
     return f"""
 QWidget {{ background: transparent; color: {TEXT}; font-family: "Inter", "Noto Sans"; font-size: 10pt; }}
 #root {{ background: {BG}; }}
+QDialog {{ background: {BG}; }}
 #sidebar {{ background: {SIDEBAR}; border-right: 1px solid {BORDER}; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: {BG}; border: none; }}
 QLabel#title {{ font-family: "Inter Display", "Inter"; font-size: 17pt; font-weight: 600; }}

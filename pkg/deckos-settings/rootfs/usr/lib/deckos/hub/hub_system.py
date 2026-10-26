@@ -580,6 +580,8 @@ def desktop_layouts():
             except ValueError:
                 continue
             key = d.name.rsplit(".", 1)[1]
+            if key == "kids":  # Kid mode's own panel, set in a child's account; not a layout for grown-ups
+                continue
             preview = next((b / f"deckos/layouts/{key}.svg" for b in _dirs("") if (b / f"deckos/layouts/{key}.svg").exists()), None)
             if key not in [o[0] for o in out]:
                 out.append((key, meta.get("Name", key).replace("DecKoOS: ", ""), meta.get("Description", ""), preview))

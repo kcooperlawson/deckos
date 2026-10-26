@@ -1065,6 +1065,10 @@ class SystemPage(Page):
             "systemsettings", ["kcm_firewall"]), icon="external")))
         self.lay.addWidget(fw)
 
+        from hub_kids import KidsCard  # here: hub_kids builds on this module's widgets
+        self.kids = KidsCard(self.hub)
+        self.lay.addWidget(self.kids)
+
         sw = Card("Software", "Add what you skipped at install", "package")
         sw.actions.addWidget(button("Open DecKoOS Store", slot=lambda: QProcess.startDetached("deckos-store", []),
                                     icon="store", tip="Every app from Arch, CachyOS, Flathub and the AUR"))

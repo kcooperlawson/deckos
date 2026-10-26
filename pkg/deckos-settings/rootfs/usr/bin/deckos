@@ -1467,7 +1467,7 @@ layout_cmd() {
     list)
       local d
       for d in "$LAYOUTS_DIR"/org.deckos.layout.*/; do
-        [[ -d $d ]] || continue
+        [[ -d $d && $d != *.kids/ ]] || continue  # Kid mode's panel isn't one to offer
         printf '  %-10s %s\n' "$(basename "$d" | sed 's/^org.deckos.layout.//')" \
           "$(jq -r '.KPlugin.Description // ""' "$d/metadata.json" 2>/dev/null)"
       done ;;
@@ -1494,6 +1494,86 @@ layout_cmd() {
             d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);' >/dev/null
       ok "performance graphs are on your desktop" ;;
     *) err "usage: deckos layout [list|set NAME|graphs]"; exit 2 ;;
+  esac
+}
+
+# ------------------------------------------------------------------ kid mode
+#
+# One account per child: no password, not in wheel (no admin), in deckos-kids. Their settings are root-owned in
+# /etc/deckos/kids/NAME.conf (kids.py), so a child can't lift their own limits. Kid mode locks the parent's session
+# and shows the login screen, where a child's account needs no password.
+
+KIDS=${DECKOS_KIDS_LIB:-/usr/lib/deckos/kids}/kids.py
+
+kids_conf_set() {  # NAME KEY VALUE: one setting, through kids.py so the file keeps its shape
+  python3 - "$KIDS" "$1" "$2" "$3" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("kids", sys.argv[1]); k = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(k)
+conf = k.read_conf(sys.argv[2]) or dict(k.DEFAULTS)
+conf[sys.argv[3]] = sys.argv[4]
+k.write_conf(sys.argv[2], conf)
+PY
+}
+
+kids_add() {
+  local name=${1:-} display=${2:-} home
+  need_root kids add "$name"
+  [[ $name =~ ^[a-z][a-z0-9_-]{1,31}$ ]] || { err "usage: deckos kids add NAME [\"Display name\"]  (lowercase, like mia)"; exit 2; }
+  ! id "$name" &>/dev/null || { err "there's already an account called $name"; exit 1; }
+  groupadd -f deckos-kids
+  useradd -m -c "${display:-$name} (Kid mode)" -G deckos-kids -s /bin/bash "$name"
+  passwd -d "$name" >/dev/null  # no password: the login screen lets them straight in
+  home=$(getent passwd "$name" | cut -d: -f6)
+  kids_conf_set "$name" display "${display:-${name^}}"
+  kids_conf_set "$name" apps "$(python3 "$KIDS" suggested)"
+  python3 "$KIDS" seed "$name" "$home"
+  chown -R "$name:$name" "$home"
+  pulse kids "Kid mode: added ${display:-$name}" --app Kids
+  ok "${display:-$name} can use Kid mode: their picture is on the login screen, no password"
+  sub "Pick their apps and limits in DecKoOS Hub > System > Kids (or: sudo deckos kids apps $name ID,ID...)"
+}
+
+kids_remove() {
+  local name=${1:-} keep=${2:-}
+  need_root kids remove "$name"
+  [[ -f /etc/deckos/kids/$name.conf ]] || { err "$name isn't set up for Kid mode (deckos kids list)"; exit 1; }
+  id -nG "$name" 2>/dev/null | grep -qw deckos-kids || { err "$name isn't a Kid mode account: not removing it"; exit 1; }
+  loginctl terminate-user "$name" 2>/dev/null || true
+  if [[ $keep == --keep-files ]]; then userdel "$name"; else userdel -r "$name" 2>/dev/null || userdel "$name"; fi
+  rm -f "/etc/deckos/kids/$name.conf"
+  ok "$name's account is removed${keep:+ (their files are kept)}"
+}
+
+kids_cmd() {
+  case ${1:-list} in
+    list) python3 "$KIDS" list "${@:2}" ;;
+    add) kids_add "${2:-}" "${3:-}" ;;
+    remove) kids_remove "${2:-}" "${3:-}" ;;
+    apps|limit|bedtime|web)
+      local what=$1 name=${2:-} value=${3:-}
+      need_root kids "$what" "$name"
+      [[ -f /etc/deckos/kids/$name.conf ]] || { err "$name isn't set up for Kid mode (deckos kids list)"; exit 1; }
+      case $what in
+        apps) [[ $value =~ ^[A-Za-z0-9._,-]*$ ]] || { err "usage: deckos kids apps NAME ID,ID,..."; exit 2; }
+              kids_conf_set "$name" apps "$value" ;;
+        limit) [[ $value =~ ^[0-9]{1,4}$ ]] || { err "usage: deckos kids limit NAME MINUTES  (0: no limit)"; exit 2; }
+               kids_conf_set "$name" minutes "$value" ;;
+        bedtime) [[ -z $value || $value =~ ^([01]?[0-9]|2[0-3]):[0-5][0-9]$ ]] || { err "usage: deckos kids bedtime NAME HH:MM  (empty: none)"; exit 2; }
+                 kids_conf_set "$name" bedtime "$value" ;;
+        web) [[ $value == filtered || $value == open || $value == off ]] || { err "usage: deckos kids web NAME filtered|open|off"; exit 2; }
+             kids_conf_set "$name" web "$value"
+             python3 "$KIDS" seed "$name" "$(getent passwd "$name" | cut -d: -f6)"
+             chown -R "$name:$name" "$(getent passwd "$name" | cut -d: -f6)/.mozilla" ;;
+      esac
+      ok "$name: $what updated" ;;
+    start)  # Kid mode now: lock this session, show the login screen (the parent's password brings this back)
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      loginctl lock-session 2>/dev/null || true
+      busctl call org.freedesktop.DisplayManager /org/freedesktop/DisplayManager/Seat0 \
+        org.freedesktop.DisplayManager.Seat SwitchToGreeter >/dev/null
+      ok "Kid mode: your session is locked; pick a child on the login screen" ;;
+    *) err "usage: deckos kids [list|add NAME [DISPLAY]|remove NAME [--keep-files]|apps NAME IDS|limit NAME MIN|bedtime NAME HH:MM|web NAME filtered|open|off|start]"; exit 2 ;;
   esac
 }
 
@@ -1742,6 +1822,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
   deckos wallpaper IMAGE|FOLDER                         the desktop and the lock screen together
+  deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
   deckos report [--out FILE|--print]                    one file of hardware, drivers and errors for whoever helps
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
@@ -1786,6 +1867,7 @@ case ${1:-} in
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
   wallpaper) shift; wallpaper_cmd "$@" ;;
+  kids) shift; kids_cmd "$@" ;;
   report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps
   undo) shift; undo_cmd "$@" ;;
   restore) shift; restore_cmd "$@" ;;

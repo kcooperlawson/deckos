@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DecKoOS"
+            }
+        ],
+        "Description": "Kid mode: a taskbar and a clock, no menu; the child's apps are on their tiles",
+        "Id": "org.deckos.layout.kids",
+        "License": "MIT",
+        "Name": "DecKoOS: Kid mode"
+    },
+    "X-Plasma-ContainmentCategories": [
+        "panel"
+    ],
+    "X-Plasma-Shell": "org.kde.plasma.desktop"
+}

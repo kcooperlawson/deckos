@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Kid mode
+GenericName=Apps for kids
+Comment=Your apps, in big tiles
+Exec=deckos-kids --session
+Icon=deckos
+NoDisplay=true

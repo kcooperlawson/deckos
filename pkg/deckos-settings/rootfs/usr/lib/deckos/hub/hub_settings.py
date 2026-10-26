@@ -33,6 +33,8 @@ HUB = [
     ("system", "Snapshots and undo", "Go back to before an update, home snapshots", "snapshot",
      "snapshot undo rollback restore backup btrfs snapper"),
     ("system", "Firewall", "What's open to your network", "shield", "firewall ports network security open"),
+    ("system", "Kids", "Kid mode: an account per child, their apps, time limits, filtered web", "user",
+     "kids child children parental controls family time limit bedtime safe web filter"),
     ("system", "Take my setup with me", "Save or bring in your DecKoOS setup", "download",
      "export import backup setup move new pc reinstall"),
     ("appearance", "Theme and colours", "Global theme, accent colour, wallpaper", "appearance",

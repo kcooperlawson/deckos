@@ -24,6 +24,14 @@ icon = "check"
 run = ["deckos-sysdoctor"]
 
 [[action]]
+id = "kid-mode"
+title = "Start Kid mode"
+summary = "Locks your session; a child picks their picture on the login screen"
+keywords = "kids child children parental controls family son daughter safe"
+icon = "user"
+run = ["deckos", "kids", "start"]
+
+[[action]]
 id = "report"
 title = "Make a report for whoever helps"
 summary = "One file with this PC's hardware, drivers and recent errors; personal details taken out"
