@@ -7,6 +7,7 @@ destroy data are refused outright, whatever the model says.
 
 No dependencies beyond Python: Ollama's HTTP API through urllib.
 """
+import html
 import json
 import os
 import re
@@ -17,6 +18,7 @@ import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 STORE = Path(__file__).resolve().parent.parent / "store"
 CONF_SYSTEM = Path("/etc/deckos/ai.conf")
@@ -253,6 +255,22 @@ PERSONALITIES = {
     "gamer": ("Deck", "An upbeat gamer buddy: casual, energetic, the odd gaming reference, and genuinely excited "
               "about getting their games running great. Still accurate and careful with their PC."),
 }
+
+
+# How Deck says hello, per personality: (greeting, a line on what it does)
+GREETINGS = {
+    "friendly": ("Hey, I'm Deck. What can I set up for you?", "I run on this PC, not in the cloud. I look around on "
+                 "my own, and I show you every change before I make it."),
+    "calm": ("Hi, I'm Deck. What would you like help with?", "We'll go one step at a time. I run on this PC, and "
+             "nothing changes until you say yes."),
+    "direct": ("Deck. What do you need?", "Local, no cloud. Every change needs your yes."),
+    "gamer": ("Yo, I'm Deck! What are we setting up?", "Running right here on your PC, no cloud. I'll show you "
+              "every change before I touch anything."),
+}
+
+
+def greeting():
+    return GREETINGS.get(conf("PERSONALITY", "friendly"), GREETINGS["friendly"])
 
 
 def personality():
@@ -507,7 +525,13 @@ class Tools:
         self.say(f"Searching the web for: {query}")
         try:
             import web
-            return web.search(str(query)[:200])
+            out = web.search(str(query)[:200])
+            # The sites, as links the person can open, whether or not the model names them
+            urls = re.findall(r"^(https?://\S+)$", out, re.M)[:5]
+            if urls:
+                self.say("Sources: " + " · ".join(f'<a href="{html.escape(u)}">{html.escape(urlparse(u).hostname or u)}</a>'
+                                                  for u in urls))
+            return out
         except Exception as e:
             return f"error: couldn't search ({e})"
 

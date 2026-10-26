@@ -23,6 +23,7 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPushButton,  # noqa: E402
                                QScrollArea, QSizePolicy, QVBoxLayout, QWidget)
 
+import assistant  # noqa: E402
 import hub_style as S  # noqa: E402
 from hub_widgets import button, icon_label, label  # noqa: E402
 
@@ -184,7 +185,7 @@ class Composer(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(10, 6, 6, 6)
         self.edit = QPlainTextEdit()
-        self.edit.setPlaceholderText("Ask DecKoOS to install or set up anything…")
+        self.edit.setPlaceholderText("Ask Deck to install, fix or set up anything…")
         self.edit.setFixedHeight(46)
         self.edit.installEventFilter(self)
         lay.addWidget(self.edit, 1)
@@ -213,7 +214,7 @@ class Composer(QFrame):
 
     def set_busy(self, busy):
         self.send.setEnabled(not busy)
-        self.edit.setPlaceholderText("Working on it…" if busy else "Ask DecKoOS to install or set up anything…")
+        self.edit.setPlaceholderText("Working on it…" if busy else "Ask Deck to install, fix or set up anything…")
 
 
 class ChatBox(QWidget):
@@ -249,7 +250,7 @@ class ChatBox(QWidget):
         h.addWidget(tile)
         names = QVBoxLayout()
         names.setSpacing(0)
-        names.addWidget(label("DecKoOS Assistant", "cardTitle"))
+        names.addWidget(label("Deck", "cardTitle"))
         self.model_label = label("", "muted")
         names.addWidget(self.model_label)
         h.addLayout(names, 1)
@@ -358,9 +359,11 @@ class ChatBox(QWidget):
         il = QVBoxLayout(intro)
         il.setContentsMargins(4, 20, 4, 4)
         il.setSpacing(10)
-        il.addWidget(label("<b>What can I set up for you?</b>", "big"))
-        il.addWidget(label("I run on this PC, not in the cloud. I look around on my own, and I show you every "
-                           "change before I make it.", "sub"))
+        hello, about = assistant.greeting()
+        if assistant.web_on():
+            about += " Web search is on: I can look things up online too, and I'll show you the sites."
+        il.addWidget(label(f"<b>{hello}</b>", "big"))
+        il.addWidget(label(about, "sub"))
         chips = QHBoxLayout()
         chips.setSpacing(6)
         for s in SUGGESTIONS[:2]:
@@ -368,7 +371,7 @@ class ChatBox(QWidget):
         chips.addStretch(1)
         chips2 = QHBoxLayout()
         chips2.setSpacing(6)
-        for s in SUGGESTIONS[2:]:
+        for s in (SUGGESTIONS[2:3] + ["Any fixes for my game crashing?"] if assistant.web_on() else SUGGESTIONS[2:]):
             chips2.addWidget(self._chip(s))
         chips2.addStretch(1)
         il.addLayout(chips)
@@ -402,7 +405,8 @@ class ChatBox(QWidget):
                 self.composer.set_busy(True)
                 return
             self.worker = Worker(model)
-        self.model_label.setText(f"{model} · on this PC")
+        self.model_label.setText(f"DecKoOS Assistant · {model} · on this PC"
+                                 + (" · web search on" if assistant.web_on() else ""))
         self.thread = QThread(self)
         self.worker.moveToThread(self.thread)
         self.ask_in_thread.connect(self.worker.ask)
@@ -457,7 +461,11 @@ class ChatBox(QWidget):
             self._add(self.status)
 
     def on_step(self, text):
-        self._add(label(f"› {text}", "step"))
+        step = label(f"› {text}", "step")
+        if "<a href" in text:  # web sources: open in the browser
+            step.setTextFormat(Qt.RichText)
+            step.setOpenExternalLinks(True)
+        self._add(step)
         self.output = None
         self._settle_status()
 
