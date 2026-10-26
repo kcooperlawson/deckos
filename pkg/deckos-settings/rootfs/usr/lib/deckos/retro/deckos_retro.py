@@ -235,7 +235,8 @@ class Retro(QWidget):
             return
         if tag == "scan":
             self.games = result
-            self.status.setText(f"{len(self.games)} games in {', '.join(str(f) for f in folders())}"
+            where = "~/Games/Retro" if DEMO else ", ".join(str(f).replace(str(Path.home()), "~") for f in folders())
+            self.status.setText(f"{len(self.games)} game{'' if len(self.games) == 1 else 's'} in {where}"
                                 if self.games else "")
             current = self.filter.currentData()
             self.filter.blockSignals(True)
