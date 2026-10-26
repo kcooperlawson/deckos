@@ -1,9 +1,9 @@
 [Desktop Entry]
 Name=DecKoOS Hub
-GenericName=System control center
-Comment=Display fix, drives, Gaming Mode, AI tools and updates
+GenericName=Settings
+Comment=Every setting in one place: display, gaming, drives, AI, updates, Bluetooth, sound and more
 Exec=deckos-hub
 Icon=deckos-hub
 Type=Application
 Categories=System;Settings;
-Keywords=deckos;display;flicker;monitor;drives;ntfs;gaming;steam;claude;ai;update;
+Keywords=deckos;settings;preferences;control panel;system settings;bluetooth;sound;wifi;display;flicker;monitor;drives;ntfs;gaming;steam;claude;ai;update;

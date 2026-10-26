@@ -200,6 +200,8 @@ QPushButton#nav:hover {{ background: {SURFACE}; color: {TEXT}; }}
 QPushButton#nav:checked {{ background: {P.tint}; color: {TEXT}; }}
 QPushButton#swatch {{ border-radius: 15px; border: 2px solid transparent; padding: 0; }}
 QPushButton#swatch:checked {{ border: 2px solid {TEXT}; }}
+QLineEdit {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 5px 8px; }}
+QLineEdit:focus {{ border-color: {P.accent}; }}
 QComboBox {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 6px 10px; }}
 QComboBox:hover {{ background: {HOVER}; }}
 QComboBox QAbstractItemView {{ background: #22262F; border: 1px solid {BORDER}; selection-background-color: {P.accent}; }}

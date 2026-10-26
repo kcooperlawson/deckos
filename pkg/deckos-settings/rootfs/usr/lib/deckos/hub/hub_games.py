@@ -325,9 +325,6 @@ class GamesPage(Page):
         self.search.addAction(S.icon("search", S.SUBTEXT, 16), QLineEdit.LeadingPosition)
         self.search.setClearButtonEnabled(True)
         self.search.setFixedWidth(220)
-        self.search.setStyleSheet(f"QLineEdit {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; "
-                                  f"border-radius: 7px; padding: 5px 8px; }}"
-                                  f"QLineEdit:focus {{ border-color: {S.P.accent}; }}")  # as in DecKoOS Store
         self.search.textChanged.connect(self.layout_tiles)
         self.source = QComboBox()
         self.source.addItems(["All launchers", "Steam", "Epic", "GOG", "Lutris"])

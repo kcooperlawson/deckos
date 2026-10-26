@@ -15,14 +15,16 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QProcess, QSize, Qt, QTimer
-from PySide6.QtGui import QFont, QIcon
+from PySide6.QtGui import QFont, QIcon, QKeySequence, QShortcut
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QMessageBox, QPushButton,
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QHBoxLayout, QLineEdit, QMessageBox, QPushButton,
                                QStackedWidget, QVBoxLayout, QWidget)
 
+import hub_settings
 import hub_style as S
 import hub_system as sysinfo
 from hub_games import GamesPage
+from hub_more import MorePage, SearchPage, open_entry
 from hub_pages import AiDevPage, AppearancePage, DisplayPage, DrivesPage, GamingPage, HomePage, SystemPage
 from hub_timeline import TimelinePage
 from hub_widgets import Toast, label
@@ -32,7 +34,7 @@ PAGES = [("home", "Home", "home", HomePage), ("timeline", "Timeline", "clock", T
          ("display", "Display", "display", DisplayPage),
          ("gaming", "Gaming", "gaming", GamingPage), ("drives", "Drives", "drives", DrivesPage),
          ("aidev", "AI & Dev", "ai", AiDevPage), ("system", "System", "system", SystemPage),
-         ("appearance", "Appearance", "appearance", AppearancePage)]
+         ("appearance", "Appearance", "appearance", AppearancePage), ("more", "More settings", "sliders", MorePage)]
 USER_GAMING_CONF = Path.home() / ".config/deckos/gaming.conf"
 
 
@@ -148,10 +150,20 @@ class Hub(QWidget):
         names = QVBoxLayout()
         names.setSpacing(0)
         names.addWidget(label("DecKoOS Hub", "brand", wrap=False))
-        names.addWidget(label("Your system, at a glance", "muted", wrap=False))
+        names.addWidget(label("Your system and settings", "muted", wrap=False))
         brand.addLayout(names, 1)
         sl.addLayout(brand)
-        sl.addSpacing(18)
+        sl.addSpacing(14)
+        # Every setting from one box: the Hub's pages, Plasma's panels, DecKoOS's actions (hub_settings)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search settings")
+        self.search.setClearButtonEnabled(True)
+        self.search.addAction(S.icon("search", S.SUBTEXT, 16), QLineEdit.LeadingPosition)
+        self.search.textChanged.connect(self.search_changed)
+        self.search.returnPressed.connect(self.search_first)
+        sl.addWidget(self.search)
+        QShortcut(QKeySequence.Find, self, activated=lambda: (self.search.setFocus(), self.search.selectAll()))
+        sl.addSpacing(10)
 
         self.stack = QStackedWidget()
         self.pages, self.nav = {}, {}
@@ -170,6 +182,9 @@ class Hub(QWidget):
             page = cls(self)
             self.pages[key] = page
             self.stack.addWidget(page)
+        self.search_page = SearchPage(self)
+        self.stack.addWidget(self.search_page)
+        self.last_page = "home"
         self.paint_nav()
         sl.addStretch(1)
         host = "deckos" if sysinfo.DEMO else platform.node()
@@ -190,7 +205,34 @@ class Hub(QWidget):
         for b, ic in self.nav.values():
             b.setIcon(S.icon(ic, S.SUBTEXT, 18, active=S.TEXT))
 
+    def search_changed(self, text):
+        if text.strip():
+            if self.stack.currentWidget() is not self.search_page:
+                self.nav_group.setExclusive(False)  # no page is picked while searching
+                for b, _ in self.nav.values():
+                    b.setChecked(False)
+                self.nav_group.setExclusive(True)
+            self.search_page.show_results(text.strip())
+            self.stack.setCurrentWidget(self.search_page)
+        elif self.stack.currentWidget() is self.search_page:
+            self.navigate(self.last_page)
+
+    def search_first(self):
+        found = hub_settings.search(self.search.text())
+        if found:
+            self.search.blockSignals(True)
+            self.search.clear()
+            self.search.blockSignals(False)
+            if found[0]["go"][0] != "hub":
+                self.navigate(self.last_page)
+            open_entry(self, found[0])
+
     def navigate(self, key, action=None):
+        self.last_page = key
+        if self.search.text() and self.sender() is not self.search:
+            self.search.blockSignals(True)
+            self.search.clear()
+            self.search.blockSignals(False)
         b, _ = self.nav[key]
         b.setChecked(True)
         page = self.pages[key]
