@@ -1,6 +1,6 @@
 """Renders the DecKoOS login screen without SDDM: stand-ins for SDDM's objects (users, sessions,
 keyboard, power), then a screenshot. Also writes the theme's preview.png (System Settings shows it).
-    python assets/preview_sddm.py [out.png] [--failed]
+    python assets/preview_sddm.py [out.png] [--failed] [--kids]
 """
 import sys
 from pathlib import Path
@@ -67,7 +67,10 @@ def main():
     view = QQuickView()
     ctx = view.rootContext()
     sddm = Sddm()
-    users = Model(["name", "realName", "icon", "needsPassword"], [["keagan", "Keagan", "", True]])
+    rows = [["keagan", "Keagan", "", True]]
+    if "--kids" in sys.argv:  # Kid mode's row under the card
+        rows += [[n, f"{n.title()} (Kid mode)", "", False] for n in ("mia", "leo", "ava", "noah")]
+    users = Model(["name", "realName", "icon", "needsPassword"], rows)
     # SDDM's order: alphabetical by file, so Gaming Mode is first and lastIndex is 0 on a first login.
     sessions = Model(["name", "file"], [["DecKoOS Gaming Mode", "deckos-gaming.desktop"],
                                        ["Plasma (Wayland)", "plasma.desktop"]], last=0)

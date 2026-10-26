@@ -25,6 +25,8 @@ Rectangle {
     property bool sessionPicked: false
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     readonly property var user: users.count > 0 ? users.itemAt(Math.min(userIndex, users.count - 1)) : null
+    readonly property string kidTag: " (Kid mode)"  // deckos kids add puts it in a child's full name
+    property int plasmaIndex: -1
 
     // Readable copies of the models' rows (SDDM's models can't be indexed directly from QML).
     Item {
@@ -178,7 +180,7 @@ Rectangle {
                     width: parent.width - avatar.width - (users.count > 1 ? 76 : 14) * root.s
                     Text {
                         width: parent.width
-                        text: root.user ? (root.user.realName || root.user.name) : ""
+                        text: root.user ? root.shown(root.user) : ""
                         color: root.text
                         elide: Text.ElideRight
                         font.family: "Inter"
@@ -293,6 +295,100 @@ Rectangle {
         }
     }
 
+    // ---- Kid mode: each child as a big picture under the card; one tap (no password) and they're in
+
+    Column {
+        id: kidsRow
+        visible: kidRepeater.kids > 0
+        x: 96 * root.s
+        anchors.top: card.bottom
+        anchors.topMargin: 28 * root.s
+        spacing: 12 * root.s
+        Text {
+            text: "Kids"
+            color: root.subtext
+            font.family: "Inter"
+            font.weight: Font.DemiBold
+            font.pixelSize: 14 * root.s
+        }
+        Row {
+            spacing: 18 * root.s
+            Repeater {
+                id: kidRepeater
+                property int kids: 0
+                model: userModel
+                delegate: Item {
+                    id: kid
+                    required property string name
+                    required property string realName
+                    required property string icon
+                    required property int index
+                    readonly property bool isKid: realName.endsWith(root.kidTag)
+                    visible: isKid
+                    width: isKid ? 104 * root.s : 0
+                    height: isKid ? 128 * root.s : 0
+                    Component.onCompleted: if (isKid) kidRepeater.kids++
+                    Rectangle {
+                        id: kidFace
+                        width: 96 * root.s
+                        height: width
+                        radius: width / 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: root.kidColour(kid.name)
+                        border.width: kidArea.containsMouse ? 3 : 0
+                        border.color: "white"
+                        Text {
+                            anchors.centerIn: parent
+                            visible: kidPic.status !== Image.Ready
+                            text: kid.realName.charAt(0).toUpperCase()
+                            color: "white"
+                            font.family: "Inter Display"
+                            font.weight: Font.Bold
+                            font.pixelSize: 44 * root.s
+                        }
+                        Image {
+                            id: kidPic
+                            anchors.fill: parent
+                            source: kid.icon ? "file://" + kid.icon : ""
+                            sourceSize.width: width * 2
+                            fillMode: Image.PreserveAspectCrop
+                            visible: false
+                        }
+                        MultiEffect {
+                            anchors.fill: parent
+                            source: kidPic
+                            visible: kidPic.status === Image.Ready
+                            maskEnabled: true
+                            maskSource: faceMask
+                        }
+                    }
+                    Text {
+                        anchors.top: kidFace.bottom
+                        anchors.topMargin: 8 * root.s
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: kid.realName.slice(0, -root.kidTag.length)
+                        color: root.text
+                        font.family: "Inter"
+                        font.weight: Font.DemiBold
+                        font.pixelSize: 16 * root.s
+                    }
+                    MouseArea {
+                        id: kidArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            error.text = ""
+                            root.userIndex = kid.index
+                            // Always the desktop for a child, never Gaming Mode
+                            sddm.login(kid.name, "", root.plasmaIndex >= 0 ? root.plasmaIndex : root.sessionIndex)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ---- bottom bar: session, keyboard layout, power
 
     Row {
@@ -325,6 +421,18 @@ Rectangle {
         Pill { visible: sddm.canPowerOff; icon: "power-off"; label: "Shut down"; onClicked: sddm.powerOff() }
     }
 
+    function shown(u) {
+        var n = u.realName || u.name
+        return n.endsWith(kidTag) ? n.slice(0, -kidTag.length) : n
+    }
+    function kidColour(name) {  // the same bright colour for a child every time
+        var colours = ["#FF7A59", "#4C8DFF", "#3DD68C", "#F5B84B", "#B36BFF", "#FF5C9A", "#22C7B8"]
+        var h = 0
+        for (var i = 0; i < name.length; i++)
+            h = (h * 31 + name.charCodeAt(i)) % 997
+        return colours[h % colours.length]
+    }
+
     // The last session used, unless that was Gaming Mode; then Plasma (Wayland).
     function pickSession() {
         if (sessionPicked || sessions.count === 0)
@@ -335,6 +443,7 @@ Rectangle {
             if (plasma < 0 && (f === "plasma.desktop" || f.endsWith("/plasma.desktop")))
                 plasma = i
         }
+        plasmaIndex = plasma
         var lastItem = last >= 0 ? sessions.itemAt(last) : null
         var lastIsGaming = lastItem && String(lastItem.file).indexOf("deckos-gaming") >= 0
         sessionIndex = lastItem && !lastIsGaming ? last : (plasma >= 0 ? plasma : Math.max(0, last))
