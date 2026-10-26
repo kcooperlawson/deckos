@@ -43,11 +43,22 @@ def public(url):
     return url
 
 
+class _PublicRedirects(urllib.request.HTTPRedirectHandler):
+    """Checks each redirect before following it: checking only the final address would already have sent the
+    request to a local one."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        public(urllib.parse.urljoin(req.full_url, newurl))
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_PublicRedirects)
+
+
 def fetch(url, data=None, timeout=15, limit=600_000):
     public(url)
     req = urllib.request.Request(url, data=data, headers={"User-Agent": AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        public(r.geturl())  # a redirect mustn't lead somewhere local either
+    with _opener.open(req, timeout=timeout) as r:
         return r.read(limit).decode(r.headers.get_content_charset() or "utf-8", errors="replace")
 
 

@@ -84,5 +84,33 @@ class AssistantTests(unittest.TestCase):
         self.assertIn('The person confirms every change', assistant.system_prompt())  # the rules never change
 
 
+class RedirectTests(unittest.TestCase):
+    def test_a_redirect_to_this_pc_is_never_requested(self):
+        import http.server
+        import threading
+        hits = []
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                hits.append(self.path)
+                self.send_response(302 if self.path == '/start' else 200)
+                self.send_header('Location', f'http://127.0.0.1:{self.server.server_port}/secret')
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        srv = http.server.HTTPServer(('127.0.0.1', 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        start = f'http://127.0.0.1:{srv.server_port}/start'
+        real = web.public
+        # The start page counts as public here; where it redirects to must still be checked.
+        with patch.object(web, 'public', side_effect=lambda u: u if u == start else real(u)):
+            with self.assertRaises(web.Blocked):
+                web.fetch(start)
+        srv.shutdown()
+        self.assertEqual(hits, ['/start'])
+
+
 if __name__ == '__main__':
     unittest.main()
