@@ -117,7 +117,11 @@ def triage(issues):
             d = json.loads(m.group(1))
         except ValueError:
             continue
-        key = (d.get("finding") or "?", d.get("recipe") or "?")
+        # Only problems: a report that doesn't name what was broken (a System Doctor finding) isn't grouped, so a
+        # fix run on a whim, or a wish, never reaches drafting
+        if not d.get("finding"):
+            continue
+        key = (d["finding"], d.get("recipe") or "?")
         g = groups.setdefault(key, {"finding": key[0], "recipe": key[1], "reports": 0, "worked": 0, "vendors": {},
                                     "issues": []})
         g["reports"] += 1
@@ -160,6 +164,8 @@ Propose ONE recipe for the library, as JSON only (no other text), in exactly thi
   "root": true or false, "params": {{"name": "repo-package" | ["allowed", "values"] | ["int", min, max]}},
   "steps": [["program", "arg", "{{name}}"]]}}
 
+Scope: a recipe repairs something that's broken (the problem above). Never a new feature, a tweak, a change of
+look, a setting someone prefers or an extra app: for anything like that, answer {{"none": "not a fix"}}.
 Rules: steps start with one of these programs: {programs}. A blank ({{name}}) is a whole argument, never part of one.
 Nothing may touch sudo, polkit, PAM, SSH, users, passwords, the firewall, the bootloader or pacman's keys, and
 nothing downloads from the internet. Prefer an existing recipe if one already fits: {existing}. If none can be written
@@ -191,6 +197,8 @@ def draft(group, ask, save=True):
     passes heal.check_recipe, saved for a person to review. Never added to the library by itself."""
     sys.path.insert(0, str(HERE))
     import heal
+    if not group.get("finding") or group["finding"] == "?":
+        raise heal.Refused("drafts are only for problems System Doctor found, not wishes or tweaks")
     prompt = DRAFT_PROMPT.format(group=describe_group(group), programs=", ".join(sorted(heal.PROGRAMS)),
                                  existing=", ".join(heal.RECIPES))
     rid, recipe = parse_draft(ask(prompt))

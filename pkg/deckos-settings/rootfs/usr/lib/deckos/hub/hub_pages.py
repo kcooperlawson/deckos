@@ -813,6 +813,21 @@ class AiDevPage(Page):
             self.ollama_card.body.addWidget(row(
                 button("Choose a model…", slot=lambda: ModelDialog(self, self.installed_models).exec(), icon="sliders",
                        tip="Which local model, picked for what your graphics card can run")))
+            # The Assistant's personality and its window on the web (searches leave the PC: off until turned on)
+            persona = QComboBox()
+            for key, text in (("friendly", "Friendly, a bit witty"), ("calm", "Calm and patient"),
+                              ("direct", "Straight to the point"), ("gamer", "Gamer buddy")):
+                persona.addItem(text, key)
+            persona.setCurrentIndex(max(0, persona.findData(sysinfo.ai_setting("PERSONALITY", "friendly"))))
+            persona.activated.connect(lambda _i: self.ai_set("personality", persona.currentData(),
+                                                             f"Personality: {persona.currentText()}"))
+            web = QCheckBox("Web search (DuckDuckGo)")
+            web.setToolTip("The Assistant can look things up online. Your searches go to DuckDuckGo; it always says "
+                           "when it searched.")
+            web.setChecked(sysinfo.ai_setting("WEB_SEARCH", "off") == "on")
+            web.toggled.connect(lambda on: self.ai_set("web", "on" if on else "off", f"Web search {'on' if on else 'off'}"))
+            name = label("Personality")
+            self.ollama_card.body.addWidget(row(name, persona, web))
             self.ollama_card.body.addWidget(row(
                 button("Ask DecKoOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
                        tip="Install and set things up by asking (Meta+Space anywhere)"),
@@ -869,6 +884,11 @@ class AiDevPage(Page):
             sysinfo.Job(self, ["ollama", "list"], self.show_models,
                         demo=("NAME ID SIZE MODIFIED\nqwen3:8b 500a1f067a9f 5.2 GB 2 days ago\n"
                               "llama3.2:3b a80c4f17acd5 2.0 GB 1 week ago", 0))
+
+    def ai_set(self, key, value, text):
+        if not sysinfo.DEMO:
+            QProcess.execute(sysinfo.DECKOS, ["ai", "set", key, value])
+        self.hub.toast(text + " (from the next conversation)", "ok")
 
     def show_models(self, out, code):
         rows = [ln.split() for ln in out.splitlines()[1:] if ln.strip()]

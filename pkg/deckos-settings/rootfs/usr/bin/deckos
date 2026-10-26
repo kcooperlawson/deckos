@@ -1441,6 +1441,19 @@ ai_cmd() {
       sed -i '/^MODEL=/d' "$HOME/.config/deckos/ai.conf"
       echo "MODEL=$2" >> "$HOME/.config/deckos/ai.conf"
       ok "DecKoOS Assistant uses $2" ;;
+    set)  # deckos ai set web on|off / personality friendly|calm|direct|gamer: the Assistant's own settings
+      local key value=${3:-}
+      case ${2:-} in
+        web) key=WEB_SEARCH; [[ $value == on || $value == off ]] || { err "usage: deckos ai set web on|off"; exit 2; } ;;
+        personality) key=PERSONALITY
+          [[ $value =~ ^(friendly|calm|direct|gamer)$ ]] || { err "usage: deckos ai set personality friendly|calm|direct|gamer"; exit 2; } ;;
+        *) err "usage: deckos ai set web on|off | personality friendly|calm|direct|gamer"; exit 2 ;;
+      esac
+      [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+      mkdir -p "$HOME/.config/deckos" && touch "$HOME/.config/deckos/ai.conf"
+      sed -i "/^$key=/d" "$HOME/.config/deckos/ai.conf"
+      echo "$key=$value" >> "$HOME/.config/deckos/ai.conf"
+      ok "DecKoOS Assistant: ${2} $value" ;;
     claude-link)
       [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
       local claude; claude=$(command -v claude || echo "$HOME/.local/bin/claude")

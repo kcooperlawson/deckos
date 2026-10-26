@@ -97,6 +97,11 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(groups[0]['vendors'], {'amd': 2, 'nvidia': 1})
         self.assertEqual(groups[0]['issues'], [1, 2, 3])
 
+    def test_only_problems_are_grouped(self):
+        _, body = heal_report.report_text({'recipe': 'install-package', 'result': 'worked', 'finding': '', 'time': 0},
+                                          self.HW)
+        self.assertEqual(heal_report.triage([{'number': 9, 'title': 't', 'body': body}]), [])
+
 
 class OptOutTests(unittest.TestCase):
     """Each part can be turned off, and then it really is off."""
@@ -245,6 +250,10 @@ class DraftTests(unittest.TestCase):
             with self.subTest(steps=steps):
                 with self.assertRaises(heal.Refused):
                     self.draft(json.dumps({**base, "steps": steps, "params": params}))
+
+    def test_no_draft_without_a_problem(self):
+        with self.assertRaises(heal.Refused):
+            heal_report.draft(dict(self.GROUP, finding='?'), lambda _p: '{}', save=False)
 
     def test_no_fix_or_no_json(self):
         with self.assertRaises(heal.Refused):

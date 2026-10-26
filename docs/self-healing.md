@@ -31,6 +31,13 @@ the walls stop bad changes before they run rather than relying on Undo afterward
 - **"Did that fix it?"**: after a recipe fix (System Doctor, Care or the Assistant), a notification with "Yes, fixed"
   and "Not really" puts the answer in the history (`deckos heal ask`), unless remembering is off.
 
+## Bugs only
+
+Self-healing repairs what's broken; it never adds or changes features. Recipes can't express a feature (a few programs,
+each for listed purposes). Reports name the problem System Doctor found; reports without one aren't grouped, and drafts
+are refused without one. The drafting model is told to answer "none" for features, tweaks, looks and preferences.
+Feature ideas go through normal pull requests (DecKoOS Builder's Contribute), which always wait for the maintainer.
+
 ## Your say
 
 Said up front, in Welcome's privacy step on first login and in DecKoOS Hub > System > Fixes, with a switch for each

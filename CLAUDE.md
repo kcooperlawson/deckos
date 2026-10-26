@@ -88,6 +88,10 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `models.py` picks a model by graphics memory (`deckos ai models`, the Hub's "Choose a model", `deckos ai setup`'s
   default); "measured" means it passed `tests/eval/assistant_tools.py` (needs Ollama; results in docs/assistant-models.md). Model choice was measured, not guessed: gpt-oss:20b called the right tools where gemma4:12b asked in
   chat instead. `DECKOS_AI_DIR` points `deckos ask`/`deckos ai` at a checkout for testing.
+  Web search (`web.py`, DuckDuckGo lite; `web_search`/`read_web_page` tools) only with WEB_SEARCH=on in ai.conf (off by
+  default); pages from public addresses only (`web.public`: no localhost, LAN, link-local, file:); every result starts
+  with the UNTRUSTED label. `PERSONALITIES` (PERSONALITY=friendly|calm|direct|gamer) prefix `system_prompt()`; the
+  rules after it never change. `deckos ai set web|personality`; Hub > AI & Dev. Tests: `tests/test_assistant_web.py`.
 - Game Doctor: `usr/lib/deckos/gamedoctor/`. `steamfiles.py` reads and writes Steam's KeyValues files
   (round-trips must stay exact; writes keep `.deckos-bak`; Steam must be closed: it rewrites them on exit),
   `gamedoctor.py` finds quick exits in `logs/console_log.txt`, takes the game's output from
@@ -283,7 +287,8 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   root fixes read the asking user's), shown with the facts in `hub/hub_heal.py`'s card (Hub > System and Welcome's
   privacy step). Every part checks its switch. System Doctor's fixes use `sysdoctor.recipe()` where a recipe fits; Care
   offers those in its notification (suggest on); after a recipe fix `deckos heal ask` notifies "Did that fix it?".
-  Tests: `tests/test_heal.py`.
+  Bugs only: triage skips reports without a finding, `draft` refuses one without, and the prompt answers "none" for
+  features/tweaks/looks. Tests: `tests/test_heal.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

@@ -608,6 +608,15 @@ def taskbar_settings():
     return out
 
 
+def ai_setting(key, default=""):
+    """An Assistant setting: the person's ~/.config/deckos/ai.conf, then /etc/deckos/ai.conf."""
+    for path in (Path.home() / ".config/deckos/ai.conf", Path("/etc/deckos/ai.conf")):
+        m = re.search(rf"^{key}=(.*)$", read(path), re.M)
+        if m:
+            return m.group(1).strip()
+    return default
+
+
 def desktop_widgets():
     """Which DecKoOS desktop widgets are on the desktop (from Plasma's own file)."""
     if DEMO:
