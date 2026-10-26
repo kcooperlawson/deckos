@@ -41,11 +41,27 @@ def record(recipe, result, finding="", path=None):
     A root fix is remembered for the person it ran for, in their file, which stays theirs."""
     who = None if path or os.environ.get("DECKOS_HEAL_HISTORY") else asker()
     path = Path(path or (who[1] / ".local/state/deckos/heal.jsonl" if who else HISTORY))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a") as f:
-        f.write(json.dumps({"time": int(time.time()), "recipe": recipe, "result": result, "finding": finding}) + "\n")
-    if who:
-        os.chown(path, who[0], -1)
+    line = json.dumps({"time": int(time.time()), "recipe": recipe, "result": result, "finding": finding}) + "\n"
+    if not who:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a") as f:
+            f.write(line)
+        return
+    # Root writing into a home follows whatever links the home holds (heal.jsonl -> /etc/shadow): write as the person.
+    import pwd
+    pid = os.fork()
+    if pid == 0:
+        try:
+            os.setgroups([])
+            os.setgid(pwd.getpwuid(who[0]).pw_gid)
+            os.setuid(who[0])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a") as f:
+                f.write(line)
+            os._exit(0)
+        except BaseException:
+            os._exit(1)
+    os.waitpid(pid, 0)
 
 
 def history(path=None):
