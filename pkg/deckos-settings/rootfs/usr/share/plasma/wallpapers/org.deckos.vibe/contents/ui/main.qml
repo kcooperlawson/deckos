@@ -14,24 +14,32 @@ WallpaperItem {
     readonly property color colorA: root.configuration.ColorA
     readonly property color colorB: root.configuration.ColorB
     // Moving only while someone can see it: no full-screen window on this screen, animation not turned off
-    readonly property bool running: root.configuration.Animate !== false && fullScreen.count === 0 && visible
+    readonly property bool running: root.configuration.Animate !== false && fullScreen.covering === 0 && visible
 
-    // Full-screen windows (a game, a video): counted from Plasma's own task list, no polling
+    // Full-screen windows (a game, a video) on any screen: counted from Plasma's own task list, no polling
     TaskManager.TasksModel {
         id: tasks
-        filterByScreen: true
-        screenGeometry: root.parent ? Qt.rect(0, 0, root.width, root.height) : Qt.rect(0, 0, 0, 0)
         filterMinimized: true
+        groupMode: TaskManager.TasksModel.GroupDisabled
     }
     Instantiator {
         id: fullScreen
-        property int count: 0
+        property int covering: 0  // not `count`: that's the Instantiator's own number of objects
         model: tasks
+        // QML properties can't start with a capital letter, so the role is read through `model`
         delegate: QtObject {
-            required property bool IsFullScreen
-            Component.onCompleted: if (IsFullScreen) fullScreen.count++
-            Component.onDestruction: if (IsFullScreen) fullScreen.count--
-            onIsFullScreenChanged: fullScreen.count += IsFullScreen ? 1 : -1
+            required property var model
+            readonly property bool full: model.IsFullScreen === true
+            onFullChanged: fullScreen.recount()
+        }
+        onObjectAdded: recount()
+        onObjectRemoved: recount()
+        function recount() {
+            let n = 0;
+            for (let i = 0; i < count; i++)
+                if (objectAt(i) && objectAt(i).full)
+                    n++;
+            fullScreen.covering = n;
         }
     }
 

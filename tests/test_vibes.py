@@ -60,6 +60,14 @@ class VibesTests(unittest.TestCase):
             self.assertTrue(vis.gaming(f.name))
         self.assertFalse(vis.gaming('/nonexistent'))
 
+    def test_qml_property_names(self):
+        # QML refuses a property named with a capital letter, and the whole wallpaper (or widget) then fails to
+        # load: the Vibe wallpaper was black on the first try that way (roles are read through `model` instead)
+        for f in (RFS / 'usr/share/plasma').rglob('*.qml'):
+            for n, line in enumerate(f.read_text().splitlines(), 1):
+                with self.subTest(file=f.name, line=n):
+                    self.assertNotRegex(line, r'^\s*(required |readonly )*property \w+ [A-Z]\w*')
+
     def test_visualizer_is_local_only(self):
         src = (RFS / 'usr/lib/deckos/vibes/visualizer.py').read_text()
         self.assertIn('QHostAddress.LocalHost', src)
