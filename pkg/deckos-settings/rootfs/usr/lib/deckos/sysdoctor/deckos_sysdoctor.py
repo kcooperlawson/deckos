@@ -197,6 +197,10 @@ class Doctor(QWidget):
             self.status.setText(f"{fix.title}: done." if code == 0 else f"{fix.title}: didn't finish (exit {code}).")
             if code == 0:
                 self.check()  # the finding should be gone now
+                if "heal" in fix.cmd and "apply" in fix.cmd:  # a vetted recipe: "Did that fix it?"
+                    i = fix.cmd.index("apply")
+                    finding = next((a.split("=", 1)[1] for a in fix.cmd if a.startswith("--finding=")), "")
+                    QProcess.startDetached("deckos", ["heal", "ask", fix.cmd[i + 1], finding])
         proc.finished.connect(finished)
         proc.start(fix.cmd[0], fix.cmd[1:])
 

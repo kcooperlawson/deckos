@@ -450,6 +450,12 @@ class Tools:
         cmd = (["pkexec"] if p["root"] else []) + ["deckos", "heal", "apply", fix] + \
             [f"{k}={v}" for k, v in (values or {}).items()]
         code, out = run(cmd, timeout=900, echo=self.echo)
+        if code == 0:  # "Did that fix it?" in a notification, so the answer is remembered (unless turned off)
+            try:
+                subprocess.Popen(["deckos", "heal", "ask", fix], start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except OSError:
+                pass
         return (f"done: {p['title']}\n" if code == 0 else f"failed (exit {code}): {p['title']}\n") + out
 
     def t_what_changed(self, limit=15):

@@ -335,7 +335,7 @@ def main(argv):
             heal_report.HISTORY.unlink(missing_ok=True)
             print("forgotten: this PC no longer remembers any fixes")
             return 0
-        if argv[:1] in (["outcome"], ["history"], ["report"], ["triage"], ["draft"]):
+        if argv[:1] in (["outcome"], ["ask"], ["history"], ["report"], ["triage"], ["draft"]):
             sys.path.insert(0, str(HERE))
             import heal_report
             return heal_report.main(argv)

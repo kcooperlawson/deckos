@@ -97,12 +97,13 @@ class Checkup(unittest.TestCase):
 
     def test_slow_boot_and_missing_program(self):
         found = self.findings()
+        # Fixes run DecKoOS's vetted recipes (heal.py), remembered with the finding they were for
         self.assertEqual(found["boot:wait-online"].fixes[0].cmd,
-                         ["pkexec", "systemctl", "disable", "NetworkManager-wait-online.service"])
+                         ["pkexec", "deckos", "heal", "apply", "skip-network-wait", "--finding=slow-boot"])
         self.assertIn("boot:plymouth-quit-wait.service", found)
         hd = found["missing:/usr/bin/hdparm"]
         self.assertIn("3 times this start-up", hd.text)
-        self.assertEqual(hd.fixes[0].cmd[-1], "hdparm")
+        self.assertIn("package=hdparm", hd.fixes[0].cmd)
 
     def test_gpu_reset_points_at_the_display_fix(self):
         self.assertEqual(self.findings()["gpu:reset"].open, ["deckos-hub", "--page", "display"])

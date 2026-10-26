@@ -5,7 +5,8 @@ whether it worked, a scrubbed hardware summary), and a person writes any new rec
 Nothing is ever sent by DecKoOS: `report` shows the text and, if asked, opens a pre-filled GitHub issue in the
 browser, where the person reads it and presses Submit themselves.
 
-    heal_report.py outcome ID worked|failed [FINDING] | history | report [--open] | triage [--json] | draft N
+    heal_report.py outcome ID worked|failed [FINDING] | ask ID [FINDING] | history | report [--open] | triage [--json] |
+                   draft N
 """
 import json
 import os
@@ -129,6 +130,25 @@ def triage(issues):
     return sorted(groups.values(), key=lambda g: (-g["reports"], g["finding"]))
 
 
+def ask(recipe, finding="", notify=None):
+    """After a fix: "Did that fix it?" as a notification with two buttons; the answer goes in the history. Skipped
+    when the person turned remembering off. Waits as long as it takes (some fixes need a restart to show)."""
+    sys.path.insert(0, str(HERE))
+    import heal
+    if not heal.is_on("remember") or recipe not in heal.RECIPES:
+        return None
+    title = heal.RECIPES[recipe]["title"].split("{")[0].strip() or recipe
+    notify = notify or (lambda: subprocess.run(
+        ["notify-send", "--app-name=DecKoOS", "--icon=deckos", "--expire-time=0", "--action=worked=Yes, fixed",
+         "--action=failed=Not really", "Did that fix it?", f"{title}: telling DecKoOS helps it suggest the right fix."],
+        capture_output=True, text=True).stdout.strip())
+    answer = notify()
+    if answer in ("worked", "failed"):
+        record(recipe, answer, finding)
+        return answer
+    return None
+
+
 DRAFTS = Path.home() / ".local/share/deckos/heal-drafts"
 
 DRAFT_PROMPT = """You maintain DecKoOS's library of fixes. Reports from users' PCs were grouped:
@@ -198,6 +218,9 @@ def main(argv):
     if argv[:1] == ["outcome"] and len(argv) >= 3 and argv[2] in ("worked", "failed"):
         if heal.is_on("remember"):
             record(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
+        return 0
+    if argv[:1] == ["ask"] and len(argv) > 1:
+        ask(argv[1], argv[2] if len(argv) > 2 else "")
         return 0
     if argv[:1] == ["report"] and not heal.is_on("reports"):
         print("Fix reports are turned off (DecKoOS Hub > System > Fixes, or: deckos heal settings reports on).")

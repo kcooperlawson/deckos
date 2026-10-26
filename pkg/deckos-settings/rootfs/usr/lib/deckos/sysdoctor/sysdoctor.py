@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,6 +38,16 @@ class Finding:
     open: list = field(default_factory=list)  # a DecKoOS app that handles it: [cmd, args...]
 
 
+def recipe(rid, values=None, finding=""):
+    """A fix that runs one of DecKoOS's vetted recipes (heal.py): checked again when it runs, remembered with the finding
+    it was for, a snapshot first when it changes the system, and "Did that fix it?" afterwards."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "heal"))
+    import heal
+    root = heal.RECIPES[rid]["root"]
+    return (["pkexec"] if root else []) + ["deckos", "heal", "apply", rid] + \
+        [f"{k}={v}" for k, v in (values or {}).items()] + ([f"--finding={finding}"] if finding else [])
+
+
 def run(cmd, timeout=30):
     """(exit code, stdout). Missing commands and timeouts count as failures, never exceptions."""
     try:
@@ -60,7 +71,13 @@ def failed_units():
             if not unit:
                 continue
             _, log = run(["journalctl", *user, "-b", "-u", unit, "-n", "15", "--no-pager", "-o", "cat"])
-            restart = ["systemctl", *user, "restart", unit] if scope == "user" else ["pkexec", "systemctl", "restart", unit]
+            key = f"unit:{scope}:{unit}"
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "heal"))
+            import heal
+            if unit in (heal.USER_UNITS if scope == "user" else heal.SYSTEM_UNITS):
+                restart = recipe("restart-user-service" if scope == "user" else "restart-system-service", {"unit": unit}, key)
+            else:  # not one the recipes know: the plain restart, as before
+                restart = ["systemctl", *user, "restart", unit] if scope == "user" else ["pkexec", "systemctl", "restart", unit]
             clear = ["systemctl", *user, "reset-failed", unit] if scope == "user" else ["pkexec", "systemctl", "reset-failed", unit]
             out.append(Finding(f"unit:{scope}:{unit}", BAD, f"{describe_unit(unit)} failed",
                                f"The {'background service' if scope == 'system' else 'service in your session'} "
@@ -160,8 +177,9 @@ def crashes():
                            "evidence below helps a bug report.",
                            evidence=[f"{time.strftime('%H:%M:%S', time.localtime(b['when']))} {b['comm']} ({b['signal']})"
                                      for b in burst],
-                           fixes=[Fix("Restart the desktop panel", ["systemctl", "--user", "restart",
-                                                                     "plasma-plasmashell.service"])]))
+                           fixes=[Fix("Restart the desktop panel", recipe("restart-user-service",
+                                                                          {"unit": "plasma-plasmashell.service"},
+                                                                          "desktop-crash"))]))
         shown = {b["comm"] for b in burst}
         dumps = [d for d in dumps if not (d["kind"] == "desktop" and d["comm"] in shown)]
     groups = {}
@@ -195,7 +213,8 @@ def crashes():
         elif kind == "deckos":
             f.text += " That's a DecKoOS app: please report it with the evidence below (the line shows how it was run)."
         elif kind == "desktop":
-            f.fixes.append(Fix("Restart the desktop panel", ["systemctl", "--user", "restart", "plasma-plasmashell.service"]))
+            f.fixes.append(Fix("Restart the desktop panel", recipe("restart-user-service",
+                                                                   {"unit": "plasma-plasmashell.service"}, f.key)))
         out.append(f)
     return out
 
@@ -236,8 +255,7 @@ def slow_boot():
                                "NetworkManager-wait-online holds the start until the network is up. Only network "
                                "drives in /etc/fstab need that, and this PC has none, so it can go.",
                                evidence=[f"{unit}: {secs:.1f} s of {userspace:.1f} s"],
-                               fixes=[Fix("Don't wait for the network", ["pkexec", "systemctl", "disable",
-                                                                          "NetworkManager-wait-online.service"])]))
+                               fixes=[Fix("Don't wait for the network", recipe("skip-network-wait", finding="slow-boot"))]))
         elif secs >= 10:
             out.append(Finding(f"boot:{unit}", INFO, f"{describe_unit(unit)} takes {secs:.0f} s at start-up",
                                "It's the slowest part of starting up; often a service waiting for a device or "
@@ -265,7 +283,7 @@ def missing_programs():
                     "what it's for doesn't happen" + (f". It comes with the {pkg} package." if pkg else "."),
                     evidence=lines[:5])
         if pkg:
-            f.fixes.append(Fix(f"Install {pkg}", ["pkexec", "pacman", "-S", "--needed", "--noconfirm", pkg]))
+            f.fixes.append(Fix(f"Install {pkg}", recipe("install-package", {"package": pkg}, f.key)))
         out.append(f)
     return out
 
@@ -288,7 +306,7 @@ def disk_space():
                         "need room; below a few GB things start failing.",
                         evidence=[f"{mount}: {free / 1e9:.1f} GB free of {total / 1e9:.0f} GB"])
             if shutil.which("paccache"):
-                f.fixes.append(Fix("Clear old package downloads", ["pkexec", "paccache", "-rk1"],
+                f.fixes.append(Fix("Clear old package downloads", recipe("clear-package-cache", finding=f.key),
                                    "Keeps the newest copy of each package"))
             f.fixes.append(Fix("Delete systems kept by Undo", ["pkexec", "deckos", "undo", "clean"]))
             if shutil.which("filelight"):
@@ -335,7 +353,7 @@ def nvidia_driver():
         except ValueError:
             device = 0
         fix = [Fix("Set up the NVIDIA driver",
-                   ["pkexec", "sh", "-c", "pacman -S --needed --noconfirm chwd && chwd -a"],
+                   recipe("nvidia-driver", finding="nvidia-driver"),
                    "CachyOS's hardware setup picks the right NVIDIA driver for this card; restart afterwards")]
         if drv != "nvidia":
             out.append(Finding(f"nvidia:{dev.name}", BAD, "The NVIDIA card isn't using NVIDIA's driver",
@@ -371,8 +389,8 @@ def intel_microcode():
                     "fix (0x12B or newer). DecKoOS loads it at start-up from the intel-ucode package; a BIOS update "
                     "from your motherboard maker brings it too.",
                     evidence=[f"{name.group(1).strip() if name else 'Intel CPU'}: microcode {micro.group(1)}"],
-                    fixes=[Fix("Install Intel's microcode", ["pkexec", "pacman", "-S", "--needed", "--noconfirm",
-                                                             "intel-ucode"], "Takes effect after a restart")])]
+                    fixes=[Fix("Install Intel's microcode", recipe("intel-microcode", finding="intel-microcode"),
+                               "Takes effect after a restart")])]
 
 
 def snapshot_boot():

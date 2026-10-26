@@ -124,7 +124,7 @@ class DoctorTests(unittest.TestCase):
         f = sd.nvidia_driver()
         self.assertEqual(len(f), 1)
         self.assertIn('nouveau', f[0].text)
-        self.assertIn('chwd -a', ' '.join(f[0].fixes[0].cmd))
+        self.assertIn('heal apply nvidia-driver', ' '.join(f[0].fixes[0].cmd))  # the vetted recipe (heal.py)
 
     def test_no_driver_mentions_secure_boot(self):
         self.card(None)

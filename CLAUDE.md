@@ -281,7 +281,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   person submits; DecKoOS sends nothing), `triage` (gh; groups `heal-report` issues), `draft N` (local model proposes; `heal.check_recipe` must pass: `PROGRAMS` and each
   one's allowed first argument, whole-word blanks, DENY; saved for review, never added). The person's switches: `heal.conf` (suggest/remember/reports, `heal.settings()`;
   root fixes read the asking user's), shown with the facts in `hub/hub_heal.py`'s card (Hub > System and Welcome's
-  privacy step). Every part checks its switch. Tests: `tests/test_heal.py`.
+  privacy step). Every part checks its switch. System Doctor's fixes use `sysdoctor.recipe()` where a recipe fits; Care
+  offers those in its notification (suggest on); after a recipe fix `deckos heal ask` notifies "Did that fix it?".
+  Tests: `tests/test_heal.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

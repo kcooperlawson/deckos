@@ -147,6 +147,64 @@ class OptOutTests(unittest.TestCase):
         self.assertFalse(self.hist.exists())
 
 
+class EverydayTests(unittest.TestCase):
+    """Fixes in daily use: System Doctor's buttons are recipes, Care offers them, and "Did that fix it?" is remembered."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.conf = Path(self.tmp.name) / 'heal.conf'
+        self.hist = Path(self.tmp.name) / 'heal.jsonl'
+        self.patches = [patch.object(heal, 'SETTINGS', self.conf), patch.object(heal_report, 'HISTORY', self.hist)]
+        for x in self.patches:
+            x.start()
+
+    def tearDown(self):
+        for x in self.patches:
+            x.stop()
+        self.tmp.cleanup()
+
+    def test_did_that_fix_it(self):
+        self.assertEqual(heal_report.ask('skip-network-wait', 'slow-boot', notify=lambda: 'worked'), 'worked')
+        self.assertEqual(heal_report.history(self.hist)[-1]['result'], 'worked')
+        self.assertIsNone(heal_report.ask('skip-network-wait', notify=lambda: ''))  # dismissed: nothing recorded
+        self.assertEqual(len(heal_report.history(self.hist)), 1)
+
+    def test_not_asked_when_not_remembering(self):
+        heal.set_setting('remember', 'off')
+        asked = []
+        heal_report.ask('skip-network-wait', notify=lambda: asked.append(1) or 'worked')
+        self.assertEqual(asked, [])
+
+    def test_doctor_fixes_are_recipes(self):
+        sys.path.insert(0, str(LIB / 'sysdoctor'))
+        import sysdoctor
+        cmd = sysdoctor.recipe('install-package', {'package': 'hdparm'}, 'missing:/usr/bin/hdparm')
+        self.assertEqual(cmd, ['pkexec', 'deckos', 'heal', 'apply', 'install-package', 'package=hdparm',
+                               '--finding=missing:/usr/bin/hdparm'])
+        self.assertEqual(sysdoctor.recipe('rebuild-font-cache')[:2], ['deckos', 'heal'])  # no pkexec when not root
+
+    def care_offer(self, suggest):
+        sys.path[:0] = [str(LIB / 'care'), str(LIB / 'sysdoctor'), str(LIB / 'pulse')]
+        import care
+        import sysdoctor as sd
+        heal.set_setting('suggest', suggest)
+        finding = sd.Finding('boot:wait-online', sd.WARN, 'Starting up waits for the network', 'x',
+                             fixes=[sd.Fix("Don't wait for the network", sd.recipe('skip-network-wait'))])
+        said = []
+        c = care.Care(lambda *a: said.append(a), checks=(), uid=1000, now=lambda: 1.0, record=lambda *a, **k: None)
+        with patch.object(care, 'STATE', Path(self.tmp.name) / 'care.json'):
+            c.check([lambda: [finding]])
+        return said[0]
+
+    def test_care_offers_the_fix_when_allowed(self):
+        title, body, button, cmd = self.care_offer('on')
+        self.assertEqual(button, "Don't wait for the network")
+        self.assertIn('skip-network-wait', cmd)
+        title, body, button, cmd = self.care_offer('off')
+        self.assertEqual((button, cmd), ('Show me', ['deckos-sysdoctor']))
+
+
 class DraftTests(unittest.TestCase):
     GROUP = {'finding': 'unit:bluetooth', 'recipe': 'restart-system-service', 'reports': 9, 'worked': 8,
              'vendors': {'amd': 5, 'nvidia': 4}, 'issues': [1]}

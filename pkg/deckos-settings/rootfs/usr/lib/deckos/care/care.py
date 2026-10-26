@@ -97,8 +97,21 @@ class Care:
                 if f.level in (sd.BAD, sd.WARN) and not self.quiet(f"finding:{f.key}", "finding"):
                     self.record("care", f.title, detail=f.text, app="DecKoOS Care")
                     fix = f.fixes[0] if f.fixes and f.key == "restart" else None
+                    # A vetted recipe (heal.py) is offered in the notification itself, if the person allows suggestions;
+                    # anything else, or with suggestions off, opens System Doctor to show what's wrong
+                    if fix is None and f.fixes and "heal" in f.fixes[0].cmd and suggestions_on():
+                        fix = f.fixes[0]
                     self.notify(f.title, f.text, fix.title if fix else "Show me",
                                 fix.cmd if fix else ["deckos-sysdoctor"])
+
+
+def suggestions_on():
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "heal"))
+        import heal
+        return heal.is_on("suggest")
+    except Exception:
+        return False
 
 
 def notify(title, body, button, cmd):
@@ -109,8 +122,17 @@ def notify(title, body, button, cmd):
                                 f"--action=go={button}", title, body], capture_output=True, text=True, timeout=600)
         except (OSError, subprocess.TimeoutExpired):
             return
-        if r.stdout.strip() == "go":
-            subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if r.stdout.strip() != "go":
+            return
+        if "heal" in cmd and "apply" in cmd:  # a vetted recipe: run it, then "Did that fix it?"
+            done = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if done.returncode == 0:
+                i = cmd.index("apply")
+                finding = next((a.split("=", 1)[1] for a in cmd if a.startswith("--finding=")), "")
+                subprocess.Popen(["deckos", "heal", "ask", cmd[i + 1], finding], start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     threading.Thread(target=wait, daemon=True).start()
 
 

@@ -21,6 +21,16 @@ maintainer model) can diagnose, explain, pick a fix and fill in its blanks. It n
 Snapshots undo a broken system, not a compromised one (data can leave, and `/home` isn't rolled back); that's why
 the walls stop bad changes before they run rather than relying on Undo afterwards.
 
+## In daily use
+
+- **System Doctor's buttons run recipes** (`sysdoctor.recipe()`): restarting a listed service, not waiting for the
+  network, installing a missing package, clearing package downloads, the NVIDIA driver, Intel microcode. Fixes no
+  recipe covers yet (Undo's clean-up, keeping a snapshot, restarting an unlisted service) stay as they were.
+- **Care offers the fix** in its notification when a check finds something a recipe fixes, if suggestions are on;
+  otherwise its button opens System Doctor.
+- **"Did that fix it?"**: after a recipe fix (System Doctor, Care or the Assistant), a notification with "Yes, fixed"
+  and "Not really" puts the answer in the history (`deckos heal ask`), unless remembering is off.
+
 ## Your say
 
 Said up front, in Welcome's privacy step on first login and in DecKoOS Hub > System > Fixes, with a switch for each
