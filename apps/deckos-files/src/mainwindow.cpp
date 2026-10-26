@@ -66,7 +66,7 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-files"), QIcon::fromTheme(QStringLiteral("system-file-manager"))));
     const KConfigGroup cfg = settings();
     m_mode = FolderView::Mode(qBound(0, cfg.readEntry("ViewMode", 0), 2));
-    m_iconSizes[0] = cfg.readEntry("GridIconSize", 64);
+    m_iconSizes[0] = cfg.readEntry("GridIconSize", 80);
     m_iconSizes[1] = cfg.readEntry("ListIconSize", 22);
     m_iconSizes[2] = cfg.readEntry("DetailsIconSize", 22);
 
@@ -157,12 +157,6 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     });
     connect(m_tabBar, &QTabBar::tabCloseRequested, this, &MainWindow::closeTab);
     connect(m_tabBar, &QTabBar::tabMoved, this, [this](int from, int to) { m_tabs.move(from, to); });
-    auto *tabRow = new QHBoxLayout;
-    tabRow->setContentsMargins(10, 0, 10, 0);
-    tabRow->addWidget(m_tabBar);
-    tabRow->addStretch();
-    root->addLayout(tabRow);
-
     auto *body = new QSplitter(central);
     body->setHandleWidth(1);
     body->setChildrenCollapsible(false);
@@ -170,7 +164,19 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     m_sidebar->setMinimumWidth(170);
     connect(m_sidebar, &Sidebar::placeActivated, this, [this](const QUrl &u) { activePane()->setUrl(u); });
     connect(m_sidebar, &Sidebar::placeActivatedInNewTab, this, [this](const QUrl &u) { openTab(u); });
-    m_stack = new QStackedWidget(body);
+    // Tabs sit over the folders they switch between, not over the sidebar.
+    auto *content = new QWidget(body);
+    auto *cl = new QVBoxLayout(content);
+    cl->setContentsMargins(0, 0, 0, 0);
+    cl->setSpacing(0);
+    auto *tabRow = new QHBoxLayout;
+    tabRow->setContentsMargins(8, 4, 8, 0);
+    m_tabBar->setParent(content);
+    tabRow->addWidget(m_tabBar);
+    tabRow->addStretch();
+    cl->addLayout(tabRow);
+    m_stack = new QStackedWidget(content);
+    cl->addWidget(m_stack, 1);
 
     m_previewPanel = new QWidget(body);
     m_previewPanel->setStyleSheet(Style::chromeQss());
@@ -198,7 +204,7 @@ MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     m_sidebarAction->setChecked(m_sidebar->isVisible());
 
     body->addWidget(m_sidebar);
-    body->addWidget(m_stack);
+    body->addWidget(content);
     body->addWidget(m_previewPanel);
     body->setStretchFactor(1, 1);
     body->setSizes({220, 900, 280});

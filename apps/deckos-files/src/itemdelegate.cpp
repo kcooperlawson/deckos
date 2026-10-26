@@ -184,8 +184,17 @@ QStringList ItemDelegate::wrapped(const QString &text, const QFont &font, int wi
         layout.beginLayout();
         QTextLine line = layout.createLine();
         line.setLineWidth(width);
-        const int firstLen = qMax(1, line.textLength());
+        int firstLen = qMax(1, line.textLength());
         layout.endLayout();
+        // A break mid-word (IMG_2026052 / 0.jpg) moves back to a _ - . or space in the line's second half.
+        if (firstLen < text.size() && !text.at(firstLen - 1).isSpace() && !text.at(firstLen).isSpace()) {
+            for (int i = firstLen - 1; i > firstLen / 2; --i) {
+                if (QStringLiteral("_-. ").contains(text.at(i))) {
+                    firstLen = text.at(i) == QLatin1Char('.') ? i : i + 1;
+                    break;
+                }
+            }
+        }
         lines << text.left(firstLen).trimmed();
         // The second line keeps the end of the name (usually the extension) visible.
         lines << fm.elidedText(text.mid(firstLen), Qt::ElideMiddle, width);

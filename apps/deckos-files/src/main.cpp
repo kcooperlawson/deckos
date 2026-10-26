@@ -14,6 +14,7 @@
 #include <QImage>
 #include <QLinearGradient>
 #include <QPainter>
+#include <QStandardPaths>
 #include <QStyleFactory>
 #include <QTimer>
 
@@ -114,7 +115,10 @@ void runScreenshots(MainWindow *w, const QString &root, const QString &out)
             (*next)();
         });
     };
-    *steps << [=] { open(root + QStringLiteral("/Pictures/2026 Summer"), 2500, [=] { shoot(w, out, QStringLiteral("1-grid-thumbnails")); }); };
+    *steps << [=] {
+        w->setViewMode(FolderView::Grid);
+        open(root + QStringLiteral("/Pictures/2026 Summer"), 2500, [=] { shoot(w, out, QStringLiteral("1-grid-thumbnails")); });
+    };
     *steps << [=] { open(root, 600, [=] { shoot(w, out, QStringLiteral("2-grid-home")); }); };
     *steps << [=] {
         w->setViewMode(FolderView::Details);
@@ -190,6 +194,13 @@ int main(int argc, char **argv)
 
     const bool demo = parser.isSet(QStringLiteral("demo"));
     if (demo) {
+        // Settings of its own, so a demo never reads or overwrites the user's (only the colours come along).
+        const QString cfg = QDir::tempPath() + QStringLiteral("/deckos-files-demo-config");
+        QDir(cfg).removeRecursively();
+        QDir().mkpath(cfg);
+        QFile::copy(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/kdeglobals"),
+                    cfg + QStringLiteral("/kdeglobals"));
+        qputenv("XDG_CONFIG_HOME", QFile::encodeName(cfg));
         // Offscreen CI has no Plasma platform theme: pick the DecKoOS fonts and icons by hand.
         if (const QString theme = qEnvironmentVariable("DECKOS_ICON_THEME", QStringLiteral("Papirus-Dark")); !theme.isEmpty())
         {
