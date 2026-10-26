@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "A big clock with a greeting and the date, in your Vibe's look",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.bigclock",
+        "License": "MIT",
+        "Name": "DecKoOS Clock",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

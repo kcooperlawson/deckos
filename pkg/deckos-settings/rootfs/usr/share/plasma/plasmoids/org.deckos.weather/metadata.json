@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Environment and Weather",
+        "Description": "The weather where you are (Open-Meteo, no account), with sunrise and sunset",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.weather",
+        "License": "MIT",
+        "Name": "DecKoOS Weather",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

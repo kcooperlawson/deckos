@@ -1494,6 +1494,21 @@ class AppearancePage(Page):
         name = label("Music visualizer")
         name.setFixedWidth(140)
         vibes.body.addWidget(row(name, *buttons))
+        # Desktop widgets in the Vibe's look: on and off one by one (deckos vibe widget ID on|off)
+        shown = sysinfo.desktop_widgets()
+        toggles = []
+        for wid, text in (("org.deckos.bigclock", "Clock"), ("org.deckos.nowplaying", "Now Playing"),
+                          ("org.deckos.weather", "Weather"), ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note")):
+            b = QPushButton(text)
+            b.setObjectName("seg")
+            b.setCheckable(True)
+            b.setChecked(wid in shown)
+            b.toggled.connect(lambda on, w=wid, t=text: self.apply(["deckos", "vibe", "widget", w, "on" if on else "off"],
+                                                                  f"{t} {'on' if on else 'off'} the desktop"))
+            toggles.append(b)
+        name = label("Desktop widgets")
+        name.setFixedWidth(140)
+        vibes.body.addWidget(row(name, *toggles, button("Weather town…", slot=self.weather_town, icon="globe")))
         self.lay.addWidget(vibes)
 
         themes = Card("Theme", "Global theme", "appearance")
@@ -1671,6 +1686,12 @@ class AppearancePage(Page):
         proc.errorOccurred.connect(lambda e: e == QProcess.FailedToStart and (
             self.hub.toast(f"Couldn't run {Path(cmd[0]).name}.", "warn"), proc.deleteLater()))
         proc.start(cmd[0], cmd[1:])
+
+    def weather_town(self):
+        from PySide6.QtWidgets import QInputDialog
+        town, ok = QInputDialog.getText(self, "Weather", "Your town or city:", text=sysinfo.weather_place())
+        if ok and town.strip():
+            self.apply(["deckos", "vibe", "weather", town.strip()], f"Weather for {town.strip()}")
 
     def apply_vibe(self, key, name):
         self.demo_vibe = key

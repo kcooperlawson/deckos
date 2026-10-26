@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "A note on your desktop, or a thought for the day",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.note",
+        "License": "MIT",
+        "Name": "DecKoOS Note",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

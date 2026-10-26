@@ -1581,6 +1581,28 @@ vibe_style_corners() {  # DecKoOS apps' corners (hub_style's style.conf), keepin
   { grep -sv '^corners=' "$f" || true; echo "corners=$1"; } > "$f.new" && mv "$f.new" "$f"
 }
 
+VIBE_WIDGETS="org.deckos.bigclock org.deckos.nowplaying org.deckos.weather org.deckos.focus org.deckos.note"
+
+vibe_widgets_style() {  # STYLE COLOR_A COLOR_B: every DecKoOS desktop widget takes the look
+  qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    desktops().forEach(function (d) { d.widgets().forEach(function (w) {
+      if (w.type.indexOf('org.deckos.') !== 0 || w.type === 'org.deckos.perfgraphs') return;
+      w.currentConfigGroup = ['General']; w.writeConfig('style', '$1'); w.writeConfig('colorA', '$2');
+      w.writeConfig('colorB', '$3'); w.reloadConfig(); }); });" >/dev/null 2>&1 || true
+}
+
+vibe_widget_toggle() {  # ID on|off: add it to the first screen's desktop in its usual spot, or take it away
+  local id=$1 on=$2
+  [[ " $VIBE_WIDGETS " == *" $id "* ]] || { err "unknown widget: $id ($VIBE_WIDGETS)"; exit 2; }
+  qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    var d = desktops()[0], g = screenGeometry(d.screen), have = d.widgets('$id');
+    var spot = { 'org.deckos.bigclock': [60, 60, 480, 240], 'org.deckos.nowplaying': [g.width - 500, g.height - 240, 440, 140],
+                 'org.deckos.weather': [g.width - 360, 60, 300, 130], 'org.deckos.focus': [g.width - 280, 260, 220, 240],
+                 'org.deckos.note': [60, g.height - 300, 300, 180] }['$id'];
+    if ('$on' === 'on' && have.length === 0) d.addWidget('$id', spot[0], spot[1], spot[2], spot[3]);
+    if ('$on' === 'off') have.forEach(function (w) { w.remove(); });" >/dev/null
+}
+
 vibe_cmd() {
   [[ $EUID -ne 0 || ${1:-} == list ]] || { err "run this as your user"; exit 1; }
   case ${1:-current} in
@@ -1598,6 +1620,7 @@ vibe_cmd() {
       accent_apply "$accent"
       vibe_wallpaper "$scene" "$visualizer" "$colorA" "$colorB"
       vibe_style_corners "$corners"
+      vibe_widgets_style "$key" "$colorA" "$colorB"
       # The taskbar takes the Vibe's colours, unless the person picked their own (theirs always wins)
       taskbar_script "w.writeConfig('colorA', '$colorA'); w.writeConfig('colorB', '$colorB');
         if (w.readConfig('colorMode', 'accent') !== 'custom') w.writeConfig('colorMode', 'vibe')" 2>/dev/null || true
@@ -1615,16 +1638,38 @@ vibe_cmd() {
       vibe_visualizer_service "$([[ $style == none ]] && echo off || echo on)"
       vibe_visualizer_remember "$style"
       ok "music visualizer: $style" ;;
+    widget)  # deckos vibe widget ID on|off
+      [[ ${3:-} == on || ${3:-} == off ]] || { err "usage: deckos vibe widget ID on|off"; exit 2; }
+      vibe_widget_toggle "${2:-}" "$3"
+      [[ $3 == off ]] || vibe_widgets_style "$(cat "$VIBE_STATE" 2>/dev/null || echo deckos)" \
+        "$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorA=//p' || true)" \
+        "$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorB=//p' || true)"
+      ok "desktop widget $2: $3" ;;
+    weather)  # deckos vibe weather TOWN: where the Weather widget looks (Open-Meteo's town search)
+      local town=${2:-} hit lat lon place
+      [[ -n $town && ${#town} -lt 80 ]] || { err "usage: deckos vibe weather TOWN"; exit 2; }
+      hit=$(curl -fsS -G "https://geocoding-api.open-meteo.com/v1/search" --data-urlencode "name=$town" \
+        --data-urlencode "count=1" | jq -r '.results[0] | "\(.latitude)\t\(.longitude)\t\(.name), \(.country_code)"' 2>/dev/null || true)
+      IFS=$'\t' read -r lat lon place <<<"$hit"
+      [[ $lat =~ ^-?[0-9.]+$ && $lon =~ ^-?[0-9.]+$ ]] || { err "couldn't find '$town' (offline, or try a bigger town nearby)"; exit 1; }
+      place=${place//[\'\"\\]/}
+      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        desktops().forEach(function (d) { d.widgets('org.deckos.weather').forEach(function (w) {
+          w.currentConfigGroup = ['General']; w.writeConfig('place', '$place'); w.writeConfig('latitude', $lat);
+          w.writeConfig('longitude', $lon); w.reloadConfig(); }); });" >/dev/null
+      mkdir -p "${VIBE_STATE%/*}" && echo "$place" > "${VIBE_STATE%/*}/weather-place"
+      ok "weather: $place" ;;
     off)
       theme_cmd apply org.deckos.desktop >/dev/null  # its still wallpaper takes over from the Vibe one
       vibe_style_corners default
+      vibe_widgets_style deckos "#4C8DFF" "#7A5CFF"
       taskbar_script "if (w.readConfig('colorMode', 'accent') === 'vibe') w.writeConfig('colorMode', 'accent')" 2>/dev/null || true
       vibe_visualizer_service off
       vibe_visualizer_remember none
       rm -f "$VIBE_STATE"
       pulse vibe "Vibe off: back to DecKoOS" --app Appearance
       ok "back to DecKoOS" ;;
-    *) err "usage: deckos vibe [list|current|apply NAME|visualizer bars|wave|ring|none|off]"; exit 2 ;;
+    *) err "usage: deckos vibe [list|current|apply NAME|visualizer bars|wave|ring|none|widget ID on|off|weather TOWN|off]"; exit 2 ;;
   esac
 }
 

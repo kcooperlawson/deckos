@@ -608,6 +608,24 @@ def taskbar_settings():
     return out
 
 
+def desktop_widgets():
+    """Which DecKoOS desktop widgets are on the desktop (from Plasma's own file)."""
+    if DEMO:
+        return {"org.deckos.bigclock", "org.deckos.nowplaying"}
+    try:
+        text = (Path.home() / ".config/plasma-org.kde.plasma.desktop-appletsrc").read_text()
+    except OSError:
+        return set()
+    return set(re.findall(r"^plugin=(org\.deckos\.(?:bigclock|nowplaying|weather|focus|note))$", text, re.M))
+
+
+def weather_place():
+    try:
+        return (Path.home() / ".config/deckos/weather-place").read_text().strip()
+    except OSError:
+        return ""
+
+
 def visualizer_style():
     """bars, wave, ring or none: what `deckos vibe` last set (~/.config/deckos/visualizer)."""
     if DEMO:

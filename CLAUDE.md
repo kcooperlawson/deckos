@@ -268,6 +268,11 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   a Vibe never overrides custom). `deckos layout set` saves pins to `~/.config/deckos/pins` before replacing panels.
   A tile pulses while its app plays sound: `org.kde.plasma.private.volume`'s SinkInputModel (not corked), matched by pid,
   else by name/binary (Flatpak Spotify plays from pid 4 in its sandbox; browsers from helper processes).
+- **Desktop widgets** (`plasmoids/org.deckos.{bigclock,nowplaying,weather,focus,note}`): share `org.deckos.vibes` (a QML
+  module in `usr/lib/qt6/qml`: `Look`, `Plate`, `VibeText`); `deckos vibe apply` writes their style/colours, `deckos vibe
+  widget ID on|off` places them, `deckos vibe weather TOWN` geocodes through Open-Meteo. `assets/preview_widgets.py
+  --check` loads every one for real on stand-ins (it caught an infinite timer loop and names that clash with Item's own:
+  `focus`, `left`, `running`). The real lint is `/usr/lib/qt6/bin/qmllint` (not on PATH).
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

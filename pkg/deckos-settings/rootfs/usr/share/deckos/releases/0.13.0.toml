@@ -1,0 +1,47 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.13.0"
+name = "Make it yours"
+tagline = "Vibes for your desktop, Kid mode for the family, DecKoOS's own sounds, and every setting in one place."
+
+fixes = [
+    "Your pinned apps stay when you change the desktop layout.",
+    "Apps' logos follow your accent colour, and Appearance has a Custom colour.",
+    "DecKoOS apps hold together with large text, and Store cards no longer cut words in half.",
+    "The lock screen shows your DecKoOS wallpaper instead of Plasma's.",
+]
+
+[[highlights]]
+title = "Vibes"
+image = "0.13.0/vibes.jpg"
+text = """One click for a whole mood: Lo-fi, Neon, Midnight or Cozy. An animated wallpaper with a music visualizer \
+that dances to whatever's playing (it pauses in games), matching colours, and a taskbar that follows along. Add \
+the new desktop widgets too: a big clock, Now Playing, the weather, a focus timer and a note."""
+icon = "star"
+try = "Pick a Vibe"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "Kid mode"
+text = """Each child gets their own account with big tiles for only the apps you pick, a filtered web, games from \
+your Retro library, and if you like, a time limit and bedtime. Your session stays locked underneath, and your \
+password brings it back. A tap on their picture on the login screen and they're in."""
+icon = "user"
+try = "Set up Kid mode"
+run = ["deckos-hub", "--page", "system"]
+
+[[highlights]]
+title = "Every setting in one place"
+text = """Search DecKoOS Hub for anything: "bluetooth", "night light", "vrr". More settings has the rest of \
+Plasma's settings, named for what they do."""
+icon = "search"
+try = "Open DecKoOS Hub"
+run = ["deckos-hub"]
+
+[[highlights]]
+title = "DecKoOS sounds"
+text = """DecKoOS has its own system sounds now: glass tones for everyday things, a metal-plate tap for the big \
+moments. Switch them in Appearance > Sounds."""
+icon = "volume"
+try = "Hear them"
+run = ["deckos-hub", "--page", "appearance"]
