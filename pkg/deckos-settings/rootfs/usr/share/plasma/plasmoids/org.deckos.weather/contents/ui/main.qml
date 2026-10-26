@@ -21,7 +21,9 @@ PlasmoidItem {
     readonly property string place: Plasmoid.configuration.place || ""
     readonly property real lat: Plasmoid.configuration.latitude
     readonly property real lon: Plasmoid.configuration.longitude
+    // °F where the region uses it (the US), unless set; Open-Meteo answers in °C otherwise
     readonly property bool fahrenheit: Plasmoid.configuration.fahrenheit === true
+                                       || Qt.locale().measurementSystem === Locale.ImperialUSSystem
     property var now: null  // {temp, code, day, sunrise, sunset}
     property string problem: ""
 
@@ -48,7 +50,7 @@ PlasmoidItem {
     }
 
     function refresh() {
-        if (!place)
+        if (!place || (lat === 0 && lon === 0))
             return;
         const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon
             + "&current=temperature_2m,weather_code,is_day&daily=sunrise,sunset&forecast_days=1&timezone=auto"
@@ -77,7 +79,10 @@ PlasmoidItem {
         triggeredOnStart: true
         onTriggered: weather.refresh()
     }
-    onPlaceChanged: refresh()
+    // The town and its coordinates arrive one after another: ask once they've all landed, never for 0, 0
+    onPlaceChanged: Qt.callLater(refresh)
+    onLatChanged: Qt.callLater(refresh)
+    onLonChanged: Qt.callLater(refresh)
 
     Vibes.Plate { anchors.fill: parent; look: look; visible: look.plate }
 

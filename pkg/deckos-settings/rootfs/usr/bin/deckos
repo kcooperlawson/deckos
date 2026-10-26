@@ -1655,8 +1655,8 @@ vibe_cmd() {
       place=${place//[\'\"\\]/}
       qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
         desktops().forEach(function (d) { d.widgets('org.deckos.weather').forEach(function (w) {
-          w.currentConfigGroup = ['General']; w.writeConfig('place', '$place'); w.writeConfig('latitude', $lat);
-          w.writeConfig('longitude', $lon); w.reloadConfig(); }); });" >/dev/null
+          w.currentConfigGroup = ['General']; w.writeConfig('latitude', $lat); w.writeConfig('longitude', $lon);
+          w.writeConfig('place', '$place'); w.reloadConfig(); }); });" >/dev/null
       mkdir -p "${VIBE_STATE%/*}" && echo "$place" > "${VIBE_STATE%/*}/weather-place"
       ok "weather: $place" ;;
     off)
