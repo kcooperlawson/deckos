@@ -2089,7 +2089,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
   deckos wallpaper IMAGE|FOLDER                         the desktop and the lock screen together
   deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
-  deckos disks [list|verify|startup add|remove UUID|repair UUID|health]  disks, and whether drives mount at start-up
+  deckos disks [list|verify|startup add|remove UUID|repair UUID|health|format|create|resize|delete]  disks, partitions, start-up
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits

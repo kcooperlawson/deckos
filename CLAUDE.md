@@ -147,7 +147,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   after a restart, and why not); `add()` test-mounts before keeping an entry and restores fstab exactly if it fails;
   changes only inside the `deckos drives` block (rescan keeps non-NTFS entries there). `unit()` must match
   `systemd-escape -p --suffix=mount`. System Doctor's `startup_drives` uses it (`disks.run = run`). Partition editing
-  (create/delete/resize/format) isn't built yet: it needs the installer's safety rules. Tests: `tests/test_disks.py`.
+  (`format_part`/`create`/`delete`/`resize`, root): `why_not()` is the one rule list (the app offers only what it allows, else says why;
+  root asks again on a fresh read and also mounts NTFS read-only to look for Windows); `--confirm` (label or name) and
+  `--layout` (`fingerprint()`) must match; the table is `sfdisk --dump`ed to `TABLES` first; `--no-reread` + `partx` per
+  partition; no table changes on the disk DecKoOS runs from; only the end of a partition moves. Tests fake every command,
+  run the real tools on image files, and do the whole flow on a loop device only as root. Tests: `tests/test_disks.py`.
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 

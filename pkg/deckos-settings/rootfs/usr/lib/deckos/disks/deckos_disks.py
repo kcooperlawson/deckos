@@ -5,6 +5,9 @@
 The start-up check comes first: a banner that's green when every drive will mount after a restart and says which
 won't (and why) when one wouldn't, with the fix. Changes go through `deckos disks` as root (pkexec); mounting for
 now goes through udisks, as Files does. Reading needs no root and runs off the window's thread.
+
+Format, delete and resize ask for the partition's name to be typed; every change carries the disk's fingerprint as
+this window saw it, so root refuses if anything moved since. What can't be changed says why (disks.why_not).
 """
 import sys
 from pathlib import Path
@@ -14,8 +17,8 @@ sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
 
 from PySide6.QtCore import QObject, QPointF, QProcess, QRectF, QRunnable, Qt, QThreadPool, QTimer, Signal  # noqa: E402
 from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPen  # noqa: E402
-from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout, QScrollArea, QVBoxLayout,  # noqa: E402
-                               QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDoubleSpinBox, QFrame, QGridLayout,  # noqa: E402
+                               QHBoxLayout, QLineEdit, QScrollArea, QVBoxLayout, QWidget)
 
 import disks as D  # noqa: E402
 import hub_style as S  # noqa: E402
@@ -38,6 +41,9 @@ QFrame#disk:hover {{ background: {S.RAISED}; }}
 QFrame#disk QLabel {{ background: transparent; }}
 QLabel#model {{ font-family: "Inter Display", "Inter"; font-size: 20pt; font-weight: 700; }}
 QLabel#chip {{ background: {S.RAISED}; border: 1px solid {S.BORDER}; border-radius: 7px; padding: 3px 9px; }}
+QDoubleSpinBox {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 7px; padding: 5px 8px; }}
+QFrame#erase {{ background: {S.SURFACE}; border: 1px solid #5A2A2E; border-radius: 9px; }}
+QFrame#erase QLabel {{ background: transparent; }}
 """
 
 
@@ -69,7 +75,7 @@ def rgba(color, alpha):
 
 class PartitionBar(QWidget):
     """A disk from start to end: each partition sized by what it holds (a sliver still gets enough room to click),
-    coloured by its file system, free space hatched. Click a partition to see it."""
+    coloured by its file system, free space hatched. Click a partition (or free space) to see it."""
 
     def __init__(self, on_pick):
         super().__init__()
@@ -85,9 +91,9 @@ class PartitionBar(QWidget):
     def widths(self):
         if not self.segments:  # nothing loaded yet
             return []
-        total = sum(p.size if kind == "part" else p for kind, p in self.segments) or 1
+        total = sum(p.size for _, p in self.segments) or 1
         w = self.width()
-        raw = [max(0.045, (p.size if kind == "part" else p) / total) for kind, p in self.segments]
+        raw = [max(0.045, p.size / total) for _, p in self.segments]
         scale = w / sum(raw)
         return [r * scale for r in raw]
 
@@ -100,10 +106,11 @@ class PartitionBar(QWidget):
             r = QRectF(x + 1.5, 1.5, max(4.0, w - 3), self.height() - 3)
             path = QPainterPath()
             path.addRoundedRect(r, 9, 9)
+            picked = self.picked is not None and item == self.picked  # free space is made anew each time
             if kind == "free":
-                p.fillPath(path, QColor(S.SURFACE))
+                p.fillPath(path, QColor(S.RAISED if picked else S.SURFACE))
                 p.setBrush(Qt.NoBrush)  # an outline only (the last band's brush would fill it)
-                p.setPen(QPen(QColor(S.BORDER), 1, Qt.DashLine))
+                p.setPen(QPen(QColor(S.P.accent if picked else S.BORDER), 2 if picked else 1, Qt.DashLine))
                 p.drawPath(path)
                 p.save()
                 p.setClipPath(path)
@@ -111,10 +118,9 @@ class PartitionBar(QWidget):
                 for i in range(int(r.left()) - 80, int(r.right()) + 80, 10):
                     p.drawLine(QPointF(i, r.bottom()), QPointF(i + 70, r.top()))
                 p.restore()
-                text, sub, color = "Free space", D.size(item), S.MUTED
+                text, sub, color = "Free space", D.size(item.size), S.MUTED
             else:
                 color = FS_COLORS.get(item.fstype, "#3A4050")
-                picked = self.picked is not None and item.path == self.picked.path
                 p.fillPath(path, tint(color, 0.30 if picked else 0.18))
                 p.setBrush(Qt.NoBrush)
                 p.setPen(QPen(QColor(color) if picked else tint(color, 0.55), 2 if picked else 1))
@@ -126,7 +132,7 @@ class PartitionBar(QWidget):
                     p.setBrush(QColor(color))
                     p.drawRoundedRect(band, 2, 2)
                 text, sub = item.label or ROLE_NAME.get(item.role, item.name), D.size(item.size)
-                self.rects.append((r, item))
+            self.rects.append((r, item))
             if r.width() > 54:
                 p.setPen(QColor(S.TEXT if kind == "part" else S.SUBTEXT))
                 p.setFont(QFont("Inter", 9, QFont.DemiBold))
@@ -198,6 +204,76 @@ class Load(QRunnable):
             self.signals.done.emit((disks, D.startup(disks, entries, D.context()), D.health_cache(), None))
         except Exception as e:  # shown, never a crash
             self.signals.done.emit(([], [], {}, str(e)))
+
+
+class Change(QDialog):
+    """A change to a disk, said plainly. With `word`, the button stays off until that name is typed (the partition's
+    label, or its name when it has none); the fields (file system, name, size) are filled in by the caller."""
+
+    def __init__(self, parent, title, text, action, word=None, danger=True):
+        super().__init__(parent)
+        self.setObjectName("root")
+        self.setWindowTitle(title)
+        self.setMinimumWidth(500)
+        self.word = word
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(12)
+        v.addWidget(label(title, "title", wrap=False))
+        box = QFrame()
+        box.setObjectName("erase" if danger else "")
+        box.setAttribute(Qt.WA_StyledBackground, True)
+        b = QHBoxLayout(box)
+        b.setContentsMargins(14, 12, 14, 12)
+        b.setSpacing(10)
+        b.addWidget(icon_label("alert" if danger else "info", S.DANGER if danger else S.P.accent, 18), 0, Qt.AlignTop)
+        b.addWidget(label(text, None), 1)
+        v.addWidget(box)
+        self.fields = QGridLayout()
+        self.fields.setHorizontalSpacing(14)
+        self.fields.setVerticalSpacing(8)
+        v.addLayout(self.fields)
+        self.typed = None
+        if word:
+            v.addWidget(label(f"Type <b>{word}</b> to confirm", "sub"))
+            self.typed = QLineEdit()
+            self.typed.setPlaceholderText(word)
+            self.typed.textChanged.connect(self.check)
+            v.addWidget(self.typed)
+        self.go = button(action, "danger" if danger else "primary", self.accept)
+        self.go.setFocusPolicy(Qt.StrongFocus)
+        v.addWidget(row(button("Cancel", slot=self.reject), self.go, stretch=False), 0, Qt.AlignRight)
+        self.check()
+
+    def field(self, name, widget):
+        n = self.fields.rowCount()
+        self.fields.addWidget(label(name, "sub", wrap=False), n, 0)
+        self.fields.addWidget(widget, n, 1)
+        return widget
+
+    def file_systems(self, current=""):
+        box = QComboBox()
+        for fs, (name, *_rest) in D.FORMATS.items():
+            box.addItem(name, fs)
+        box.setCurrentIndex(max(0, box.findData(current if current in D.FORMATS else "ext4")))
+        return self.field("File system", box)
+
+    def name(self, text=""):
+        edit = QLineEdit(text)
+        edit.setPlaceholderText("A name you'll see in Files (optional)")
+        return self.field("Name", edit)
+
+    def size(self, low, high, value):
+        spin = QDoubleSpinBox()
+        spin.setDecimals(1)
+        spin.setSuffix(" GB")
+        spin.setRange(low / 1e9, high / 1e9)
+        spin.setSingleStep(1)
+        spin.setValue(value / 1e9)
+        return self.field("Size", spin)
+
+    def check(self):
+        self.go.setEnabled(self.typed is None or self.typed.text().strip() == self.word)
 
 
 # ------------------------------------------------------------------ the window
@@ -454,7 +530,7 @@ class Disks(QWidget):
         self.chips.addStretch(1)
         part = next((p for p in disk.parts if p.path == part_path), None) or \
             next((p for p in disk.parts if p.role in ("data", "system", "windows")), None) or \
-            (disk.parts[0] if disk.parts else None)
+            (disk.parts[0] if disk.parts else next((item for kind, item in disk.layout() if kind == "free"), None))
         self.pick_part(part)
 
     def pick_part(self, part):
@@ -465,6 +541,9 @@ class Disks(QWidget):
             drop(lay.takeAt(0))
         if part is None:
             lay.addWidget(label("This disk has no partitions.", "sub"))
+            return
+        if isinstance(part, D.Free):
+            self.show_free(part)
             return
         color = FS_COLORS.get(part.fstype, "#3A4050")
         top = QHBoxLayout()
@@ -517,6 +596,8 @@ class Disks(QWidget):
             actions.append(button("Unmount", slot=lambda: self.udisks("unmount", part), icon="eject"))
         if actions:
             lay.addWidget(row(*actions))
+        for w in self.edit_row(part):
+            lay.addWidget(w)
         facts = [("Device", part.path), ("UUID", part.uuid or "—"), ("Type", part.ptype or "—")]
         if part.mountpoints:
             facts.insert(1, ("Mounted at", ", ".join(part.mountpoints[:3]) + ("…" if len(part.mountpoints) > 3 else "")))
@@ -532,9 +613,101 @@ class Disks(QWidget):
             grid.setColumnStretch(i, 1)
         lay.addLayout(grid)
 
+    # -- partition editing
+
+    def edit_row(self, part):
+        """Format, Resize, Delete: the ones DecKoOS may do here, and a line saying why the others aren't there."""
+        entries = D.fstab() if not DEMO else [  # the demo's fstab: the drives its checks say are in it
+            D.Entry(c.part, c.target, "", [], 0, c.managed) for c in self.checks if c.part and c.state != D.INFO]
+        why = {a: D.why_not(part, self.disk, entries, a) for a in ("format", "resize", "delete")}
+        b = []
+        if not why["format"]:
+            b.append(button("Format…", slot=lambda: self.format_dialog(part), icon="refresh"))
+        if not why["resize"]:
+            b.append(button("Resize…", slot=lambda: self.resize_dialog(part), icon="sliders"))
+        if not why["delete"]:
+            b.append(button("Delete…", slot=lambda: self.delete_dialog(part), icon="trash"))
+        if not b:
+            return [label(f"<b>Not changed here:</b> {why['format']}", "muted")]
+        missing = why["resize"] or why["delete"]
+        return [row(*b)] + ([label(missing, "muted")] if missing else [])
+
+    def describe(self, part):
+        return f"{part.label or part.name} ({part.path}, {D.size(part.size)}, {part.fstype or 'not formatted'})"
+
+    def format_dialog(self, part):
+        d = Change(self, f"Format {part.label or part.name}",
+                   f"Everything on {self.describe(part)} is erased. The partition itself stays where it is.",
+                   "Erase and format", D.confirm_word(part))
+        fs, name = d.file_systems(part.fstype), d.name(part.label)
+        if d.exec():
+            self.root(["format", part.path, fs.currentData(), name.text().strip(), "--confirm", d.typed.text().strip(),
+                       "--layout", D.fingerprint(self.disk)], "Formatted", then=self.offer_startup)
+
+    def delete_dialog(self, part):
+        d = Change(self, f"Delete {part.label or part.name}",
+                   f"{self.describe(part)} is taken out of the partition table and becomes free space. Its files "
+                   "can't be opened afterwards. The table is saved first in /var/lib/deckos/disks/tables.",
+                   "Delete partition", D.confirm_word(part))
+        if d.exec():
+            self.root(["delete", part.path, "--confirm", d.typed.text().strip(), "--layout", D.fingerprint(self.disk)],
+                      "Deleted")
+
+    def resize_dialog(self, part):
+        room = self.disk.room_after(part)
+        note = " Windows checks an NTFS drive at its next start after a resize." if part.fstype == "ntfs" else ""
+        d = Change(self, f"Resize {part.label or part.name}",
+                   f"{self.describe(part)}: only its end moves, so it can grow into the free space right after it "
+                   f"({D.size(room) if room else 'none'}) or shrink down to what it holds. Keep a copy of anything "
+                   f"that matters first.{note}", "Resize", D.confirm_word(part))
+        high = part.size + room
+        spin = d.size(D.MIN_PART, high, part.size)
+        if d.exec():
+            want = high if spin.value() >= spin.maximum() else int(spin.value() * 1e9)
+            self.root(["resize", part.path, str(want), "--confirm", d.typed.text().strip(),
+                       "--layout", D.fingerprint(self.disk)], "Resized")
+
+    def show_free(self, gap):
+        lay = self.detail.body
+        top = QHBoxLayout()
+        top.addWidget(icon_label("plus", S.SUBTEXT, 16), 0, Qt.AlignVCenter)
+        top.addWidget(label("Free space", "cardTitle", wrap=False))
+        top.addWidget(label(D.size(gap.size) + (" · the whole disk" if not self.disk.parts else ""), "muted", wrap=False))
+        top.addStretch(1)
+        lay.addLayout(top)
+        why = D.why_not_create(self.disk)
+        if why:
+            lay.addWidget(label(f"<b>No new partition here:</b> {why}", "muted"))
+            return
+        lay.addWidget(label("Nothing uses this space yet. A new partition here leaves everything else on the disk as it "
+                            "is." + ("" if self.disk.table else " The disk gets a partition table (GPT) first."), "muted"))
+        lay.addWidget(row(button("New partition…", "primary", lambda: self.create_dialog(gap), icon="plus")))
+
+    def create_dialog(self, gap):
+        d = Change(self, "New partition", f"A new partition in {D.size(gap.size)} of free space on "
+                   f"{self.disk.model or self.disk.name} ({self.disk.path}). Nothing else on the disk changes.",
+                   "Make partition", danger=False)
+        spin = d.size(D.MIN_PART, gap.size, gap.size)
+        fs, name = d.file_systems("exfat" if self.disk.kind == "usb" else "ext4"), d.name()
+        if d.exec():
+            want = gap.size if spin.value() >= spin.maximum() else int(spin.value() * 1e9)
+            self.root(["create", self.disk.path, str(gap.start), str(want), fs.currentData(), name.text().strip(),
+                       "--layout", D.fingerprint(self.disk)], "Made", then=self.offer_startup)
+
+    def offer_startup(self, out):
+        """After formatting or a new partition: the start-up offer, which test-mounts before keeping anything."""
+        info = dict(line.split(" ", 1) for line in out.splitlines()[1:] if " " in line)  # "uuid …", "fs …"
+        uuid = info.get("uuid", "")
+        if not uuid or info.get("fs") not in D.MOUNTABLE:
+            return
+        d = Change(self, "Mount it at start-up?", "Then it's in the same place after every restart. DecKoOS mounts it "
+                   "once to test it before keeping the setting.", "Mount at start-up", danger=False)
+        if d.exec():
+            self.root(["startup", "add", uuid], "Set to mount")
+
     # -- changes
 
-    def root(self, args, done_text):
+    def root(self, args, done_text, then=None):
         if DEMO:
             self.toast.show_message(f"Demo: deckos disks {' '.join(args)}", "info")
             return
@@ -546,7 +719,9 @@ class Disks(QWidget):
             err = bytes(proc.readAllStandardError()).decode().strip()
             proc.deleteLater()
             if code == 0:
-                self.toast.show_message(out or done_text, "ok", 7000)
+                self.toast.show_message((out.splitlines() or [done_text])[0], "ok", 7000)
+                if then:
+                    then(out)
             elif code != 126:  # 126: the password prompt was closed
                 self.toast.show_message((err or out or "That didn't work").removeprefix("refused: "), "bad", 9000)
             self.refresh()
@@ -592,6 +767,9 @@ def demo():
     stick = K("sdc", "/dev/sdc", int(128 * G), "SanDisk Ultra 128GB", "usb", removable=True, table="dos",
               parts=[P("sdc1", "/dev/sdc1", int(128 * G), 1 << 20, "exfat", "Photos", "4E21-0000", "", "HPFS/NTFS/exFAT")])
     disks = [nvme0, nvme1, ssd, big, stick]
+    for d in disks:
+        for n, p in enumerate(d.parts, 1):
+            p.number = n
     C = D.Check
     checks = [C("/mnt/Media", "/dev/sdb2", D.BAD, "/mnt/Media: marked dirty, so it won't mount",
                 "The PC was cut off while it was in use. Until the mark is cleared it fails at every start. Repair "
@@ -621,17 +799,38 @@ def main():
         out = Path(sys.argv[sys.argv.index("--screenshot") + 1])
         out.mkdir(parents=True, exist_ok=True)
         win.show()
-        app.processEvents()
+
+        def settle():  # wrapped labels lay out over a few passes; one processEvents() grabs them overlapping
+            for _ in range(5):
+                app.processEvents()
+        settle()
         win.grab().save(str(out / "disks-problem.png"))
         big = next(d for d in win.disks if d.name == "sdb")
         win.pick_disk(big)
-        app.processEvents()
+        settle()
         win.grab().save(str(out / "disks-repair.png"))
+        gap = next(item for kind, item in big.layout() if kind == "free")
+        win.pick_part(gap)
+        settle()
+        win.grab().save(str(out / "disks-free-space.png"))
+        stick = next(d for d in win.disks if d.name == "sdc")
+        win.pick_disk(stick)
+        settle()
+        win.grab().save(str(out / "disks-edit.png"))
+        dialog = Change(win, "Format Photos", f"Everything on {win.describe(stick.parts[0])} is erased. The partition "
+                        "itself stays where it is.", "Erase and format", "Photos")
+        dialog.file_systems("exfat")
+        dialog.name("Photos")
+        dialog.typed.setText("Photos")
+        dialog.show()
+        settle()
+        dialog.grab().save(str(out / "disks-format.png"))
+        dialog.close()
         win.pick_disk(win.disks[0])
         win.checks = [c for c in win.checks if c.state != D.BAD]
         win.render_banner()
         win.render_startup()
-        app.processEvents()
+        settle()
         win.grab().save(str(out / "disks-all-good.png"))
         sys.exit(0)
     win.show()
