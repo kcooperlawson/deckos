@@ -98,6 +98,55 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(groups[0]['issues'], [1, 2, 3])
 
 
+class OptOutTests(unittest.TestCase):
+    """Each part can be turned off, and then it really is off."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.conf = Path(self.tmp.name) / 'heal.conf'
+        self.hist = Path(self.tmp.name) / 'heal.jsonl'
+        self.patches = [patch.object(heal, 'SETTINGS', self.conf), patch.object(heal_report, 'HISTORY', self.hist),
+                        patch.dict(heal.os.environ, {'DECKOS_HEAL_HISTORY': str(self.hist)})]
+        for x in self.patches:
+            x.start()
+
+    def tearDown(self):
+        for x in self.patches:
+            x.stop()
+        self.tmp.cleanup()
+
+    def test_all_on_until_turned_off(self):
+        self.assertEqual(heal.settings(), {'suggest': 'on', 'remember': 'on', 'reports': 'on'})
+        heal.set_setting('reports', 'off')
+        self.assertEqual(heal.settings()['reports'], 'off')
+        with self.assertRaises(heal.Refused):
+            heal.set_setting('reports', 'maybe')
+
+    def test_no_suggestions_means_no_fix_tool(self):
+        heal.set_setting('suggest', 'off')
+        t = assistant.Tools(confirm=lambda *a: True)
+        self.assertNotIn('use_fix', [s['function']['name'] for s in t.schemas()])
+
+    def test_not_remembering_writes_nothing(self):
+        heal.set_setting('remember', 'off')
+        heal.remember('rebuild-font-cache', 'applied')
+        heal_report.main(['outcome', 'rebuild-font-cache', 'worked'])
+        self.assertFalse(self.hist.exists())
+
+    def test_reports_off_makes_none(self):
+        heal_report.record('rebuild-font-cache', 'worked', path=self.hist)
+        heal.set_setting('reports', 'off')
+        with patch.object(heal_report, 'hardware') as hw:
+            heal_report.main(['report'])
+        hw.assert_not_called()
+
+    def test_forget(self):
+        heal_report.record('rebuild-font-cache', 'worked', path=self.hist)
+        heal.main(['forget'])
+        self.assertFalse(self.hist.exists())
+
+
 class DraftTests(unittest.TestCase):
     GROUP = {'finding': 'unit:bluetooth', 'recipe': 'restart-system-service', 'reports': 9, 'worked': 8,
              'vendors': {'amd': 5, 'nvidia': 4}, 'issues': [1]}

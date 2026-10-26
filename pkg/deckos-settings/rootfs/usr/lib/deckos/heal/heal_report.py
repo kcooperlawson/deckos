@@ -193,8 +193,14 @@ def local_model(prompt):
 
 
 def main(argv):
+    sys.path.insert(0, str(HERE))
+    import heal
     if argv[:1] == ["outcome"] and len(argv) >= 3 and argv[2] in ("worked", "failed"):
-        record(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
+        if heal.is_on("remember"):
+            record(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
+        return 0
+    if argv[:1] == ["report"] and not heal.is_on("reports"):
+        print("Fix reports are turned off (DecKoOS Hub > System > Fixes, or: deckos heal settings reports on).")
         return 0
     if argv[:1] == ["history"]:
         for e in history()[-20:]:

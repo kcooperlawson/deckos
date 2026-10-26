@@ -8,6 +8,7 @@ New recipes are written by people and reviewed like any code: that's the line be
 with root. No Qt; tests/test_heal.py throws hostile input at it.
 
     heal.py list [--json] | plan ID [KEY=VALUE...] | apply ID [KEY=VALUE...] [--finding=KEY]   (root recipes: as root)
+    heal.py settings [suggest|remember|reports on|off] | forget
     heal.py outcome ID worked|failed [FINDING] | history | report [--open] | triage    (heal_report.py)
 """
 import json
@@ -95,6 +96,41 @@ PROGRAMS = {"pacman": {"-S"}, "systemctl": {"restart", "start", "enable", "disab
             "fc-cache": {"-f"}, "flatpak": {"repair"}}
 ID_RE = re.compile(r"^[a-z][a-z0-9-]{2,40}$")
 LITERAL_RE = re.compile(r"^[A-Za-z0-9@%+=:,./_-]+$")
+
+
+# The person's say over all of this (Hub > System > Fixes, and Welcome's privacy step): each one can be turned off.
+#   suggest:  the Assistant may offer these fixes (it still asks every time)
+#   remember: fixes and how they went are kept on this PC (reports are made from it; nothing leaves by itself)
+#   reports:  DecKoOS may offer to make a report for GitHub, which the person reads and submits themselves
+SETTINGS = Path(os.environ.get("DECKOS_HEAL_SETTINGS") or Path.home() / ".config/deckos/heal.conf")
+DEFAULTS = {"suggest": "on", "remember": "on", "reports": "on"}
+
+
+def settings(path=None):
+    out = dict(DEFAULTS)
+    try:
+        for line in Path(path or SETTINGS).read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() in out and v.strip() in ("on", "off"):
+                out[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return out
+
+
+def is_on(key, path=None):
+    return settings(path)[key] == "on"
+
+
+def set_setting(key, value, path=None):
+    if key not in DEFAULTS or value not in ("on", "off"):
+        raise Refused(f"usage: deckos heal settings {'|'.join(DEFAULTS)} on|off")
+    cur = settings(path)
+    cur[key] = value
+    f = Path(path or SETTINGS)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text("# DecKoOS fixes: what you allow (DecKoOS Hub > System > Fixes)\n" +
+                 "".join(f"{k}={v}\n" for k, v in cur.items()))
 
 
 class Refused(Exception):
@@ -223,11 +259,25 @@ def snapshot_before(title):
 
 def remember(recipe, result, finding=""):
     try:
+        if not is_on("remember", asker_settings()):
+            return
         sys.path.insert(0, str(HERE))
         import heal_report
         heal_report.record(recipe, result, finding)
     except Exception:  # remembering is a help; a fix never fails over it
         pass
+
+
+def asker_settings():
+    """The settings of the person a root fix ran for (pkexec or sudo), not root's."""
+    import pwd
+    uid = os.environ.get("PKEXEC_UID") or os.environ.get("SUDO_UID")
+    if os.geteuid() == 0 and (uid or "").isdigit() and not os.environ.get("DECKOS_HEAL_SETTINGS"):
+        try:
+            return Path(pwd.getpwuid(int(uid)).pw_dir) / ".config/deckos/heal.conf"
+        except KeyError:
+            pass
+    return None
 
 
 def apply(p, finding=""):
@@ -272,6 +322,18 @@ def main(argv):
                 for k, r in RECIPES.items():
                     blanks = " ".join(f"{p}=…" for p in r["params"])
                     print(f"  {k:<24} {r['title']}  {blanks}")
+            return 0
+        if argv[:1] == ["settings"]:
+            if len(argv) == 3:
+                set_setting(argv[1], argv[2])
+            for k, v in settings().items():
+                print(f"  {k:<9} {v}")
+            return 0
+        if argv[:1] == ["forget"]:
+            sys.path.insert(0, str(HERE))
+            import heal_report
+            heal_report.HISTORY.unlink(missing_ok=True)
+            print("forgotten: this PC no longer remembers any fixes")
             return 0
         if argv[:1] in (["outcome"], ["history"], ["report"], ["triage"], ["draft"]):
             sys.path.insert(0, str(HERE))

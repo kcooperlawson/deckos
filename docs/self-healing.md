@@ -21,6 +21,18 @@ maintainer model) can diagnose, explain, pick a fix and fill in its blanks. It n
 Snapshots undo a broken system, not a compromised one (data can leave, and `/home` isn't rolled back); that's why
 the walls stop bad changes before they run rather than relying on Undo afterwards.
 
+## Your say
+
+Said up front, in Welcome's privacy step on first login and in DecKoOS Hub > System > Fixes, with a switch for each
+part (`~/.config/deckos/heal.conf`, or `deckos heal settings KEY on|off`):
+
+- **Suggest fixes**: the Assistant may offer the reviewed fixes. Off: it isn't given them at all.
+- **Remember fixes on this PC**: which fixes ran and whether they worked. Off: nothing is written. "Forget
+  everything" (`deckos heal forget`) deletes what's there.
+- **Offer to make fix reports**. Off: `deckos heal report` makes none.
+
+Whatever the switches say, nothing runs without a yes, and nothing is ever sent by DecKoOS itself.
+
 ## Phases
 
 1. **Done:** the recipe library, `deckos heal`, and the Assistant's `use_fix` tool.

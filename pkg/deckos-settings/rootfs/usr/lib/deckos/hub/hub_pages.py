@@ -1065,6 +1065,9 @@ class SystemPage(Page):
             "systemsettings", ["kcm_firewall"]), icon="external")))
         self.lay.addWidget(fw)
 
+        from hub_heal import HealCard  # self-healing, said up front with its switches
+        self.lay.addWidget(HealCard(self.hub.toast))
+
         from hub_kids import KidsCard  # here: hub_kids builds on this module's widgets
         self.kids = KidsCard(self.hub)
         self.lay.addWidget(self.kids)
