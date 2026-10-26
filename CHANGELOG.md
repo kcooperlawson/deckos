@@ -3,7 +3,7 @@
 What each release brought, newest first. Feature releases (X.Y.0) have the notes DecKoOS shows in What's New;
 patch releases (X.Y.Z) are fixes. Generated from the release notes by `assets/changelog.py`.
 
-## 0.14.0: Fixes you can trust
+## 0.14.0: Fixes you can trust (2026-10-26)
 
 DecKoOS fixes common problems itself, safely and with Undo, and Deck can look things up on the web.
 
