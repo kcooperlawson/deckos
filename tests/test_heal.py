@@ -25,7 +25,9 @@ class RecipeTests(unittest.TestCase):
             with self.subTest(recipe=rid):
                 p = heal.plan(rid, SAMPLES.get(rid, {}), check=IN_REPOS, home='/home/someone')
                 self.assertTrue(p['steps'])
-                self.assertEqual(p['snapshot'], p['root'] and rid != 'undo-update')
+                # Root fixes snapshot first, except undo-update (it is the snapshot) and repair-drives (only the
+                # NTFS drives change, which a system snapshot doesn't hold)
+                self.assertEqual(p['snapshot'], p['root'] and rid not in ('undo-update', 'repair-drives'))
 
     def test_hostile_blanks(self):
         for rid, values in (('install-package', {'package': 'vlc; rm -rf /'}), ('install-package', {'package': 'yay'}),

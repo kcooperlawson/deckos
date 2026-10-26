@@ -65,6 +65,11 @@ RECIPES = {
     "relink-drives": {
         "title": "Find your Windows drives again", "why": "A drive isn't mounted", "params": {}, "root": True,
         "steps": [["deckos", "drives", "rescan"]]},
+    "repair-drives": {
+        "title": "Repair drives that weren't closed properly", "why": "The PC was cut off while they were in use, so "
+        "Linux won't mount them (a hibernated Windows drive is left alone)", "params": {}, "root": True,
+        "snapshot": False,  # it only touches the NTFS drives, which a system snapshot doesn't hold
+        "steps": [["deckos", "drives", "repair"]]},
     "undo-update": {
         "title": "Undo update {snapshot}", "why": "Something broke after an update (from the next start)",
         "params": {"snapshot": ("int", 1, 999999)}, "root": True, "snapshot": False,  # it is the snapshot

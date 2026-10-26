@@ -76,6 +76,15 @@ run = ["deckos", "drives", "doctor"]
 how = "terminal"
 
 [[action]]
+id = "drives-repair"
+title = "Repair a drive that won't mount"
+summary = "Clears the mark a drive gets when the PC was cut off, then mounts it again"
+keywords = "ntfs drive disk wont mount missing dirty repair fix power cut froze crash chkdsk"
+icon = "drives"
+run = ["sudo", "deckos", "drives", "repair"]
+how = "terminal"
+
+[[action]]
 id = "game-doctor"
 title = "Fix a game that won't start"
 summary = "Game Doctor looks at why the last game closed"

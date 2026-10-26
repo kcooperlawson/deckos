@@ -88,6 +88,34 @@ def failed_units():
     return out
 
 
+def ntfs_drives():
+    """NTFS drives the kernel refused this boot (deckos drives dirty): dirty after the PC was cut off, which a vetted
+    fix clears, or hibernated by Windows, which only Windows can let go of."""
+    _, text = run(["deckos", "drives", "dirty"])
+    out = []
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 3 or parts[0] not in ("dirty", "hibernated"):
+            continue
+        state, mp, dev = parts[:3]
+        key = f"ntfs:{mp}"
+        if state == "dirty":
+            out.append(Finding(key, BAD, f"{mp} won't mount",
+                               "The PC was switched off or froze while this drive was in use, so it's marked as not "
+                               "closed properly and Linux won't mount it, at every start, until that's cleared. Repair "
+                               "clears the mark and mounts it again. Run chkdsk /f on it in Windows when you can: "
+                               "clearing the mark doesn't check the files.",
+                               evidence=[f"{dev}: volume is dirty"],
+                               fixes=[Fix("Repair", recipe("repair-drives", finding=key),
+                                          "Clears the mark and mounts the drive again")]))
+        else:
+            out.append(Finding(key, WARN, f"{mp} is held by Windows",
+                               "Windows saved its session on this drive (Fast Startup or hibernation), so Linux leaves "
+                               "it alone. Start Windows, open Terminal as Administrator, run powercfg /h off, then Shut "
+                               "Down (not Restart).", evidence=[f"{dev}: Windows is hibernated"]))
+    return out
+
+
 UNIT_NAMES = {"drkonqi-coredump-pickup": "KDE's crash reporter", "NetworkManager": "Networking",
               "bluetooth": "Bluetooth", "sddm": "The login screen", "ollama": "Local AI (Ollama)",
               "deckos-gpu": "DecKoOS's graphics card tuning", "deckos-display": "DecKoOS's display fix",
@@ -435,7 +463,7 @@ def journal_errors(known):
                     "what they mean for you.", evidence=[f"{n}×  {l}" for l, n in top])]
 
 
-CHECKS = [snapshot_boot, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
+CHECKS = [snapshot_boot, ntfs_drives, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
           restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 
@@ -447,9 +475,20 @@ def checkup():
             findings += check()
         except Exception as e:  # one broken check mustn't hide the others
             findings.append(Finding(f"check:{check.__name__}", INFO, f"Couldn't check {check.__name__}", str(e)))
+    # A drive's own finding says more than its failed mount unit: leave that one out
+    drives = {f.key[5:] for f in findings if f.key.startswith("ntfs:")}
+    findings = [f for f in findings if not (f.key.startswith("unit:system:") and mount_point(f.key[12:]) in drives)]
     known = [f.key.split(":", 2)[-1] for f in findings if f.key.startswith(("unit:", "missing:"))]
     findings += journal_errors(known)
     return sorted(findings, key=lambda f: ORDER[f.level])
+
+
+def mount_point(unit):
+    """/mnt/BIG for mnt-BIG.mount or mnt-BIG.automount (systemd's path escaping undone), else ""."""
+    m = re.fullmatch(r"(.+)\.(auto)?mount", unit)
+    if not m:
+        return ""
+    return "/" + re.sub(r"\\x([0-9a-f]{2})", lambda x: chr(int(x.group(1), 16)), m.group(1).replace("-", "/"))
 
 
 def explain(finding, model=None):

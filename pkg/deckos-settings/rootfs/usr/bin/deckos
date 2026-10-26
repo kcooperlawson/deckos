@@ -342,16 +342,68 @@ drives_list() {
 drives_doctor() {
   section "NTFS health"
   local bad
-  bad=$(journalctl -k -b --no-pager 2>/dev/null | grep -iE 'ntfs3.*(dirty|hiber|force)' | tail -5 || true)
-  if [[ -z $bad ]]; then ok "no dirty/hibernated NTFS volumes reported this boot"; else
-    warn "Windows left these volumes 'dirty' or hibernated, so Linux won't write to them:"
-    sed 's/^/    /' <<<"$bad"
+  bad=$(drives_dirty)
+  if [[ -z $bad ]]; then ok "no NTFS drive is held back as dirty or hibernated"; else
+    warn "These NTFS drives weren't closed properly, so Linux won't mount them:"
+    cut -f1,2 <<<"$bad" | sed 's/^/    /'
     say ""
-    say "  Fix it from Windows (once): open Terminal as Administrator and run"
-    say "    ${C_B}powercfg /h off${C_0}     (turns off Fast Startup + hibernation)"
-    say "  then Shut Down Windows normally and boot DecKoOS."
-    say "  If Windows is NOT hibernated and a drive is just marked dirty: sudo ntfsfix -d /dev/sdXN"
+    if grep -q '^hibernated' <<<"$bad"; then
+      say "  ${C_B}Hibernated${C_0}: Windows saved its session on the drive (Fast Startup). Start Windows, open"
+      say "  Terminal as Administrator, run ${C_B}powercfg /h off${C_0}, then Shut Down (not Restart)."
+    fi
+    if grep -q '^dirty' <<<"$bad"; then
+      say "  ${C_B}Dirty${C_0}: the PC was switched off or froze while the drive was in use (Linux or Windows)."
+      say "  ${C_B}sudo deckos drives repair${C_0} clears the mark and mounts them again; run chkdsk /f on them in"
+      say "  Windows when you can, since clearing the mark doesn't check the files."
+    fi
   fi
+}
+
+# This PC's fstab NTFS drives that aren't mounted because the kernel refused them this boot, one per line:
+# dirty|hibernated <TAB> mount point <TAB> device <TAB> fstab options. Read only (System Doctor and repair use it).
+drives_dirty() {
+  local log uuid mp type opts dev kname
+  log=$(journalctl -k -b --no-pager -o cat 2>/dev/null | grep -E '^ntfs3\(' || true)
+  while read -r uuid mp type opts; do
+    dev=${DECKOS_BY_UUID:-/dev/disk/by-uuid}/${uuid#UUID=}
+    [[ -e $dev ]] || continue
+    findmnt -n "$mp" >/dev/null 2>&1 && continue
+    kname=$(basename "$(readlink -f "$dev")")
+    if grep -qiE "^ntfs3\($kname\):.*hiber" <<<"$log"; then printf 'hibernated\t%s\t%s\t%s\n' "$mp" "$dev" "$opts"
+    elif grep -qE "^ntfs3\($kname\): volume is dirty" <<<"$log"; then printf 'dirty\t%s\t%s\t%s\n' "$mp" "$dev" "$opts"; fi
+  done < <(awk '$1 ~ /^UUID=/ && $3 ~ /^ntfs/ {print $1, $2, $3, $4}' "${DECKOS_FSTAB:-/etc/fstab}")
+}
+
+# A drive marked dirty (the PC was cut off while it was in use) won't mount with ntfs3, at every start, until the
+# mark is cleared. Clears it on the drives drives_dirty finds, then mounts them. Never on a hibernated Windows
+# volume: clearing that would throw away the session Windows saved there.
+drives_repair() {
+  need_root drives repair
+  section "Repairing NTFS drives"
+  local state mp dev opts unit n=0 any=0
+  while IFS=$'\t' read -r state mp dev opts; do
+    any=1
+    if [[ $state == hibernated ]]; then
+      warn "$mp: Windows is hibernated on it. Start Windows, run powercfg /h off as Administrator, then Shut Down"
+      continue
+    fi
+    if ! command -v ntfsfix >/dev/null; then
+      say "Installing ntfsprogs (it has ntfsfix)…"
+      pacman -S --needed --noconfirm ntfsprogs >/dev/null || { err "couldn't install ntfsprogs"; exit 1; }
+    fi
+    if ! ntfsfix -d "$dev" >/dev/null 2>&1; then err "$mp: ntfsfix couldn't clear the mark: run chkdsk /f on it in Windows"; continue; fi
+    unit=$(systemd-escape -p --suffix=mount "$mp")
+    systemctl reset-failed "$unit" "${unit%.mount}.automount" 2>/dev/null || true
+    if [[ ,$opts, == *,x-systemd.automount,* ]]; then systemctl restart "${unit%.mount}.automount"; else systemctl start "$unit"; fi
+    if findmnt -n "$mp" >/dev/null 2>&1 || systemctl is-active -q "${unit%.mount}.automount"; then
+      ok "$mp repaired and back"; n=$((n + 1))
+      pulse drives "Repaired drive $mp" --detail "It was marked dirty after the PC was cut off" --app Drives
+    else
+      err "$mp: the mark is cleared but it still won't mount: journalctl -b -u $unit"
+    fi
+  done < <(drives_dirty)
+  (( any )) || ok "no NTFS drive is waiting on a repair"
+  (( n == 0 )) || say "Run chkdsk /f on them next time you're in Windows: clearing the mark doesn't check the files."
 }
 
 drives_cmd() {
@@ -360,7 +412,9 @@ drives_cmd() {
     rescan) drives_rescan ;;
     fstab) shift; drives_fstab "$@" ;;
     doctor) drives_doctor ;;
-    *) err "usage: deckos drives [list|rescan|doctor|fstab]"; exit 2 ;;
+    repair) drives_repair ;;
+    dirty) drives_dirty ;;
+    *) err "usage: deckos drives [list|rescan|doctor|repair|fstab]"; exit 2 ;;
   esac
 }
 
@@ -2009,7 +2063,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
 
   deckos display [status|levels|set N|watch|monitors|recommend]
                                                         display blackout fix ladder
-  deckos drives  [list|rescan|doctor]                   your NTFS drives (no reformatting)
+  deckos drives  [list|rescan|doctor|repair]            your NTFS drives (no reformatting)
   deckos session gaming|desktop                         switch Gaming Mode <-> Desktop
   deckos gaming detect                                  which output Gaming Mode uses
   deckos steam-ntfs                                     make Steam libraries on NTFS work with Proton
