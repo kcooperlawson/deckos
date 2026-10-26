@@ -340,7 +340,10 @@ left out rather than guessed. pci.ids has comments inside vendor blocks: skip th
 has a Benchmarks shortcut. `bench_worker.py` uses JSON-line events so probing and benchmarks run
 outside the GUI thread; it creates a process group for cancellation. `bench_data.py` validates
 history and filters failed/incompatible results out of trends and comparison verdicts.
-`bench_app.py --demo --screenshot DIR` renders all four pages with sample data. Tests and remaining
+`bench_app.py --demo --screenshot DIR` renders all four pages with sample data. The DecKoOS Score (`score.py`, no Qt,
+`VERSION`, `tests/test_bench_score.py`) is the Score page, `deckos bench score` and the worker's `score` command
+(`runners.score_runners()`: every system test, `PinnedAI` on `score.AI_MODEL`). Never change version 1's references or
+weights: bump `VERSION` instead, since history and cross-PC comparisons depend on it. Tests and remaining
 hardware validation are documented in `docs/bench.md`; do not present BeamNG, fio or vkmark as
 validated on hardware yet. Nothing in Bench should silently change system tuning settings.
 

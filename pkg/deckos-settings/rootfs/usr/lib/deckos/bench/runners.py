@@ -246,6 +246,22 @@ class LocalAI(Runner):
             self.api("/api/generate", {"model": self.model, "keep_alive": 0}, timeout=10)
 
 
+class PinnedAI(LocalAI):
+    """The DecKoOS Score's AI part: always the score's own model, so tokens per second compare across PCs."""
+
+    def available(self):
+        ok, why = Runner.available(self)
+        if not ok:
+            return ok, why
+        try:
+            names = {m["name"] for m in self.api("/api/tags", timeout=5).get("models", [])}
+        except OSError:
+            return False, "Ollama isn't running"
+        if self.model not in names and f"{self.model}:latest" not in names:
+            return False, f"the score's model isn't installed: ollama pull {self.model}"
+        return True, ""
+
+
 # ------------------------------------------------------------------ games that benchmark themselves
 
 def steam_libraries():
@@ -344,5 +360,11 @@ def parse_bananabench(text, result):
 
 
 SYSTEM = [Cpu7z, Memory, Disk, Gpu, LocalAI]
+
+
+def score_runners():
+    """What a DecKoOS Score run measures: every system test, the AI part on the score's own model."""
+    from score import AI_MODEL
+    return [PinnedAI(AI_MODEL) if cls is LocalAI else cls() for cls in SYSTEM]
 GAMES = [BeamNG]
 ALL = {cls.key: cls for cls in SYSTEM + GAMES}

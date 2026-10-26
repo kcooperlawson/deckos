@@ -3,19 +3,40 @@
 Bench has a system suite that needs no games, plus a separate game suite. It saves every
 repetition and CPU/GPU sensor readings, and writes self-contained HTML reports that work offline.
 
+## The DecKoOS Score
+
+One number for the whole PC, like 3DMark's (`score.py`). Each part scores its key measurements against a fixed
+reference PC that scores 5,000 in every part:
+
+| Part | Measurements (weight) | Share of the score |
+|---|---|---|
+| CPU | 7-Zip all cores (70%), one core (30%) | 25% |
+| Graphics | vkmark (100%) | 30% |
+| Local AI | writing (70%) and reading (30%) tokens/s on `qwen3:0.6b` | 20% |
+| Memory | bandwidth (60%), latency (40%) | 12.5% |
+| Storage | sequential read/write, random 4K read/write at QD32, random 4K read at QD1 | 12.5% |
+
+Parts and the total are weighted geometric means: twice as fast is twice the points, and no measurement can hide
+behind another. Each measurement is the median of three repetitions; the range shown is the score of the lowest and
+highest repetition. A full score needs all five parts: the local AI part only counts with the score's own model
+(tokens per second can't be compared across models), so other runs show a *partial* score. The reference values are
+fixed estimates for a mid-range 2024 gaming PC, not one measured machine. The formula is versioned (`score.VERSION`):
+scores of one version compare across PCs and over time, and a new version is a new scale, never a quiet rescoring.
+Saved runs carry their score; older runs are scored when shown.
+
 ## Native application
 
 Open **DecKoOS Bench** from the application launcher, `deckos-bench`, `deckos bench app`,
 or the **Benchmarks** button on the Hub's System page after installing the updated package.
 It shares the Hub's PySide6 widgets, palette, typography and icons.
 
-- **Overview:** recent sessions, latest CPU and memory measurements, a selectable historical trend,
-  and the current hardware and software details.
-- **Run benchmark:** system/game presets or individual tests, repetition count, a session name,
-  availability checks, progress, elapsed time and a stop button.
-- **History:** search saved sessions, inspect individual measurements and environment details,
+- **Score:** the DecKoOS Score (below): your latest, the change since the last one, your best, each part's
+  score, and every score so far. **Run DecKoOS Score** runs it; so does `deckos bench score`.
+- **History:** search saved sessions (with their scores), inspect individual measurements and environment details,
   choose a baseline and export a standalone HTML report.
-- **Compare runs:** choose a baseline and candidate, see changes and confidence-based verdicts,
+- **Lab:** system/game presets or individual tests, repetition count, a session name, the A/B experiment,
+  availability checks, progress, elapsed time and a stop button.
+- **Compare:** choose a baseline and candidate, see changes and confidence-based verdicts,
   inspect recorded environment differences and export the comparison.
 
 The UI stays responsive while a separate worker probes the hardware or runs a benchmark.

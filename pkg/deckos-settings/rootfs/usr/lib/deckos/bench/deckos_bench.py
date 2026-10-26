@@ -34,6 +34,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("app", help="open the native DecKoOS Bench application")
     commands.add_parser("list", help="show available benchmarks and saved runs")
+    sub = commands.add_parser("score", help="the DecKoOS Score: every system test, one number (about 12 min)")
+    sub.add_argument("--show", metavar="RUN", help="the score of a saved run (name, path, last) instead of a new one")
     for command in ("system", "games", "run"):
         sub = commands.add_parser(command)
         if command == "run":
@@ -67,6 +69,24 @@ def main(argv=None):
         for r in runs[-10:]:
             print("  " + r.parent.name)
         return 0
+    if args.command == "score":
+        import score as SC
+        from runners import score_runners
+        if args.show:
+            run, _ = load(args.show)
+        else:
+            run = run_suite(score_runners(), repeat=3, label="DecKoOS Score", say=print)
+            run["score"] = SC.score(run)
+            folder = save(run, "score")
+            (folder / "report.html").write_text(run_report(run), encoding="utf-8")
+        s = SC.score(run)
+        number, caption = SC.headline(s)
+        print(f"\n{caption}: {number}" + (f"  ({s['low']:,} – {s['high']:,})" if s.get("low") else ""))
+        for key in SC.ORDER:
+            p = s["parts"][key]
+            print(f"  {SC.PARTS[key][0]:10} " + (f"{p['score']:>7,}  {p['score'] / SC.BASE:.1f}× the reference"
+                                                 if "score" in p else f"{'—':>7}  {p['missing']}"))
+        return 0 if s["partial"] is not None else 1
     if args.command == "experiment":
         keys = list(dict.fromkeys(args.tests.split(",")))
         unknown = [k for k in keys if k not in ALL]

@@ -106,11 +106,11 @@ class HistoryTests(unittest.TestCase):
         from copy import deepcopy
         from bench_data import comparisons
         a, b = deepcopy(self.runs[0]), deepcopy(self.runs[-1])
-        self.assertEqual(len(comparisons(a, b)), 6)
+        self.assertEqual(len(comparisons(a, b)), 12)  # the demo is a full DecKoOS Score run: 12 measurements
         b['results'][0]['error'] = 'failed'
         b['results'][1]['metrics']['triad']['unit'] = 'different'
         rows = comparisons(a, b)
-        self.assertEqual(len(rows), 4)
+        self.assertEqual(len(rows), 9)  # CPU's two left out (failed), triad left out (different unit)
         self.assertNotIn('All cores (total)', [r['name'] for r in rows])
 
     def test_same_second_saves_do_not_overwrite(self):

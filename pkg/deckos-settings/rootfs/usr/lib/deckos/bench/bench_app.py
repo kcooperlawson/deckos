@@ -23,10 +23,12 @@ from bench_data import comparisons, metrics, series, title
 from report import ENV_NAMES, fmt, run_report, compare_report
 from bench_experiment import SETTINGS
 from runners import ALL, SYSTEM
+import score as SC
 
 ICONS = {'cpu': 'cpu', 'memory': 'memory', 'disk': 'drives', 'gpu': 'gpu', 'ai': 'ai', 'game': 'gaming'}
-NAV = [('overview', 'Overview', 'grid'), ('run', 'Run benchmark', 'play'),
-       ('history', 'History', 'clock'), ('compare', 'Compare runs', 'sliders')]
+NAV = [('overview', 'Score', 'gauge'), ('history', 'History', 'clock'),
+       ('run', 'Lab', 'flask'), ('compare', 'Compare', 'sliders')]
+PART_ICONS = {'cpu': 'cpu', 'memory': 'memory', 'storage': 'drives', 'graphics': 'gpu', 'ai': 'ai'}
 
 
 def stylesheet():
@@ -46,6 +48,13 @@ QFrame#hero {{ border: 1px solid #354166; border-radius: 12px;
  background: qlineargradient(x1:0,y1:1,x2:1,y2:0,stop:0 #182131,stop:0.65 #1A2036,stop:1 #29213D); }}
 QFrame#hero QLabel {{ background: transparent; }}
 QLabel#badge {{ background: #23354A; color: #9DC0FF; border-radius: 5px; padding: 4px 8px; font-size: 8pt; font-weight: 600; }}
+QLabel#up {{ background: rgba(61,214,140,0.14); color: {S.SUCCESS}; border-radius: 6px; padding: 4px 9px; font-weight: 600; }}
+QLabel#down {{ background: rgba(255,107,107,0.14); color: {S.DANGER}; border-radius: 6px; padding: 4px 9px; font-weight: 600; }}
+QLabel#flat {{ background: {S.RAISED}; color: {S.SUBTEXT}; border-radius: 6px; padding: 4px 9px; font-weight: 600; }}
+QLabel#partScore {{ font-family: "Inter Display"; font-size: 21pt; font-weight: 700; }}
+QLabel#scoreTitle {{ font-family: "Inter Display"; font-size: 22pt; font-weight: 700; }}
+QFrame#part {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 12px; }}
+QFrame#part QLabel {{ background: transparent; }}
 '''
 
 
@@ -102,6 +111,83 @@ class Hero(QFrame):
             p.drawLine(QPointF(x-1, y+1), QPointF(x+1, y-1))
 
 
+class ScoreRing(QWidget):
+    """The score in a gradient ring. The arc is score / (score + the reference), so it fills with the score but never
+    completes: the reference PC sits at half, twice the reference at two thirds."""
+
+    def __init__(self):
+        super().__init__()
+        self.value, self.caption, self.detail = None, 'No score yet', ''
+        self.setFixedSize(250, 250)
+        self.setAccessibleName('DecKoOS Score')
+
+    def set(self, value, caption, detail=''):
+        self.value, self.caption, self.detail = value, caption, detail
+        self.setAccessibleDescription(f'{caption}: {value:,}' if value else caption)
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        r = QRectF(18, 18, self.width() - 36, self.height() - 36)
+        start, span = 225 * 16, -270 * 16
+        p.setPen(QPen(QColor(S.BORDER), 14, Qt.SolidLine, Qt.RoundCap))
+        p.drawArc(r, start, span)
+        if self.value:
+            frac = self.value / (self.value + SC.BASE)
+            grad = QLinearGradient(r.topLeft(), r.bottomRight())
+            grad.setColorAt(0, QColor(S.P.accent))
+            grad.setColorAt(1, QColor(S.P.grad_b))
+            glow = QColor(S.P.accent)
+            glow.setAlpha(45)
+            p.setPen(QPen(glow, 26, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(r, start, int(span * frac))
+            p.setPen(QPen(grad, 14, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(r, start, int(span * frac))
+        p.setPen(QColor(S.TEXT))
+        p.setFont(QFont('Inter Display', 34, QFont.Bold))
+        p.drawText(QRectF(0, 78, self.width(), 60), Qt.AlignCenter, f'{self.value:,}' if self.value else '—')
+        p.setFont(QFont('Inter', 9, QFont.DemiBold))
+        p.setPen(QColor(S.P.accent))
+        p.drawText(QRectF(0, 140, self.width(), 20), Qt.AlignCenter, self.caption.upper())
+        p.setFont(QFont('Inter', 9))
+        p.setPen(QColor(S.SUBTEXT))
+        p.drawText(QRectF(0, 162, self.width(), 20), Qt.AlignCenter, self.detail)
+        p.end()
+
+
+class Bar(QWidget):
+    """A part's score against the reference: the bar's tick is the reference PC."""
+
+    def __init__(self):
+        super().__init__()
+        self.value = 0
+        self.setFixedHeight(10)
+
+    def set(self, value):
+        self.value = value or 0
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        full = SC.BASE * 3  # the bar's end: three times the reference
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(S.BORDER))
+        p.drawRoundedRect(QRectF(0, 2, w, h - 4), 3, 3)
+        if self.value:
+            grad = QLinearGradient(0, 0, w, 0)
+            grad.setColorAt(0, QColor(S.P.accent))
+            grad.setColorAt(1, QColor(S.P.grad_b))
+            p.setBrush(grad)
+            p.drawRoundedRect(QRectF(0, 2, max(6, w * min(1, self.value / full)), h - 4), 3, 3)
+        x = w * SC.BASE / full
+        p.setPen(QPen(QColor(S.SUBTEXT), 2))
+        p.drawLine(QPointF(x, 0), QPointF(x, h))
+        p.end()
+
+
 class Trend(QWidget):
     """Date-spaced history points; no invented interpolation or combined scores."""
     def __init__(self):
@@ -145,8 +231,11 @@ class Trend(QWidget):
         fill.lineTo(pts[0].x(), area.bottom())
         fill.closeSubpath()
         gradient = QLinearGradient(0, area.top(), 0, area.bottom())
-        gradient.setColorAt(0, QColor(76, 141, 255, 65))
-        gradient.setColorAt(1, QColor(76, 141, 255, 0))
+        top, bottom = QColor(S.P.accent), QColor(S.P.accent)
+        top.setAlpha(65)
+        bottom.setAlpha(0)
+        gradient.setColorAt(0, top)  # the accent, like the line
+        gradient.setColorAt(1, bottom)
         p.fillPath(fill, gradient)
         p.setPen(QPen(QColor(S.P.accent), 2.5))
         p.drawPath(path)
@@ -241,7 +330,7 @@ class Bench(QWidget):
         sl.setSpacing(6)
         brand = row(icon_label('gauge', S.P.accent, 30), plain('DecKoOS Bench', 'brand'), stretch=False)
         sl.addWidget(brand)
-        sl.addWidget(plain('Your performance lab', 'muted'))
+        sl.addWidget(plain('Score your PC', 'muted'))
         sl.addSpacing(30)
         sl.addWidget(plain('WORKSPACE', 'kicker'))
         self.nav, self.pages = {}, {}
@@ -265,8 +354,8 @@ class Bench(QWidget):
         sl.addStretch()
         mini = Card()
         mini.body.setContentsMargins(12, 12, 12, 12)
-        mini.body.addWidget(plain('A CLEARER PICTURE', 'eyebrow'))
-        mini.body.addWidget(plain('Every run saved.\nEvery change measurable.', 'sub'))
+        mini.body.addWidget(plain('THE DECKOS SCORE', 'eyebrow'))
+        mini.body.addWidget(plain('One number for your PC.\nEvery run kept.', 'sub'))
         sl.addWidget(mini)
         sl.addSpacing(12)
         sl.addWidget(plain('●  Demo · sample results' if demo else '●  Local results · private by default', 'muted'))
@@ -302,28 +391,86 @@ class Bench(QWidget):
         self.stack.setCurrentIndex([x[0] for x in NAV].index(key))
 
     def build_overview(self):
-        self.heading('overview', 'Performance, in perspective', 'A running record of what your machine can do.',
-                     button('New benchmark', 'primary', lambda: self.navigate('run'), icon='plus'))
+        self.heading('overview', 'DecKoOS Score', 'One number for your whole PC, and how it changes over time.')
         layout = self.pages['overview']
         hero = Hero()
         hero.setObjectName('hero')
         h = QHBoxLayout(hero)
-        h.setContentsMargins(24, 24, 24, 24)
-        v = QVBoxLayout()
-        v.setSpacing(8)
-        v.addWidget(plain('DECKOS PERFORMANCE LAB', 'eyebrow'))
-        v.addWidget(plain('Know your machine.\nSee what changes.', 'heroTitle'))
-        v.addWidget(plain('CPU, memory, storage, graphics and local AI.\nRepeatable tests. Results you can look back on.', 'sub'))
-        h.addLayout(v, 1)
-        stamp = QVBoxLayout()
-        stamp.addWidget(icon_label('gauge', '#9DAAFF', 72), 0, Qt.AlignCenter)
-        stamp.addWidget(plain('BUILT FOR DECKOS', 'kicker'), 0, Qt.AlignCenter)
-        h.addLayout(stamp)
+        h.setContentsMargins(26, 22, 30, 22)
+        h.setSpacing(26)
+        self.ring = ScoreRing()
+        h.addWidget(self.ring, 0, Qt.AlignVCenter)
+        info = QVBoxLayout()
+        info.setSpacing(8)
+        info.addStretch()
+        self.score_kicker = plain('YOUR LATEST SCORE', 'eyebrow')
+        self.score_title = plain('', 'scoreTitle')
+        self.score_machine = plain('', 'sub')
+        self.score_delta = plain('', 'flat')
+        self.score_best = plain('', 'muted')
+        badges = QHBoxLayout()
+        badges.setSpacing(10)
+        badges.addWidget(self.score_delta)
+        badges.addWidget(self.score_best)
+        badges.addStretch()
+        for w in (self.score_kicker, self.score_title, self.score_machine):
+            info.addWidget(w)
+        info.addLayout(badges)
+        info.addSpacing(6)
+        self.score_button = button('Run DecKoOS Score', 'primary', self.start_score, icon='play',
+                                   tip='Every system test, three times, with the score\'s own AI model: about 12 minutes')
+        self.score_stop = button('Stop', slot=self.stop_run, icon='stop')
+        self.score_stop.hide()
+        info.addWidget(row(self.score_button, self.score_stop,
+                           button('Lab tests', slot=lambda: self.navigate('run'), icon='flask'), stretch=True))
+        self.score_progress = QProgressBar()
+        self.score_progress.setTextVisible(False)
+        self.score_progress.hide()
+        self.score_status = plain('', 'muted')
+        info.addWidget(self.score_progress)
+        info.addWidget(self.score_status)
+        info.addStretch()
+        h.addLayout(info, 1)
         layout.addWidget(hero)
-        self.summary_layout = QHBoxLayout()
-        self.summary_layout.setSpacing(12)
-        layout.addLayout(self.summary_layout)
-        trend_card = Card('History', 'Your performance over time', 'gauge')
+        self.parts_layout = QHBoxLayout()
+        self.parts_layout.setSpacing(12)
+        self.part_widgets = {}
+        for key in SC.ORDER:
+            tile = QFrame()
+            tile.setObjectName('part')
+            v = QVBoxLayout(tile)
+            v.setContentsMargins(16, 14, 16, 14)
+            v.setSpacing(6)
+            v.addWidget(row(icon_label(PART_ICONS[key], S.P.accent, 20), plain(SC.PARTS[key][0], 'cardTitle'), stretch=True))
+            number, bar, note = plain('—', 'partScore'), Bar(), plain('', 'muted')
+            for w in (number, bar, note):
+                v.addWidget(w)
+            self.part_widgets[key] = (number, bar, note)
+            self.parts_layout.addWidget(tile, 1)
+        layout.addLayout(self.parts_layout)
+        history = Card('Score history', 'Your DecKoOS Scores over time', 'clock')
+        self.score_trend = Trend()
+        self.score_trend.setMinimumHeight(190)
+        history.body.addWidget(self.score_trend)
+        self.score_hint = plain('', 'muted')
+        history.body.addWidget(self.score_hint)
+        layout.addWidget(history)
+        bottom = QHBoxLayout()
+        bottom.setSpacing(14)
+        how = Card('How it works', 'What the score means', 'info')
+        how.body.addWidget(plain(
+            f'Each part scores its key measurements against a fixed reference PC, which scores {SC.BASE:,} in every '
+            f'part. Twice as fast is twice the points. The DecKoOS Score combines the five: graphics and CPU count most, '
+            f'then local AI, memory and storage. Scores of the same version (this is version {SC.VERSION}) compare across '
+            f'PCs and over time. The range is the lowest and highest of the three repetitions.', 'sub'))
+        bottom.addWidget(how, 3)
+        machine = Card('This machine', 'Hardware & software', 'system')
+        self.machine_text = plain('Reading system details…', 'sub')
+        machine.body.addWidget(self.machine_text)
+        machine.body.addStretch()
+        bottom.addWidget(machine, 2)
+        layout.addLayout(bottom)
+        trend_card = Card('Every measurement', 'Each test over time', 'gauge')
         self.trend_metric = QComboBox()
         self.trend_metric.setMinimumWidth(260)
         self.trend_metric.setMaximumWidth(390)
@@ -334,21 +481,69 @@ class Bench(QWidget):
         self.trend_hint = plain('', 'muted')
         trend_card.body.addWidget(self.trend_hint)
         layout.addWidget(trend_card)
-        bottom = QHBoxLayout()
-        recent = Card('Recent activity', 'Latest sessions', 'clock')
-        recent.actions.addWidget(button('View all', slot=lambda: self.navigate('history')))
-        self.recent_layout = QVBoxLayout()
-        recent.body.addLayout(self.recent_layout)
-        bottom.addWidget(recent, 3)
-        machine = Card('This machine', 'Hardware & software', 'system')
-        self.machine_text = plain('Reading system details…', 'sub')
-        machine.body.addWidget(self.machine_text)
-        machine.body.addStretch()
-        bottom.addWidget(machine, 2)
-        layout.addLayout(bottom)
         self.notice = plain('', 'muted')
         layout.addWidget(self.notice)
         layout.addStretch()
+
+    def run_score(self, run):
+        """A run's score: the saved one when it's this version's, else worked out now (older runs, lab runs)."""
+        saved = run.get('score')
+        return saved if isinstance(saved, dict) and saved.get('version') == SC.VERSION else SC.score(run)
+
+    def render_score(self):
+        scored = [(run, self.run_score(run)) for run in self.runs]
+        full = [(run, sc) for run, sc in scored if sc['total'] is not None]
+        latest = full[-1] if full else next(((r, sc) for r, sc in reversed(scored) if sc['partial'] is not None), None)
+        env = self.environment
+        if not latest:
+            self.ring.set(None, 'No score yet', 'Run it to get yours')
+            self.score_title.setText('Score your PC')
+            self.score_machine.setText(' · '.join(x for x in (env.get('cpu'), env.get('gpu')) if x) or
+                                       'CPU, graphics, local AI, memory and storage, in one number.')
+            self.score_delta.hide()
+            self.score_best.setText('About 12 minutes. Close games and big apps first.')
+        else:
+            run, sc = latest
+            number, caption = SC.headline(sc)
+            spread = f"{sc['low']:,} – {sc['high']:,}" if sc.get('low') and sc['low'] != sc['high'] else ''
+            self.ring.set(sc['total'] or sc['partial'], caption, spread)
+            self.score_title.setText(f"{title(run)} · {time.strftime('%d %b %Y', time.localtime(run['started']))}")
+            e = run.get('environment', {})
+            self.score_machine.setText(' · '.join(x for x in (e.get('cpu'), e.get('gpu')) if x))
+            earlier = [sc2['total'] for r2, sc2 in full if r2['started'] < run['started']]
+            if sc['total'] is not None and earlier:
+                change = (sc['total'] - earlier[-1]) / earlier[-1] * 100
+                kind = 'up' if change > 0.5 else 'down' if change < -0.5 else 'flat'
+                self.score_delta.setObjectName(kind)
+                self.score_delta.setText(('▲ ' if kind == 'up' else '▼ ' if kind == 'down' else '') +
+                                         f'{abs(change):.1f}% since last time' if kind != 'flat' else 'Same as last time')
+                self.score_delta.style().unpolish(self.score_delta)
+                self.score_delta.style().polish(self.score_delta)
+                self.score_delta.show()
+            else:
+                self.score_delta.hide()
+            best = max((sc2['total'] for _, sc2 in full), default=None)
+            if sc['total'] is None:
+                missing = [SC.PARTS[k][0] for k, p in sc['parts'].items() if 'missing' in p]
+                self.score_best.setText('Partial: ' + ', '.join(missing) + ' not measured')
+            else:
+                self.score_best.setText(f'Best {best:,}  ·  {len(full)} score run{"s" if len(full) != 1 else ""}')
+        parts = latest[1]['parts'] if latest else {}
+        for key, (number, bar, note) in self.part_widgets.items():
+            p = parts.get(key, {})
+            if 'score' in p:
+                number.setText(f"{p['score']:,}")
+                bar.set(p['score'])
+                note.setText(f"{p['score'] / SC.BASE:.1f}× the reference")
+                note.setToolTip(f"{p['low']:,} – {p['high']:,} across the repetitions")
+            else:
+                number.setText('—')
+                bar.set(0)
+                note.setText(p.get('missing', 'Not measured yet'))
+                note.setToolTip(SC.AI_MODEL if key == 'ai' else '')
+        self.score_trend.set_series([(r['started'], sc['total'], title(r)) for r, sc in full], 'points')
+        self.score_hint.setText(f'{len(full)} DecKoOS Score{"s" if len(full) != 1 else ""} · version {SC.VERSION} · '
+                                'higher is better' if full else 'Your first score starts the chart.')
 
     def build_run(self):
         self.heading('run', 'Make your next measurement', 'Choose a suite, give it a name, and let Bench take it from here.',
@@ -449,7 +644,7 @@ class Bench(QWidget):
         self.search.setPlaceholderText('Search sessions by name, date, or suite…')
         self.search.textChanged.connect(self.filter_history)
         layout.addWidget(self.search)
-        self.history_table = table(['Session', 'Date', 'Tests', 'Duration', 'Status'])
+        self.history_table = table(['Session', 'Score', 'Date', 'Tests', 'Duration', 'Status'])
         self.history_table.setMinimumHeight(215)
         self.history_table.setMaximumHeight(310)
         self.history_table.itemSelectionChanged.connect(self.select_history)
@@ -538,20 +733,7 @@ class Bench(QWidget):
                 self.notice.setToolTip('\n'.join(errors))
 
     def refresh_views(self):
-        clear(self.summary_layout)
-        recent = self.runs[-1] if self.runs else None
-        highlights = [('SAVED SESSIONS', str(len(self.runs)), 'Your performance timeline')]
-        for runner, key, name in [('cpu-7z', 'multi', 'LATEST CPU · ALL CORES'), ('memory', 'triad', 'LATEST MEMORY BANDWIDTH')]:
-            found = next((m for run in reversed(self.runs) for r, k, m in metrics(run)
-                          if r['runner'] == runner and k == key), None)
-            highlights.append((name, fmt(sum(found['values'])/len(found['values'])) if found else '—',
-                               found['unit'] + ' · session average' if found else 'No completed measurements yet'))
-        for name, value, detail in highlights:
-            card = Card()
-            card.body.addWidget(plain(name, 'kicker'))
-            card.body.addWidget(plain(value, 'score'))
-            card.body.addWidget(plain(detail, 'muted'))
-            self.summary_layout.addWidget(card)
+        self.render_score()
         previous = self.trend_metric.currentText()
         self.trends = series(self.runs)
         self.trend_metric.blockSignals(True)
@@ -562,14 +744,6 @@ class Bench(QWidget):
         self.trend_metric.setCurrentIndex(max(0, index))
         self.trend_metric.blockSignals(False)
         self.change_trend()
-        clear(self.recent_layout)
-        if not self.runs:
-            self.recent_layout.addWidget(plain('No sessions yet. Your first run will appear here.', 'sub'))
-        for run in reversed(self.runs[-3:]):
-            b = button(title(run) + '   ·   ' + time.strftime('%d %b', time.localtime(run['started'])),
-                       slot=lambda _=False, r=run: self.open_session(r), icon='clock')
-            b.setStyleSheet('text-align: left; padding: 10px;')
-            self.recent_layout.addWidget(b)
         env = self.environment
         self.machine_text.setText('\n\n'.join(str(env[k]) for k in ('cpu', 'gpu') if env.get(k)) +
                                   (f"\n\n{env.get('ram_gb', '—')} GB RAM · {env.get('scheduler', '—')}\n{env.get('kernel', '')}" if env else
@@ -643,7 +817,10 @@ class Bench(QWidget):
         for r in self.filtered:
             errors = sum(bool(x.get('error')) for x in r['results'])
             state = 'Stopped' if r.get('status') == 'cancelled' else 'Partial' if errors else 'Complete'
-            rows.append([title(r), time.strftime('%d %b %Y · %H:%M', time.localtime(r['started'])),
+            sc = self.run_score(r)
+            rows.append([title(r), f"{sc['total']:,}" if sc['total'] is not None else
+                         (f"{sc['partial']:,} (partial)" if sc['partial'] is not None else '—'),
+                         time.strftime('%d %b %Y · %H:%M', time.localtime(r['started'])),
                          len(r['results']), f"{r.get('seconds', 0)/60:.1f} min", state])
         fill_table(self.history_table, rows)
         self.history_table.blockSignals(False)
@@ -817,6 +994,29 @@ class Bench(QWidget):
         else:
             self.active.launch(['run', *args])
 
+    def start_score(self):
+        if self.busy:
+            return
+        self.busy, self.saved, self.score_mode = True, False, True
+        self.last_saved = {}
+        self.run_started = time.monotonic()
+        self.run_clock.start(1000)
+        self.log.clear()
+        self.score_button.setEnabled(False)
+        self.score_stop.show()
+        self.score_stop.setEnabled(True)
+        self.score_progress.setValue(0)
+        self.score_progress.show()
+        self.score_status.setText('Getting ready… Leave the PC alone until it finishes: other work lowers the score.')
+        if self.demo:
+            self.demo_tick = 0
+            self.demo_timer = QTimer(self)
+            self.demo_timer.timeout.connect(self.advance_demo)
+            self.demo_timer.start(350)
+            return
+        self.active = Worker(self, self.run_event, self.run_done)
+        self.active.launch(['score'])
+
     def update_elapsed(self):
         seconds = int(time.monotonic() - self.run_started)
         self.elapsed_label.setText(f"{seconds // 60:02d}:{seconds % 60:02d} elapsed")
@@ -824,6 +1024,9 @@ class Bench(QWidget):
     def advance_demo(self):
         self.demo_tick += 1
         self.progress.setValue(min(100, self.demo_tick*10))
+        if getattr(self, 'score_mode', False):
+            self.score_progress.setValue(min(100, self.demo_tick*10))
+            self.score_status.setText(f'Demo · part {min(5, self.demo_tick // 2 + 1)} of 5')
         self.progress_title.setText(f'Demo · measuring CPU performance · step {self.demo_tick} of 10')
         if self.demo_tick >= 10:
             self.demo_timer.stop()
@@ -836,9 +1039,14 @@ class Bench(QWidget):
         if event == 'log':
             self.log.appendPlainText(data['text'])
         elif event == 'progress':
-            self.progress_title.setText(f"{ALL[data['key']].title} · " +
-                                        (f"repetition {data['repetition']} of {data['repeat']}" if data['repetition'] else 'preparing'))
-            self.progress.setValue(int(100*(data['index'] + max(0, data['repetition']-1)/data['repeat'])/data['total']))
+            text = f"{ALL[data['key']].title} · " + \
+                (f"repetition {data['repetition']} of {data['repeat']}" if data['repetition'] else 'preparing')
+            value = int(100*(data['index'] + max(0, data['repetition']-1)/data['repeat'])/data['total'])
+            self.progress_title.setText(text)
+            self.progress.setValue(value)
+            if getattr(self, 'score_mode', False):
+                self.score_status.setText(f"Part {data['index'] + 1} of {data['total']} · {text}")
+                self.score_progress.setValue(value)
         elif event == 'result':
             result = data['result']
             self.log.appendPlainText(result['title'] + ': ' + (result.get('error') or 'complete'))
@@ -857,6 +1065,13 @@ class Bench(QWidget):
     def run_done(self, code):
         self.run_clock.stop()
         self.busy = False
+        if getattr(self, 'score_mode', False):
+            self.score_mode = False
+            self.score_button.setEnabled(True)
+            self.score_stop.hide()
+            self.score_progress.hide()
+            self.score_status.setText('' if self.saved else
+                                      'The score run stopped before it finished. Lab › the log says why.')
         self.stop_button.setEnabled(False)
         for control in [self.suite, self.run_label, self.repeat, *self.checks.values(), self.experiment_on,
                         self.experiment_setting, self.experiment_a, self.experiment_b]:

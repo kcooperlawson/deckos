@@ -20,7 +20,7 @@ def emit(event, **data):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', choices=['scan', 'run', 'compare', 'experiment'])
+    parser.add_argument('command', choices=['scan', 'run', 'compare', 'experiment', 'score'])
     parser.add_argument('--setting')
     parser.add_argument('--value-a')
     parser.add_argument('--value-b')
@@ -61,6 +61,21 @@ def main():
         cancelled = threading.Event()
         signal.signal(signal.SIGTERM, lambda *_: cancelled.set())
         signal.signal(signal.SIGINT, lambda *_: cancelled.set())
+        if args.command == 'score':
+            # The DecKoOS Score: every system test, the score's own AI model, three repetitions, always
+            from runners import score_runners
+            from score import score
+            run = run_suite(score_runners(), repeat=3, label=args.label or 'DecKoOS Score',
+                            say=lambda text: emit('log', text=text), cancelled=cancelled.is_set,
+                            on_result=lambda result: emit('result', result=asdict(result)),
+                            on_progress=lambda index, total, key, repetition, repeat: emit(
+                                'progress', index=index, total=total, key=key, repetition=repetition, repeat=repeat))
+            run['score'] = score(run)
+            folder = save(run, 'score')
+            (folder / 'report.html').write_text(run_report(run), encoding='utf-8')
+            emit('saved', folder=str(folder), run=dict(run, _folder=str(folder)))
+            lock.close()
+            return
         keys = list(dict.fromkeys(args.keys.split(',')))
         if not keys or any(key not in ALL for key in keys):
             raise ValueError('Choose at least one supported benchmark')

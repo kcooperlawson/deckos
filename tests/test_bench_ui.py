@@ -39,14 +39,15 @@ class BenchUiTests(unittest.TestCase):
 
     def test_navigation_search_and_baseline(self):
         QTest.mouseClick(self.window.nav['history'], Qt.LeftButton)
-        self.assertEqual(self.window.stack.currentIndex(), 2)
+        page = [key for key, _, _ in bench_app.NAV].index
+        self.assertEqual(self.window.stack.currentIndex(), page('history'))
         self.window.search.setText('fresh boot')
         self.assertEqual(self.window.history_table.rowCount(), 1)
         self.assertEqual(self.window.selected['label'], 'Fresh boot')
         self.window.use_baseline()
         self.assertEqual(self.window.compare_a.currentData(), 'demo-1')
-        self.assertEqual(self.window.stack.currentIndex(), 3)
-        self.assertEqual(self.window.compare_table.rowCount(), 6)
+        self.assertEqual(self.window.stack.currentIndex(), page('compare'))
+        self.assertEqual(self.window.compare_table.rowCount(), 12)  # every measurement a DecKoOS Score run takes
         self.window.search.setText('no matching sessions')
         self.assertEqual(self.window.history_table.rowCount(), 0)
         self.assertFalse(self.window.report_button.isEnabled())
