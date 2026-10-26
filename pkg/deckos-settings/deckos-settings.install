@@ -41,6 +41,11 @@ post_install() {
 
 post_upgrade() {
   _setup  # not --record: the hook compares against the splash from before this upgrade
+  # 0.15.1: the repo file is kept on upgrades (backup=), so its old SigLevel stays; a required database signature
+  # made every update check run as the user fail (it can't read pacman's keyring). Packages stay required.
+  if grep -q '^SigLevel = Required$' /etc/pacman.d/deckos-repo 2>/dev/null; then
+    sed -i 's/^SigLevel = Required$/SigLevel = PackageRequired DatabaseOptional/' /etc/pacman.d/deckos-repo
+  fi
   # 0.9.0 renamed DeckOS to DecKoOS: the boot menu's entries carry the old name until GRUB's config
   # is rewritten. Only the name the installer wrote is changed; the EFI folder (bootloader id) stays.
   if grep -q '^GRUB_DISTRIBUTOR="DeckOS"$' /etc/default/grub 2>/dev/null; then

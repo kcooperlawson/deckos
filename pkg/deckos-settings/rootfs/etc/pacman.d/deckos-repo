@@ -1,4 +1,6 @@
 # DecKoOS's own packages (deckos-settings: the Hub, deckos tool, themes, fixes), signed with the
 # DecKoOS key that pacman-key --populate deckos trusts. Published from GitHub on every release.
-SigLevel = Required
+# Packages must be signed. The database signature is optional, as in Arch's own repos: update checks run
+# as the user (checkupdates) can't read pacman's root-owned keyring and would always see none.
+SigLevel = PackageRequired DatabaseOptional
 Server = https://github.com/kcooperlawson/deckos/releases/download/repo
