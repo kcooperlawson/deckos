@@ -1587,6 +1587,33 @@ accent_cmd() {
   esac
 }
 
+# The desktop and the lock screen show the same picture: Plasma 6 keeps the lock screen's in kscreenlockerrc,
+# and without one it shows Plasma's stock wallpaper rather than DecKoOS's.
+lock_wallpaper() {
+  local uri=$1
+  [[ $uri == /* ]] && uri="file://$uri"
+  kwriteconfig6 --file kscreenlockerrc --group Greeter --key WallpaperPlugin org.kde.image
+  kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
+    --key Image "$uri"
+  kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
+    --key PreviewImage "$uri"
+}
+
+wallpaper_apply() {
+  [[ -e $1 ]] || { err "no such wallpaper: $1"; exit 1; }
+  plasma-apply-wallpaperimage "$1" >/dev/null
+  lock_wallpaper "$(realpath "$1")"
+}
+
+wallpaper_cmd() {
+  case ${1:-} in
+    "") err "usage: deckos wallpaper IMAGE|FOLDER   (the desktop and the lock screen)"; exit 2 ;;
+    --lock-only) [[ -e ${2:-} ]] || { err "usage: deckos wallpaper --lock-only IMAGE"; exit 2; }
+                 lock_wallpaper "$(realpath "$2")"; ok "lock screen: $(basename "$2")" ;;
+    *) wallpaper_apply "$1"; ok "wallpaper: $(basename "$1") (desktop and lock screen)" ;;
+  esac
+}
+
 theme_cmd() {
   case ${1:-} in
     apply)
@@ -1613,7 +1640,7 @@ theme_cmd() {
       if [[ $accent =~ ^([0-9]+),([0-9]+),([0-9]+)$ ]]; then
         accent_apply "$(printf '#%02X%02X%02X' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}")"
       fi
-      [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || plasma-apply-wallpaperimage "/usr/share/wallpapers/$wall" >/dev/null
+      [[ -z $wall || ! -d /usr/share/wallpapers/$wall ]] || wallpaper_apply "/usr/share/wallpapers/$wall" >/dev/null
       cursor=$(theme_default "$defaults" "[kcminputrc][Mouse]" cursorTheme)
       [[ -z $cursor || ! -d /usr/share/icons/$cursor ]] || plasma-apply-cursortheme "$cursor" >/dev/null 2>&1 || true
       if [[ -n $was && $was != "$id" && $was =~ ^[A-Za-z0-9._-]+$ ]]; then
@@ -1714,6 +1741,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos controllers pair                               Xbox wireless dongle pairing mode
   deckos auto-update [status|on|off]                    overnight updates (04:00, not mid-game)
   deckos channel [status|stable|testing]                where DecKoOS updates come from (testing: new releases first)
+  deckos wallpaper IMAGE|FOLDER                         the desktop and the lock screen together
   deckos report [--out FILE|--print]                    one file of hardware, drivers and errors for whoever helps
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
@@ -1757,6 +1785,7 @@ case ${1:-} in
   controllers) shift; if [[ ${1:-} == pair ]]; then controllers_pair; else err "usage: deckos controllers pair"; exit 2; fi ;;
   auto-update) shift; auto_update_cmd "$@" ;;
   channel) shift; channel_cmd "$@" ;;
+  wallpaper) shift; wallpaper_cmd "$@" ;;
   report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps
   undo) shift; undo_cmd "$@" ;;
   restore) shift; restore_cmd "$@" ;;

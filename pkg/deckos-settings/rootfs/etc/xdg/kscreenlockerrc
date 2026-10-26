@@ -1,0 +1,7 @@
+# DecKoOS: the lock screen shows the DecKoOS wallpaper, not Plasma's stock one ('deckos wallpaper' changes both)
+[Greeter]
+WallpaperPlugin=org.kde.image
+
+[Greeter][Wallpaper][org.kde.image][General]
+Image=file:///usr/share/wallpapers/DeckOS/
+PreviewImage=file:///usr/share/wallpapers/DeckOS/

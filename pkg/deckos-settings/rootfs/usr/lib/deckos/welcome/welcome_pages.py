@@ -359,14 +359,14 @@ class LookStep(Step):
         self.clear(self.wall_grid)
         for i, (path, name, preview) in enumerate(sysinfo.wallpapers()[:4]):
             self.wall_grid.addWidget(preview_tile(preview, name, "", False, lambda p=path, n=name: self.apply(
-                ["plasma-apply-wallpaperimage", str(p)], "wallpaper", f"Wallpaper: {n}"), small=True), 0, i)
+                ["deckos", "wallpaper", str(p)], "wallpaper", f"Wallpaper: {n}"), small=True), 0, i)
         self.wall_grid.setColumnStretch(4, 1)
 
     def pick_wallpaper(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choose a wallpaper", str(Path.home() / "Pictures"),
                                               "Images (*.png *.jpg *.jpeg *.webp)")
         if path:
-            self.apply(["plasma-apply-wallpaperimage", path], "wallpaper", f"Wallpaper: {Path(path).name}")
+            self.apply(["deckos", "wallpaper", path], "wallpaper", f"Wallpaper: {Path(path).name}")
 
 
 # ------------------------------------------------------------------ 3. display

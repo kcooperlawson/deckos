@@ -241,6 +241,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   the Hub's pages, actions.toml and the Plasma panels DecKoOS uses as they are (`PLASMA`, plain names, hidden when the
   KCM isn't installed); the sidebar's search (Ctrl+F, Enter opens the first) and More settings read it. Plasma panels
   open in System Settings. Tests: `tests/test_settings.py`.
+- **Lock screen**: Plasma 6 keeps the lock screen's QML in the plasma-workspace shell package (a theme can't replace it;
+  don't overwrite its files). DecKoOS owns its wallpaper: `deckos wallpaper` sets the desktop and kscreenlockerrc together
+  (Hub, Welcome, Move In and theme changes use it); `/etc/xdg/kscreenlockerrc` defaults it to the DecKoOS wallpaper.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

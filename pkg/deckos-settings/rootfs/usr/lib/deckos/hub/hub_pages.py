@@ -1619,7 +1619,7 @@ class AppearancePage(Page):
 
     def apply_wallpaper(self, path, name):
         self.demo_wall = Path(path)
-        self.apply(["plasma-apply-wallpaperimage", str(path)], f"Wallpaper: {name}", self.refresh)
+        self.apply(["deckos", "wallpaper", str(path)], f"Wallpaper: {name}", self.refresh)  # lock screen too
 
     def set_accent(self, color, name):
         self.apply(["deckos", "accent", "apply", color], f"Accent colour: {name}")

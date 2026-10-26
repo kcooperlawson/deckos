@@ -573,8 +573,10 @@ def _apply_one(item, log):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dest)
         log.append({"copied": str(dest)})
-        if shutil.which("plasma-apply-wallpaperimage"):
-            subprocess.run(["plasma-apply-wallpaperimage", str(dest)], capture_output=True, timeout=30)
+        # The desktop and the lock screen; plain Plasma when the deckos tool isn't there (tests, other desktops)
+        cmd = ["deckos", "wallpaper", str(dest)] if shutil.which("deckos") else ["plasma-apply-wallpaperimage", str(dest)]
+        if shutil.which(cmd[0]):
+            subprocess.run(cmd, capture_output=True, timeout=30)
         return f"set ({dest})"
     if item.key.startswith("firefox:"):
         dest = import_firefox(d["path"])
