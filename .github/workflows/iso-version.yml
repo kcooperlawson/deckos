@@ -1,0 +1,87 @@
+name: ISO for a release
+run-name: ISO for DecKoOS ${{ inputs.version }}  # Builder finds a version's build by this
+
+# Builds the ISO of one released version (its tag, as it was) and install-tests it, for the website's download.
+# Started from DecKoOS Builder's Website card, or: gh workflow run iso-version.yml -f version=0.14.0
+# It only builds: no publish job, so an old version can never reach the update repos. (Build DecKoOS ISO run on an
+# old tag would: its publish job follows the tag.)
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to build, without the v (0.14.0)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iso-version-${{ inputs.version }}
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ $VERSION =~ ^[0-9]{1,2}\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$VERSION' isn't a release version (0.14.0)"; exit 1; }
+          echo "ISO for DecKoOS $VERSION (tag v$VERSION)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+      - name: Build (Arch container)
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          sudo mkdir -p /mnt/deckos && sudo chmod 777 /mnt/deckos
+          sudo docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE:/src" -v /mnt/deckos:/work \
+            -e WORK=/work/build -e OUT=/src/out \
+            archlinux:latest bash -c 'pacman -Syu --noconfirm --needed sudo && bash /src/build.sh'
+          sudo chown -R "$(id -u):$(id -g)" out
+          ls -lh out
+          test -f "out/deckos-$VERSION-x86_64.iso"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deckos-iso
+          path: out/*.iso
+          compression-level: 0
+          retention-days: 14
+
+  install-test:
+    # The same install and first boot as every release ISO, on all three disk layouts: an ISO for the website
+    # has to pass before Builder offers to publish it.
+    needs: iso
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: [partition, empty, free]
+    steps:
+      - uses: actions/checkout@v4  # main's test harness (its fixes), testing the old version's ISO
+      - uses: actions/download-artifact@v4
+        with:
+          name: deckos-iso
+          path: out
+      - name: QEMU + OVMF
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends qemu-system-x86 qemu-utils ovmf libarchive-tools dosfstools fdisk jq
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          fi
+      - name: Install and first boot
+        run: bash tests/install-test.sh out/*.iso install-test
+        env:
+          DECKOS_TEST_LAYOUT: ${{ matrix.layout }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-test-logs-${{ matrix.layout }}
+          path: install-test/*.log
+          retention-days: 14

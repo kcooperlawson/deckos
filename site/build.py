@@ -23,6 +23,7 @@ SITE = ROOT / "site"
 SHARE = ROOT / "pkg/deckos-settings/rootfs/usr/share/deckos"
 REPO = "kcooperlawson/deckos"
 GITHUB = f"https://github.com/{REPO}"
+PIN = ROOT / "out/site-iso"  # the ISO the site offers, when one was picked (DecKoOS Builder's Website card)
 FINGERPRINT = "F67E15FABF95D2DA72BE5D3F6322881773088C41"
 NAME = "DecKoOS"
 
@@ -285,6 +286,10 @@ class Site:
         if given:
             p = Path(given)
             return p if p.is_file() else sys.exit(f"no ISO at {p}")
+        # The one DecKoOS Builder published (it may be older than the newest in out/), while it's still there
+        pin = PIN.read_text().strip() if PIN.exists() else ""
+        if pin and Path(pin).is_file():
+            return Path(pin)
         # Release builds only (deckos-X.Y.Z-x86_64.iso), newest version first: not dated test builds
         isos = sorted((p for p in (ROOT / "out").glob("deckos-*-x86_64.iso") if re.fullmatch(r"deckos-\d{1,2}\.\d+\.\d+-x86_64\.iso", p.name)),
                       key=lambda p: version_key(p.name))

@@ -138,7 +138,10 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   the release TOMLs, `docs/` (`DOCS`/`DOC_META` pick and name them), SECURITY.md and the newest `out/deckos-X.Y.Z` ISO
   into git-ignored `site/public/`; its own small markdown renderer escapes everything. `serve.py` serves it (127.0.0.1,
   Range, no visitor addresses logged); `Caddyfile` for a server. Nothing loads from other sites (Inter is subset and
-  served locally). `tests/test_site.py` checks every internal link and anchor.
+  served locally). `tests/test_site.py` checks every internal link and anchor. Builder's Website card publishes a
+  release's ISO to it (`builder/site_publish.py`, no Qt; `tests/test_site_publish.py`): only from runs that passed,
+  install tests included; missing ones come from `iso-version.yml`, which builds an old tag and never publishes
+  (running build-iso.yml on an old tag would: its publish job follows the tag).
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 

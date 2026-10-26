@@ -35,6 +35,22 @@ gpg --local-user F67E15FABF95D2DA72BE5D3F6322881773088C41 --detach-sign --output
 Pass `--url https://your.domain` once the site has an address: it adds canonical links, a sitemap and link
 previews.
 
+## Publish an ISO from DecKoOS Builder
+
+Builder's **Website** card (maintainers) shows what the site offers and whether it's running. **Publish an ISO…**
+lists the recent releases and where each one's ISO is:
+
+- **On this PC** (in the ISO folder): Publish signs it and rebuilds the site.
+- **Built by CI**: a tag's run, or an earlier on-request build, that passed everything including the install
+  tests, until GitHub deletes it after 14 days. Download and publish.
+- **No ISO yet**: Build on GitHub runs the *ISO for a release* workflow (`.github/workflows/iso-version.yml`): it
+  builds that tag as it was and install-tests it, about 45 minutes, and never publishes to the update channels.
+  When it passes, Builder downloads it and puts it on the site by itself (while Builder is open; otherwise it's
+  offered as built by CI next time).
+
+The published ISO is remembered in `out/site-iso`, so later rebuilds keep offering it even when a newer ISO is in
+`out/`. Signing happens only when the DecKoOS key is in gpg on this PC; gpg asks for its passphrase.
+
 ## Serve it from this PC
 
 ```bash

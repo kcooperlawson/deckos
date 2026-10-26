@@ -74,6 +74,7 @@ HUB = _share("usr/lib/deckos/hub")
 sys.path.insert(0, str(HUB))  # same look as DecKoOS Hub: its palette, QSS, line icons and widgets
 
 import hub_style as S  # noqa: E402
+import site_publish as SP  # noqa: E402  (the Website card's logic, beside this file)
 from hub_widgets import Card, Meter, RowItem, StatusTile, Toast, button, label, row  # noqa: E402
 
 BRANDING = _share("usr/share/deckos/branding")
@@ -350,6 +351,37 @@ def sha256(path, progress, label, start=0.0, span=1.0):
 
 # ------------------------------------------------------------------ background work
 
+def fetch_iso(repo, run, out, progress):
+    """A CI run's ISO into out (the artifact zip is unpacked and removed). Returns the ISO's path."""
+    arts = gh_json(f"repos/{repo}/actions/runs/{run['id']}/artifacts")["artifacts"]
+    art = next((a for a in arts if a["name"] == ARTIFACT and not a["expired"]), None)
+    if not art:
+        raise RuntimeError("this build has no ISO (or it expired after 14 days)")
+    token = gh("auth", "token").strip()
+    req = urllib.request.Request(art["archive_download_url"])
+    req.add_unredirected_header("Authorization", f"Bearer {token}")  # not sent on to the storage host
+    zpath = out / f"deckos-run{run['run_number']}.zip"
+    total, done_b, t0 = art["size_in_bytes"], 0, time.time()
+    with urllib.request.urlopen(req, timeout=60) as r, open(zpath, "wb") as f:
+        while chunk := r.read(4 << 20):
+            f.write(chunk)
+            done_b += len(chunk)
+            rate = done_b / max(time.time() - t0, 0.1) / 1e6
+            progress(0.9 * done_b / max(total, 1), f"Downloading #{run['run_number']}: "
+                     f"{done_b / 1e9:.2f} / {total / 1e9:.2f} GB  ·  {rate:.0f} MB/s")
+    with zipfile.ZipFile(zpath) as z:
+        iso_name = next(n for n in z.namelist() if n.endswith(".iso"))
+        target = out / iso_name
+        with z.open(iso_name) as src, open(target, "wb") as dst:
+            size, copied = z.getinfo(iso_name).file_size, 0
+            while chunk := src.read(8 << 20):
+                dst.write(chunk)
+                copied += len(chunk)
+                progress(0.9 + 0.1 * copied / size, f"Unpacking {iso_name}")
+    zpath.unlink()
+    return target
+
+
 class Signals(QObject):
     done = Signal(object, object)  # result, error
     progress = Signal(float, str)
@@ -483,6 +515,64 @@ class ReleaseDialog(QDialog):
 
 # ------------------------------------------------------------------ main window
 
+class SiteAction:
+    @staticmethod
+    def label(item):
+        return {"local": "Publish", "ci": "Download and publish", "building": "Open build",
+                "failed": "Build again", "none": "Build on GitHub"}[item["state"]]
+
+
+class PublishDialog(QDialog):
+    """Pick a release for the website: each says where its ISO is, and what publishing it takes."""
+
+    def __init__(self, parent, items, offered):
+        super().__init__(parent)
+        self.setWindowTitle("Publish an ISO")
+        self.setMinimumWidth(640)
+        self.choice = None
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 20, 22, 18)
+        v.setSpacing(10)
+        v.addWidget(label("Publish an ISO to the website", "title"))
+        v.addWidget(label("ISOs from GitHub are offered only when they passed the install tests; one in the ISO folder "
+                          "goes up as it is. Publishing signs it with the DecKoOS key when that's in gpg here, and "
+                          "rebuilds the site.", "sub"))
+        colors = {"local": SUCCESS, "ci": ACCENT, "building": WARNING, "failed": DANGER, "none": MUTED}
+        icons = {"local": "check", "ci": "download", "building": "refresh", "failed": "alert", "none": "package"}
+        self.buttons = []
+        for item in items:
+            name = f"DecKoOS {item['version']}"
+            if offered == SP.iso_name(item["version"]):
+                name += "  ·  on the website now"
+            r = QWidget()
+            h = QHBoxLayout(r)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.addWidget(RowItem(icons[item["state"]], name, SP.describe(item), colors[item["state"]]), 1)
+            b = button(SiteAction.label(item), "primary" if item["state"] in ("local", "ci") else "",
+                       lambda _=False, it=item: self.pick(it))
+            self.buttons.append(b)
+            h.addWidget(b)
+            v.addWidget(r)
+        if not items:
+            v.addWidget(label("No release tags found in the source.", "sub"))
+        bb = QDialogButtonBox(QDialogButtonBox.Close)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def showEvent(self, e):
+        # One column of actions, as wide as the widest: measured once the stylesheet (bold primaries) applies
+        for b in self.buttons:
+            b.ensurePolished()
+        width = max((b.sizeHint().width() for b in self.buttons), default=0)
+        for b in self.buttons:
+            b.setFixedWidth(width)
+        super().showEvent(e)
+
+    def pick(self, item):
+        self.choice = item
+        self.accept()
+
+
 class Builder(QWidget):
     def __init__(self):
         super().__init__()
@@ -529,6 +619,7 @@ class Builder(QWidget):
         if CAN_BUILD_LOCAL:
             left.addWidget(self.local_card())
         left.addWidget(self.current_card())
+        left.addWidget(self.site_card())  # the maintainer's: shown by set_role
         left.addWidget(self.usb_card())
         left.addWidget(self.apps_card())
         left.addWidget(self.repo_card())
@@ -1070,6 +1161,209 @@ class Builder(QWidget):
         c.body.addWidget(self.dl_label)
         return c
 
+    # ---- website
+
+    def site_card(self):
+        self.site = Card("Website", "The DecKoOS site on this PC", "globe")
+        self.site.actions.addWidget(button("Open", slot=lambda: webbrowser.open(SP.URL), icon="external",
+                                           tip=f"Open the website ({SP.URL})"))
+        self.site_state = label("", "sub")
+        self.site_state.setTextFormat(Qt.RichText)
+        self.site_meter = Meter(6)
+        self.site_meter.hide()
+        self.site_detail = label("", "sub")
+        self.site_detail.hide()
+        self.site_pub = button("Publish an ISO…", "primary", self.publish_dialog, "download",
+                               "Pick a release: its ISO is built if needed, install-tested, signed and put on the site")
+        self.site_start = button("Start website", slot=self.start_site, icon="play",
+                                 tip="Starts the deckos-site service (this PC only)")
+        self.site_rebuild = button("Rebuild", slot=self.rebuild_site, icon="refresh",
+                                   tip="Rebuild the site from the docs and release notes as they are now")
+        for w in (self.site_state, self.site_meter, self.site_detail):
+            self.site.body.addWidget(w)
+        self.site.body.addWidget(row(self.site_pub, self.site_rebuild, self.site_start))
+        self.site.hide()
+        return self.site
+
+    def render_site(self):
+        if DEMO:
+            name, active = "deckos-0.13.0-x86_64.iso", True
+        elif REPO_DIR is None:
+            self.site_state.setText("Needs a copy of the DecKoOS source: the site is built from it.")
+            for b in (self.site_pub, self.site_rebuild, self.site_start):
+                b.setEnabled(False)
+            return
+        else:
+            name, active = SP.offered(REPO_DIR), SP.service_active()
+        for b in (self.site_pub, self.site_rebuild):
+            b.setEnabled(True)
+        version = re.search(r"deckos-([\d.]+)-", name or "")
+        offer = f"Offering <b>DecKoOS {version.group(1)}</b>" if version else "No ISO on the site yet"
+        live = (f'<span style="color:{SUCCESS}">● running</span> at {SP.URL.removesuffix("/")}' if active else
+                f'<span style="color:{WARNING}">● not running</span>')
+        pending = self.settings.value("site_pending", "")
+        self.site_state.setText(f"{offer}  ·  {live}" + (f"<br>Building the {pending} ISO on GitHub; it's published "
+                                                          "here when it passes" if pending else ""))
+        self.site_start.setVisible(not active)
+
+    def site_sources(self, done):
+        """Every recent release and where its ISO can come from, for the publish dialog."""
+        if DEMO:
+            done(demo_data()["site"], None)
+            return
+        repo, out = self.repo, self.out_dir()
+
+        def work(_):
+            versions = SP.release_versions(git("tag", "--list", "v*").split())
+            tag_runs = gh_json(f"repos/{repo}/actions/workflows/{WORKFLOW}/runs?per_page=60&event=push")["workflow_runs"]
+            try:
+                version_runs = gh_json(f"repos/{repo}/actions/workflows/{SP.VERSION_WORKFLOW}/runs?per_page=30")["workflow_runs"]
+            except RuntimeError:
+                version_runs = []  # the workflow isn't on GitHub yet
+            return SP.sources(versions, out, tag_runs, version_runs,
+                              lambda rid: gh_json(f"repos/{repo}/actions/runs/{rid}/artifacts")["artifacts"])
+
+        self.bg(work, done)
+
+    def publish_dialog(self):
+        self.site_pub.setEnabled(False)
+        self.say("Looking for release ISOs…")
+
+        def done(items, err):
+            self.site_pub.setEnabled(True)
+            if err:
+                self.say(f"Website: {err}")
+                return
+            dlg = PublishDialog(self, items, None if DEMO else SP.offered(REPO_DIR))
+            if dlg.exec() != QDialog.Accepted or not dlg.choice:
+                return
+            item = dlg.choice
+            if DEMO:
+                self.say(f"Demo: would {SiteAction.label(item).lower()} DecKoOS {item['version']}")
+            elif item["state"] == "local":
+                self.publish_iso(item["path"])
+            elif item["state"] == "ci":
+                self.download_and_publish(item["run"], item["version"])
+            elif item["state"] == "building":
+                webbrowser.open(item["run"]["html_url"])
+            else:
+                self.build_iso_on_github(item["version"])
+
+        self.site_sources(done)
+
+    def site_busy(self, text, frac=None):
+        self.site_meter.show()
+        self.site_detail.show()
+        if frac is not None:
+            self.site_meter.set(frac)
+        self.site_detail.setText(text)
+
+    def site_idle(self, text, ok=True):
+        self.site_meter.hide()
+        self.site_detail.setText(text if ok else f'<span style="color:{DANGER}">{text}</span>')
+        self.site_pub.setEnabled(True)
+        self.render_site()
+
+    def publish_iso(self, iso):
+        """Signs the ISO when the DecKoOS key is here (gpg may ask for its passphrase), then rebuilds the site."""
+        self.site_pub.setEnabled(False)
+        self.site_busy(f"Signing {Path(iso).name}…", 0.2)
+        self.say(f"Publishing {Path(iso).name} to the website")
+
+        def work(progress):
+            signed = SP.sign(iso)
+            progress(0.6, f"Building the site ({signed})…")
+            return signed, SP.publish(REPO_DIR, iso)
+
+        def done(res, err):
+            if err:
+                self.say(f"Publishing failed: {err}")
+                self.site_idle(f"Publishing failed: {err}", ok=False)
+                return
+            signed, summary = res
+            self.say(f"Website: {summary}; ISO {signed}")
+            self.site_idle(f"Published {Path(iso).name} ({signed})")
+            self.toast.show_message(f"{Path(iso).name} is on the website", "ok")
+
+        self.bg(work, done, lambda f, t: self.site_busy(t, f))
+
+    def download_and_publish(self, run, version):
+        self.site_pub.setEnabled(False)
+        self.site_busy(f"Downloading the {version} ISO…", 0)
+        repo, out = self.repo, self.out_dir()
+
+        def done(path, err):
+            if err:
+                self.say(f"Download failed: {err}")
+                self.site_idle(f"Download failed: {err}", ok=False)
+                return
+            self.publish_iso(path)
+
+        self.bg(lambda progress: fetch_iso(repo, run, out, progress), done, lambda f, t: self.site_busy(t, 0.9 * f))
+
+    def build_iso_on_github(self, version):
+        q = (f"Build the DecKoOS {version} ISO on GitHub?\n\nIt builds v{version} as it was tagged and runs the install "
+             "tests (about 45 minutes). Nothing is published to the update channels. When it passes, Builder downloads "
+             "it and puts it on the website (keep Builder open, or publish it later).")
+        if QMessageBox.question(self, "Publish an ISO", q) != QMessageBox.Yes:
+            return
+        repo = self.repo
+
+        def done(_, err):
+            if err:
+                hint = " (push main first: the ISO for a release workflow has to be on GitHub)" if "404" in str(err) \
+                    or "not found" in str(err).lower() else ""
+                self.say(f"Couldn't start the build: {err}{hint}")
+                return
+            self.settings.setValue("site_pending", version)
+            self.say(f"Building the {version} ISO on GitHub; it goes on the website when it passes")
+            self.render_site()
+
+        self.bg(lambda _: gh("workflow", "run", SP.VERSION_WORKFLOW, "--repo", repo, "--ref", "main",
+                             "-f", f"version={version}"), done)
+
+    def check_site_build(self):
+        """With a version waiting (Build on GitHub), publishes its ISO once that build has passed."""
+        version = self.settings.value("site_pending", "")
+        if DEMO or not version or self.role != "maintainer" or getattr(self, "_site_checking", False):
+            return
+        self._site_checking = True
+        repo = self.repo
+
+        def work(_):
+            runs = gh_json(f"repos/{repo}/actions/workflows/{SP.VERSION_WORKFLOW}/runs?per_page=10")["workflow_runs"]
+            return next(iter(SP.runs_for(version, [], runs)), None)
+
+        def done(run, err):
+            self._site_checking = False
+            if err or not run or run["status"] != "completed":
+                return
+            self.settings.remove("site_pending")
+            if run.get("conclusion") == "success":
+                QApplication.alert(self)
+                self.say(f"The {version} ISO passed its install tests: downloading it for the website")
+                self.download_and_publish(run, version)
+            else:
+                self.say(f"The {version} ISO build {run.get('conclusion')}: nothing was published")
+                self.toast.show_message(f"The {version} ISO build failed", "bad")
+                self.render_site()
+
+        self.bg(work, done)
+
+    def rebuild_site(self):
+        self.site_busy("Building the site…", 0.5)
+
+        def done(summary, err):
+            self.site_idle(f"Rebuild failed: {err}" if err else summary.capitalize(), ok=not err)
+
+        self.bg(lambda _: SP.build(REPO_DIR), done)
+
+    def start_site(self):
+        r = subprocess.run(["systemctl", "--user", "start", SP.SERVICE], capture_output=True, text=True)
+        self.say("Website started" if r.returncode == 0 else
+                 f"Couldn't start the website: {r.stderr.strip()} (install it as site/README.md says)")
+        self.render_site()
+
     # ---- helpers
 
     def say(self, text, log=True):
@@ -1179,6 +1473,9 @@ class Builder(QWidget):
         for b in (self.release_btn, self.promote_btn, self.build_btn):
             b.setVisible(maint)
         self.contribute.setVisible(signed_in and not maint)
+        self.site.setVisible(maint and (DEMO or not IS_WINDOWS))
+        if maint:
+            self.render_site()
         self.render_current()
         self.render_contribs()
         self.render_contribute()
@@ -1314,6 +1611,7 @@ class Builder(QWidget):
             if prev and self.current and prev["id"] == self.current["id"] and prev["status"] != "completed" \
                     and self.current["status"] == "completed":
                 self.finished(self.current)
+            self.check_site_build()
 
         self.bg(work, done)
 
@@ -1588,33 +1886,7 @@ class Builder(QWidget):
         repo = self.repo
 
         def work(progress):
-            arts = gh_json(f"repos/{repo}/actions/runs/{run['id']}/artifacts")["artifacts"]
-            art = next((a for a in arts if a["name"] == ARTIFACT and not a["expired"]), None)
-            if not art:
-                raise RuntimeError("this build has no ISO (or it expired after 14 days)")
-            token = gh("auth", "token").strip()
-            req = urllib.request.Request(art["archive_download_url"])
-            req.add_unredirected_header("Authorization", f"Bearer {token}")  # not sent on to the storage host
-            zpath = out / f"deckos-run{run['run_number']}.zip"
-            total, done_b, t0 = art["size_in_bytes"], 0, time.time()
-            with urllib.request.urlopen(req, timeout=60) as r, open(zpath, "wb") as f:
-                while chunk := r.read(4 << 20):
-                    f.write(chunk)
-                    done_b += len(chunk)
-                    rate = done_b / max(time.time() - t0, 0.1) / 1e6
-                    progress(0.9 * done_b / max(total, 1), f"Downloading #{run['run_number']}: "
-                             f"{done_b / 1e9:.2f} / {total / 1e9:.2f} GB  ·  {rate:.0f} MB/s")
-            with zipfile.ZipFile(zpath) as z:
-                iso_name = next(n for n in z.namelist() if n.endswith(".iso"))
-                target = out / iso_name
-                with z.open(iso_name) as src, open(target, "wb") as dst:
-                    size, copied = z.getinfo(iso_name).file_size, 0
-                    while chunk := src.read(8 << 20):
-                        dst.write(chunk)
-                        copied += len(chunk)
-                        progress(0.9 + 0.1 * copied / size, f"Unpacking {iso_name}")
-            zpath.unlink()
-            return target
+            return fetch_iso(repo, run, out, progress)
 
         def done(path, err):
             if err:
@@ -1871,12 +2143,26 @@ def demo_data():
               ["pkg/deckos-settings/rootfs/usr/lib/deckos/retro/retro.py"], 9, 1, ["FAILURE"], draft=True)]
     return {"runs": runs, "jobs": jobs, "assets": assets, "stable": "0.13.1", "apps": apps, "prs": prs,
             "local": {"version": "0.13.2", "tag": "v0.13.2", "ahead": 0, "unpushed": 0, "branch": "main"},
-            "iso_runs": {9211: 0, 9210: 1740, 9209: 0, 9208: 0}}
+            "iso_runs": {9211: 0, 9210: 1740, 9209: 0, 9208: 0},
+            # The Website card's releases: one of each state
+            "site": [{"version": "0.13.2", "state": "building", "path": None, "run": runs[0], "expires": None},
+                     {"version": "0.13.1", "state": "none", "path": None, "run": None, "expires": None},
+                     {"version": "0.13.0", "state": "local", "path": Path("deckos-0.13.0-x86_64.iso"), "run": None,
+                      "expires": None},
+                     {"version": "0.12.4", "state": "ci", "path": None, "run": runs[4],
+                      "expires": (now + timedelta(days=9)).strftime("%Y-%m-%dT%H:%M:%SZ")},
+                     {"version": "0.12.3", "state": "failed", "path": None, "run": runs[3], "expires": None}]}
 
 
 def screenshot(w, out):
     out.mkdir(parents=True, exist_ok=True)
     w.grab().save(str(out / f"builder-{DEMO_ROLE}.png"))
+    if DEMO_ROLE == "maintainer":
+        dlg = PublishDialog(w, demo_data()["site"], "deckos-0.13.0-x86_64.iso")
+        dlg.resize(dlg.sizeHint())
+        dlg.show()
+        QApplication.processEvents()
+        dlg.grab().save(str(out / "builder-publish.png"))
     QApplication.quit()
 
 
