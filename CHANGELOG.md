@@ -3,6 +3,25 @@
 What each release brought, newest first. Feature releases (X.Y.0) have the notes DecKoOS shows in What's New;
 patch releases (X.Y.Z) are fixes. Generated from the release notes by `assets/changelog.py`.
 
+## 0.14.0: Fixes you can trust
+
+DecKoOS fixes common problems itself, safely and with Undo, and Deck can look things up on the web.
+
+- **Fixes you can trust**: When something breaks, DecKoOS Assistant, System Doctor and Care can pick a fix from DecKoOS's own library of checked fixes: restart a stuck service, reinstall a damaged package, clear a full drive. The AI picks a fix and you see the exact commands; it never writes them. Bigger fixes take a snapshot first, so Undo puts everything back, and afterwards DecKoOS asks "Did that fix it?". It's all yours to switch off in Hub > System.
+- **Deck, with the web if you want it**: DecKoOS Assistant is Deck now, with a personality you pick: friendly, calm, direct or gamer. Turn on web search and Deck can look things up and read pages, from public sites only, never your PC or home network, and it shows you the sites it used. Web search is off until you turn it on.
+- **Fix reports you choose to send**: If a fix didn't work, DecKoOS can make a report: you see exactly what's in it, with your names and serial numbers taken out, and you send it on GitHub yourself. DecKoOS never sends anything on its own.
+
+Fixes:
+
+- System Doctor's fix buttons run the same checked fixes, so every one can be undone from the timeline.
+- Kid mode has its own page in DecKoOS Hub.
+- Community (AUR) apps in the Store no longer look like the safe pick.
+- DecKoOS Files: tabs sit over your folders, long names break in sensible places, and photos show bigger.
+
+### 0.13.1 (2026-10-25)
+
+Fixes and polish.
+
 ## 0.13.0: Make it yours (2026-10-25)
 
 Vibes for your desktop, Kid mode for the family, DecKoOS's own sounds, and every setting in one place.

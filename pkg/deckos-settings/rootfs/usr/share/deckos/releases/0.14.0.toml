@@ -1,0 +1,37 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.14.0"
+name = "Fixes you can trust"
+tagline = "DecKoOS fixes common problems itself, safely and with Undo, and Deck can look things up on the web."
+
+fixes = [
+    "System Doctor's fix buttons run the same checked fixes, so every one can be undone from the timeline.",
+    "Kid mode has its own page in DecKoOS Hub.",
+    "Community (AUR) apps in the Store no longer look like the safe pick.",
+    "DecKoOS Files: tabs sit over your folders, long names break in sensible places, and photos show bigger.",
+]
+
+[[highlights]]
+title = "Fixes you can trust"
+text = """When something breaks, DecKoOS Assistant, System Doctor and Care can pick a fix from DecKoOS's own \
+library of checked fixes: restart a stuck service, reinstall a damaged package, clear a full drive. The AI picks \
+a fix and you see the exact commands; it never writes them. Bigger fixes take a snapshot first, so Undo puts \
+everything back, and afterwards DecKoOS asks "Did that fix it?". It's all yours to switch off in Hub > System."""
+icon = "shield"
+try = "See your fix settings"
+run = ["deckos-hub", "--page", "system"]
+
+[[highlights]]
+title = "Deck, with the web if you want it"
+text = """DecKoOS Assistant is Deck now, with a personality you pick: friendly, calm, direct or gamer. Turn on \
+web search and Deck can look things up and read pages, from public sites only, never your PC or home network, \
+and it shows you the sites it used. Web search is off until you turn it on."""
+icon = "globe"
+try = "Set up Deck"
+run = ["deckos-hub", "--page", "aidev"]
+
+[[highlights]]
+title = "Fix reports you choose to send"
+text = """If a fix didn't work, DecKoOS can make a report: you see exactly what's in it, with your names and \
+serial numbers taken out, and you send it on GitHub yourself. DecKoOS never sends anything on its own."""
+icon = "check"
