@@ -1,0 +1,20 @@
+# The DecKoOS website, served from this PC (a user service: no root, starts at login).
+# Install:  cp site/deckos-site.service ~/.config/systemd/user/ && systemctl --user enable --now deckos-site
+# It serves what site/build.py last built; rebuild after changing the docs or the ISO, no restart needed.
+[Unit]
+Description=DecKoOS website (static files from site/public)
+
+[Service]
+# DECKOS_SITE_HOST=127.0.0.1 keeps it on this PC; 0.0.0.0 shares it with the home network
+Environment=DECKOS_SITE_HOST=127.0.0.1
+Environment=DECKOS_SITE_PORT=8080
+WorkingDirectory=%h/Documents/DeckOS
+ExecStart=/usr/bin/python3 %h/Documents/DeckOS/site/serve.py
+Restart=on-failure
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadOnlyPaths=%h
+
+[Install]
+WantedBy=default.target

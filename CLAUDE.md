@@ -134,6 +134,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
 - DecKoOS Sounds: `assets/sounds.py` synthesises the sound theme (numpy + ffmpeg; glass tones, a metal-plate accent for
   big events) into `usr/share/sounds/deckos/` (`Inherits=ocean`); `kdeglobals.base` makes it the default; Hub > Appearance
   > Sounds switches it (kwriteconfig6). Not in check.sh's generated check: Vorbis output varies between ffmpeg versions.
+- `site/`: the website (README.md there). `build.py` generates static pages from the README's features/limitations,
+  the release TOMLs, `docs/` (`DOCS`/`DOC_META` pick and name them), SECURITY.md and the newest `out/deckos-X.Y.Z` ISO
+  into git-ignored `site/public/`; its own small markdown renderer escapes everything. `serve.py` serves it (127.0.0.1,
+  Range, no visitor addresses logged); `Caddyfile` for a server. Nothing loads from other sites (Inter is subset and
+  served locally). `tests/test_site.py` checks every internal link and anchor.
 - `personal/`: git-ignored. Holds the package signing key backup and the TMpikes brand kit. Never
   commit anything from it, never print the private key.
 
