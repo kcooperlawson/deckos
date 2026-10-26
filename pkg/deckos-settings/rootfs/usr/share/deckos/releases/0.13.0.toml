@@ -28,7 +28,7 @@ your Retro library, and if you like, a time limit and bedtime. Your session stay
 password brings it back. A tap on their picture on the login screen and they're in."""
 icon = "user"
 try = "Set up Kid mode"
-run = ["deckos-hub", "--page", "system"]
+run = ["deckos-hub", "--page", "kids"]
 
 [[highlights]]
 title = "Every setting in one place"

@@ -35,7 +35,7 @@ HUB = [
     ("system", "Firewall", "What's open to your network", "shield", "firewall ports network security open"),
     ("system", "Fixes", "Self-healing: what DecKoOS fixes do, and switches for each part", "check",
      "fixes self healing heal repair privacy reports suggestions opt out"),
-    ("system", "Kids", "Kid mode: an account per child, their apps, time limits, filtered web", "user",
+    ("kids", "Kids", "Kid mode: an account per child, their apps, time limits, filtered web", "user",
      "kids child children parental controls family time limit bedtime safe web filter"),
     ("system", "Take my setup with me", "Save or bring in your DecKoOS setup", "download",
      "export import backup setup move new pc reinstall"),

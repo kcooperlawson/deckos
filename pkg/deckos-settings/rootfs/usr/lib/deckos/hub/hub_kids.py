@@ -8,14 +8,15 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QInputDialog, QLineEdit,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QInputDialog,
+                               QLineEdit,
                                QMessageBox, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "kids"))
 import hub_style as S  # noqa: E402
 import hub_system as sysinfo  # noqa: E402
 import kids  # noqa: E402
-from hub_widgets import Card, Meter, RowItem, button, label, row  # noqa: E402
+from hub_widgets import Card, Meter, RowItem, button, icon_label, label, row  # noqa: E402
 
 DEMO_KIDS = [{"name": "mia", "display": "Mia", "apps": "org.kde.kolourpaint,tuxpaint,deckos-kids-browser",
               "minutes": "60", "bedtime": "19:30", "web": "filtered"},
@@ -313,3 +314,35 @@ class KidsCard(Card):
             self.hub.toast("Would lock your session and show the login screen", "info")
             return
         QProcess.startDetached(sysinfo.DECKOS, ["kids", "start"])
+
+
+def make_page():
+    from hub_pages import Page
+
+    class Kids(Page):
+        title = "Kids"
+        subtitle = "Kid mode: an account per child, only the apps you pick, a filtered web and time limits."
+
+        def build(self):
+            self.kids = KidsCard(self.hub)
+            self.lay.addWidget(self.kids)
+            how = Card("How it works", "Safe by design, not by hiding buttons", "shield")
+            for ic, text in (
+                    ("user", "Each child has their own account. Linux keeps accounts apart, so they can't open or change "
+                             "your files, apps or settings."),
+                    ("lock", "Start Kid mode and your session locks with everything still running. They tap their "
+                             "picture on the login screen; your password brings you back."),
+                    ("clock", "Time limits and bedtime are counted by the system, not their session: closing an app "
+                              "doesn't stop the clock. They get a warning 5 minutes before."),
+                    ("globe", "The web goes through a free family filter that blocks adult and unsafe sites. You can "
+                              "also turn the web off for a child.")):
+                h = QHBoxLayout()
+                h.setSpacing(10)
+                h.addWidget(icon_label(ic, S.SUBTEXT, 16), 0, Qt.AlignTop)
+                h.addWidget(label(text, "sub"), 1)
+                how.body.addLayout(h)
+            self.lay.addWidget(how)
+
+        def refresh(self):
+            self.kids.refresh()
+    return Kids

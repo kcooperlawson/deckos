@@ -9,7 +9,7 @@ sys.path.insert(0, str(HUB))
 import hub_settings as hs  # noqa: E402
 
 ICONS = Path(__file__).resolve().parents[1] / 'pkg/deckos-settings/rootfs/usr/share/deckos/icons'
-PAGES = {"home", "timeline", "games", "display", "gaming", "drives", "aidev", "system", "appearance", "more"}
+PAGES = {"home", "timeline", "games", "kids", "display", "gaming", "drives", "aidev", "system", "appearance", "more"}
 
 
 class SettingsIndexTests(unittest.TestCase):

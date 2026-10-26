@@ -826,10 +826,13 @@ class AiDevPage(Page):
                            "when it searched.")
             web.setChecked(sysinfo.ai_setting("WEB_SEARCH", "off") == "on")
             web.toggled.connect(lambda on: self.ai_set("web", "on" if on else "off", f"Web search {'on' if on else 'off'}"))
-            name = label("Personality")
-            self.ollama_card.body.addWidget(row(name, persona, web))
+            name = label("Deck, the Assistant")
+            name.setFixedWidth(150)
+            self.ollama_card.body.addWidget(row(name, persona))
+            self.ollama_card.body.addWidget(row(web, label("Searches go to DuckDuckGo; Deck shows the sites it used",
+                                                           "muted")))
             self.ollama_card.body.addWidget(row(
-                button("Ask DecKoOS Assistant", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
+                button("Ask Deck", "primary", lambda: QProcess.startDetached("deckos-assistant", []), icon="ai",
                        tip="Install and set things up by asking (Meta+Space anywhere)"),
                 self.toggle,
                 button("Link Claude Code", slot=lambda: self.hub.terminal("deckos ai claude-link"), icon="external",
@@ -980,7 +983,7 @@ def _setup_run(page, args, done_text):
 
 class SystemPage(Page):
     title = "System"
-    subtitle = "Updates, snapshots, firewall and software."
+    subtitle = "Updates, undo, backups, the firewall, fixes and software."
 
     def export_setup(self):
         name = f"decko-setup-{datetime.now():%Y-%m-%d}.tar.gz"
@@ -1088,9 +1091,6 @@ class SystemPage(Page):
         from hub_heal import HealCard  # self-healing, said up front with its switches
         self.lay.addWidget(HealCard(self.hub.toast))
 
-        from hub_kids import KidsCard  # here: hub_kids builds on this module's widgets
-        self.kids = KidsCard(self.hub)
-        self.lay.addWidget(self.kids)
 
         sw = Card("Software", "Add what you skipped at install", "package")
         sw.actions.addWidget(button("Open DecKoOS Store", slot=lambda: QProcess.startDetached("deckos-store", []),
