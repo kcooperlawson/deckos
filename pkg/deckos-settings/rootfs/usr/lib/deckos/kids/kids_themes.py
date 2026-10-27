@@ -153,3 +153,15 @@ class Scene:
         emoji(p, "☀️", r.left() + 80, r.top() + 80 + 4 * math.sin(tick * 0.2), 64)
         for i in range(3):
             emoji(p, "☁️", r.left() + ((tick * (1 + i) + i * 350) % (w + 200)) - 100, r.top() + 60 + i * 60, 50 - i * 6)
+
+
+def render(tid, path, width=3840, height=2160):
+    """The theme's scene as a wallpaper picture (a still frame), for the child's desktop. Drawn at 1920×1080 and
+    scaled up, so the friends and planets are the size the scenes were made for."""
+    from PySide6.QtGui import QImage
+    img = QImage(1920, 1080, QImage.Format_RGB32)
+    p = QPainter(img)
+    Scene(tid).paint(p, QRectF(0, 0, 1920, 1080), 12)
+    p.end()
+    img.scaled(width, height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(str(path))
+    return path

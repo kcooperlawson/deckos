@@ -1,9 +1,12 @@
-"""Kid mode's desktop: the child's theme (kids_themes), DecKoOS's own games (kids_games), big tiles for the apps a
-parent approved, the time left (when there's a limit) and "I'm done". Starts at login in a child's account
-(`deckos-kids --session`, from the autostart kids.py writes). Counts the minutes used today and, at the end of the
-time, says so kindly and logs out.
+"""Kid mode. A child gets a real desktop in their theme, not a full-screen launcher:
 
-    deckos-kids --session | --demo [--theme ID] [--screenshot FILE]
+- `--session` (at login, from the autostart kids.py writes; no window): checks their panels, puts their theme on
+  the wallpaper, their approved apps and My games on the desktop and the taskbar, keeps the volume under the
+  parent's cap, and says kindly when the time is nearly up (then logs out).
+- `--games` ("My games" on their desktop): a window with DecKoOS's own games (kids_games) and their apps as tiles,
+  in their theme (kids_themes), with the time left.
+
+    deckos-kids --session | --games | --demo [--theme ID] [--screenshot FILE]
 """
 import os
 import pwd
@@ -13,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, QProcess, QRectF, QSize, Qt, QTimer
+from PySide6.QtCore import QObject, QPointF, QProcess, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QApplication, QGraphicsDropShadowEffect, QGridLayout, QHBoxLayout, QLabel, QPushButton,
                                QScrollArea, QStackedLayout, QVBoxLayout, QWidget)
@@ -123,7 +126,7 @@ class KidMode(QWidget):
         self.scene = kids_themes.Scene(self.theme["id"])
         self.frame = 0
         ink = self.theme["text"]
-        self.setWindowTitle("Kid mode")
+        self.setWindowTitle("My games")
         self.setObjectName("root")
         self.stack = QStackedLayout(self)
         home = QWidget()
@@ -144,28 +147,13 @@ class KidMode(QWidget):
         hello.setStyleSheet(f"font-family: 'Inter Display'; font-size: 34pt; font-weight: 800; color: {ink}; "
                             "background: transparent;")
         hi.addWidget(hello)
-        sub = QLabel("What do you want to do?")
+        sub = QLabel("Play a game, or open one of your apps")
         sub.setStyleSheet(f"font-size: 15pt; color: {ink}; background: transparent;")
         hi.addWidget(sub)
         head.addLayout(hi, 1)
         self.ring = TimeRing(self.theme["tiles"][3])
         head.addWidget(self.ring)
-        done = QPushButton("  I'm done")
-        done.setIcon(S.icon("log-out", "#FFFFFF", 22))
-        done.setIconSize(QSize(22, 22))
-        done.setCursor(Qt.PointingHandCursor)
-        done.setStyleSheet(f"QPushButton {{ font-size: 15pt; font-weight: 700; padding: 14px 24px; color: white; "
-                           f"background: {self.theme['tiles'][0]}; border: none; border-radius: 26px; }}")
-        done.clicked.connect(self.finish)
-        head.addWidget(done)
         v.addLayout(head)
-
-        self.banner = QLabel()
-        self.banner.setAlignment(Qt.AlignCenter)
-        self.banner.setStyleSheet("font-size: 17pt; font-weight: 700; padding: 14px; border-radius: 22px; "
-                                  "background: rgba(0, 0, 0, 120); color: #FFE08A;")
-        self.banner.hide()
-        v.addWidget(self.banner)
 
         grid_holder = QWidget()
         grid_holder.setAttribute(Qt.WA_TranslucentBackground)
@@ -223,16 +211,6 @@ class KidMode(QWidget):
         self.pad.key.connect(self.pad_key)
         if not DEMO:
             self.pad.start()
-        self.cap = int(self.conf.get("volume") or 100) / 100
-        if self.cap < 1 and not DEMO:
-            # Volume changes as they happen (pactl subscribe), not polling: anything over the cap goes back to it
-            self.volume = QProcess(self)
-            self.volume.readyReadStandardOutput.connect(self.volume_changed)
-            self.volume.start("pactl", ["subscribe"])
-            self.volume_changed()
-        self.ended = False
-        self.leaving = False  # logging out: let the window close, or Plasma says an app is blocking the logout
-        QApplication.instance().commitDataRequest.connect(self.session_ending)
         self.tick()
         # The time service (root) counts the minutes; this only shows them
         self.timer = QTimer(self, timeout=self.tick, interval=30_000)
@@ -251,18 +229,6 @@ class KidMode(QWidget):
     def paintEvent(self, _e):
         p = QPainter(self)
         self.scene.paint(p, QRectF(self.rect()), self.frame)
-
-    def volume_changed(self):
-        if hasattr(self, "volume"):
-            out = bytes(self.volume.readAllStandardOutput()).decode(errors="replace")
-            if out and "sink" not in out:
-                return
-        r = QProcess()
-        r.start("wpctl", ["get-volume", "@DEFAULT_AUDIO_SINK@"])
-        r.waitForFinished(2000)
-        m = re.search(r"Volume: ([\d.]+)", bytes(r.readAllStandardOutput()).decode())
-        if m and float(m.group(1)) > self.cap + 0.005:
-            QProcess.execute("wpctl", ["set-volume", "@DEFAULT_AUDIO_SINK@", f"{self.cap:.2f}"])
 
     def pad_key(self, key):
         if not self.isActiveWindow():  # not while an app has the controller
@@ -291,8 +257,6 @@ class KidMode(QWidget):
             super().keyPressEvent(e)
 
     def launch(self, app):
-        if self.ended:
-            return
         if app.get("game"):  # DecKoOS's own games open right here
             game = kids_games.make(app["game"], self.theme["id"])
             game.back.connect(lambda g=game: self.close_game(g))
@@ -320,35 +284,11 @@ class KidMode(QWidget):
             return
         total = max(1.0, float(self.conf.get("minutes") or 0) or left)
         self.ring.set(left / total, f"{int(left)}m" if left >= 1 else "0")
-        if 0 < left <= 5:
-            self.banner.setText(f"{int(left) or 1} more minute{'s' if left >= 2 else ''}: time to finish up!")
-            self.banner.show()
-        if left <= 0 and not self.ended:
-            self.ended = True
-            self.banner.setText("Time's up for today! Saving and logging out in a minute.")
-            self.banner.show()
-            if not DEMO:  # the time service ends the session; this is in case it isn't running
-                QTimer.singleShot(150_000, self.finish)
-
-    def session_ending(self, *_):
-        self.leaving = True
-
-    def finish(self):
-        if DEMO:
-            return
-        self.leaving = True
-        # Log out without asking: back to the login screen, where a grown-up's password brings their session back
-        QProcess.startDetached("qdbus6", ["org.kde.Shutdown", "/Shutdown", "logout"])
-
-    def closeEvent(self, e):
-        if not DEMO and not self.leaving:  # it's the child's desktop: minimise instead of going away
-            e.ignore()
-            self.showMinimized()
 
 
 # What a child's panels may hold: the kid taskbar (their tiles and windows), volume and the clock. A menu or
 # anything else would open apps the parent didn't approve.
-KID_WIDGETS = {"org.deckos.taskbar", "org.kde.plasma.volume", "org.kde.plasma.digitalclock"}
+KID_WIDGETS = {"org.deckos.taskbar", "org.deckos.kidtime", "org.kde.plasma.volume", "org.kde.plasma.digitalclock"}
 
 
 def panel_widgets():
@@ -381,25 +321,107 @@ def first_login():
         QProcess.execute("deckos", ["layout", "set", "kids"])
 
 
+class KidSession(QObject):
+    """The child's session, without a window: their desktop set up once the shell is ready, the volume cap, and
+    the time warnings. The time service (root) counts the minutes and ends the session; this only says so."""
+
+    WARN_AT = (10, 5, 1)  # minutes left
+
+    def __init__(self):
+        super().__init__()
+        self.name = pwd.getpwuid(os.getuid()).pw_name
+        self.conf = kids.read_conf(self.name) or {**kids.DEFAULTS, "display": self.name.title()}
+        self.state = kids.state_file(self.name)
+        self.warned, self.ended = set(), False
+        QTimer.singleShot(0, self.set_up)
+        self.cap = int(self.conf.get("volume") or 100) / 100
+        if self.cap < 1:
+            # Volume changes as they happen (pactl subscribe), not polling: anything over the cap goes back to it
+            self.volume = QProcess(self)
+            self.volume.readyReadStandardOutput.connect(self.volume_changed)
+            self.volume.start("pactl", ["subscribe"])
+            self.volume_changed()
+        self.timer = QTimer(self, timeout=self.tick, interval=30_000)
+        self.timer.start()
+        self.tick()
+
+    def set_up(self):
+        first_login()  # their panels: only what a child may use
+        home = Path.home()
+        # Their theme on every screen's wallpaper (drawn once per theme)
+        theme = kids_themes.theme(self.conf.get("theme"))["id"]
+        wall = home / f".local/share/deckos/kids-{theme}.png"
+        if not wall.exists():
+            wall.parent.mkdir(parents=True, exist_ok=True)
+            kids_themes.render(theme, wall)
+        QProcess.execute("plasma-apply-wallpaperimage", [str(wall)])
+        # Their apps and games on the desktop and the taskbar (the parent may have changed them since last time)
+        entries = kids.desktop_entries(kids.approved(self.name), self.conf.get("builtin", "on") != "off")
+        pins = kids.sync_desktop(home, entries)
+        js = ",".join(f"'{p}'" for p in pins if re.fullmatch(r"applications:[A-Za-z0-9._-]+", p))
+        QProcess.execute("qdbus6", ["org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript",
+                                    "panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach("
+                                    f"function (w) {{ w.currentConfigGroup = ['General']; w.writeConfig('launchers', "
+                                    f"[{js}]); w.reloadConfig(); }}); }});"
+                                    # Big icons on the desktop, easy to see and to click
+                                    "desktops().forEach(function (d) { d.currentConfigGroup = ['General'];"
+                                    " d.writeConfig('iconSize', 5); d.reloadConfig(); });"])
+
+    def volume_changed(self):
+        if hasattr(self, "volume"):
+            out = bytes(self.volume.readAllStandardOutput()).decode(errors="replace")
+            if out and "sink" not in out:
+                return
+        r = QProcess()
+        r.start("wpctl", ["get-volume", "@DEFAULT_AUDIO_SINK@"])
+        r.waitForFinished(2000)
+        m = re.search(r"Volume: ([\d.]+)", bytes(r.readAllStandardOutput()).decode())
+        if m and float(m.group(1)) > self.cap + 0.005:
+            QProcess.execute("wpctl", ["set-volume", "@DEFAULT_AUDIO_SINK@", f"{self.cap:.2f}"])
+
+    @staticmethod
+    def say(title, body, urgent=False):
+        QProcess.startDetached("notify-send", ["--app-name=Kid mode", "--icon=deckos",
+                                               f"--urgency={'critical' if urgent else 'normal'}", title, body])
+
+    def tick(self):
+        left = kids.time_left(self.conf, kids.minutes_used(self.state))
+        if left is None:
+            return
+        for m in self.WARN_AT:
+            if 0 < left <= m and m not in self.warned:
+                self.warned.update(x for x in self.WARN_AT if x >= m)
+                self.say(f"{m} minute{'s' if m > 1 else ''} left", "Time to finish up and save!", urgent=m == 1)
+                break
+        if left <= 0 and not self.ended:
+            self.ended = True
+            self.say("Time's up for today!", "Saving and logging out in a minute. See you next time!", urgent=True)
+            # The time service ends the session; this is in case it isn't running
+            QTimer.singleShot(150_000, lambda: QProcess.startDetached("qdbus6", ["org.kde.Shutdown", "/Shutdown",
+                                                                                 "logout"]))
+
+
 def main():
-    if DEMO:  # the real icons on any machine that has the theme (offscreen renders have no theme set)
+    if DEMO:  # the real icons on any machine that has the theme (offscreen renders have no theme or icon path set)
+        QIcon.setThemeSearchPaths(["/usr/share/icons", *QIcon.themeSearchPaths()])
         QIcon.setThemeName("Papirus")
     app = QApplication(sys.argv)
     app.setApplicationName("Kid mode")
     app.setDesktopFileName("deckos-kids")
     app.setFont(QFont("Inter", 11))
     app.setStyleSheet(S.qss())
+    if "--session" in sys.argv and not DEMO:
+        app.setQuitOnLastWindowClosed(False)
+        session = KidSession()  # noqa: F841  (lives as long as the session)
+        return app.exec()
     w = KidMode()
     if "--screenshot" in sys.argv:
         w.resize(1280, 800)
         w.show()
         out = sys.argv[sys.argv.index("--screenshot") + 1]
         QTimer.singleShot(600, lambda: (w.grab().save(out), app.exit(0)))
-    elif "--session" in sys.argv:
-        first_login()
-        w.showMaximized()
     else:
-        w.resize(1280, 800)
+        w.resize(1180, 760)
         w.show()
     return app.exec()
 

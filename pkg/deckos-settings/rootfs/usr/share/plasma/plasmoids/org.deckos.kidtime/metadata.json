@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "Kid mode: the time left today, and I'm done",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.kidtime",
+        "License": "MIT",
+        "Name": "Kid mode time",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

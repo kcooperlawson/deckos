@@ -37,6 +37,41 @@ class PanelTests(unittest.TestCase):
                       (lnf / "org.kde.plasma.desktop-layout.js").read_text())
 
 
+class DesktopTests(unittest.TestCase):
+    TILES = [{"id": "org.kde.kolourpaint", "name": "Paint", "icon": "kolourpaint", "exec": "kolourpaint %U"},
+             {"id": "game:snes/Mario World.sfc", "name": "Mario", "icon": "", "exec": "",
+              "argv": ["retroarch", "-L", "/usr/lib/libretro/snes9x.so", "/srv/deckos-kids/games/snes/Mario World.sfc"]}]
+
+    def test_launchers_for_games_and_apps(self):
+        e = kids.desktop_entries(self.TILES)
+        self.assertEqual(list(e), ["deckos-kids-games.desktop", "deckos-kid-org-kde-kolourpaint.desktop",
+                                   "deckos-kid-game-snes-mario-world-sfc.desktop"])
+        self.assertIn("Exec=kolourpaint\n", e["deckos-kid-org-kde-kolourpaint.desktop"])  # no %U on a launcher
+        self.assertIn('"/srv/deckos-kids/games/snes/Mario World.sfc"', e["deckos-kid-game-snes-mario-world-sfc.desktop"])
+        self.assertNotIn("deckos-kids-games.desktop", kids.desktop_entries(self.TILES, games_on=False))
+
+    def test_sync_keeps_the_childs_own_files(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / "Desktop").mkdir()
+            (home / "Desktop/my-drawing.desktop").write_text("[Desktop Entry]\nName=Mine\n")  # theirs: stays
+            pins = kids.sync_desktop(home, kids.desktop_entries(self.TILES))
+            self.assertEqual(pins[0], "applications:deckos-kids-games.desktop")
+            paint = home / "Desktop/deckos-kid-org-kde-kolourpaint.desktop"
+            self.assertTrue(paint.exists() and paint.stat().st_mode & 0o111)  # starts without asking
+            # The parent takes Paint away: Kid mode's launcher goes, the child's own file stays
+            kids.sync_desktop(home, kids.desktop_entries(self.TILES[1:]))
+            self.assertFalse(paint.exists())
+            self.assertFalse((home / ".local/share/applications/deckos-kid-org-kde-kolourpaint.desktop").exists())
+            self.assertTrue((home / "Desktop/my-drawing.desktop").exists())
+
+    def test_kid_panel_has_the_time_widget(self):
+        layout = (LIB.parent.parent / "share/plasma/layout-templates/org.deckos.layout.kids/contents/layout.js").read_text()
+        self.assertIn('"org.deckos.kidtime"', layout)
+        self.assertIn("org.deckos.kidtime", deckos_kids.KID_WIDGETS)
+
+
 class ThemeTests(unittest.TestCase):
     def test_every_theme_paints(self):
         img = QImage(640, 400, QImage.Format_ARGB32)

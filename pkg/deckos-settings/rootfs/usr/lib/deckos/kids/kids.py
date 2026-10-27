@@ -11,6 +11,7 @@ work (accounts, settings) goes through `deckos kids`, which calls this file. No 
 import json
 import os
 import re
+import shlex
 import sys
 import time
 from pathlib import Path
@@ -169,6 +170,66 @@ def approved(name, apps=None):
 def suggested(apps=None):
     apps = installed_apps() if apps is None else apps
     return [i for i in SUGGESTED if i in apps]
+
+
+# ------------------------------------------------------------------ the child's desktop
+
+MARK = "X-DeckOS-Kids=true"  # entries Kid mode wrote, so it only ever removes its own
+GAMES_ENTRY = "deckos-kids-games"
+
+
+def quote_exec(argv):
+    """argv as a desktop entry's Exec, quoted the desktop-entry way, so paths with spaces work."""
+    def q(a):
+        return a if re.fullmatch(r"[A-Za-z0-9_./:=+-]+", a) else '"' + re.sub(r'(["`$\\])', r"\\\1", a) + '"'
+    return " ".join(q(a) for a in argv)
+
+
+def entry_text(name, icon, exec_line, comment=""):
+    """A launcher for one of the child's tiles."""
+    return ("[Desktop Entry]\nType=Application\n" f"Name={name}\n" f"Icon={icon or 'applications-games'}\n"
+            f"Exec={exec_line}\n" + (f"Comment={comment}\n" if comment else "") +
+            "Categories=Game;\n" f"{MARK}\n")
+
+
+def desktop_entries(tiles, games_on=True):
+    """{file name: entry} for the child's desktop and taskbar: their games first, then each approved tile."""
+    out = {}
+    if games_on:
+        out[f"{GAMES_ENTRY}.desktop"] = entry_text("My games", "applications-games", "deckos-kids --games",
+                                                   "Bubble pop, Memory match and your apps")
+    for t in tiles:
+        # An app's own Exec as it is, without its file placeholders (%U, %f…); a game's command quoted
+        line = quote_exec(t["argv"]) if t.get("argv") else re.sub(r"\s*%[a-zA-Z]", "", t.get("exec") or "").strip()
+        if not line:
+            continue
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", t["id"]).strip("-").lower()
+        out[f"deckos-kid-{slug}.desktop"] = entry_text(t["name"], t.get("icon"), line, t.get("comment", ""))
+    return out
+
+
+def sync_desktop(home, entries):
+    """Writes the entries to the child's desktop and app list, takes away Kid mode's own that are gone (an app the
+    parent removed); the child's other files stay. Returns the taskbar pins, in order."""
+    places = [Path(home) / "Desktop", Path(home) / ".local/share/applications"]
+    for d in places:
+        d.mkdir(parents=True, exist_ok=True)
+        for f in d.glob("*.desktop"):
+            if f.name not in entries:
+                try:
+                    if MARK in f.read_text(errors="replace"):
+                        f.unlink()
+                except OSError:
+                    pass
+        for fname, text in entries.items():
+            f = d / fname
+            try:
+                if not f.exists() or f.read_text() != text:
+                    f.write_text(text)
+                f.chmod(0o755)  # a launcher on the desktop starts without asking only when it's executable
+            except OSError:
+                pass
+    return [f"applications:{fname}" for fname in entries]
 
 
 # ------------------------------------------------------------------ time
