@@ -30,6 +30,8 @@ install=deckos-settings.install
 package() {
   local src=$startdir
   cp -a "$src/rootfs/." "$pkgdir/"
+  # A checkout's test runs leave compiled Python behind; packaged, it clashed with files Python writes itself
+  find "$pkgdir" -name __pycache__ -type d -prune -exec rm -rf {} +
   find "$pkgdir" -type d -exec chmod 755 {} +
   find "$pkgdir" -type f -exec chmod 644 {} +
   # Everything in usr/bin runs: a list of names missed deckos-kids, and Kid mode never started
