@@ -1,0 +1,13 @@
+[Unit]
+Description=DecKoOS taskbar on every screen, also screens plugged in later
+After=plasma-plasmashell.service
+PartOf=graphical-session.target
+ConditionPathExists=%h/.config/deckos/taskbar-screens
+
+[Service]
+ExecStart=/usr/bin/deckos taskbar screens follow
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

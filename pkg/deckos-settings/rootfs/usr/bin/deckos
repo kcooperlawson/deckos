@@ -1618,8 +1618,12 @@ taskbar_cmd() {
     screens)
       case ${2:-} in
         all|one) mkdir -p "${TASKBAR_SCREENS%/*}" && printf '%s\n' "$2" > "$TASKBAR_SCREENS"; taskbar_screens "$2"
+          # Screens plugged in later get theirs too: deckos-screens follows the kernel's display events
+          systemctl --user "$([[ $2 == all ]] && echo enable || echo disable)" --now deckos-screens.service \
+            >/dev/null 2>&1 || true
           ok "taskbar: $([[ $2 == all ]] && echo "on every screen (the others show only their windows' icons)" || echo "on the main screen only")" ;;
         "") cat "$TASKBAR_SCREENS" 2>/dev/null || echo one ;;
+        follow) taskbar_follow ;;
         *) err "usage: deckos taskbar screens all|one"; exit 2 ;;
       esac ;;
     *) err "usage: deckos taskbar height SIZE | colors accent|vibe|custom COLOR [COLOR] | motion on|off | screens all|one"
@@ -1631,6 +1635,17 @@ taskbar_cmd() {
 # (that screen's windows and the same pinned apps: no menu, tray or clock), marked so `one` takes only those away.
 # Remembered in $TASKBAR_SCREENS, so `deckos layout set` puts them back after replacing the panels.
 TASKBAR_SCREENS=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/taskbar-screens
+
+taskbar_follow() {  # deckos-screens.service: a screen came or went, so each screen gets its taskbar again
+  [[ $(cat "$TASKBAR_SCREENS" 2>/dev/null) == all ]] || exit 0
+  local line
+  while read -r line; do
+    [[ $line == *change* || $line == *add* || $line == *remove* ]] || continue
+    # A plug sends a burst of events and Plasma needs a moment to set the screen up: act once, after it settles
+    while read -r -t 4 _; do :; done
+    taskbar_screens all
+  done < <(udevadm monitor --kernel --subsystem-match=drm 2>/dev/null)
+}
 
 taskbar_screens() {
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
