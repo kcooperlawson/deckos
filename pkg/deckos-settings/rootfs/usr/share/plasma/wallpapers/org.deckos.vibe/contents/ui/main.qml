@@ -1,8 +1,9 @@
 // DecKoOS Vibe wallpaper: an animated scene (Lo-fi rain, Neon grid, Midnight stars, Cozy forest) and, on top, the
 // music visualizer, fed by deckos-visualizer.service over a local WebSocket. It's the wallpaper, so it sits under
-// every window and clicks go to the desktop. Everything stops while a window is full screen (games, videos) and
-// the visualizer only connects while it's shown. `deckos vibe` writes the configuration.
+// every window and clicks go to the desktop. Everything stops while a window is full screen on its screen (games,
+// videos) and the visualizer only connects while it's shown. `deckos vibe` writes the configuration.
 import QtQuick
+import QtQuick.Window
 import org.kde.plasma.plasmoid
 import org.kde.taskmanager as TaskManager
 
@@ -16,10 +17,13 @@ WallpaperItem {
     // Moving only while someone can see it: no full-screen window on this screen, animation not turned off
     readonly property bool running: root.configuration.Animate !== false && fullScreen.covering === 0 && visible
 
-    // Full-screen windows (a game, a video) on any screen: counted from Plasma's own task list, no polling
+    // Full-screen windows (a game, a video) on this wallpaper's screen only: a game on the other monitor (or one
+    // being streamed) mustn't freeze this one. Counted from Plasma's own task list, no polling
     TaskManager.TasksModel {
         id: tasks
         filterMinimized: true
+        filterByScreen: true
+        screenGeometry: Qt.rect(root.Screen.virtualX, root.Screen.virtualY, root.Screen.width, root.Screen.height)
         groupMode: TaskManager.TasksModel.GroupDisabled
     }
     Instantiator {
