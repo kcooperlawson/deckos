@@ -1,0 +1,52 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.16.0"
+name = "Your games, your sound"
+tagline = "Games in plain folders that just play, a Sound page with an equalizer and no more crackling, DecKoOS in Gaming Mode's menu, and a taskbar on every screen."
+
+fixes = [
+    "Sound no longer crackles when a game and music play together: apps can't ask for buffers too small to keep up.",
+    "Checking for updates works again, and when it can't, the Hub says why instead of guessing \"No connection\".",
+    "The animated wallpaper only pauses for a full-screen window on its own screen, not on every monitor.",
+    "DecKoOS Hub opens about three times faster: each page is built the first time you open it.",
+    "The Hub's sidebar and the Games library work with arrow keys and a controller's d-pad.",
+    "Installing a DecKoOS build from a checkout no longer fails on leftover Python files.",
+]
+
+[[highlights]]
+title = "Games on your drives"
+text = """Windows games kept in a Games folder on any drive show up in DecKoOS Hub › Games, without Lutris or \
+Bottles. DecKoOS finds the program that starts each one, says what it needs and what might stop it (anti-cheat, a \
+publisher's launcher), and runs it with Proton in a setup of its own, with the fixes Steam knows for it. Games that \
+still need installing get an Install button, and Add to Steam puts them in Gaming Mode too."""
+icon = "grid"
+try = "Open Games"
+run = ["deckos-hub", "--page", "games"]
+
+[[highlights]]
+title = "Sound, your way"
+text = """A new Sound page: every output and microphone, and every app that's playing, sorted into games, music, \
+voice chat, browsers and system sounds, each with its own slider and output. Rules send each kind where you want \
+it every time and make music quieter during calls. An equalizer (more bass, clear voices, footsteps, night) runs \
+without ever cutting your sound."""
+icon = "volume"
+try = "Open Sound"
+run = ["deckos-hub", "--page", "sound"]
+
+[[highlights]]
+title = "DecKoOS in Gaming Mode"
+text = """A Decky plugin puts DecKoOS in Gaming Mode's quick access menu: the running game's power and Do Not \
+Disturb, which output sound plays on, a slider for each kind of sound, the equalizer, and anything that needs a \
+look. It needs Decky Loader (deckos decky install)."""
+icon = "gaming"
+try = "Add it to Decky"
+run = ["deckos-terminal", "--hold", "-e", "deckos", "decky", "plugin"]
+
+[[highlights]]
+title = "A taskbar on every screen"
+text = """Hub › Appearance › Taskbar › Screens: each other screen gets a slim taskbar with your pinned apps and its \
+own windows, icons only, with no menu or clock. And every day DecKoOS checks the parts it relies on, telling you \
+the day one stops working, with the cause and the fix."""
+icon = "panel-right"
+try = "Open Appearance"
+run = ["deckos-hub", "--page", "appearance"]

@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - '@decky/ui@4.16.3'
