@@ -51,11 +51,13 @@ class SoundPage(Page):
         self.outputs = Card("Outputs", "Speakers and headsets", "volume")
         self.inputs = Card("Microphones", None, "mic")
         self.playing = Card("Playing now", "Each kind of sound, and the apps in it", "music")
+        self.rules = Card("Rules", "Where each kind plays, every time", "switch")
         self.eq = Card("Equalizer", "Shape the sound of an output", "sliders")
         self.guard = Card("Crackle guard", "Steady sound while games load the CPU", "check")
-        for c in (self.outputs, self.inputs, self.playing, self.eq, self.guard):
+        cards = (self.outputs, self.inputs, self.playing, self.rules, self.eq, self.guard)
+        for c in cards:
             self.lay.addWidget(c)
-        self.parts = {c: [] for c in (self.outputs, self.inputs, self.playing, self.eq, self.guard)}
+        self.parts = {c: [] for c in cards}
         self.state = None
         # Live while the page is on screen: pactl subscribe says when anything changes (no polling); a burst of
         # changes is read once, and not while a slider is held
@@ -145,6 +147,7 @@ class SoundPage(Page):
         if not ins:
             self.add(self.inputs, label("No microphone is plugged in.", "sub"))
         self.render_playing(st, outs)
+        self.render_rules(st, outs)
         self.render_eq(st, outs)
         self.render_guard(st)
 
@@ -208,6 +211,37 @@ class SoundPage(Page):
                       icon="volume-mute" if a["mute"] else "volume", tip="Unmute" if a["mute"] else "Mute")
         vol = slider(a["volume"], lambda v: self.pactl("set-sink-input-volume", str(a["index"]), f"{v}%"))
         return line(name, vol, where, mute, stretch_at=0)
+
+    def render_rules(self, st, outs):
+        rule = st.get("rules") or {}
+        mine = rule.get("outputs") or {}
+        named = [d for d in outs if d["name"] != sound.EQ_NODE]
+        for kind, title, icon in sound.KINDS:
+            if kind == "other":
+                continue
+            box = QComboBox()
+            box.addItem("Wherever the app chooses", "")
+            for d in named:
+                box.addItem(d["label"], d["name"])
+            if mine.get(kind) and box.findData(mine[kind]) < 0:
+                box.addItem(f"{mine[kind]} (not plugged in)", mine[kind])
+            box.setCurrentIndex(max(0, box.findData(mine.get(kind, ""))))
+            box.setFixedWidth(S.scaled(300))
+            box.activated.connect(lambda _i, k=kind, b=box: self.do("rule", "output", k, b.currentData() or "off",
+                                                                     msg="Saved: it applies to sound that starts now"))
+            self.add(self.rules, line(icon_label(icon, S.SUBTEXT, 18), label(title, wrap=False), box, stretch_at=1))
+        duck = QComboBox()
+        duck.addItem("Leave music as it is", 0)
+        for pct, words in ((60, "a little"), (40, "a lot"), (15, "almost silent")):
+            duck.addItem(f"Make music {words} quieter", pct)
+        duck.setCurrentIndex(max(0, duck.findData(rule.get("duck") or 0)))
+        duck.setFixedWidth(S.scaled(300))
+        duck.activated.connect(lambda _i: self.do("rule", "duck", str(duck.currentData() or "off"),
+                                                  msg="Saved: music is turned back up when the call ends"))
+        self.add(self.rules, line(icon_label("mic", S.SUBTEXT, 18), label("During voice calls", wrap=False), duck,
+                                  stretch_at=1))
+        self.add(self.rules, label("Rules apply as sound starts: an app you move by hand stays where you put it "
+                                   "until it starts again.", "muted"))
 
     def render_eq(self, st, outs):
         now = st.get("eq") or ""

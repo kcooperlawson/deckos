@@ -134,6 +134,59 @@ class SoundTests(unittest.TestCase):
         self.assertEqual({a["kind"] for a in st["apps"]} - set(self.s.KIND_NAMES), set())
 
 
+class RuleTests(unittest.TestCase):
+    def setUp(self):
+        import sound
+        self.s = sound
+        self.devs = [{"kind": "output", "name": "a50.game", "index": 62}, {"kind": "output", "name": "a50.chat", "index": 63},
+                     {"kind": "output", "name": "speakers", "index": 66}, {"kind": "input", "name": "mic", "index": 64}]
+
+    def app(self, index, kind, sink=66, volume=80, corked=False):
+        return {"index": index, "kind": kind, "sink": sink, "volume": volume, "corked": corked}
+
+    def test_each_kind_goes_to_its_output(self):
+        apps = [self.app(1, "game"), self.app(2, "voice", sink=63), self.app(3, "music")]
+        rule = {"outputs": {"game": "a50.game", "voice": "a50.chat", "music": "unplugged.headset"}}
+        actions, ducked = self.s.plan(apps, self.devs, rule, {})
+        # Already right: left alone; an output that isn't plugged in: left alone
+        self.assertEqual(actions, [("move", 1, 62)])
+        self.assertEqual(ducked, {})
+        # Moved by hand later: seen before, so it stays where the person put it
+        self.assertEqual(self.s.plan(apps, self.devs, rule, {}, seen={1, 2, 3}), ([], {}))
+
+    def test_music_is_lower_during_a_call_and_comes_back(self):
+        rule = {"duck": 40}
+        music, call = self.app(3, "music", volume=80), self.app(9, "voice")
+        actions, ducked = self.s.plan([music, call], self.devs, rule, {})
+        self.assertEqual((actions, ducked), ([("volume", 3, 32)], {3: 80}))
+        # Still in the call: nothing more (not lowered twice); a new song player is lowered too
+        late = self.app(4, "music", volume=50)
+        actions, ducked = self.s.plan([dict(music, volume=32), call, late], self.devs, rule, ducked)
+        self.assertEqual((actions, ducked), ([("volume", 4, 20)], {3: 80, 4: 50}))
+        # The call ends: each goes back to where it was; one that closed meanwhile is forgotten
+        actions, ducked = self.s.plan([dict(music, volume=32)], self.devs, rule, ducked)
+        self.assertEqual((actions, ducked), ([("volume", 3, 80)], {}))
+
+    def test_a_paused_call_or_no_rule_lowers_nothing(self):
+        apps = [self.app(3, "music"), self.app(9, "voice", corked=True)]
+        self.assertEqual(self.s.plan(apps, self.devs, {"duck": 40}, {}), ([], {}))
+        self.assertEqual(self.s.plan([self.app(3, "music"), self.app(9, "voice")], self.devs, {}, {}), ([], {}))
+
+    def test_rules_are_kept_and_checked(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(self.s, "RULES", Path(d) / "sound.json"), \
+                patch.object(self.s, "run", lambda *a, **k: ""), patch.object(self.s, "DEMO", False):
+            self.s.set_rule("output", "game", "a50.game")
+            self.s.set_rule("duck", value=40)
+            self.assertEqual(self.s.rules(), {"outputs": {"game": "a50.game"}, "duck": 40})
+            self.s.set_rule("output", "game", None)
+            self.s.set_rule("duck", value=None)
+            self.assertEqual(self.s.rules(), {"outputs": {}})
+            with self.assertRaises(ValueError):
+                self.s.set_rule("output", "everything", "x")
+            with self.assertRaises(ValueError):
+                self.s.set_rule("duck", value=150)
+
+
 class CrackleCheckTests(unittest.TestCase):
     def test_tiny_floor_is_flagged_with_a_fix(self):
         import sysdoctor as sd

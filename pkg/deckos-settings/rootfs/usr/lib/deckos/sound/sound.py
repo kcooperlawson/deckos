@@ -9,9 +9,12 @@ No Qt: the Hub's Sound page and `deckos sound` use it; tests/test_sound.py feeds
   made for. It runs as its own small PipeWire client (user unit deckos-eq), so turning it on or off never restarts
   the sound server or cuts what's playing. Presets only, so no setting can be harmful.
 - Dropouts (what crackling is, to PipeWire): counted per device from pw-top, for System Doctor and the Hub.
+- Rules (RULES): an output per kind ("games always on the headset") and lowering music during voice calls. The user
+  unit deckos-sound runs `watch` (pactl subscribe, no polling) only while a rule is set; `plan()` decides, so the
+  tests can check every case without a sound server.
 
     sound.py status | kinds | set-kind KIND PERCENT | set-app INDEX PERCENT | move-app INDEX SINK
-             buffer [NAME] | eq [PRESET|off] | dropouts
+             buffer [NAME] | eq [PRESET|off] | dropouts | rule output KIND SINK|off | rule duck PERCENT|off | watch
 """
 import json
 import os
@@ -28,6 +31,7 @@ BUFFER_FILE = PW_CONF / "60-deckos-buffer.conf"
 PULSE_BUFFER_FILE = PULSE_CONF / "60-deckos-buffer.conf"
 EQ_FILE = HOME / ".config/deckos/sound-eq.conf"  # run by the deckos-eq user unit: its own small PipeWire client
 EQ_NODE = "deckos_eq"
+RULES = HOME / ".config/deckos/sound.json"  # {"outputs": {kind: output name}, "duck": music % during calls}
 
 # The smallest buffer apps may ask for, in samples at 48 kHz (256 = 5.3 ms)
 BUFFERS = {
@@ -159,11 +163,12 @@ def state():
     devs = devices(text(["pactl", "-f", "json", "list", "sinks"]), text(["pactl", "-f", "json", "list", "sources"]),
                    i.get("default_sink_name", ""), i.get("default_source_name", ""))
     return {"devices": devs, "apps": apps(text(["pactl", "-f", "json", "list", "sink-inputs"])),
-            "buffer": buffer_now(), "eq": eq_now(), "running": bool(info)}
+            "buffer": buffer_now(), "eq": eq_now(), "rules": rules(), "running": bool(info)}
 
 
 def demo_state():
     return {"running": True, "buffer": "balanced", "eq": "footsteps",
+            "rules": {"outputs": {"voice": "a50.chat"}, "duck": 40},
             "devices": [
                 {"index": 62, "name": "a50.game", "kind": "output", "label": "Astro A50 Game", "volume": 60,
                  "mute": False, "default": True},
@@ -368,6 +373,118 @@ def eq_target():
         return ""
 
 
+# ------------------------------------------------------------------ rules
+
+def rules():
+    try:
+        data = json.loads(RULES.read_text())
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def set_rule(what, key=None, value=None):
+    """output KIND SINK (None: no rule), or duck PERCENT (None: off). Starts or stops the watcher to match."""
+    data = rules()
+    if what == "output":
+        if key not in KIND_NAMES:
+            raise ValueError(f"kind is one of: {', '.join(KIND_NAMES)}")
+        outs = data.setdefault("outputs", {})
+        if value:
+            outs[key] = value
+        else:
+            outs.pop(key, None)
+    elif what == "duck":
+        if value is None:
+            data.pop("duck", None)
+        elif not 0 < int(value) < 100:
+            raise ValueError("duck is a percent between 1 and 99")
+        else:
+            data["duck"] = int(value)
+    else:
+        raise ValueError("rule is output or duck")
+    if DEMO:
+        return data
+    RULES.parent.mkdir(parents=True, exist_ok=True)
+    RULES.write_text(json.dumps(data, indent=1))
+    active = bool(data.get("outputs") or data.get("duck"))
+    run(["systemctl", "--user", "enable" if active else "disable", "--now", "deckos-sound.service"], timeout=15)
+    if active:
+        run(["systemctl", "--user", "restart", "deckos-sound.service"], timeout=15)
+    return data
+
+
+def plan(apps_now, devs, rule, ducked, seen=()):
+    """What the rules want done now: [("move", app index, output index) | ("volume", app index, percent)], and the
+    music volumes to put back after a call ({app index: percent}). Only sound that wasn't `seen` before is moved, so
+    an app moved by hand stays put. Pure: the watcher applies it."""
+    actions, ducked = [], dict(ducked)
+    by_name = {d["name"]: d["index"] for d in devs if d["kind"] == "output"}
+    for a in apps_now:
+        if a["index"] in seen:
+            continue
+        want = (rule.get("outputs") or {}).get(a["kind"])
+        if want in by_name and a["sink"] != by_name[want]:
+            actions.append(("move", a["index"], by_name[want]))
+    duck = rule.get("duck")
+    calling = any(a["kind"] == "voice" and not a["corked"] for a in apps_now)
+    present = {a["index"] for a in apps_now}
+    ducked = {i: v for i, v in ducked.items() if i in present}  # apps that closed mid-call: nothing to put back
+    if duck and calling:
+        for a in apps_now:
+            if a["kind"] == "music" and a["index"] not in ducked:
+                ducked[a["index"]] = a["volume"]
+                actions.append(("volume", a["index"], max(1, a["volume"] * duck // 100)))
+    elif ducked:
+        actions += [("volume", i, v) for i, v in ducked.items()]
+        ducked = {}
+    return actions, ducked
+
+
+def apply(actions):
+    for what, index, value in actions:
+        if what == "move":
+            move_app(index, value)
+        else:
+            set_app_volume(index, value)
+
+
+def watch():
+    """The rules, applied whenever something starts playing or a call starts or ends. pactl subscribe tells; a burst
+    of events is read once."""
+    import select
+    import signal
+    ducked, seen = {}, None
+
+    def tidy(*_):
+        apply([("volume", i, v) for i, v in ducked.items()])  # never leave music low when stopping
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, tidy)
+    signal.signal(signal.SIGINT, tidy)
+    while True:
+        sub = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True)
+        pending = True
+        while True:
+            ready, _, _ = select.select([sub.stdout], [], [], 0.3 if pending else None)
+            if ready:
+                line = sub.stdout.readline()
+                if not line:
+                    break  # the sound server restarted: subscribe again
+                if re.search(r"'(new|change|remove)' on (sink-input|sink)\b", line):
+                    pending = True
+                continue
+            if pending:
+                pending = False
+                st = state()
+                # What was already playing when the watcher started isn't moved: only sound that starts after
+                actions, ducked = plan(st["apps"], st["devices"], rules(), ducked,
+                                       {a["index"] for a in st["apps"]} if seen is None else seen)
+                seen = {a["index"] for a in st["apps"]}
+                apply(actions)
+        sub.wait()
+        time.sleep(2)
+
+
 # ------------------------------------------------------------------ dropouts
 
 def dropouts(pw_top_text):
@@ -415,6 +532,12 @@ def main(argv):
             if args:
                 set_eq(args[0], args[1] if len(args) > 1 else None)
             print(eq_now() or "off")
+        elif cmd == "rule" and len(args) == 3 and args[0] == "output":
+            set_rule("output", args[1], None if args[2] == "off" else args[2])
+        elif cmd == "rule" and len(args) == 2 and args[0] == "duck":
+            set_rule("duck", value=None if args[1] == "off" else int(args[1]))
+        elif cmd == "watch":
+            watch()
         elif cmd == "dropouts":
             found = measure_dropouts(5)
             print("\n".join(f"{n}\t{c}" for n, c in found.items()) or "none")

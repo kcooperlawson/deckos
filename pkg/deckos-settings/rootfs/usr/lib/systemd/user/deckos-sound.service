@@ -1,0 +1,14 @@
+[Unit]
+Description=DecKoOS sound rules (an output per kind, music lower during calls)
+After=pipewire-pulse.service wireplumber.service
+BindsTo=pipewire-pulse.service
+ConditionPathExists=%h/.config/deckos/sound.json
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/lib/deckos/sound/sound.py watch
+Restart=on-failure
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=pipewire-pulse.service
