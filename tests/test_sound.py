@@ -75,6 +75,19 @@ class SoundTests(unittest.TestCase):
                          [("output", "Speakers", 76, True), ("input", "Headset mic", 80, True)])
         self.assertTrue(devs[1]["mute"])
 
+    def test_devices_get_plain_names(self):
+        p = self.s.plain_label
+        pci, usb = {"device.bus": "pci"}, {"device.bus": "usb"}
+        self.assertEqual(p("Navi 48 HDMI/DP Audio Controller Digital Stereo (HDMI 2) [LG ULTRAGEAR]", pci, "output"),
+                         "LG ULTRAGEAR (HDMI)")
+        self.assertEqual(p("Navi 48 HDMI/DP Audio Controller Digital Stereo (DP 1) [Odyssey G70B]", pci, "output"),
+                         "Odyssey G70B (DisplayPort)")
+        self.assertEqual(p("Ryzen HD Audio Controller Analog Stereo", pci, "output"), "Speakers (Ryzen HD Audio)")
+        self.assertEqual(p("Ryzen HD Audio Controller Analog Stereo", pci, "input"), "Microphone jack (Ryzen HD Audio)")
+        self.assertEqual(p("USB 2.0 Camera Analog Stereo", usb, "input"), "USB 2.0 Camera microphone")
+        self.assertEqual(p("Astro A50 Game", usb, "output"), "Astro A50 Game")  # already plain: left as it is
+        self.assertEqual(p("Blue Yeti Mic", usb, "input"), "Blue Yeti Mic")
+
     def test_a_kind_slider_sets_every_app_of_that_kind(self):
         apps = [{"index": 1, "kind": "music"}, {"index": 2, "kind": "game"}, {"index": 3, "kind": "music"}]
         with patch.object(self.s, "run", self.fake_run):

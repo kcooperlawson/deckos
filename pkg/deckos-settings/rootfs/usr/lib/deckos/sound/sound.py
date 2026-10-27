@@ -118,6 +118,26 @@ def kind_of(props):
     return "other"
 
 
+def plain_label(desc, props, kind):
+    """A device's name as a person would say it: "LG ULTRAGEAR (HDMI)", "Speakers (Ryzen HD Audio)", "USB 2.0 Camera
+    microphone", not the driver's "Navi 48 HDMI/DP Audio Controller Digital Stereo (HDMI 2) [LG ULTRAGEAR]"."""
+    desc = desc or ""
+    screen = re.search(r"\[([^\]]+)\]", desc)
+    if screen:  # a monitor's speakers: name the monitor, and how it's plugged in
+        how = "HDMI" if "HDMI" in desc.split("[")[0].split("/")[-1] or "(HDMI" in desc else "DisplayPort"
+        return f"{screen.group(1).strip()} ({how})"
+    base = re.sub(r"\s+(Analog|Digital|Pro)?\s*(Stereo|Mono|Surround \S+|\d\.\d)$", "", desc).strip()
+    base = re.sub(r"\s+Controller$", "", base).strip() or desc
+    on_board = props.get("device.bus") == "pci" and "Analog" in desc
+    if kind == "output" and on_board:
+        return f"Speakers ({base})"
+    if kind == "input" and on_board:
+        return f"Microphone jack ({base})"
+    if kind == "input" and not re.search(r"\bmic", base, re.I):
+        return f"{base} microphone"
+    return base
+
+
 def devices(sinks_json, sources_json="[]", default_sink="", default_source=""):
     """Outputs and inputs: [{index, name, label, volume, mute, default, kind}]. Monitors (the recording side of an
     output) are left out: nobody picks one as a microphone."""
@@ -129,7 +149,8 @@ def devices(sinks_json, sources_json="[]", default_sink="", default_source=""):
                                     str(d.get("name", "")).endswith(".monitor")):
                 continue
             out.append({"index": d.get("index"), "name": d.get("name", ""), "kind": kind,
-                        "label": d.get("description") or props.get("device.description") or d.get("name", ""),
+                        "label": plain_label(d.get("description") or props.get("device.description") or d.get("name", ""),
+                                             props, kind),
                         "volume": percent(d.get("volume")), "mute": bool(d.get("mute")),
                         "default": d.get("name") == default})
     return out
