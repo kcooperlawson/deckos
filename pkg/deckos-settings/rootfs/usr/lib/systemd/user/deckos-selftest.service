@@ -1,0 +1,8 @@
+[Unit]
+Description=DecKoOS self-test (says when a part of DecKoOS stops working)
+
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+ExecStart=/usr/bin/python3 /usr/lib/deckos/selftest/selftest.py watch

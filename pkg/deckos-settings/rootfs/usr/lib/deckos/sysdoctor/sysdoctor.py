@@ -376,6 +376,23 @@ def sound_buffer():
                     open=["deckos-hub", "--page", "sound"])]
 
 
+def selftest():
+    """The daily self-test's failures (deckos-selftest.timer), with the cause it found and its fix. Read from its
+    results, not run again: some of its checks take a minute."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "selftest"))
+    import selftest as st
+    out = []
+    for r in st.load().get("results", []):
+        if r.get("ok") or r.get("id") == "sound":  # sound has its own check here, with its own fix
+            continue
+        f = Finding(f"selftest:{r['id']}", WARN, f"{r['title']}: not working", r.get("cause", ""),
+                    evidence=["From DecKoOS's daily self-test (deckos selftest)"])
+        if r.get("fix"):
+            f.fixes.append(Fix("Fix it", r["fix"].split(), ""))
+        out.append(f)
+    return out
+
+
 def gpu_resets():
     _, text = run(["journalctl", "-b", "-k", "--no-pager", "-o", "short-precise", "--grep",
                    r"amdgpu.*(GPU reset|ring .* timeout|hang)"], 60)
@@ -497,7 +514,7 @@ def journal_errors(known):
 
 
 CHECKS = [snapshot_boot, ntfs_drives, startup_drives, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
-          sound_buffer, restart_pending, slow_boot]
+          sound_buffer, selftest, restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 
 

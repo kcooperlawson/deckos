@@ -1,0 +1,12 @@
+[Unit]
+Description=DecKoOS daily self-test
+
+[Timer]
+# A while after login (not while the desktop starts), then once a day
+OnStartupSec=20min
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

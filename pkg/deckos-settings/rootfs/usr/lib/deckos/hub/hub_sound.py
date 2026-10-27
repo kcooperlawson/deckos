@@ -2,10 +2,11 @@
 chat…) with a slider per kind, the equalizer and the crackle guard (PipeWire's buffer floor). sound.py (no Qt) does
 the work through pactl; changes run as background jobs, so a slow sound server never freezes the Hub."""
 import json
+import re
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QSlider, QVBoxLayout, QWidget
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sound"))
@@ -56,6 +57,39 @@ class SoundPage(Page):
             self.lay.addWidget(c)
         self.parts = {c: [] for c in (self.outputs, self.inputs, self.playing, self.eq, self.guard)}
         self.state = None
+        # Live while the page is on screen: pactl subscribe says when anything changes (no polling); a burst of
+        # changes is read once, and not while a slider is held
+        self.watch = None
+        self.again = QTimer(self, singleShot=True, interval=400, timeout=self.changed)
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if sysinfo.DEMO or self.watch:
+            return
+        self.watch = QProcess(self)
+        self.watch.readyReadStandardOutput.connect(self.heard)
+        self.watch.start("pactl", ["subscribe"])
+
+    def hideEvent(self, e):
+        super().hideEvent(e)
+        if self.watch:
+            self.watch.kill()
+            self.watch.deleteLater()
+            self.watch = None
+
+    def heard(self):
+        text = bytes(self.watch.readAllStandardOutput()).decode(errors="replace")
+        if re.search(r" on (sink-input|sink|source|server)\b", text):  # "Event 'change' on sink #71"
+            self.again.start()
+
+    def changed(self):
+        if any(s.isSliderDown() for s in self.findChildren(QSlider)):
+            self.again.start()  # someone is dragging: read after they let go
+            return
+        if any(c.view().isVisible() for c in self.findChildren(QComboBox)):
+            self.again.start()  # a list is open
+            return
+        self.refresh()
 
     def refresh(self):
         sysinfo.Job(self, ["python3", SOUND, "status"], self.got, demo=(json.dumps(sound.demo_state()), 0))

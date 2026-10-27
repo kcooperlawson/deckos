@@ -39,6 +39,7 @@ PAGES = [("home", "Home", "home", HomePage), ("timeline", "Timeline", "clock", T
          ("aidev", "AI & Dev", "ai", AiDevPage), ("system", "System", "system", SystemPage),
          ("appearance", "Appearance", "appearance", AppearancePage), ("more", "More settings", "sliders", MorePage)]
 USER_GAMING_CONF = Path.home() / ".config/deckos/gaming.conf"
+SELFTEST = Path(__file__).resolve().parent.parent / "selftest/selftest.py"
 
 
 class HubData:
@@ -82,7 +83,10 @@ class HubData:
 
             def repo(out, code):
                 if code not in (0, 2):
-                    done([], [], "No connection to the package mirrors.")
+                    # The real reason, not a guess: checkupdates once failed on a signature check for days while
+                    # this said "no connection"
+                    sysinfo.Job(self.owner, ["python3", str(SELFTEST), "updates"],
+                                lambda o, _c: done([], [], o.strip() or "checkupdates couldn't check for updates."))
                     return
                 pkgs = sysinfo.parse_updates(out)
                 if not sysinfo.have("paru"):

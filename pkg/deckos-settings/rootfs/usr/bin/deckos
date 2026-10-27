@@ -2103,6 +2103,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos timeline [list|undo ID]                        what happened on this PC, and undo
   deckos retro [install PKG...]                         DecKoOS Retro (install: its emulators)
   deckos sound [status|buffer NAME|eq PRESET|off|dropouts]  sound: apps by kind, the anti-crackle buffer, equalizer
+  deckos selftest [show]                                try what DecKoOS relies on (daily on its own)
   deckos play FOLDER                                    start a game from a folder (Hub > Games > My drives)
   deckos theme apply ID                                 global theme with its colours, accent and wallpaper
   deckos accent apply '#RRGGBB'                         accent colour for Plasma, the DecKoOS widgets and icons
@@ -2185,6 +2186,7 @@ case ${1:-} in
   movein) shift; exec deckos-movein "$@" ;;
   sysdoctor) shift; exec deckos-sysdoctor "$@" ;;
   bench) shift; exec python3 "${DECKOS_BENCH_DIR:-/usr/lib/deckos/bench}/deckos_bench.py" "$@" ;;
+  selftest) shift; exec python3 "${DECKOS_SELFTEST_DIR:-/usr/lib/deckos/selftest}/selftest.py" "${@:-run}" ;;
   sound) shift; exec python3 "${DECKOS_SOUND_DIR:-/usr/lib/deckos/sound}/sound.py" "$@" ;;
   play) shift; exec /usr/bin/deckos-play "$@" ;;
   ai) shift; ai_cmd "$@" ;;
