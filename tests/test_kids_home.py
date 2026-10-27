@@ -72,6 +72,45 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("org.deckos.kidtime", deckos_kids.KID_WIDGETS)
 
 
+class PlasmaLayoutTests(unittest.TestCase):
+    """The child's layout is written as files before Plasma starts: a locked desktop refuses Plasma's scripting,
+    which is how the full panel (with its menu) stayed in Kid mode."""
+
+    def test_only_the_kid_panel_and_themed_desktops(self):
+        text = kids.plasma_layout(["applications:deckos-kids-games.desktop"], "/h/.local/share/deckos/kids-space.png",
+                                  "act-1", screens=2)
+        plugins = [ln.split("=", 1)[1] for ln in text.splitlines() if ln.startswith("plugin=")]
+        self.assertEqual(plugins, ["org.kde.panel", *kids.KID_PANEL, "org.kde.plasma.folder", "org.kde.plasma.folder"])
+        self.assertTrue(deckos_kids.kid_panels_ok([kids.KID_PANEL]))  # what's written passes the login check
+        self.assertNotIn("org.deckos.menu", text)
+        self.assertIn("launchers=applications:deckos-kids-games.desktop", text)
+        self.assertEqual(text.count("activityId=act-1"), 2)
+        self.assertEqual(text.count("Image=file:///h/.local/share/deckos/kids-space.png"), 2)
+        self.assertTrue(all(ln == "immutability=2" for ln in text.splitlines() if ln.startswith("immutability")))
+
+    def test_panel_view_keeps_other_settings(self):
+        out = kids.panel_view("[General]\nx=1\n\n[PlasmaViews][Panel 7][Defaults]\nthickness=90\n\n[Updates]\ny=2\n")
+        self.assertIn("[General]\nx=1", out)
+        self.assertIn("[Updates]\ny=2", out)
+        self.assertNotIn("Panel 7", out)  # the old panel's size goes with it
+        self.assertIn("[PlasmaViews][Panel 1]\nalignment=132", out)
+
+    def test_write_plasma_keeps_a_backup_and_one_activity(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            (home / ".config").mkdir()
+            old = home / ".config/plasma-org.kde.plasma.desktop-appletsrc"
+            old.write_text("[Containments][3]\nplugin=org.kde.panel\n")
+            kids.write_plasma(home, [], "/w.png")
+            kids.write_plasma(home, [], "/w.png")
+            self.assertIn("org.kde.panel", (home / ".config/plasma-org.kde.plasma.desktop-appletsrc.deckos-bak")
+                          .read_text())  # what Plasma had, kept once
+            act = kids.activity_id(home)
+            self.assertEqual(act, kids.activity_id(home))  # made once, then read back
+            self.assertIn(f"activityId={act}", old.read_text())
+
+
 class ThemeTests(unittest.TestCase):
     def test_every_theme_paints(self):
         img = QImage(640, 400, QImage.Format_ARGB32)

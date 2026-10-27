@@ -1,12 +1,13 @@
 """Kid mode. A child gets a real desktop in their theme, not a full-screen launcher:
 
-- `--session` (at login, from the autostart kids.py writes; no window): checks their panels, puts their theme on
-  the wallpaper, their approved apps and My games on the desktop and the taskbar, keeps the volume under the
-  parent's cap, and says kindly when the time is nearly up (then logs out).
+- `--prepare` (deckos-kids-prepare.service, before Plasma starts): writes their desktop: the kid panel with their
+  approved apps and My games pinned, the same on the desktop as big icons, and their theme as the wallpaper.
+- `--session` (at login, from the autostart kids.py writes; no window): makes sure the kid panel is what's on
+  screen, keeps the volume under the parent's cap, and says kindly when the time is nearly up (then logs out).
 - `--games` ("My games" on their desktop): a window with DecKoOS's own games (kids_games) and their apps as tiles,
   in their theme (kids_themes), with the time left.
 
-    deckos-kids --session | --games | --demo [--theme ID] [--screenshot FILE]
+    deckos-kids --prepare | --session | --games | --demo [--theme ID] [--screenshot FILE]
 """
 import os
 import pwd
@@ -307,18 +308,19 @@ def kid_panels_ok(panels):
     return bool(panels) and all(set(w) <= KID_WIDGETS for w in panels)
 
 
-def first_login():
-    """The child's panels, checked at every login: the kid taskbar, volume and a clock, no menu (it would show
-    every app). New children start with it (their look, org.deckos.kids); anything else found is replaced."""
-    # This starts with the session, often before the desktop shell is ready: wait for it (up to 30 s)
-    panels = None
-    for _ in range(30):
-        panels = panel_widgets()
-        if panels is not None:
-            break
-        time.sleep(1)
-    if panels is not None and not kid_panels_ok(panels):
-        QProcess.execute("deckos", ["layout", "set", "kids"])
+def prepare():
+    """deckos-kids-prepare.service, before Plasma starts at each login: the child's launchers (their approved apps
+    and My games, which the parent may have changed), their theme as a picture, and the whole Plasma layout."""
+    name = pwd.getpwuid(os.getuid()).pw_name
+    conf = kids.read_conf(name) or dict(kids.DEFAULTS)
+    home = Path.home()
+    theme = kids_themes.theme(conf.get("theme"))["id"]
+    wall = home / f".local/share/deckos/kids-{theme}.png"
+    if not wall.exists():
+        wall.parent.mkdir(parents=True, exist_ok=True)
+        kids_themes.render(theme, wall)
+    pins = kids.sync_desktop(home, kids.desktop_entries(kids.approved(name), conf.get("builtin", "on") != "off"))
+    kids.write_plasma(home, pins, wall)
 
 
 class KidSession(QObject):
@@ -346,26 +348,18 @@ class KidSession(QObject):
         self.tick()
 
     def set_up(self):
-        first_login()  # their panels: only what a child may use
-        home = Path.home()
-        # Their theme on every screen's wallpaper (drawn once per theme)
-        theme = kids_themes.theme(self.conf.get("theme"))["id"]
-        wall = home / f".local/share/deckos/kids-{theme}.png"
-        if not wall.exists():
-            wall.parent.mkdir(parents=True, exist_ok=True)
-            kids_themes.render(theme, wall)
-        QProcess.execute("plasma-apply-wallpaperimage", [str(wall)])
-        # Their apps and games on the desktop and the taskbar (the parent may have changed them since last time)
-        entries = kids.desktop_entries(kids.approved(self.name), self.conf.get("builtin", "on") != "off")
-        pins = kids.sync_desktop(home, entries)
-        js = ",".join(f"'{p}'" for p in pins if re.fullmatch(r"applications:[A-Za-z0-9._-]+", p))
-        QProcess.execute("qdbus6", ["org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript",
-                                    "panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach("
-                                    f"function (w) {{ w.currentConfigGroup = ['General']; w.writeConfig('launchers', "
-                                    f"[{js}]); w.reloadConfig(); }}); }});"
-                                    # Big icons on the desktop, easy to see and to click
-                                    "desktops().forEach(function (d) { d.currentConfigGroup = ['General'];"
-                                    " d.writeConfig('iconSize', 5); d.reloadConfig(); });"])
+        """The layout was written before Plasma started (prepare()). If what's on screen still isn't the kid
+        panel (a Plasma that made its own), write it again and restart the desktop shell: a locked desktop can't
+        be changed through Plasma's scripting, so restarting it is the way to make it read the file."""
+        panels = None
+        for _ in range(30):
+            panels = panel_widgets()
+            if panels is not None:
+                break
+            time.sleep(1)
+        if panels is not None and not kid_panels_ok(panels):
+            prepare()
+            QProcess.execute("systemctl", ["--user", "restart", "plasma-plasmashell.service"])
 
     def volume_changed(self):
         if hasattr(self, "volume"):
@@ -410,6 +404,9 @@ def main():
     app.setDesktopFileName("deckos-kids")
     app.setFont(QFont("Inter", 11))
     app.setStyleSheet(S.qss())
+    if "--prepare" in sys.argv:
+        prepare()
+        return 0
     if "--session" in sys.argv and not DEMO:
         app.setQuitOnLastWindowClosed(False)
         session = KidSession()  # noqa: F841  (lives as long as the session)

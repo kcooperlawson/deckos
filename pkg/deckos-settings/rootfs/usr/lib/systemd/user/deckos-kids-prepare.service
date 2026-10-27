@@ -1,0 +1,14 @@
+[Unit]
+Description=Kid mode: the child's desktop, written before Plasma starts
+# Children only: everyone else's login skips it
+ConditionGroup=deckos-kids
+Before=plasma-plasmashell.service
+
+[Service]
+Type=oneshot
+# It draws the theme's wallpaper picture, with no screen of its own
+Environment=QT_QPA_PLATFORM=offscreen
+ExecStart=/usr/bin/deckos-kids --prepare
+
+[Install]
+WantedBy=plasma-plasmashell.service

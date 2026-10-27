@@ -232,6 +232,75 @@ def sync_desktop(home, entries):
     return [f"applications:{fname}" for fname in entries]
 
 
+# ------------------------------------------------------------------ the child's Plasma layout, written before Plasma starts
+#
+# A child's desktop is locked (KIOSK: no editing panels), and that lock also stops Plasma's scripting, so Kid mode
+# can't change a running desktop: their panels were left as Plasma first made them, with the full DecKoOS panel and
+# its menu. Instead deckos-kids-prepare.service writes the whole layout at each login, before plasmashell reads it:
+# one kid panel (their apps pinned, the time left, volume, the clock) and their theme on every screen's desktop.
+
+KID_PANEL = ["org.deckos.taskbar", "org.deckos.kidtime", "org.kde.plasma.volume", "org.kde.plasma.digitalclock"]
+SCREENS = 4  # desktops written for screens 0..3; Plasma makes any further ones itself
+
+
+def activity_id(home):
+    """The child's Plasma activity (desktops belong to one), made and saved when they have none yet."""
+    rc = Path(home) / ".config/kactivitymanagerdrc"
+    try:
+        m = re.search(r"^\[activities\]\n([0-9a-f-]{36})=", rc.read_text(), re.M)
+        if m:
+            return m.group(1)
+    except OSError:
+        pass
+    import uuid
+    act = str(uuid.uuid4())
+    rc.parent.mkdir(parents=True, exist_ok=True)
+    rc.write_text(f"[activities]\n{act}=Default\n\n[main]\ncurrentActivity={act}\n")
+    return act
+
+
+def plasma_layout(pins, wallpaper, activity, screens=SCREENS):
+    """plasma-org.kde.plasma.desktop-appletsrc for a child: the kid panel on the first screen, and a desktop on
+    each screen with their theme and big icons. Containments are locked (immutability=2)."""
+    out = ["[Containments][1]", "activityId=", "formfactor=2", "immutability=2", "lastScreen=0", "location=4",
+           "plugin=org.kde.panel", "wallpaperplugin=org.kde.image", ""]
+    for n, plugin in enumerate(KID_PANEL, start=2):
+        out += [f"[Containments][1][Applets][{n}]", "immutability=2", f"plugin={plugin}", ""]
+    out += ["[Containments][1][Applets][2][Configuration][General]", "launchers=" + ",".join(pins), "lockedPins=true",
+            "showLabels=false", "",
+            f"[Containments][1][Applets][{1 + len(KID_PANEL)}][Configuration][Appearance]", "showDate=false", "",
+            "[Containments][1][General]", "AppletOrder=" + ";".join(str(n) for n in range(2, 2 + len(KID_PANEL))), ""]
+    for s in range(screens):
+        c = 20 + s
+        out += [f"[Containments][{c}]", f"activityId={activity}", "formfactor=0", "immutability=2", f"lastScreen={s}",
+                "location=0", "plugin=org.kde.plasma.folder", "wallpaperplugin=org.kde.image", "",
+                f"[Containments][{c}][General]", "iconSize=5", "",
+                f"[Containments][{c}][Wallpaper][org.kde.image][General]", f"Image=file://{wallpaper}", ""]
+    return "\n".join(out)
+
+
+def panel_view(old=""):
+    """plasmashellrc with the kid panel's size and place (centred, floating, as wide as its icons); the file's
+    other groups are kept."""
+    keep = re.sub(r"(?ms)^\[PlasmaViews\].*?(?=^\[(?!PlasmaViews)|\Z)", "", old).strip()
+    ours = ("[PlasmaViews][Panel 1]\nalignment=132\nfloating=1\npanelLengthMode=1\n\n"
+            "[PlasmaViews][Panel 1][Defaults]\nthickness=56\n")
+    return (keep + "\n\n" if keep else "") + ours
+
+
+def write_plasma(home, pins, wallpaper):
+    """Writes the child's Plasma layout (before plasmashell starts). The first time, what was there is kept as
+    .deckos-bak."""
+    cfg = Path(home) / ".config"
+    cfg.mkdir(parents=True, exist_ok=True)
+    applets = cfg / "plasma-org.kde.plasma.desktop-appletsrc"
+    if applets.exists() and not applets.with_name(applets.name + ".deckos-bak").exists():
+        applets.with_name(applets.name + ".deckos-bak").write_bytes(applets.read_bytes())
+    applets.write_text(plasma_layout(pins, wallpaper, activity_id(home)))
+    shellrc = cfg / "plasmashellrc"
+    shellrc.write_text(panel_view(shellrc.read_text() if shellrc.exists() else ""))
+
+
 # ------------------------------------------------------------------ time
 
 def state_file(name):
