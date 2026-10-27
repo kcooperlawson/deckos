@@ -160,6 +160,10 @@ DEMO_LOCAL = [
      "engine": "Unreal Engine", "arch": "64-bit", "needs": ["DirectX 12"],
      "blockers": ["EasyAntiCheat: its anti-cheat may refuse to run on Linux unless the game turned on Proton support"],
      "notes": [], "candidates": ["Shooter.exe"], "sure": True, "appid": "", "picked": False},
+    {"name": "Old RPG", "folder": "/mnt/BIG/Games/Old RPG", "exe": "", "runner": "none", "engine": "", "arch": "",
+     "needs": [], "blockers": [], "notes": ["Needs installing first: setup_old_rpg_1.0.exe sets it up in the game's "
+                                            "own prefix."], "candidates": [], "sure": False, "appid": "",
+     "picked": False, "installer": "setup_old_rpg_1.0.exe"},
 ]
 
 
@@ -262,8 +266,12 @@ class GameTile(QFrame):
                            tip="What this game needs, which program starts it, and Steam")
             if loc["blockers"] or not loc["sure"] or not loc["exe"]:
                 about.setIcon(S.icon("alert", S.WARNING, 16))
-            playb = button("Play", "primary", lambda: play(game), icon="play")
-            playb.setEnabled(bool(loc["exe"]))
+            if loc.get("installer") and not loc["exe"]:
+                playb = button("Install", "primary", lambda: play.__self__.install(game, playb),
+                               icon="download", tip=f"Runs {loc['installer']} in the game's own prefix")
+            else:
+                playb = button("Play", "primary", lambda: play(game), icon="play")
+                playb.setEnabled(bool(loc["exe"]))
             v.addWidget(_row(playb, about))  # its profile is in the details: three buttons squeeze Play
         else:
             v.addWidget(_row(button("Play", "primary", lambda: play(game), icon="play"), prof))
@@ -364,6 +372,71 @@ class ProfileDialog(QDialog):
         self.accept()
 
 
+class FoldersDialog(QDialog):
+    """The folders Games on my drives looks in: found on their own (a Games folder at the top of each drive), or the
+    person's own list."""
+
+    def __init__(self, page):
+        super().__init__(page)
+        self.page = page
+        self.setObjectName("root")
+        self.setWindowTitle("Folders with games")
+        self.setMinimumWidth(520)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label("Folders with games", "title"))
+        v.addWidget(label("Each folder inside these is one game. Without a list of your own, DecKoOS looks in the "
+                          "Games folder at the top of every drive, and in ~/Games.", "sub"))
+        self.own = bool(localgames.load().get("roots")) if not sysinfo.DEMO else False
+        self.paths = [str(p) for p in (["/mnt/BIG/Games", "/mnt/SSD/Games"] if sysinfo.DEMO else localgames.roots())]
+        self.box = QVBoxLayout()
+        v.addLayout(self.box)
+        v.addWidget(_row(button("Add a folder…", slot=self.add, icon="folder-plus"),
+                         button("Find them for me", slot=self.auto, icon="search",
+                                tip="Forget this list: look in every drive's Games folder")))
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.save)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+        self.draw()
+
+    def draw(self):
+        while self.box.count():
+            w = self.box.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        if not self.paths:
+            self.box.addWidget(label("No folders: games in folders won't be listed.", "muted"))
+        for p in self.paths:
+            self.box.addWidget(_row(label(p, wrap=False), button("", slot=lambda _=False, x=p: self.drop(x),
+                                                                   icon="close", tip="Stop looking here")))
+
+    def add(self):
+        from PySide6.QtWidgets import QFileDialog
+        d = QFileDialog.getExistingDirectory(self, "A folder with games in it", "/mnt")
+        if d and d not in self.paths:
+            self.paths.append(d)
+            self.own = True
+            self.draw()
+
+    def drop(self, p):
+        self.paths.remove(p)
+        self.own = True
+        self.draw()
+
+    def auto(self):
+        self.own = False
+        self.paths = [] if sysinfo.DEMO else [str(p) for p in localgames.default_roots()]
+        self.draw()
+
+    def save(self):
+        if not sysinfo.DEMO:
+            localgames.set_roots(self.paths if self.own else [])
+            self.page.reload()
+        self.accept()
+
+
 class LocalGameDialog(QDialog):
     """A game from a folder: what DecKoOS worked out about it, and the person's say on the parts it can't know."""
 
@@ -411,6 +484,9 @@ class LocalGameDialog(QDialog):
                                 icon="folder"),
                          button("Add my games to Steam", slot=self.to_steam, icon="gaming",
                                 tip="Every game from your drives, as non-Steam games, so they're in Gaming Mode too"),
+                         *([button("Last run", slot=lambda: QProcess.startDetached("xdg-open", [str(log)]), icon="doc",
+                                   tip="What the game printed the last time it ran")]
+                           if (log := (None if sysinfo.DEMO else localgames.log_of(loc["name"]))) else []),
                          button("Profile", slot=lambda: ProfileDialog(self, game).exec(), icon="sliders",
                                 tip="What this game gets while it runs"),
                          button("Hide", slot=self.hide_game, icon="close", tip="Leave this folder out of Games")))
@@ -467,6 +543,8 @@ class GamesPage(Page):
             self.head_actions.addWidget(w)
         self.head_actions.addWidget(button("Game Doctor", slot=lambda: QProcess.startDetached("deckos-gamedoctor", []),
                                            icon="alert", tip="Why the last game that closed right after starting did"))
+        self.head_actions.addWidget(button("", slot=lambda: FoldersDialog(self).exec(), icon="folder",
+                                           tip="Which folders on your drives have games in them"))
         self.head_actions.addWidget(button("", slot=self.reload, icon="refresh", tip="Look for games again"))
         host = QWidget()
         self.grid = QGridLayout(host)
@@ -610,6 +688,26 @@ class GamesPage(Page):
         super().resizeEvent(e)
         if self.loaded and self.columns() != self.cols:
             self.layout_tiles()
+
+    def install(self, game, btn):
+        loc = game["local"]
+        if sysinfo.DEMO:
+            self.hub.toast(f"Installing {loc['name']} (demo).", "info")
+            return
+        btn.setEnabled(False)
+        btn.setText("Installing…")
+        self.hub.toast(f"Installing {loc['name']}: its installer opens in a moment.", "info")
+
+        def done(out, code):
+            if code == 0:
+                self.hub.toast(f"{loc['name']} is installed: press Play.", "ok")
+            elif code == 3:
+                self.hub.toast(f"The installer closed, but no game program turned up. Pick it in {loc['name']}'s "
+                               "details.", "bad")
+            else:
+                self.hub.toast(f"Couldn't install {loc['name']}: {out.strip() or 'the installer failed'}", "bad")
+            self.reload()
+        sysinfo.Job(self, ["python3", str(LOCALGAMES), "install", loc["folder"]], done)
 
     def play(self, game):
         exe, args = game["launch"]

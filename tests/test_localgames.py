@@ -103,7 +103,35 @@ class LocalGamesTests(unittest.TestCase):
         self.put('Unpacked/data.bin', b'x')
         g = self.by_name()['Unpacked']
         self.assertEqual((g.exe, g.runner), ('', 'none'))
-        self.assertIn('install', g.notes[0])
+        self.assertIn('unpacking', g.notes[0])
+        self.assertEqual(g.installer, '')
+
+    def test_installer_is_offered_and_its_program_remembered(self):
+        self.put('Old RPG/setup_old_rpg_1.0.exe', pe(size=100))
+        self.put('Old RPG/_CommonRedist/vcredist_x64.exe', pe())
+        g = self.by_name()['Old RPG']
+        self.assertEqual((g.exe, g.installer), ('', 'setup_old_rpg_1.0.exe'))
+        self.assertIn('installing', g.notes[0])
+        # What the installer put in the prefix, newer than the start of the install, best match first
+        prefix = self.home / 'prefixes/old-rpg'
+        game = prefix / 'drive_c/GOG Games/Old RPG/OldRPG.exe'
+        game.parent.mkdir(parents=True)
+        game.write_bytes(pe())
+        (game.parent / 'unins000.exe').write_bytes(pe())
+        found = self.lg.new_programs(prefix, 0, 'Old RPG')
+        self.assertEqual(found, [game])
+        self.lg.pick(self.games / 'Old RPG', exe=str(game))  # absolute: the game lives in its prefix now
+        g = self.by_name()['Old RPG']
+        self.assertEqual((g.exe, g.installer, g.runner), (str(game), '', 'proton'))
+        self.assertEqual(self.lg.command(g)[0][1], str(game))
+        self.assertFalse(any('installing' in n for n in g.notes))
+
+    def test_folders_to_look_in(self):
+        self.lg.set_roots([self.games, self.games, self.home / 'More'])
+        self.assertEqual(self.lg.roots(), [self.games, self.home / 'More'])
+        with patch.object(self.lg, 'default_roots', lambda: [self.home / 'Found']):
+            self.lg.set_roots([])
+            self.assertEqual(self.lg.roots(), [self.home / 'Found'])  # empty: back to finding them
 
     def test_linux_games_run_as_they_are(self):
         self.put('Tux Kart/TuxKart.x86_64', b'\x7fELF' + b'\0' * 60, mode=0o755)

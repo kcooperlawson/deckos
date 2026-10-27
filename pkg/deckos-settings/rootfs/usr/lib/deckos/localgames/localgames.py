@@ -11,7 +11,7 @@ Each game gets its own Wine prefix. With the game's Steam id (steam_appid.txt, e
 store search) umu applies Proton's known fixes for it (GAMEID=umu-ID), and the Hub shows its cover and ProtonDB rating.
 DecKoOS launches games as they are on disk: it never changes DRM or anti-cheat.
 
-    localgames.py scan [ROOT…] | play FOLDER | steam | look-up TITLE | pick FOLDER exe|name|appid|hidden VALUE
+    localgames.py scan [ROOT…] | play FOLDER | install FOLDER | roots [set PATH…] | steam | look-up TITLE | pick FOLDER exe|name|appid|hidden VALUE
 """
 import difflib
 import fnmatch
@@ -22,6 +22,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
@@ -46,6 +47,8 @@ NOT_THE_GAME = re.compile(r"unins|setup|install|redist|vc_?redist|vcredist|dxset
                           r"start_protected_game|beservice|battleye|cefprocess|cefsharp|webhelper|quicksfv|"
                           r"touchup|cleanup|updater?$|patcher|activation|register|benchmark|dedicated|server|"
                           r"editor|modmanager|config(urator)?$|settings$|helper$|7z|unrar|winrar", re.I)
+# A game's own installer (GOG's setup_*.exe, a plain setup.exe), never redistributables
+INSTALLER = re.compile(r"^(setup|install)(_|-|$)|^setup.*\d|^install(er)?$", re.I)
 ENGINES = [  # (engine, a file or folder that gives it away)
     ("Unity", "UnityPlayer.dll"), ("Unity", "*_Data/Managed"), ("Unreal Engine", "Engine/Binaries"),
     ("Unreal Engine", "*/Binaries/Win64"), ("Godot", "*.pck"), ("Ren'Py", "renpy"), ("RPG Maker", "RPG_RT.exe"),
@@ -79,6 +82,7 @@ class Game:
     notes: list = field(default_factory=list)
     candidates: list = field(default_factory=list)  # other programs it could be, best first
     sure: bool = True  # False: the pick is a guess between programs; the Hub asks
+    installer: str = ""  # relative: a setup program, when the game still needs installing
     appid: str = ""  # Steam id: fixes, art and ProtonDB
     picked: bool = False  # the person chose the program
 
@@ -248,7 +252,13 @@ def inspect(folder, name=None):
         ranked = sorted(exes, key=lambda p: -score(p, folder, name))
     else:
         g.runner, g.sure = "none", False
-        g.notes.append("No program to start it was found: it may still need installing (a setup.exe or an archive).")
+        setup = sorted((p for p in files if p.suffix.lower() == ".exe" and INSTALLER.search(p.stem)),
+                       key=lambda p: (len(p.relative_to(folder).parts), p.name.lower()))
+        if setup:
+            g.installer = str(setup[0].relative_to(folder))
+            g.notes.append(f"Needs installing first: {g.installer} sets it up in the game's own prefix.")
+        else:
+            g.notes.append("No program to start it was found: it may still need unpacking (an archive).")
         return g
     g.exe = str(ranked[0].relative_to(folder))
     g.candidates = [str(p.relative_to(folder)) for p in ranked[:8]]
@@ -316,6 +326,57 @@ def roots():
     return [Path(r) for r in data.get("roots", [])] or default_roots()
 
 
+def set_roots(paths):
+    """The folders to look in; an empty list goes back to finding them (Games folders on every drive)."""
+    data = load()
+    data["roots"] = [str(Path(p)) for p in dict.fromkeys(paths)]
+    save(data)
+
+
+def log_of(name):
+    path = LOGS / f"{slug(name)}.log"
+    return path if path.is_file() else None
+
+
+# ------------------------------------------------------------------ installing
+
+def new_programs(prefix, since, name):
+    """Programs an installer put in a prefix (Program Files, GOG Games…) after `since`, best match first."""
+    drive = Path(prefix) / "drive_c"
+    found = []
+    for base in [drive / d for d in ("Program Files", "Program Files (x86)", "GOG Games", "Games")]:
+        for p in _files(base, depth=4) if base.is_dir() else []:
+            try:
+                if p.suffix.lower() == ".exe" and not NOT_THE_GAME.search(p.stem) and p.stat().st_mtime >= since - 5:
+                    found.append(p)
+            except OSError:
+                continue
+    return sorted(found, key=lambda p: -score(p, p.parent, name))
+
+
+def install(folder):
+    """Runs a game's installer in the game's own prefix, then remembers the program it installed. Returns the
+    program's path, or None."""
+    folder = Path(folder)
+    g = inspect(folder, load().get("games", {}).get(str(folder), {}).get("name"))
+    if not g.installer:
+        raise RuntimeError("no installer in that folder")
+    if not shutil.which("umu-run"):
+        raise RuntimeError("Windows installers need umu-launcher: sudo pacman -S umu-launcher")
+    exe_game = Game(**{**asdict(g), "exe": g.installer, "runner": "proton"})
+    argv, env, cwd = command(exe_game)
+    Path(env["WINEPREFIX"]).mkdir(parents=True, exist_ok=True)
+    since = time.time()
+    LOGS.mkdir(parents=True, exist_ok=True)
+    with open(LOGS / f"{slug(g.name)}-install.log", "w") as log:
+        subprocess.call(argv, cwd=cwd, env={**os.environ, **env}, stdout=log, stderr=subprocess.STDOUT)
+    found = new_programs(env["WINEPREFIX"], since, g.name)
+    if found:
+        pick(folder, exe=str(found[0]))  # an absolute path: the game now lives in its prefix
+        return found[0]
+    return None
+
+
 def looks_like_junk(name):
     """Download leftovers: long runs of letters and digits with no spaces (temp folders, hashes)."""
     return " " not in name and len(name) > 40
@@ -337,8 +398,9 @@ def scan(paths=None):
             if mine.get("hidden"):
                 continue
             g = inspect(d, mine.get("name"))
-            if mine.get("exe") and (d / mine["exe"]).is_file():
-                g.exe, g.sure, g.picked = mine["exe"], True, True
+            if mine.get("exe") and (d / mine["exe"]).is_file():  # relative, or absolute once installed in a prefix
+                g.exe, g.sure, g.picked, g.installer = mine["exe"], True, True, ""
+                g.notes = [n for n in g.notes if "installing" not in n and "unpacking" not in n]
                 g.runner = "proton" if g.exe.lower().endswith(".exe") else "native"
             if mine.get("appid"):
                 g.appid = mine["appid"]
@@ -536,6 +598,19 @@ def main(argv):
         return 0
     if argv[:1] == ["pick"] and len(argv) == 4 and argv[2] in ("exe", "name", "appid", "hidden"):
         pick(argv[1], **{argv[2]: argv[3] == "1" if argv[2] == "hidden" else argv[3]})
+        return 0
+    if argv[:1] == ["install"] and len(argv) == 2:
+        try:
+            exe = install(argv[1])
+        except RuntimeError as e:
+            print(str(e), file=sys.stderr)
+            return 1
+        print(exe or "", end="")
+        return 0 if exe else 3  # 3: the installer ran but nothing new to start was found
+    if argv[:1] == ["roots"]:
+        if argv[1:2] == ["set"]:
+            set_roots(argv[2:])
+        print("\n".join(str(r) for r in roots()))
         return 0
     if argv[:1] == ["play"] and len(argv) == 2:
         return play(argv[1])
