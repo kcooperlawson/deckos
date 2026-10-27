@@ -1,0 +1,3 @@
+#!/bin/sh
+# Starts a game from a folder (Games on my drives): Proton through umu for Windows games, as it is for Linux ones
+exec python3 /usr/lib/deckos/localgames/localgames.py play "$@"

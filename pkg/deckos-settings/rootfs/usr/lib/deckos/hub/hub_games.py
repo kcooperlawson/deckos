@@ -1,5 +1,6 @@
-"""DecKoOS Hub's Games page: one library for Steam, Heroic (Epic, GOG) and Lutris, read straight from
-their own files (no logins, nothing running), with ProtonDB ratings and a Play button."""
+"""DecKoOS Hub's Games page: one library for Steam, Heroic (Epic, GOG), Lutris and games in plain folders on the
+drives (usr/lib/deckos/localgames), read straight from their own files (no logins, nothing running), with ProtonDB
+ratings and a Play button."""
 import json
 import re
 import sqlite3
@@ -18,9 +19,13 @@ from hub_pages import Page
 from hub_widgets import Empty, button, label
 
 import sys  # noqa: E402
-for _sub in ("profiles", "gamedoctor"):
+for _sub in ("profiles", "gamedoctor", "localgames"):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / _sub))
 import profiles  # noqa: E402
+import localgames  # noqa: E402
+
+LOCALGAMES = Path(localgames.__file__).resolve()
+LOCAL = "My drives"  # the source name of games found in folders
 
 HOME = Path.home()
 STEAM_ROOTS = [HOME / ".local/share/Steam", HOME / ".steam/steam", HOME / ".var/app/com.valvesoftware.Steam/.local/share/Steam"]
@@ -142,6 +147,34 @@ DEMO_TIERS = {"1091500": "platinum", "1245620": "gold", "1086940": "platinum", "
               "1145350": "platinum"}
 
 
+DEMO_LOCAL = [
+    {"name": "Baby Steps", "folder": "/mnt/BIG/Games/Baby Steps", "exe": "BabySteps.exe", "runner": "proton",
+     "engine": "Unity", "arch": "64-bit", "needs": ["DirectX 11"], "blockers": [], "notes": [],
+     "candidates": ["BabySteps.exe"], "sure": True, "appid": "1281040", "picked": False},
+    {"name": "Expeditions - A MudRunner Game", "folder": "/mnt/BIG/Games/Expeditions - A MudRunner Game",
+     "exe": "Sources/Bin/Expeditions.exe", "runner": "proton", "engine": "", "arch": "64-bit",
+     "needs": ["DirectX 11", "Visual C++ runtime"], "blockers": [], "notes": [],
+     "candidates": ["Sources/Bin/Expeditions.exe", "Sources/Bin/ExpeditionsLauncher.exe"], "sure": False,
+     "appid": "", "picked": False},
+    {"name": "Arena Shooter", "folder": "/mnt/SSD/Games/Arena Shooter", "exe": "Shooter.exe", "runner": "proton",
+     "engine": "Unreal Engine", "arch": "64-bit", "needs": ["DirectX 12"],
+     "blockers": ["EasyAntiCheat: its anti-cheat may refuse to run on Linux unless the game turned on Proton support"],
+     "notes": [], "candidates": ["Shooter.exe"], "sure": True, "appid": "", "picked": False},
+]
+
+
+def local_game(g):
+    """A Games page entry from a localgames scan entry (a dict)."""
+    art = localgames.COVERS / f"{g['appid']}.jpg" if g.get("appid") else None
+    play = ["/usr/bin/deckos-play"] if Path("/usr/bin/deckos-play").exists() else ["python3", str(LOCALGAMES), "play"]
+    try:
+        last = (localgames.LOGS / f"{localgames.slug(g['name'])}.log").stat().st_mtime
+    except OSError:
+        last = 0
+    return {"name": g["name"], "source": LOCAL, "id": g["folder"], "size": 0, "last": int(last),
+            "art": art if art and art.exists() else None, "launch": (play[0], play[1:] + [g["folder"]]), "local": g}
+
+
 def all_games():
     if sysinfo.DEMO:
         now = time.time()
@@ -194,6 +227,7 @@ def cover(game):
 class GameTile(QFrame):
     def __init__(self, game, tier, play):
         super().__init__()
+        self.game = game
         self.setObjectName("tile")
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setFixedWidth(S.scaled(COVER_W + 20))
@@ -210,7 +244,9 @@ class GameTile(QFrame):
         name.setMaximumWidth(w)
         name.setText(name.fontMetrics().elidedText(game["name"], Qt.ElideRight, w))
         v.addWidget(name)
-        bits = [game["source"], fmt_size(game["size"])]
+        loc = game.get("local")
+        bits = [game["source"], fmt_size(game["size"])] if not loc else [
+            "Linux" if loc["runner"] == "native" else loc["engine"] or "Windows", Path(loc["folder"]).parent.parent.name]
         v.addWidget(label("  ·  ".join(b for b in bits if b), "muted", wrap=False))
         self.tier = label("", "muted", wrap=False)
         self.tier.setTextFormat(Qt.RichText)
@@ -221,10 +257,23 @@ class GameTile(QFrame):
                       tip="Profile: what this game gets while it runs" + (" (set)" if has else ""))
         if has:
             prof.setIcon(S.icon("sliders", S.P.accent, 16))
-        v.addWidget(_row(button("Play", "primary", lambda: play(game), icon="play"), prof))
+        if loc:
+            about = button("", slot=lambda: LocalGameDialog(self, game).exec(), icon="details",
+                           tip="What this game needs, which program starts it, and Steam")
+            if loc["blockers"] or not loc["sure"] or not loc["exe"]:
+                about.setIcon(S.icon("alert", S.WARNING, 16))
+            playb = button("Play", "primary", lambda: play(game), icon="play")
+            playb.setEnabled(bool(loc["exe"]))
+            v.addWidget(_row(playb, about))  # its profile is in the details: three buttons squeeze Play
+        else:
+            v.addWidget(_row(button("Play", "primary", lambda: play(game), icon="play"), prof))
 
     def set_tier(self, tier):
-        if tier:
+        loc = self.game.get("local")
+        if loc and (loc["blockers"] or not loc["exe"] or not loc["sure"]):
+            self.tier.setText(f"<span style='color:{S.WARNING}'>●</span> " + (
+                "Needs installing" if not loc["exe"] else "May not run" if loc["blockers"] else "Check its program"))
+        elif tier:
             self.tier.setText(f"<span style='color:{TIER_COLORS.get(tier, S.SUBTEXT)}'>●</span> ProtonDB "
                               f"{tier.capitalize()}")
         else:
@@ -315,9 +364,91 @@ class ProfileDialog(QDialog):
         self.accept()
 
 
+class LocalGameDialog(QDialog):
+    """A game from a folder: what DecKoOS worked out about it, and the person's say on the parts it can't know."""
+
+    def __init__(self, parent, game):
+        super().__init__(parent)
+        self.game, self.loc = game, game["local"]
+        loc = self.loc
+        self.setObjectName("root")
+        self.setWindowTitle(f"{loc['name']}: details")
+        self.setMinimumWidth(560)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(22, 18, 22, 16)
+        v.setSpacing(10)
+        v.addWidget(label(loc["name"], "title"))
+        v.addWidget(label(loc["folder"], "muted"))
+        how = ("Runs as it is (a Linux game)" if loc["runner"] == "native" else
+               "Runs with Proton, in a Wine prefix of its own" if loc["exe"] else "Nothing here starts a game yet")
+        facts = [how] + ([f"Made with {loc['engine']}"] if loc["engine"] else []) + \
+            ([f"Uses {', '.join(loc['needs'])}"] if loc["needs"] else []) + \
+            ([f"Steam knows it (id {loc['appid']}): Proton's fixes for it are used"] if loc["appid"] else
+             ["Steam doesn't know it by this name: it runs without game-specific fixes"])
+        for f in facts:
+            v.addWidget(label("•  " + f, "sub"))
+        for b in loc["blockers"]:
+            v.addWidget(label(f"<span style='color:{S.WARNING}'>⚠</span>  {b}", "sub"))
+        for n in loc["notes"]:
+            v.addWidget(label("ⓘ  " + n, "sub"))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        self.exe = QComboBox()
+        for c in loc["candidates"] or [""]:
+            self.exe.addItem(c or "(none found)", c)
+        self.exe.setCurrentIndex(max(0, self.exe.findData(loc["exe"])))
+        self.exe.setEnabled(len(loc["candidates"]) > 1)
+        grid.addWidget(label("Starts with", "sub", wrap=False), 0, 0)
+        grid.addWidget(self.exe, 0, 1)
+        if not loc["sure"] and loc["exe"]:
+            grid.addWidget(label("DecKoOS isn't sure which of these starts the game: pick one if Play doesn't work.",
+                                 "muted"), 1, 1)
+        self.name = QLineEdit(loc["name"])
+        grid.addWidget(label("Name", "sub", wrap=False), 2, 0)
+        grid.addWidget(self.name, 2, 1)
+        v.addLayout(grid)
+        v.addWidget(_row(button("Open folder", slot=lambda: QProcess.startDetached("xdg-open", [loc["folder"]]),
+                                icon="folder"),
+                         button("Add my games to Steam", slot=self.to_steam, icon="gaming",
+                                tip="Every game from your drives, as non-Steam games, so they're in Gaming Mode too"),
+                         button("Profile", slot=lambda: ProfileDialog(self, game).exec(), icon="sliders",
+                                tip="What this game gets while it runs"),
+                         button("Hide", slot=self.hide_game, icon="close", tip="Leave this folder out of Games")))
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.save)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def _pick(self, key, value):
+        if not sysinfo.DEMO:
+            sysinfo.Job(self.parent(), ["python3", str(LOCALGAMES), "pick", self.loc["folder"], key, value], lambda *_: None)
+
+    def save(self):
+        if self.exe.currentData() and self.exe.currentData() != self.loc["exe"]:
+            self._pick("exe", self.exe.currentData())
+        if self.name.text().strip() and self.name.text().strip() != self.loc["name"]:
+            self._pick("name", self.name.text().strip())
+        self.accept()
+
+    def hide_game(self):
+        self._pick("hidden", "1")
+        self.accept()
+
+    def to_steam(self):
+        if sysinfo.DEMO:
+            return
+        hub = self.parent().window()
+
+        def done(out, code):
+            msg = out.strip() if code == 0 else "Close Steam first, then try again: it rewrites its library when it exits."
+            if hasattr(hub, "toast"):
+                hub.toast(msg, "ok" if code == 0 else "bad")
+        sysinfo.Job(hub, ["python3", str(LOCALGAMES), "steam"], done)
+
+
 class GamesPage(Page):
     title = "Games"
-    subtitle = "Steam, Heroic and Lutris in one place."
+    subtitle = "Steam, Heroic, Lutris and the games on your drives in one place."
 
     def build(self):
         self.search = QLineEdit()
@@ -327,7 +458,7 @@ class GamesPage(Page):
         self.search.setFixedWidth(220)
         self.search.textChanged.connect(self.layout_tiles)
         self.source = QComboBox()
-        self.source.addItems(["All launchers", "Steam", "Epic", "GOG", "Lutris"])
+        self.source.addItems(["All launchers", "Steam", "Epic", "GOG", "Lutris", LOCAL])
         self.source.currentIndexChanged.connect(self.layout_tiles)
         self.sort = QComboBox()
         self.sort.addItems(["Recently played", "Name", "Size"])
@@ -343,7 +474,8 @@ class GamesPage(Page):
         self.grid.setSpacing(12)
         self.grid.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.lay.addWidget(host)
-        self.empty = Empty("gaming", "No games found", "Install games in Steam, Heroic or Lutris and they show up here.",
+        self.empty = Empty("gaming", "No games found", "Install games in Steam, Heroic or Lutris, or keep them in a "
+                           "Games folder on a drive, and they show up here.",
                            button("Open Steam", "primary", lambda: QProcess.startDetached("steam", []), icon="play"))
         self.empty.hide()
         self.lay.addWidget(self.empty)
@@ -363,6 +495,46 @@ class GamesPage(Page):
         self.tiles = {}
         self.layout_tiles()
         self.fetch_tiers()
+        # Games in folders: the drives can be slow to read, so the scan runs as its own process
+        sysinfo.Job(self, ["python3", str(LOCALGAMES), "scan"], self.got_local, demo=(json.dumps(DEMO_LOCAL), 0))
+
+    def got_local(self, out, code):
+        try:
+            found = json.loads(out) if code == 0 else []
+        except ValueError:
+            found = []
+        self.games = [g for g in self.games if g["source"] != LOCAL] + [local_game(g) for g in found]
+        for key in [k for k in self.tiles if k[0] == LOCAL]:
+            self.tiles.pop(key).deleteLater()
+        self.layout_tiles()
+        if sysinfo.DEMO:
+            return
+        # Steam ids (Proton's fixes, covers, ProtonDB) for games that have none yet, a few at a time
+        for g in [g for g in self.games if g["source"] == LOCAL and not g["art"]][:20]:
+            loc = g["local"]
+            if loc["appid"] and loc["appid"] in self.tiers:
+                continue
+            sysinfo.Job(self, ["python3", str(LOCALGAMES), "look-up", loc["name"]],
+                        lambda o, c, gm=g: self.got_lookup(gm, o if c == 0 else ""))
+
+    def got_lookup(self, game, out):
+        try:
+            res = json.loads(out)
+        except ValueError:
+            return
+        if res.get("appid") and not game["local"]["appid"]:
+            game["local"]["appid"] = res["appid"]
+        if res.get("art"):
+            game["art"] = Path(res["art"])
+        tile = self.tiles.pop((LOCAL, game["id"]), None)
+        if tile:
+            tile.deleteLater()
+            self.layout_tiles()
+        appid = game["local"]["appid"]
+        if appid and appid not in self.tiers:
+            sysinfo.Job(self, ["curl", "-fsS", "--max-time", "6",
+                               f"https://www.protondb.com/api/v1/reports/summaries/{appid}.json"],
+                        lambda o, c, a=appid: self.got_tier(a, o if c == 0 else ""))
 
     @staticmethod
     def load_tiers():
@@ -400,9 +572,9 @@ class GamesPage(Page):
             PROTONDB_CACHE.write_text(json.dumps(data))
         except (OSError, ValueError):
             pass
-        tile = self.tiles.get(("Steam", appid))
-        if tile:
-            tile.set_tier(tier)
+        for (src, gid), tile in self.tiles.items():
+            if (src == "Steam" and gid == appid) or (src == LOCAL and tile.game.get("local", {}).get("appid") == appid):
+                tile.set_tier(tier)
 
     # ---- grid
 
@@ -428,7 +600,8 @@ class GamesPage(Page):
             key = (g["source"], g["id"])
             tile = self.tiles.get(key)
             if not tile:
-                tile = self.tiles[key] = GameTile(g, self.tiers.get(g["id"]) if g["source"] == "Steam" else None, self.play)
+                appid = g["id"] if g["source"] == "Steam" else g.get("local", {}).get("appid")
+                tile = self.tiles[key] = GameTile(g, self.tiers.get(appid) if appid else None, self.play)
             self.grid.addWidget(tile, i // cols, i % cols)
             tile.show()
         self.empty.setVisible(not games)

@@ -22,6 +22,8 @@ HUB = [
      "scheduler lavd fsr upscaling shader cache ntsync performance fps stutter"),
     ("games", "Games", "Steam, Heroic and Lutris games, profiles and Game Doctor", "grid",
      "library play launch profile game doctor proton protondb crash"),
+    ("games", "Games on my drives", "PC games in folders: found, set up with Proton and started", "drives",
+     "offline games folder exe windows game drive proton wine umu bottles lutris standalone gog installer"),
     ("drives", "Drives", "Windows drives, read-only drives, Move In", "drives",
      "ntfs windows disk drive mount read only fast startup move in"),
     ("aidev", "Local AI", "Ollama, choose a model, DecKoOS Assistant", "ai",
