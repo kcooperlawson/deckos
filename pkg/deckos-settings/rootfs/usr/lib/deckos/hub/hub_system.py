@@ -58,7 +58,10 @@ class Job(QObject):
         self.proc.start(cmd[0], cmd[1:])
 
     def _finished(self, code, _status):
-        out = bytes(self.proc.readAllStandardOutput()).decode(errors="replace")
+        try:
+            out = bytes(self.proc.readAllStandardOutput()).decode(errors="replace")
+        except RuntimeError:  # the window closed while it ran: nobody to tell
+            return
         self.done(out, code)
         self.deleteLater()
 

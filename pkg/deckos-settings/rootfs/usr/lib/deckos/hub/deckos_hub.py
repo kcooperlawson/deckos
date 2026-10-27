@@ -170,25 +170,29 @@ class Hub(QWidget):
         self.search.returnPressed.connect(self.search_first)
         sl.addWidget(self.search)
         QShortcut(QKeySequence.Find, self, activated=lambda: (self.search.setFocus(), self.search.selectAll()))
+        # Page by page from anywhere: Ctrl+Page Down/Up (Ctrl+Tab is taken by tabs inside pages), and the arrow keys
+        # while the sidebar has focus: what a controller's d-pad sends through Steam Input
+        QShortcut(QKeySequence("Ctrl+PgDown"), self, activated=lambda: self.step(1))
+        QShortcut(QKeySequence("Ctrl+PgUp"), self, activated=lambda: self.step(-1))
         sl.addSpacing(10)
 
         self.stack = QStackedWidget()
-        self.pages, self.nav = {}, {}
+        # Pages are built the first time they're opened: building all of them made the Hub slow to appear
+        self.pages, self.nav, self.classes = {}, {}, {}
         self.nav_group = QButtonGroup(self)
         for key, title, ic, cls in PAGES:
             b = QPushButton("  " + title.replace("&", "&&"))
             b.setObjectName("nav")
             b.setCheckable(True)
             b.setCursor(Qt.PointingHandCursor)
-            b.setFocusPolicy(Qt.NoFocus)
+            b.setFocusPolicy(Qt.TabFocus)  # reachable with Tab, and so with a controller through Steam Input
+            b.installEventFilter(self)
             b.setIconSize(QSize(18, 18))
             b.clicked.connect(lambda _c, k=key: self.navigate(k))
             self.nav_group.addButton(b)
             self.nav[key] = (b, ic)
             sl.addWidget(b)
-            page = cls(self)
-            self.pages[key] = page
-            self.stack.addWidget(page)
+            self.classes[key] = cls
         self.search_page = SearchPage(self)
         self.stack.addWidget(self.search_page)
         self.last_page = "home"
@@ -242,15 +246,41 @@ class Hub(QWidget):
             self.search.blockSignals(False)
         b, _ = self.nav[key]
         b.setChecked(True)
-        page = self.pages[key]
+        page = self.page(key)
         self.stack.setCurrentWidget(page)
         page.refresh()
         if action == "update" and key == "system":
             page.check_updates()
 
+    def step(self, by, focus=False):
+        keys = list(self.nav)
+        i = keys.index(self.last_page) if self.last_page in keys else 0
+        key = keys[(i + by) % len(keys)]
+        self.navigate(key)
+        if focus:
+            self.nav[key][0].setFocus()
+
+    def eventFilter(self, obj, e):
+        """Arrow keys on the sidebar (a controller's d-pad, through Steam Input): up and down through the pages,
+        right or Enter into the page."""
+        if e.type() == QEvent.KeyPress and obj.objectName() == "nav":
+            if e.key() in (Qt.Key_Down, Qt.Key_Up):
+                self.step(1 if e.key() == Qt.Key_Down else -1, focus=True)
+                return True
+            if e.key() in (Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter):
+                self.stack.currentWidget().focusNextChild()
+                return True
+        return super().eventFilter(obj, e)
+
+    def page(self, key):
+        if key not in self.pages:
+            self.pages[key] = self.classes[key](self)
+            self.stack.addWidget(self.pages[key])
+        return self.pages[key]
+
     def tick(self):
         stats = self.stats.sample()
-        self.pages["home"].tick(stats)  # always, so the graphs have history when Home is opened
+        self.page("home").tick(stats)  # always, so the graphs have history when Home is opened
         cur = self.stack.currentWidget()
         if cur is not self.pages["home"]:
             cur.tick(stats)
@@ -351,10 +381,10 @@ def main():
     w = Hub()
     if "--page" in sys.argv[:-1]:
         page = sys.argv[sys.argv.index("--page") + 1]
-        if page in w.pages:
+        if page in w.nav:
             w.navigate(page)
             if page == "system" and "--update" in sys.argv:
-                w.pages["system"].run_update()
+                w.page("system").run_update()
     w.show()
     sys.exit(app.exec())
 

@@ -199,6 +199,7 @@ QPushButton#nav {{ text-align: left; border: none; border-radius: 8px; padding: 
     font-weight: 600; background: transparent; }}
 QPushButton#nav:hover {{ background: {SURFACE}; color: {TEXT}; }}
 QPushButton#nav:checked {{ background: {P.tint}; color: {TEXT}; }}
+QPushButton#nav:focus {{ border: 1px solid {P.accent}; }}
 QPushButton#swatch {{ border-radius: 15px; border: 2px solid transparent; padding: 0; }}
 QPushButton#swatch:checked {{ border: 2px solid {TEXT}; }}
 QLineEdit, QSpinBox {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 5px 8px; }}

@@ -19,6 +19,13 @@ from hub_widgets import Card, Empty, Meter, RowItem, button, icon_label, label, 
 
 preview_tile = AppearancePage.preview_tile  # the Hub's theme/wallpaper tile
 
+import json  # noqa: E402
+import sys  # noqa: E402
+for _sub in ("sound", "localgames"):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / _sub))
+import localgames  # noqa: E402
+import sound  # noqa: E402
+
 
 def launch(cmd, *args):
     if not sysinfo.DEMO:
@@ -674,6 +681,15 @@ class GamingStep(Step):
         steam.body.addLayout(self.steam_box)
         self.lay.addWidget(steam)
 
+        mine = Card("Games on your drives", "Windows games in folders, without Lutris or Bottles", "grid")
+        mine.body.addWidget(label("Games kept in a Games folder on any drive show up in DecKoOS Hub › Games: DecKoOS "
+                                  "finds the program that starts each one and runs it with Proton, with the fixes "
+                                  "Steam knows for it.", "sub"))
+        self.mine_info = label("Looking…", "muted", wrap=False)
+        mine.body.addWidget(row(self.mine_info, button("Open Games", slot=lambda: launch("deckos-hub", "--page", "games"),
+                                                     icon="external")))
+        self.lay.addWidget(mine)
+
         pads = Card("Controllers", "Plug in and play", "gaming")
         pads.body.addWidget(label("Xbox, PlayStation and Switch Pro controllers work over USB and Bluetooth; Steam "
                                   "Input handles the buttons in games.", "sub"))
@@ -707,6 +723,16 @@ class GamingStep(Step):
         self.steam_box.addWidget(label(f"{len(ntfs)} Windows drive{'s' if len(ntfs) != 1 else ''} mounted." if ntfs
                                        else "No Windows drives are mounted.", "muted", wrap=False))
         self.steam_box.addStretch(1)
+
+        def found(out, code):
+            try:
+                n = len(json.loads(out)) if code == 0 else 0
+            except ValueError:
+                n = 0
+            self.mine_info.setText(f"{n} game{'s' if n != 1 else ''} found on your drives." if n else
+                                   "None found yet: make a folder called Games on a drive and put games in it.")
+        sysinfo.Job(self, ["python3", str(Path(localgames.__file__).resolve()), "scan"], found,
+                    demo=(json.dumps([{}] * 30), 0))
 
         self.clear(self.pad_box)
         installed, loaded, plugged = ws.xone()
@@ -749,6 +775,75 @@ class GamingStep(Step):
     def steam_ntfs(self):
         self.win.terminal("deckos steam-ntfs")
         self.note("steam-ntfs", "Moved Proton settings off Windows drives (deckos steam-ntfs)")
+
+
+class SoundStep(Step):
+    key, nav, hub = "sound", "Sound", "Sound"
+    title = "Sound"
+    subtitle = "Where sound plays, where voice chat goes, and steady sound while you play."
+    hint = "Everything here is in DecKoOS Hub › Sound too, with a slider for each app."
+
+    def build(self):
+        out = Card("Plays on", "Your speakers or headset", "volume")
+        self.out_box = QVBoxLayout()
+        self.out_box.setSpacing(6)
+        out.body.addLayout(self.out_box)
+        self.lay.addWidget(out)
+        chat = Card("Voice chat", "Discord, TeamSpeak and calls", "mic")
+        chat.body.addWidget(label("Headsets like the Astro A50 or Arctis have a separate chat output. Send calls "
+                                  "there, and music can get quieter while you talk.", "sub"))
+        self.chat = QComboBox()
+        self.chat.activated.connect(self.save_chat)
+        self.duck = QCheckBox("Make music quieter during voice calls")
+        self.duck.toggled.connect(self.save_duck)
+        chat.body.addWidget(row(label("Calls play on", "sub", wrap=False), self.chat))
+        chat.body.addWidget(self.duck)
+        self.lay.addWidget(chat)
+        steady = Card("Steady sound", "No crackles while you play", "check")
+        steady.body.addWidget(label("DecKoOS keeps a small sound buffer (about 5 ms) so games and music don't crackle "
+                                    "when the CPU is busy. You won't notice it as delay; music makers can lower it "
+                                    "in the Hub.", "sub"))
+        self.lay.addWidget(steady)
+
+    def refresh(self):
+        st = sound.demo_state() if sysinfo.DEMO else sound.state()
+        outs = [d for d in st.get("devices", []) if d["kind"] == "output" and d["name"] != sound.EQ_NODE]
+        self.clear(self.out_box)
+        if not outs:
+            self.out_box.addWidget(label("No speakers or headset found: plug one in and come back.", "muted"))
+        for d in outs:
+            use = label("In use", "muted", wrap=False) if d["default"] else button(
+                "Use", slot=lambda _=False, n=d["name"], t=d["label"]: self.use(n, t))
+            self.out_box.addWidget(RowItem("headphones" if "head" in d["label"].lower() or "a50" in d["label"].lower()
+                                           else "volume", d["label"], "", S.P.accent if d["default"] else S.SUBTEXT,
+                                           [use]))
+        rule = st.get("rules") or {}
+        self.chat.blockSignals(True)
+        self.chat.clear()
+        self.chat.addItem("The same place as everything else", "")
+        for d in outs:
+            self.chat.addItem(d["label"], d["name"])
+        self.chat.setCurrentIndex(max(0, self.chat.findData((rule.get("outputs") or {}).get("voice", ""))))
+        self.chat.blockSignals(False)
+        self.duck.blockSignals(True)
+        self.duck.setChecked(bool(rule.get("duck")))
+        self.duck.blockSignals(False)
+
+    def use(self, name, label_text):
+        if not sysinfo.DEMO:
+            sound.set_default(name)
+        self.note("output", f"Sound plays on {label_text}")
+        self.refresh()
+
+    def save_chat(self):
+        if not sysinfo.DEMO:
+            sound.set_rule("output", "voice", self.chat.currentData() or None)
+        self.note("chat", f"Voice chat plays on {self.chat.currentText()}")
+
+    def save_duck(self, on):
+        if not sysinfo.DEMO:
+            sound.set_rule("duck", value=40 if on else None)
+        self.note("duck", "Music gets quieter during calls" if on else "Music stays as it is during calls")
 
 
 # ------------------------------------------------------------------ 6. your files
@@ -1126,4 +1221,4 @@ class DoneStep(Step):
             QProcess.startDetached("qdbus6", ["org.kde.Shutdown", "/Shutdown", f"org.kde.Shutdown.{action}"])
 
 
-STEPS = [WelcomeStep, LookStep, DisplayStep, SoftwareStep, GamingStep, FilesStep, UpdatesStep, ExtrasStep, DoneStep]
+STEPS = [WelcomeStep, LookStep, DisplayStep, SoundStep, SoftwareStep, GamingStep, FilesStep, UpdatesStep, ExtrasStep, DoneStep]

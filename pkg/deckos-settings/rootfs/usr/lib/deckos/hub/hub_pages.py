@@ -1153,7 +1153,7 @@ class SystemPage(Page):
             self.up_state.setText(f"DecKoOS {sysinfo.plain_version(settings[2])} is ready" if settings else
                                   f"{total} update{'s' if total != 1 else ''} waiting")
             self.up_detail.setText("Update now installs the DecKoOS and system updates below. A snapshot is taken "
-                                   "first, so you can roll back." if repo else
+                                   "first, so Undo can take it back." if repo else
                                    "Only AUR apps: update them in the terminal.")
 
         if not err:
