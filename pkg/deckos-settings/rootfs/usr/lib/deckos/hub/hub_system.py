@@ -588,11 +588,12 @@ def vibes():
 
 
 def taskbar_settings():
-    """{"height", "colorMode", "motion"} of the first DecKoOS taskbar, from Plasma's own files."""
+    """{"height", "colorMode", "motion", "screens"} of the first DecKoOS taskbar, from Plasma's own files."""
     if DEMO:
-        return {"height": 48, "colorMode": "vibe", "motion": True}
-    out = {"height": 0, "colorMode": "accent", "motion": True}
+        return {"height": 48, "colorMode": "vibe", "motion": True, "screens": "all"}
     cfg = Path.home() / ".config"
+    out = {"height": 0, "colorMode": "accent", "motion": True,
+           "screens": "all" if read(cfg / "deckos/taskbar-screens").strip() == "all" else "one"}
     try:
         text = (cfg / "plasma-org.kde.plasma.desktop-appletsrc").read_text()
         m = re.search(r"^\[Containments\]\[(\d+)\]\[Applets\]\[(\d+)\]\n(?:[^\[].*\n)*?plugin=org\.deckos\.taskbar", text, re.M)

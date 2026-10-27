@@ -30,6 +30,10 @@
       <label>Kid mode: the pinned apps can't be changed (no pinning, unpinning or dropping apps on)</label>
       <default>false</default>
     </entry>
+    <entry name="deckosExtraScreen" type="Bool">
+      <label>Made by deckos taskbar screens all for another screen (taken away again by screens one)</label>
+      <default>false</default>
+    </entry>
     <entry name="onlyThisScreen" type="Bool">
       <label>Only show windows on the screen this taskbar is on (off: one taskbar shows every screen's windows)</label>
       <default>false</default>

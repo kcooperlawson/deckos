@@ -1567,6 +1567,7 @@ layout_cmd() {
         var pins = '$pins';
         if (pins !== '') panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach(function (w) {
           w.currentConfigGroup = ['General']; w.writeConfig('launchers', pins.split(',')); w.reloadConfig(); }); });" >/dev/null
+      [[ $name == kids || $(cat "$TASKBAR_SCREENS" 2>/dev/null) != all ]] || taskbar_screens all
       ok "desktop layout: $name" ;;
     graphs)
       # DecKoOS Performance on the first screen's desktop, top right (once: a second one isn't added)
@@ -1614,8 +1615,60 @@ taskbar_cmd() {
       [[ ${2:-} == on || ${2:-} == off ]] || { err "usage: deckos taskbar motion on|off"; exit 2; }
       taskbar_script "w.writeConfig('motion', '$([[ $2 == on ]] && echo true || echo false)')"
       ok "taskbar motion: $2" ;;
-    *) err "usage: deckos taskbar height SIZE | colors accent|vibe|custom COLOR [COLOR] | motion on|off"; exit 2 ;;
+    screens)
+      case ${2:-} in
+        all|one) mkdir -p "${TASKBAR_SCREENS%/*}" && printf '%s\n' "$2" > "$TASKBAR_SCREENS"; taskbar_screens "$2"
+          ok "taskbar: $([[ $2 == all ]] && echo "on every screen (the others show only their windows' icons)" || echo "on the main screen only")" ;;
+        "") cat "$TASKBAR_SCREENS" 2>/dev/null || echo one ;;
+        *) err "usage: deckos taskbar screens all|one"; exit 2 ;;
+      esac ;;
+    *) err "usage: deckos taskbar height SIZE | colors accent|vibe|custom COLOR [COLOR] | motion on|off | screens all|one"
+       exit 2 ;;
   esac
+}
+
+# A taskbar on every screen: the main panel stays as it is; each other screen gets a slim one with only the taskbar
+# (that screen's windows and the same pinned apps: no menu, tray or clock), marked so `one` takes only those away.
+# Remembered in $TASKBAR_SCREENS, so `deckos layout set` puts them back after replacing the panels.
+TASKBAR_SCREENS=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/taskbar-screens
+
+taskbar_screens() {
+  qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    var all = '$1' === 'all';
+    function tasks(p) { return p.widgets('org.deckos.taskbar'); }
+    function extra(p) { return tasks(p).some(function (w) { w.currentConfigGroup = ['General'];
+      return String(w.readConfig('deckosExtraScreen', '')) === 'true'; }); }
+    panels().forEach(function (p) { if (extra(p)) p.remove(); });
+    var main = panels().filter(function (p) { return tasks(p).length > 0; })[0];
+    if (main) {
+      var mt = tasks(main)[0];
+      mt.currentConfigGroup = ['General'];
+      // With a taskbar per screen, each shows its own screen's windows
+      mt.writeConfig('onlyThisScreen', all ? 'true' : 'false');
+      mt.reloadConfig();
+      if (all) {
+        var pins = mt.readConfig('launchers', ''), used = {};
+        panels().forEach(function (p) { used[p.screen] = true; });
+        for (var s = 0; s < screenCount; s++) {
+          if (used[s]) continue;
+          var p = new Panel;
+          p.screen = s;
+          p.location = main.location;
+          p.height = main.height;
+          p.floating = main.floating;
+          p.lengthMode = 'fill';
+          var t = p.addWidget('org.deckos.taskbar');
+          t.currentConfigGroup = ['General'];
+          ['colorMode', 'colorA', 'colorB', 'motion', 'lockedPins'].forEach(function (k) {
+            var v = mt.readConfig(k, ''); if (String(v) !== '') t.writeConfig(k, v); });
+          if (String(pins) !== '') t.writeConfig('launchers', String(pins).split(','));  // a list, read as one string
+          t.writeConfig('showLabels', 'false');  // icons only, whatever the main one shows
+          t.writeConfig('onlyThisScreen', 'true');
+          t.writeConfig('deckosExtraScreen', 'true');
+          t.reloadConfig();
+        }
+      }
+    }" >/dev/null
 }
 
 # ------------------------------------------------------------------ vibes

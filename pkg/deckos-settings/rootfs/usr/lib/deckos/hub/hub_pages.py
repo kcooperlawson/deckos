@@ -1589,7 +1589,7 @@ class AppearancePage(Page):
             style.body.addWidget(row(name, *buttons))
         self.lay.addWidget(style)
 
-        bar = Card("Taskbar", "Size, colours and motion", "panel-right")
+        bar = Card("Taskbar", "Size, colours, motion and screens", "panel-right")
         tb = sysinfo.taskbar_settings()
         size = "small" if 0 < tb["height"] <= 42 else "large" if tb["height"] >= 56 else "medium"
 
@@ -1613,8 +1613,14 @@ class AppearancePage(Page):
                                 tb["colorMode"], self.taskbar_colors))
         bar.body.addWidget(segs("Motion", (("on", "On"), ("off", "Off")), "on" if tb["motion"] else "off",
                                 lambda v, t: self.apply(["deckos", "taskbar", "motion", v], f"Taskbar motion: {v}")))
+        bar.body.addWidget(segs("Screens", (("one", "Main screen"), ("all", "Every screen")), tb["screens"],
+                                lambda v, t: self.apply(["deckos", "taskbar", "screens", v],
+                                                        "Taskbar on every screen" if v == "all" else
+                                                        "Taskbar on the main screen")))
         bar.body.addWidget(label("Your own colours stay when you change Vibes. Motion: the active app's light "
-                                 "breathes and icons lift as you point at them.", "muted"))
+                                 "breathes and icons lift as you point at them. Every screen: the others get a slim "
+                                 "taskbar with just their windows' icons (no menu or clock); plug in a screen later and "
+                                 "press it again.", "muted"))
         self.lay.addWidget(bar)
 
         sounds = Card("Sounds", "System sounds", "volume")
