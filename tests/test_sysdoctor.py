@@ -37,7 +37,8 @@ OUTPUT = {
     ("journalctl", "-b", "-u"): "Started Consume pending crashes.\nFailed with result 'exit-code'.\n",
     ("journalctl", "--since"): DUMPS,
     ("systemd-analyze",): "Startup finished in 18.6s (firmware) + 6.0s (loader) + 5.9s (kernel) + 9.5s (userspace) = 40.1s\n",
-    ("systemd-analyze", "blame"): "6.466s NetworkManager-wait-online.service\n12.1s plymouth-quit-wait.service\n980ms x.service\n",
+    ("systemd-analyze", "blame"): "1min 15.306s archlinux-keyring-wkd-sync.service\n6.466s NetworkManager-wait-online.service\n"
+                                  "12.1s plymouth-quit-wait.service\n980ms x.service\n",
     ("journalctl", "-b", "-p"): ('sdb: Failed to find and pin callout binary "/usr/bin/hdparm": No such file or directory\n' * 3
                                 + "kwin_wayland: atomic commit failed: Invalid argument\n" * 4
                                 + "Process 1234 (python3) of user 1000 dumped core.\nStack trace of thread 1234:\n"),
@@ -101,6 +102,10 @@ class Checkup(unittest.TestCase):
         self.assertEqual(found["boot:wait-online"].fixes[0].cmd,
                          ["pkexec", "deckos", "heal", "apply", "skip-network-wait", "--finding=slow-boot"])
         self.assertIn("boot:plymouth-quit-wait.service", found)
+        # A timer's job that ran beside the start-up isn't blamed for it
+        self.assertNotIn("boot:archlinux-keyring-wkd-sync.service", found)
+        # 18.6 s in the BIOS: the hint about memory training
+        self.assertIn("Memory Context Restore", found["boot:firmware"].text)
         hd = found["missing:/usr/bin/hdparm"]
         self.assertIn("3 times this start-up", hd.text)
         self.assertIn("package=hdparm", hd.fixes[0].cmd)

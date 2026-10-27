@@ -287,9 +287,19 @@ def slow_boot():
         mm = re.match(r"\s*(?:(\d+)min )?([\d.]+)(ms|s) (\S+)", line)
         if mm:
             secs = int(mm.group(1) or 0) * 60 + float(mm.group(2)) / (1000 if mm.group(3) == "ms" else 1)
-            if secs >= 3:
+            # Far longer than the whole start-up: it ran beside it (a timer's job, like the keyring sync), so it
+            # didn't hold anything up
+            if secs >= 3 and secs <= 2 * userspace:
                 slow.append((mm.group(4), secs))
     out = []
+    fw = re.search(r"([\d.]+)s \(firmware\)", text)
+    if fw and float(fw.group(1)) >= 12:
+        out.append(Finding("boot:firmware", INFO, f"The PC spends {float(fw.group(1)):.0f} s before DecKoOS starts",
+                           "That's the BIOS, before the boot menu: usually checking the memory again on every start. "
+                           "In the BIOS, Memory Context Restore (AMD) or Fast Boot / fast memory training (Intel, "
+                           "some AMD boards) skips it and often saves 10 s or more. If the PC is unstable after, "
+                           "turn it back off.",
+                           evidence=[ln for ln in text.splitlines() if "firmware" in ln][:1]))
     for unit, secs in slow:
         if unit == "NetworkManager-wait-online.service":
             if network_mounts():  # those do need the network up before they mount
