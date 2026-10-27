@@ -1368,8 +1368,8 @@ mode_enter() {  # mode_enter GAME [ID]: free what the game needs, remember what 
      && balooctl6 status 2>/dev/null | grep -qi 'is running'; then
     balooctl6 suspend >/dev/null 2>&1 && baloo=1 && did+=("paused file indexing")
   fi
-  printf 'mode=gaming\ngame=%s\nsince=%s\nollama=%s\nvram=%s\ndocker=%s\nbaloo=%s\n' \
-    "$game" "$(date +%s)" "$names" "$vram" "$ids" "$baloo" > "$MODE_STATE.tmp"
+  printf 'mode=gaming\ngame=%s\ngameid=%s\nsince=%s\nollama=%s\nvram=%s\ndocker=%s\nbaloo=%s\n' \
+    "$game" "$gid" "$(date +%s)" "$names" "$vram" "$ids" "$baloo" > "$MODE_STATE.tmp"
   mv "$MODE_STATE.tmp" "$MODE_STATE"
   mode_announce gaming "$game"
   if [[ -n $gid ]]; then
@@ -2024,6 +2024,18 @@ decky_install() {  # Decky Loader: Steam Deck plugins inside Gaming Mode
   ok "done: open Gaming Mode and press the ... button for the Decky menu"
 }
 
+decky_plugin() {  # DecKoOS's own Decky plugin (Gaming Mode's quick access menu), from deckos-settings
+  [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+  local src=/usr/share/deckos/decky/DecKoOS dest=$HOME/homebrew/plugins/DecKoOS
+  [[ -d $HOME/homebrew/plugins ]] || { err "Decky Loader isn't installed: deckos decky install"; exit 1; }
+  section "DecKoOS for Decky"
+  sub "Decky's plugin folder belongs to root: it asks for your password."
+  sudo rm -rf "$dest"
+  sudo cp -r "$src" "$dest"
+  sudo systemctl restart plugin_loader.service
+  ok "done: in Gaming Mode, press ... and pick the DecKoOS plate"
+}
+
 doctor_cmd() {
   section "DecKoOS $VERSION"
   say "  Kernel  $(uname -r)"
@@ -2114,6 +2126,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos bench   [system|games|run KEYS|compare A B]    DecKoOS Bench: benchmarks with confidence ranges
   deckos streaming setup                                Sunshine game streaming (Moonlight)
   deckos decky install                                  Decky Loader for Gaming Mode
+  deckos decky plugin                                   DecKoOS's own panel in Gaming Mode's quick access menu
   deckos doctor                                         health check (the full report)
   deckos sysdoctor                                     System Doctor: what's wrong, in plain words, with fixes
   deckos hub                                            open DecKoOS Hub
@@ -2191,7 +2204,12 @@ case ${1:-} in
   play) shift; exec /usr/bin/deckos-play "$@" ;;
   ai) shift; ai_cmd "$@" ;;
   streaming) shift; [[ ${1:-setup} == setup ]] && streaming_setup ;;
-  decky) shift; [[ ${1:-install} == install ]] && decky_install ;;
+  decky) shift
+    case ${1:-install} in
+      install) decky_install ;;
+      plugin) decky_plugin ;;
+      *) err "usage: deckos decky [install|plugin]"; exit 2 ;;
+    esac ;;
   doctor) doctor_cmd ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;

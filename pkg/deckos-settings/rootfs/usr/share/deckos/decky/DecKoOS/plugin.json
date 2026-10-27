@@ -1,0 +1,11 @@
+{
+  "name": "DecKoOS",
+  "author": "kcooperlawson",
+  "flags": [],
+  "api_version": 1,
+  "publish": {
+    "tags": ["deckos", "profiles", "sound"],
+    "description": "DecKoOS in Gaming Mode: the running game's profile, power, sound and Game Doctor.",
+    "image": ""
+  }
+}
