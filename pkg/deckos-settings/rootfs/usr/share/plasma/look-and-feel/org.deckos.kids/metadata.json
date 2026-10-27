@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [{ "Name": "DecKoOS" }],
+        "Category": "",
+        "Description": "Kid mode: DecKoOS's look, and a desktop that starts with the kid taskbar (no menu)",
+        "Id": "org.deckos.kids",
+        "License": "MIT",
+        "Name": "DecKoOS Kid mode",
+        "Version": "0.1"
+    },
+    "X-Plasma-APIVersion": "2"
+}

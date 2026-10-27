@@ -7,15 +7,17 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, Qt
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QInputDialog,
-                               QLineEdit,
-                               QMessageBox, QScrollArea, QSpinBox, QVBoxLayout, QWidget)
+from PySide6.QtCore import QProcess, QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QGridLayout,
+                               QHBoxLayout, QInputDialog, QLineEdit, QMessageBox, QPushButton, QScrollArea, QSpinBox,
+                               QVBoxLayout, QWidget)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "kids"))
 import hub_style as S  # noqa: E402
 import hub_system as sysinfo  # noqa: E402
 import kids  # noqa: E402
+import kids_themes  # noqa: E402
 from hub_widgets import Card, Meter, RowItem, button, icon_label, label, row  # noqa: E402
 
 DEMO_KIDS = [{"name": "mia", "display": "Mia", "apps": "org.kde.kolourpaint,tuxpaint,deckos-kids-browser",
@@ -206,6 +208,79 @@ class LimitsDialog(QDialog):
         self.accept()
 
 
+class ThemePick(QPushButton):
+    """A theme as a little picture of the child's home: its scene, a few tiles and its friend."""
+
+    def __init__(self, tid):
+        super().__init__()
+        self.tid = tid
+        self.setCheckable(True)
+        self.setFixedSize(176, 128)
+        self.setCursor(Qt.PointingHandCursor)
+        self.scene = kids_themes.Scene(tid)
+        self.setToolTip(kids_themes.theme(tid)["about"])
+
+    def paintEvent(self, _e):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        r = QRectF(self.rect()).adjusted(3, 3, -3, -3)
+        clip = QPainterPath()
+        clip.addRoundedRect(r, 14, 14)
+        p.setClipPath(clip)
+        p.save()
+        p.translate(r.topLeft())
+        p.scale(r.width() / 640, r.height() / 400)  # the scene drawn as on a small screen, then shrunk
+        self.scene.paint(p, QRectF(0, 0, 640, 400), 10)
+        t = kids_themes.theme(self.tid)
+        for i, c in enumerate(t["tiles"][:4]):
+            tile = QPainterPath()
+            tile.addRoundedRect(QRectF(40 + i * 140, 150, 120, 120), 24, 24)
+            p.fillPath(tile, QColor(c))
+        kids_themes.emoji(p, t["friend"], 70, 70, 54)
+        p.restore()
+        p.setClipping(False)
+        p.setPen(QPen(QColor(S.P.accent if self.isChecked() else S.BORDER), 4 if self.isChecked() else 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(r, 14, 14)
+        p.fillRect(QRectF(r.left(), r.bottom() - 28, r.width(), 28), QColor(0, 0, 0, 140))
+        p.setPen(QColor("#FFFFFF"))
+        p.setFont(QFont("Inter", 10, QFont.DemiBold))
+        p.drawText(QRectF(r.left(), r.bottom() - 28, r.width(), 28), Qt.AlignCenter, t["name"])
+
+
+class LookDialog(QDialog):
+    def __init__(self, parent, kid):
+        super().__init__(parent)
+        self.setWindowTitle(f"How Kid mode looks for {kid['display'] or kid['name']}")
+        v = QVBoxLayout(self)
+        v.setSpacing(12)
+        v.addWidget(label("Their theme: the picture behind their tiles, its colours and a friend who says hello. "
+                          "Any theme suits any child.", "sub"))
+        picks = QWidget()
+        g = QGridLayout(picks)
+        g.setContentsMargins(0, 0, 0, 0)
+        g.setSpacing(10)
+        self.group = QButtonGroup(self)
+        for i, tid in enumerate(kids_themes.THEMES):
+            b = ThemePick(tid)
+            b.setChecked(tid == (kid.get("theme") or kids_themes.DEFAULT))
+            self.group.addButton(b)
+            g.addWidget(b, i // 3, i % 3)
+        v.addWidget(picks)
+        self.builtin = QCheckBox("DecKoOS's own games on their home: Bubble pop and Memory match")
+        self.builtin.setChecked(kid.get("builtin", "on") != "off")
+        v.addWidget(self.builtin)
+        v.addWidget(label("They count toward the time limit like everything else, and work without the internet.",
+                          "muted"))
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+        v.addWidget(bb)
+
+    def theme(self):
+        return self.group.checkedButton().tid
+
+
 class KidsCard(Card):
     def __init__(self, hub):
         super().__init__("Kids", "Kid mode", "user")
@@ -249,6 +324,7 @@ class KidsCard(Card):
             right = (button("Week…", slot=lambda _=False, k=k: WeekDialog(self, k).exec(), icon="clock"),
                      button("Apps…", slot=lambda _=False, k=k: self.pick_apps(k), icon="grid"),
                      button("Limits…", slot=lambda _=False, k=k: self.limits(k), icon="sliders"),
+                     button("Look…", slot=lambda _=False, k=k: self.look(k), icon="appearance"),
                      button("Remove", slot=lambda _=False, k=k: self.remove(k), icon="trash"))
             self.rows.addWidget(RowItem("user", k["display"] or k["name"], summary(k), right=right))
 
@@ -302,6 +378,18 @@ class KidsCard(Card):
                                 lambda ok: (self.hub.toast(f"{k['display'] or name}'s limits saved" if ok else
                                                            "Limits not changed", "ok" if ok else "warn"),
                                             self.refresh()))
+
+    def look(self, k):
+        d = LookDialog(self, k)
+        if d.exec() != QDialog.Accepted:
+            return
+        name = k["name"]
+        # One password prompt for both (the theme comes from a fixed list, builtin is on or off)
+        self.hub.privileged_cmd(["sh", "-c", f"{sysinfo.DECKOS} kids theme {name} {d.theme()} && "
+                                 f"{sysinfo.DECKOS} kids builtin {name} {'on' if d.builtin.isChecked() else 'off'}"],
+                                lambda ok: (self.hub.toast(f"{k['display'] or name}'s Kid mode look saved: they see it "
+                                                           "next time" if ok else "Look not changed",
+                                                           "ok" if ok else "warn"), self.refresh()))
 
     def remove(self, k):
         if QMessageBox.question(self, "Remove a child", f"Remove {k['display'] or k['name']}'s Kid mode account? Their "

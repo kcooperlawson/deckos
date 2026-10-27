@@ -1867,7 +1867,7 @@ kids_cmd() {
     list) python3 "$KIDS" list "${@:2}" ;;
     add) kids_add "${2:-}" "${3:-}" ;;
     remove) kids_remove "${2:-}" "${3:-}" ;;
-    apps|limit|bedtime|web|volume)
+    apps|limit|bedtime|web|volume|theme|builtin)
       local what=$1 name=${2:-} value=${3:-}
       need_root kids "$what" "$name"
       [[ -f /etc/deckos/kids/$name.conf ]] || { err "$name isn't set up for Kid mode (deckos kids list)"; exit 1; }
@@ -1880,6 +1880,10 @@ kids_cmd() {
                  kids_conf_set "$name" bedtime "$value" ;;
         volume) [[ $value =~ ^[0-9]{1,3}$ ]] && (( value >= 10 && value <= 100 )) || { err "usage: deckos kids volume NAME PERCENT  (10-100)"; exit 2; }
                 kids_conf_set "$name" volume "$value" ;;
+        theme) [[ $value =~ ^(space|ocean|dinos|castle|rainbow)$ ]] || { err "usage: deckos kids theme NAME space|ocean|dinos|castle|rainbow"; exit 2; }
+               kids_conf_set "$name" theme "$value" ;;
+        builtin) [[ $value == on || $value == off ]] || { err "usage: deckos kids builtin NAME on|off  (DecKoOS's own games)"; exit 2; }
+                 kids_conf_set "$name" builtin "$value" ;;
         web) [[ $value == filtered || $value == open || $value == off ]] || { err "usage: deckos kids web NAME filtered|open|off"; exit 2; }
              kids_conf_set "$name" web "$value"
              python3 "$KIDS" seed "$name" "$(getent passwd "$name" | cut -d: -f6)"

@@ -34,7 +34,8 @@ SUGGESTED = ["org.kde.kolourpaint", "tuxpaint", "org.kde.gcompris", "org.kde.ktu
              "org.kde.kpat", "org.kde.blinken", "org.kde.klettres", "org.kde.kgeography", "supertux", "supertuxkart",
              "deckos-kids-browser"]
 
-DEFAULTS = {"display": "", "apps": "", "minutes": "0", "bedtime": "", "web": "filtered", "games": "on", "volume": "100"}
+DEFAULTS = {"display": "", "apps": "", "minutes": "0", "bedtime": "", "web": "filtered", "games": "on", "volume": "100",
+            "theme": "space", "builtin": "on"}  # theme: kids_themes.THEMES; builtin: DecKoOS's own games on the home
 
 # Hub > Kids > Limits presets: (minutes a day, bedtime, max volume %)
 PRESETS = {"4–6": (45, "19:00", 60), "7–9": (60, "19:30", 70), "10+": (90, "20:30", 80)}
@@ -281,6 +282,9 @@ def watch():
 # ------------------------------------------------------------------ the child's home
 
 KIOSK = """# Kid mode (DecKoOS): no terminal, no running commands, nothing that changes the system
+[KDE]
+LookAndFeelPackage=org.deckos.kids
+
 [KDE Action Restrictions][$i]
 shell_access=false
 run_command=false
