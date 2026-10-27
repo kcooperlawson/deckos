@@ -260,18 +260,23 @@ def activity_id(home):
 
 
 def plasma_layout(pins, wallpaper, activity, screens=SCREENS):
-    """plasma-org.kde.plasma.desktop-appletsrc for a child: the kid panel on the first screen, and a desktop on
-    each screen with their theme and big icons. Containments are locked (immutability=2)."""
-    out = ["[Containments][1]", "activityId=", "formfactor=2", "immutability=2", "lastScreen=0", "location=4",
-           "plugin=org.kde.panel", "wallpaperplugin=org.kde.image", ""]
-    for n, plugin in enumerate(KID_PANEL, start=2):
-        out += [f"[Containments][1][Applets][{n}]", "immutability=2", f"plugin={plugin}", ""]
-    out += ["[Containments][1][Applets][2][Configuration][General]", "launchers=" + ",".join(pins), "lockedPins=true",
-            "showLabels=false", "",
-            f"[Containments][1][Applets][{1 + len(KID_PANEL)}][Configuration][Appearance]", "showDate=false", "",
-            "[Containments][1][General]", "AppletOrder=" + ";".join(str(n) for n in range(2, 2 + len(KID_PANEL))), ""]
+    """plasma-org.kde.plasma.desktop-appletsrc for a child: the kid panel and a desktop with their theme and big
+    icons on every screen (which one Plasma calls the first depends on the child's own screen settings, so each
+    gets the same). Containments are locked (immutability=2)."""
+    out = []
     for s in range(screens):
-        c = 20 + s
+        c, a = 1 + s * 10, 2 + s * 10  # panel containment, then its applets
+        out += [f"[Containments][{c}]", "activityId=", "formfactor=2", "immutability=2", f"lastScreen={s}",
+                "location=4", "plugin=org.kde.panel", "wallpaperplugin=org.kde.image", ""]
+        for n, plugin in enumerate(KID_PANEL, start=a):
+            out += [f"[Containments][{c}][Applets][{n}]", "immutability=2", f"plugin={plugin}", ""]
+        out += [f"[Containments][{c}][Applets][{a}][Configuration][General]", "launchers=" + ",".join(pins),
+                "lockedPins=true", "showLabels=false", "onlyThisScreen=true", "",
+                f"[Containments][{c}][Applets][{a + len(KID_PANEL) - 1}][Configuration][Appearance]", "showDate=false",
+                "", f"[Containments][{c}][General]",
+                "AppletOrder=" + ";".join(str(n) for n in range(a, a + len(KID_PANEL))), ""]
+    for s in range(screens):
+        c = 100 + s
         out += [f"[Containments][{c}]", f"activityId={activity}", "formfactor=0", "immutability=2", f"lastScreen={s}",
                 "location=0", "plugin=org.kde.plasma.folder", "wallpaperplugin=org.kde.image", "",
                 f"[Containments][{c}][General]", "iconSize=5", "",
@@ -283,8 +288,8 @@ def panel_view(old=""):
     """plasmashellrc with the kid panel's size and place (centred, floating, as wide as its icons); the file's
     other groups are kept."""
     keep = re.sub(r"(?ms)^\[PlasmaViews\].*?(?=^\[(?!PlasmaViews)|\Z)", "", old).strip()
-    ours = ("[PlasmaViews][Panel 1]\nalignment=132\nfloating=1\npanelLengthMode=1\n\n"
-            "[PlasmaViews][Panel 1][Defaults]\nthickness=56\n")
+    ours = "".join(f"[PlasmaViews][Panel {1 + s * 10}]\nalignment=132\nfloating=1\npanelLengthMode=1\n\n"
+                   f"[PlasmaViews][Panel {1 + s * 10}][Defaults]\nthickness=56\n\n" for s in range(SCREENS))
     return (keep + "\n\n" if keep else "") + ours
 
 

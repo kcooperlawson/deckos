@@ -153,6 +153,8 @@ class MemoryMatch(Game):
     COLS = 4
 
     def start(self):
+        if self.isVisible():
+            self.clock.start()  # again, after a finished round
         pics = random.sample(self.PICTURES, 6) * 2
         random.shuffle(pics)
         self.cards = [{"pic": c, "up": False, "done": False} for c in pics]
@@ -174,6 +176,8 @@ class MemoryMatch(Game):
                     self.cards[i]["up"] = False
                 self.turned = []
         super().step()
+        if all(c["done"] for c in self.cards):
+            self.clock.stop()  # the round is over: nothing moves until they play again
 
     def turn(self, i):
         c = self.cards[i]

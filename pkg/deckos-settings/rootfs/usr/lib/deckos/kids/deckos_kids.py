@@ -2,8 +2,9 @@
 
 - `--prepare` (deckos-kids-prepare.service, before Plasma starts): writes their desktop: the kid panel with their
   approved apps and My games pinned, the same on the desktop as big icons, and their theme as the wallpaper.
-- `--session` (at login, from the autostart kids.py writes; no window): makes sure the kid panel is what's on
-  screen, keeps the volume under the parent's cap, and says kindly when the time is nearly up (then logs out).
+- `--session` (at login, from the autostart kids.py writes; no window): keeps the volume under the parent's cap
+  and says kindly when the time is nearly up (then logs out). It never talks to the desktop shell: a child's shell
+  is locked, and poking it from a running session is what had left a session frozen.
 - `--games` ("My games" on their desktop): a window with DecKoOS's own games (kids_games) and their apps as tiles,
   in their theme (kids_themes), with the time left.
 
@@ -292,17 +293,6 @@ class KidMode(QWidget):
 KID_WIDGETS = {"org.deckos.taskbar", "org.deckos.kidtime", "org.kde.plasma.volume", "org.kde.plasma.digitalclock"}
 
 
-def panel_widgets():
-    """[[widget plugin, …] per panel], or None while the desktop shell isn't answering."""
-    p = QProcess()
-    p.start("qdbus6", ["org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript",
-                       "panels().forEach(function (p) { print(p.widgets().map(function (w) { return w.type; })"
-                       ".join(',') + '\\n'); });"])
-    if not p.waitForFinished(10000) or p.exitCode() != 0:
-        return None
-    return [ln.split(",") for ln in bytes(p.readAllStandardOutput()).decode().splitlines() if ln.strip()]
-
-
 def kid_panels_ok(panels):
     """Every panel holds only what a child may use, and there is one (their tiles are on it)."""
     return bool(panels) and all(set(w) <= KID_WIDGETS for w in panels)
@@ -335,7 +325,6 @@ class KidSession(QObject):
         self.conf = kids.read_conf(self.name) or {**kids.DEFAULTS, "display": self.name.title()}
         self.state = kids.state_file(self.name)
         self.warned, self.ended = set(), False
-        QTimer.singleShot(0, self.set_up)
         self.cap = int(self.conf.get("volume") or 100) / 100
         if self.cap < 1:
             # Volume changes as they happen (pactl subscribe), not polling: anything over the cap goes back to it
@@ -346,20 +335,6 @@ class KidSession(QObject):
         self.timer = QTimer(self, timeout=self.tick, interval=30_000)
         self.timer.start()
         self.tick()
-
-    def set_up(self):
-        """The layout was written before Plasma started (prepare()). If what's on screen still isn't the kid
-        panel (a Plasma that made its own), write it again and restart the desktop shell: a locked desktop can't
-        be changed through Plasma's scripting, so restarting it is the way to make it read the file."""
-        panels = None
-        for _ in range(30):
-            panels = panel_widgets()
-            if panels is not None:
-                break
-            time.sleep(1)
-        if panels is not None and not kid_panels_ok(panels):
-            prepare()
-            QProcess.execute("systemctl", ["--user", "restart", "plasma-plasmashell.service"])
 
     def volume_changed(self):
         if hasattr(self, "volume"):

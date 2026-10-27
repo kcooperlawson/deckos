@@ -80,10 +80,13 @@ class PlasmaLayoutTests(unittest.TestCase):
         text = kids.plasma_layout(["applications:deckos-kids-games.desktop"], "/h/.local/share/deckos/kids-space.png",
                                   "act-1", screens=2)
         plugins = [ln.split("=", 1)[1] for ln in text.splitlines() if ln.startswith("plugin=")]
-        self.assertEqual(plugins, ["org.kde.panel", *kids.KID_PANEL, "org.kde.plasma.folder", "org.kde.plasma.folder"])
+        # A kid panel on every screen (Plasma's "first screen" depends on the child's own screen settings)
+        self.assertEqual(plugins, ["org.kde.panel", *kids.KID_PANEL] * 2 + ["org.kde.plasma.folder"] * 2)
         self.assertTrue(deckos_kids.kid_panels_ok([kids.KID_PANEL]))  # what's written passes the login check
         self.assertNotIn("org.deckos.menu", text)
-        self.assertIn("launchers=applications:deckos-kids-games.desktop", text)
+        self.assertEqual(text.count("launchers=applications:deckos-kids-games.desktop"), 2)
+        self.assertEqual(len(set(ln for ln in text.splitlines() if ln.startswith("[Containments]["))),
+                         len([ln for ln in text.splitlines() if ln.startswith("[Containments][")]))  # no clashes
         self.assertEqual(text.count("activityId=act-1"), 2)
         self.assertEqual(text.count("Image=file:///h/.local/share/deckos/kids-space.png"), 2)
         self.assertTrue(all(ln == "immutability=2" for ln in text.splitlines() if ln.startswith("immutability")))
@@ -163,6 +166,18 @@ class GameTests(unittest.TestCase):
         self.assertEqual((g.score, g.bubbles), (1, []))
         g.key(Qt.Key_Left)
         self.assertEqual(g.wand.x(), 340)
+
+    def test_a_finished_round_stops_redrawing(self):
+        g = kids_games.MemoryMatch("space")
+        g.resize(1280, 800)
+        g.show()
+        for c in g.cards:
+            c["up"] = c["done"] = True
+        g.step()
+        self.assertFalse(g.clock.isActive())
+        g.start()
+        self.assertTrue(g.clock.isActive())
+        g.hide()
 
     def test_back_leaves_the_game(self):
         g = kids_games.make("bubbles", "space")
