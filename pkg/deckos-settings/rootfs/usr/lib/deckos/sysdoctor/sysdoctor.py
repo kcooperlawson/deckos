@@ -358,6 +358,24 @@ def disk_space():
     return out
 
 
+def sound_buffer():
+    """A tiny sound buffer floor is the usual cause of crackling when a game and music play together: any app may
+    ask PipeWire for chunks that small, and under load they're late."""
+    code, text = run(["pw-metadata", "-n", "settings"], 10)
+    m = re.search(r"key:'clock\.min-quantum' value:'(\d+)'", text)
+    if code != 0 or not m or int(m.group(1)) >= 128:
+        return []
+    q = int(m.group(1))
+    return [Finding("sound:buffer", WARN, "Sound may crackle while you play",
+                    f"Apps may ask for sound in chunks of {q} samples (under {max(1, q * 1000 // 48000)} ms). When a game "
+                    "keeps the CPU busy those arrive late, and you hear crackles and pops. A slightly bigger floor "
+                    "(about 5 ms) stops that and isn't noticeable.",
+                    evidence=[f"clock.min-quantum = {q}"],
+                    fixes=[Fix("Use the Balanced buffer", ["deckos", "sound", "buffer", "balanced"],
+                               "Applies now, no restart; Hub > Sound changes it back")],
+                    open=["deckos-hub", "--page", "sound"])]
+
+
 def gpu_resets():
     _, text = run(["journalctl", "-b", "-k", "--no-pager", "-o", "short-precise", "--grep",
                    r"amdgpu.*(GPU reset|ring .* timeout|hang)"], 60)
@@ -479,7 +497,7 @@ def journal_errors(known):
 
 
 CHECKS = [snapshot_boot, ntfs_drives, startup_drives, failed_units, crashes, gpu_resets, nvidia_driver, intel_microcode, missing_programs, disk_space,
-          restart_pending, slow_boot]
+          sound_buffer, restart_pending, slow_boot]
 ORDER = {BAD: 0, WARN: 1, INFO: 2}
 
 

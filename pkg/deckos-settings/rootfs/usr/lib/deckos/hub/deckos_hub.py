@@ -27,13 +27,15 @@ from hub_games import GamesPage
 from hub_kids import make_page as kids_page
 from hub_more import MorePage, SearchPage, open_entry
 from hub_pages import AiDevPage, AppearancePage, DisplayPage, DrivesPage, GamingPage, HomePage, SystemPage
+from hub_sound import SoundPage
 from hub_timeline import TimelinePage
 from hub_widgets import Toast, label
 
 PAGES = [("home", "Home", "home", HomePage), ("timeline", "Timeline", "clock", TimelinePage),
          ("games", "Games", "grid", GamesPage), ("kids", "Kids", "user", kids_page()),
          ("display", "Display", "display", DisplayPage),
-         ("gaming", "Gaming", "gaming", GamingPage), ("drives", "Drives", "drives", DrivesPage),
+         ("gaming", "Gaming", "gaming", GamingPage), ("sound", "Sound", "volume", SoundPage),
+         ("drives", "Drives", "drives", DrivesPage),
          ("aidev", "AI & Dev", "ai", AiDevPage), ("system", "System", "system", SystemPage),
          ("appearance", "Appearance", "appearance", AppearancePage), ("more", "More settings", "sliders", MorePage)]
 USER_GAMING_CONF = Path.home() / ".config/deckos/gaming.conf"

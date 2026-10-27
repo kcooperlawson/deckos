@@ -157,6 +157,10 @@ ICONS.update({
               '<path d="M16.5 3.5v3M15 5h3M20 8.5v2M19 9.5h2"/>'),
     "volume": ('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a7.5 7.5 0 0 1 0 11"/>'),
     "volume-mute": '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>',
+    "mic": ('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21'
+            'M8.5 21h7"/>'),
+    "headphones": ('<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4.5" height="6.5" rx="1.5"/>'
+                   '<rect x="16" y="14" width="4.5" height="6.5" rx="1.5"/>'),
     "sun": ('<circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4'
             'M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4"/>'),
     "battery": '<rect x="2.5" y="7" width="17" height="10" rx="2"/><path d="M22 10.5v3M5.5 10v4M8.5 10v4"/>',

@@ -1,0 +1,14 @@
+[Unit]
+Description=DecKoOS equalizer (Hub > Sound)
+# Its own small PipeWire client: turning it on or off never restarts the sound server
+After=pipewire.service wireplumber.service
+BindsTo=pipewire.service
+ConditionPathExists=%h/.config/deckos/sound-eq.conf
+
+[Service]
+ExecStart=/usr/bin/pipewire -c %h/.config/deckos/sound-eq.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service
