@@ -1,7 +1,8 @@
 // DecKoOS Vibe wallpaper: an animated scene (Lo-fi rain, Neon grid, Midnight stars, Cozy forest) and, on top, the
 // music visualizer, fed by deckos-visualizer.service over a local WebSocket. It's the wallpaper, so it sits under
-// every window and clicks go to the desktop. Everything stops while a window is full screen on its screen (games,
-// videos) and the visualizer only connects while it's shown. `deckos vibe` writes the configuration.
+// every window and clicks go to the desktop. Everything stops while a full-screen or maximized window covers its
+// screen (games, videos, work) and the visualizer only connects while it's shown. `deckos vibe` writes the
+// configuration.
 import QtQuick
 import QtQuick.Window
 import org.kde.plasma.plasmoid
@@ -33,7 +34,9 @@ WallpaperItem {
         // QML properties can't start with a capital letter, so the role is read through `model`
         delegate: QtObject {
             required property var model
-            readonly property bool full: model.IsFullScreen === true
+            // Full screen or maximized: either way the wallpaper behind it can't be seen, so it needn't move
+            // (moving, it cost about 15% of a CPU core on two screens)
+            readonly property bool full: model.IsFullScreen === true || model.IsMaximized === true
             onFullChanged: fullScreen.recount()
         }
         onObjectAdded: recount()

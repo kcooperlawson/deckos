@@ -142,7 +142,8 @@ Item {
         }
     }
 
-    // Motion: under the active app's pill, a soft glow in its colours that breathes slowly
+    // Motion: under the active app's pill, a soft glow in its colours that breathes a few times when the app
+    // becomes active, then rests. Breathing forever redrew the panel every frame (about 4% of a CPU core)
     Rectangle {
         visible: task.active && deckTasks.motion && !deckTasks.vertical && !task.launcherOnly
         anchors.horizontalCenter: parent.horizontalCenter
@@ -155,11 +156,15 @@ Item {
             GradientStop { position: 0; color: deckTasks.accent }
             GradientStop { position: 1; color: deckTasks.accentB }
         }
+        opacity: 0.3
         SequentialAnimation on opacity {
             running: parent.visible
-            loops: Animation.Infinite
-            NumberAnimation { from: 0.15; to: 0.45; duration: 1800; easing.type: Easing.InOutSine }
-            NumberAnimation { from: 0.45; to: 0.15; duration: 1800; easing.type: Easing.InOutSine }
+            SequentialAnimation {
+                loops: 3
+                NumberAnimation { from: 0.15; to: 0.45; duration: 1800; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 0.45; to: 0.15; duration: 1800; easing.type: Easing.InOutSine }
+            }
+            NumberAnimation { from: 0.15; to: 0.3; duration: 900; easing.type: Easing.InOutSine }
         }
     }
     // The active app gets the accent gradient pill; other open apps a dot per window (up to 3)
