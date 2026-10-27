@@ -8,10 +8,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QRectF, Qt
+from PySide6.QtCore import QEvent, QProcess, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFrame, QGridLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QVBoxLayout, QWidget)
+                               QLabel, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
 import hub_style as S
 import hub_system as sysinfo
@@ -234,6 +234,7 @@ class GameTile(QFrame):
         self.game = game
         self.setObjectName("tile")
         self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setFocusPolicy(Qt.StrongFocus)  # the grid is walked with arrow keys or a d-pad: GamesPage.eventFilter
         self.setFixedWidth(S.scaled(COVER_W + 20))
         v = QVBoxLayout(self)
         v.setContentsMargins(10, 10, 10, 10)
@@ -261,6 +262,7 @@ class GameTile(QFrame):
                       tip="Profile: what this game gets while it runs" + (" (set)" if has else ""))
         if has:
             prof.setIcon(S.icon("sliders", S.P.accent, 16))
+        self.more = (lambda: LocalGameDialog(self, game).exec()) if loc else (lambda: ProfileDialog(self, game).exec())
         if loc:
             about = button("", slot=lambda: LocalGameDialog(self, game).exec(), icon="details",
                            tip="What this game needs, which program starts it, and Steam")
@@ -274,7 +276,11 @@ class GameTile(QFrame):
                 playb.setEnabled(bool(loc["exe"]))
             v.addWidget(_row(playb, about))  # its profile is in the details: three buttons squeeze Play
         else:
-            v.addWidget(_row(button("Play", "primary", lambda: play(game), icon="play"), prof))
+            playb = button("Play", "primary", lambda: play(game), icon="play")
+            v.addWidget(_row(playb, prof))
+        self.go = playb.click  # Enter on the tile: what its main button does (Play, or Install)
+        for b in self.findChildren(QPushButton):
+            b.setFocusPolicy(Qt.NoFocus)  # one stop per game; the tile's keys reach its buttons
 
     def set_tier(self, tier):
         loc = self.game.get("local")
@@ -682,7 +688,37 @@ class GamesPage(Page):
                 tile = self.tiles[key] = GameTile(g, self.tiers.get(appid) if appid else None, self.play)
             self.grid.addWidget(tile, i // cols, i % cols)
             tile.show()
+            tile.installEventFilter(self)
+        self.order = [self.tiles[(g["source"], g["id"])] for g in games]
         self.empty.setVisible(not games)
+
+    def eventFilter(self, obj, e):
+        """Arrow keys (a controller's d-pad through Steam Input) move between games; Enter plays (or installs);
+        the menu key or I opens its details or profile."""
+        if e.type() != QEvent.KeyPress or obj not in getattr(self, "order", []):
+            return super().eventFilter(obj, e)
+        i, k = self.order.index(obj), e.key()
+        step = {Qt.Key_Left: -1, Qt.Key_Right: 1, Qt.Key_Up: -self.cols, Qt.Key_Down: self.cols}.get(k)
+        if step is not None:
+            j = i + step
+            if 0 <= j < len(self.order):
+                self.order[j].setFocus()
+                self.scroll_to(self.order[j])
+            elif k == Qt.Key_Up:
+                self.search.setFocus()
+            return True
+        if k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            obj.go()
+            return True
+        if k in (Qt.Key_Menu, Qt.Key_I):
+            obj.more()
+            return True
+        return super().eventFilter(obj, e)
+
+    def scroll_to(self, w):
+        area = self.findChild(QScrollArea)
+        if area:
+            area.ensureWidgetVisible(w, 20, 40)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)

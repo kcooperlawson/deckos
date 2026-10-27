@@ -180,6 +180,7 @@ QLabel#mono {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospa
 #card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
 #tile {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
 #tile:hover {{ background: {RAISED}; border-color: {HOVER}; }}
+#tile:focus {{ border: 1px solid {P.accent}; background: {RAISED}; }}
 #tile[picked="true"] {{ border: 1px solid {P.accent}; background: {P.tint}; }}
 #card QLabel, #card QCheckBox, #card QRadioButton, #tile QLabel {{ background: transparent; }}
 #rowItem {{ background: {RAISED}; border-radius: 8px; }}
