@@ -43,6 +43,13 @@ post_install() {
 
 post_upgrade() {
   _setup  # not --record: the hook compares against the splash from before this upgrade
+  # 0.16.1: GRUB booted the LTS kernel (the fallback) first, sorting by name; the main kernel goes on top. Only when
+  # nobody chose otherwise (no GRUB_TOP_LEVEL yet) and it's installed.
+  if [ -f /boot/vmlinuz-linux-cachyos ] && [ -f /etc/default/grub ] && ! grep -q '^GRUB_TOP_LEVEL=' /etc/default/grub; then
+    printf '%s\n' '# The main kernel first (DecKoOS); the LTS one stays in Advanced options as a fallback' \
+      'GRUB_TOP_LEVEL="/boot/vmlinuz-linux-cachyos"' >> /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1 || true
+  fi
   # 0.15.1: the repo file is kept on upgrades (backup=), so its old SigLevel stays; a required database signature
   # made every update check run as the user fail (it can't read pacman's keyring). Packages stay required.
   if grep -q '^SigLevel = Required$' /etc/pacman.d/deckos-repo 2>/dev/null; then

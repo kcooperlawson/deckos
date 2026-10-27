@@ -864,6 +864,8 @@ spin "Building initramfs" arch-chroot "$MNT" mkinitcpio -P
 
 set_grub GRUB_DISTRIBUTOR '"DecKoOS"'
 set_grub GRUB_TIMEOUT 5
+# The main kernel first: GRUB sorts by name, which put linux-cachyos-lts (the fallback) at the top
+set_grub GRUB_TOP_LEVEL '"/boot/vmlinuz-linux-cachyos"'
 display_flags=$(bash "$DECKOS_TOOL" display flags "$DISPLAY_LEVEL")
 set_grub GRUB_CMDLINE_LINUX_DEFAULT "\"$CMDLINE${display_flags:+ $display_flags}\""
 set_grub GRUB_DISABLE_OS_PROBER false
