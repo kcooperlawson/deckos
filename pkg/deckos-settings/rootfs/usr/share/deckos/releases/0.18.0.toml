@@ -1,0 +1,30 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.18.0"
+name = "Vibe mode"
+tagline = "Whatever you're playing takes over every screen as one stage that moves with the music."
+
+fixes = [
+    "Switching Vibes no longer freezes the taskbar and widgets.",
+    "Playing music no longer freezes the taskbar.",
+    "The Start menu and Performance widget stopped filling the log with warnings.",
+    "Crashes of code you're developing or testing no longer show up as crashes of your PC.",
+]
+
+[[highlights]]
+title = "Vibe mode"
+text = """DecKoOS Music turns all your screens into one stage for whatever's playing: Spotify, a browser or your own \
+music. The cover sits in the middle, an aurora and a spectrum horizon run from one monitor to the next, and every \
+beat sends a shockwave and a comet across them all. The more monitors, the bigger the stage. When music starts, \
+DecKoOS offers it; Meta+M opens it any time, and Esc brings your desktop back."""
+icon = "music"
+try = "Start Vibe mode"
+run = ["deckos-music"]
+
+[[highlights]]
+title = "Beats you can feel"
+text = """The beat follows the hits you actually hear (kick, snare, bass notes) in any kind of song, slow, shuffled \
+or loud, and lands in time with the sound."""
+icon = "volume"
+try = "Start Vibe mode"
+run = ["deckos-music"]
