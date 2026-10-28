@@ -66,7 +66,7 @@ def read_state():
     return {
         "branch": git("rev-parse", "--abbrev-ref", "HEAD"),
         "version": (REPO_DIR / "VERSION").read_text().strip(),
-        "changed": [line[3:] for line in git("status", "--porcelain", "--untracked-files=no").splitlines()],
+        "changed": git("diff", "--name-only", "HEAD").splitlines(),  # staged or not; new untracked files don't count
         "behind": int(git("rev-list", "--count", "HEAD..origin/main") or 0),
         "last_tag_at": int(git("log", "-1", "--format=%ct", tag)) if tag else 0,
     }
