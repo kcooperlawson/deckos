@@ -1,40 +1,18 @@
-// The music visualizer: bars along the bottom, a wave, or a ring in the middle. Levels arrive as one byte per bar
-// from deckos-visualizer (local WebSocket); with no music it settles flat and the service stops sending.
+// The music visualizer on top of the scene: bars along the bottom, a wave, or a ring in the middle. Optional: the
+// scenes react to the music themselves. Its levels come from MusicFeed (main.qml), the one connection to
+// deckos-visualizer.
 import QtQuick
-import QtWebSockets
 
 Item {
     id: vis
 
     property string style: "bars"
-    property bool active: false
     property color colorA: "#FF9E7A"
     property color colorB: "#B36BFF"
     property var levels: []
     readonly property int count: 48
 
-    WebSocket {
-        id: socket
-        url: "ws://127.0.0.1:47823"
-        active: vis.active
-        onBinaryMessageReceived: message => {
-            const bytes = new Uint8Array(message);
-            const next = [];
-            for (let i = 0; i < bytes.length; i++)
-                next.push(bytes[i] / 255);
-            vis.levels = next;
-            if (vis.style === "wave")
-                wave.requestPaint();
-        }
-        onStatusChanged: if (status === WebSocket.Error || status === WebSocket.Closed) retry.start()
-    }
-    // The service starts with the session; if the wallpaper was first, try again now and then
-    Timer {
-        id: retry
-        interval: 5000
-        onTriggered: if (vis.active) { socket.active = false; socket.active = true; }
-    }
-    onActiveChanged: if (!active) levels = []
+    onLevelsChanged: if (style === "wave") wave.requestPaint()
 
     // ---- bars: along the bottom, the gradient running across them
     Row {

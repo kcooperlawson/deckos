@@ -58,14 +58,27 @@ WallpaperItem {
             item.running = Qt.binding(() => root.running);
             item.colorA = Qt.binding(() => root.colorA);
             item.colorB = Qt.binding(() => root.colorB);
+            // Scenes that react to the music themselves get it here (the others ignore it)
+            if ("bass" in item) {
+                item.bass = Qt.binding(() => feed.bass);
+                item.mid = Qt.binding(() => feed.mid);
+                item.high = Qt.binding(() => feed.high);
+                item.energy = Qt.binding(() => feed.energy);
+                item.beats = Qt.binding(() => feed.beats);
+            }
         }
     }
 
-    Visualizer {
+    MusicFeed {  // one connection to deckos-visualizer, for the scene and the optional bars
+        id: feed
+        active: root.running
+    }
+
+    Visualizer {  // the bars, wave or ring on top: optional now that the scenes react themselves
         anchors.fill: parent
         visible: root.visualizer !== "none"
         style: root.visualizer
-        active: visible && root.running
+        levels: feed.levels
         colorA: root.colorA
         colorB: root.colorB
     }
