@@ -56,12 +56,15 @@ QtObject {
                 next.push(bytes[i] / 255);
             feed.take(next);
         }
-        onStatusChanged: if (status === WebSocket.Error || status === WebSocket.Closed) feed.retry.start()
     }
-    // The service starts with the session; if the wallpaper was first, try again now and then
+    // The service starts with the session; if the wallpaper was first (or the service restarted), connect again.
+    // Checked on a timer rather than on statusChanged's argument, which newer Qt no longer passes in.
     property Timer retry: Timer {
-        interval: 5000
-        onTriggered: if (feed.active) { feed.socket.active = false; feed.socket.active = true; }
+        interval: 5000; repeat: true; running: feed.active
+        onTriggered: if (feed.socket.status !== WebSocket.Open && feed.socket.status !== WebSocket.Connecting) {
+            feed.socket.active = false;
+            feed.socket.active = true;
+        }
     }
     onActiveChanged: if (!active) { bass = mid = high = energy = 0; levels = []; }
 }
