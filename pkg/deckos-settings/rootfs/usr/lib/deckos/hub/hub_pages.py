@@ -1063,7 +1063,8 @@ class SystemPage(Page):
         for key, text in (("power", "Full power while code builds, back to normal after"),
                           ("quiet", "Hold notifications while I'm developing"),
                           ("welcome", "After a game, tell me what happened while I played"),
-                          ("moments", "Switch Vibes with what I'm doing (pick them in Appearance › Moments)")):
+                          ("moments", "Switch Vibes with what I'm doing (pick them in Appearance › Moments)"),
+                          ("vibe", "When music starts, offer Vibe mode (DecKoOS Music on every screen)")):
             box = QCheckBox(text)
             box.setChecked(ctx["react"][key])
             box.clicked.connect(lambda c, k=key: QProcess.startDetached("deckos", ["context", "react", k,

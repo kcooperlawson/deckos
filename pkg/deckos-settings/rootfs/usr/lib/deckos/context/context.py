@@ -50,7 +50,7 @@ EDITOR_TICKS = 3  # CPU ticks (1/100 s) an editor must use between looks to coun
 AWAY_MINUTES = 10
 
 CONF = Path.home() / ".config/deckos/context.json"
-DEFAULT_REACT = {"moments": True, "power": True, "quiet": False, "welcome": True}
+DEFAULT_REACT = {"moments": True, "power": True, "quiet": False, "welcome": True, "vibe": True}
 RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}")
 STATE = RUNTIME / "deckos-context"
 MODE_STATE = RUNTIME / "deckos-mode"
@@ -238,8 +238,11 @@ class Steady:
 class Reactions:
     """What DecKoOS changes when the activity changes, each behind its switch, each put back after."""
 
-    def __init__(self, run=None):
+    def __init__(self, run=None, spawn=None):
         self.run = run or (lambda argv: subprocess.run(argv, capture_output=True, text=True, timeout=30))
+        # for what waits on the person (the Vibe mode offer): started and left to it
+        self.spawn = spawn or (lambda argv: subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                                             start_new_session=True))
         self.power_before = ""
         self.quiet = False
         self.game_since = 0.0
@@ -257,6 +260,8 @@ class Reactions:
         did += self.notifications(new, react)
         if react["moments"]:
             self.moments(new)
+        if new == "listening" and react["vibe"]:
+            self.spawn(["deckos-music", "--offer"])  # a notification with a Vibe mode button; nothing without a yes
         return did
 
     def tick(self, activity, facts, react):

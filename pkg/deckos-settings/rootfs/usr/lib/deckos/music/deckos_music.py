@@ -1,28 +1,33 @@
-"""DecKoOS Music: your music and Spotify in one player that moves with the sound.
+"""DecKoOS Music: Vibe mode. Whatever plays (Spotify, a browser, any player, or your own files played here) takes
+over every screen as one stage that moves with the sound.
 
-Now playing shows whatever plays (the Spotify app, followed through MPRIS; or your own files, played here), and
-everything on it reacts to the sound coming out of the PC (analysis.py): the cover's colours tint the window, the
-glow swells with the bass and flashes on the beat, the cover pulses, a spectrum rings it and particles drift
-faster as the song gets more intense. Scenes (V) fill the window with Nebula, Tunnel or Waves. The library
-(library.py) is your Music folders, as albums and songs.
+Opening it plays the way in: the stage opens as a circle out of the cover and spreads across the monitors. Each
+monitor is a window onto one world (world.py), so a beat's shockwave leaves the cover and rolls onto the next
+screen, comets fly from one monitor to another, and the aurora, the horizon and the song's title run edge to
+edge; more monitors, a bigger world. Your library slides in from the side (L). Esc plays the way out; your own
+music keeps going in a small player, anything else just carries on in its app.
 
-Drawing runs only while the window is visible and something is playing; paused, it rests.
+The sound comes from analysis.py (what the PC actually plays); the colours from the cover. Everything that moves
+is drawn on the graphics card (qml/stage.frag and plain items), and it stops when a game starts.
 
-    deckos-music [--demo] [--screenshot DIR]
+    deckos-music [--demo] [--demo-screens N] [--offer] [--screenshot DIR]
+
+--offer asks first ("Vibe mode?" as a notification): DecKoOS Context does that when music starts.
 """
 import hashlib
-import math
+import os
 import random
+import subprocess
 import sys
+import time
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QThread, QTimer, QUrl, Signal
-from PySide6.QtGui import (QColor, QFont, QFontDatabase, QImage, QKeySequence, QLinearGradient, QPainter,
-                           QPainterPath, QPen, QPixmap, QRadialGradient, QShortcut)
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
-from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QScrollArea, QSlider, QStackedWidget, QTreeWidget, QTreeWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import (Property, QObject, QPointF, QSize, Qt, QThread, QTimer, QUrl, Signal, Slot)
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QImage, QLinearGradient, QPainter
+from PySide6.QtNetwork import QLocalServer, QLocalSocket, QNetworkAccessManager, QNetworkRequest
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickImageProvider
+from PySide6.QtWidgets import QApplication
 
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
@@ -30,9 +35,12 @@ import analysis  # noqa: E402
 import hub_style as S  # noqa: E402
 import library  # noqa: E402
 import sources  # noqa: E402
+import world  # noqa: E402
 
 DEMO = "--demo" in sys.argv
 ART_CACHE = library.CACHE / "art"
+SOCKET = f"deckos-music-{os.getuid()}"
+MODE_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "deckos-mode"
 
 
 # ------------------------------------------------------------------ colours from a cover
@@ -67,13 +75,6 @@ def palette(img):
     return base, accent, second
 
 
-def blurred(img, size):
-    """A soft, blown-up copy of the cover for the background: shrunk to a few pixels and smoothed back up."""
-    tiny = img.scaled(18, 18, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-    mid = tiny.scaled(180, 180, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-    return QPixmap.fromImage(mid.scaled(size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation))
-
-
 def demo_cover(seed=1):
     """A made-up album cover for the demo (no pictures shipped): bold shapes in two colours."""
     img = QImage(600, 600, QImage.Format_RGB32)
@@ -97,383 +98,44 @@ def demo_cover(seed=1):
     return img
 
 
-# ------------------------------------------------------------------ the picture behind it all
+def cover_image(ref):
+    """A library cover: a file, or demo:N."""
+    if ref.startswith("demo:"):
+        return demo_cover(int(ref.split(":")[1]) + 1)
+    return QImage(ref.removeprefix("file://")) if ref else QImage()
 
-class Art(QWidget):
-    """Loads covers (files, or URLs into a cache) and keeps the colours that go with them."""
-    ready = Signal()
 
-    def __init__(self):
-        super().__init__()
-        self.net = QNetworkAccessManager(self)
-        self.img, self.key = QImage(), None
-        self.base, self.accent, self.second = palette(None)
+class Pictures(QQuickImageProvider):
+    """image://deckos/...: the cover now playing (cover/N), library covers (album/REF) and DecKoOS line icons
+    (icon/NAME/RRGGBB)."""
 
-    def load(self, ref, demo_seed=None):
-        if ref == self.key:
-            return
-        self.key = ref
-        if demo_seed is not None:
-            self.set(demo_cover(demo_seed))
-        elif ref.startswith("http"):
-            cached = ART_CACHE / (hashlib.sha1(ref.encode()).hexdigest() + ".jpg")
-            if cached.exists():
-                self.set(QImage(str(cached)))
-                return
-            reply = self.net.get(QNetworkRequest(QUrl(ref)))
-            reply.finished.connect(lambda r=reply, c=cached, k=ref: self.got(r, c, k))
-        elif ref:
-            self.set(QImage(ref.removeprefix("file://")))
+    def __init__(self, engine):
+        super().__init__(QQuickImageProvider.Image)
+        self.engine = engine
+        self.albums = {}
+
+    def requestImage(self, ident, size, requested):
+        kind, _, rest = ident.partition("/")
+        if kind == "cover":
+            img = self.engine.art_img
+        elif kind == "album":
+            if rest not in self.albums:
+                img = cover_image(QUrl.fromPercentEncoding(rest.encode()))
+                self.albums[rest] = img.scaled(320, 320, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation) \
+                    if not img.isNull() else QImage()
+            img = self.albums[rest]
+        elif kind == "icon":
+            name, _, colour = rest.partition("/")
+            img = S.pixmap(name, "#" + (colour or "FFFFFF"), 24, 4.0).toImage()
         else:
-            self.set(QImage())
-
-    def got(self, reply, cached, key):
-        data = bytes(reply.readAll())
-        reply.deleteLater()
-        if key != self.key or not data:
-            return
-        ART_CACHE.mkdir(parents=True, exist_ok=True)
-        cached.write_bytes(data)
-        self.set(QImage.fromData(data))
-
-    def set(self, img):
-        self.img = img
-        self.base, self.accent, self.second = palette(img if not img.isNull() else None)
-        self.ready.emit()
-
-
-class Particles:
-    """Specks drifting out from the middle: more of them, and faster, as the song gets more intense."""
-
-    def __init__(self, n=140):
-        self.rng = random.Random(5)
-        self.p = [self.spawn(far=True) for _ in range(n)]
-
-    def spawn(self, far=False):
-        return [self.rng.random() * math.tau, self.rng.uniform(0.15, 1.0) if far else self.rng.uniform(0.12, 0.2),
-                self.rng.uniform(0.6, 1.4), self.rng.uniform(1.0, 2.6)]
-
-    def step(self, f):
-        speed = 0.0015 + 0.012 * f["intensity"] + (0.02 * f["beat_strength"] if f["beat"] else 0)
-        for q in self.p:
-            q[1] += speed * q[2]
-            if q[1] > 1.15:
-                q[:] = self.spawn()
-
-    def paint(self, p, c, radius, colour, f):
-        p.setPen(Qt.NoPen)
-        col = QColor(colour)
-        for a, d, _s, size in self.p:
-            col.setAlphaF(max(0.0, min(1.0, (1.15 - d))) * (0.35 + 0.5 * f["high"]))
-            p.setBrush(col)
-            p.drawEllipse(QPointF(c.x() + math.cos(a) * d * radius, c.y() + math.sin(a) * d * radius), size, size)
-
-
-class NowPlaying(QWidget):
-    """The cover, alive: everything here is drawn each frame from the latest sound."""
-
-    def __init__(self, art):
-        super().__init__()
-        self.art = art
-        self.now = sources.Now()
-        self.f = dict(analysis.Features().state)
-        self.bg, self.bg_key = None, None
-        self.cover, self.cover_key = None, None
-        self.particles = Particles()
-        self.flash = 0.0
-        self.pulse = 0.0
-        self.spin = 0.0  # the record turns while it plays, faster as the song gets more intense
-        self.setMinimumSize(640, 420)
-
-    def feed(self, f):
-        self.f = f
-        self.particles.step(f)
-        if self.now.playing:
-            self.spin = (self.spin + 0.12 + 0.5 * f["intensity"]) % 360
-        if f["beat"]:
-            self.flash = max(self.flash, 0.55 + 0.45 * f["beat_strength"])
-            self.pulse = 1.0
-        self.flash *= 0.88
-        self.pulse *= 0.84
-        self.update()
-
-    def ensure(self):
-        key = (self.art.key, self.size().width(), self.size().height())
-        if self.bg_key != key:
-            self.bg_key = key
-            self.bg = blurred(self.art.img, self.size()) if not self.art.img.isNull() else None
-        if self.cover_key != self.art.key:
-            self.cover_key = self.art.key
-            self.cover = QPixmap.fromImage(self.art.img.scaled(720, 720, Qt.KeepAspectRatioByExpanding,
-                                                               Qt.SmoothTransformation)) if not self.art.img.isNull() else None
-
-    def paintEvent(self, _e):
-        self.ensure()
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        r = QRectF(self.rect())
-        f, art = self.f, self.art
-        base, accent, second = art.base, art.accent, art.second
-        # The cover, blown up and blurred, under a wash of its own darkest colour
-        p.fillRect(r, base)
-        if self.bg:
-            p.setOpacity(0.55)
-            p.drawPixmap(int((r.width() - self.bg.width()) / 2), int((r.height() - self.bg.height()) / 2), self.bg)
-            p.setOpacity(1.0)
-        shade = QColor(base)
-        shade.setAlphaF(0.55)
-        p.fillRect(r, shade)
-        size = min(r.width() * 0.34, r.height() * 0.5)
-        c = QPointF(r.center().x(), r.top() + r.height() * 0.44)
-        # The glow: swells with the bass, flashes on the beat
-        glow = QRadialGradient(c, size * (0.9 + 0.7 * f["bass"] + 0.4 * self.flash))
-        g1 = QColor(accent)
-        g1.setAlphaF(min(1.0, 0.25 + 0.45 * f["bass"] + 0.35 * self.flash))
-        g2 = QColor(second)
-        g2.setAlphaF(0.12 + 0.2 * f["mid"])
-        glow.setColorAt(0, g1)
-        glow.setColorAt(0.55, g2)
-        glow.setColorAt(1, QColor(0, 0, 0, 0))
-        p.fillRect(r, glow)
-        self.particles.paint(p, c, max(r.width(), r.height()) * 0.6, accent.lighter(130), f)
-        # The ring: 128 bars around the cover, mirrored, low notes at the top
-        bars = f["bars"]
-        inner = size * 0.58
-        n = len(bars) * 2
-        for i in range(n):
-            v = bars[i if i < len(bars) else n - 1 - i]
-            a = -math.pi / 2 + i * math.tau / n
-            length = 6 + v * size * (0.2 + 0.16 * f["intensity"])
-            col = QColor.fromHsvF((accent.hsvHueF() + (second.hsvHueF() - accent.hsvHueF()) * v) % 1,
-                                  max(accent.hsvSaturationF(), 0.5), 1.0, 0.55 + 0.45 * v)
-            pen = QPen(col, max(2.0, size * 0.012))
-            pen.setCapStyle(Qt.RoundCap)
-            p.setPen(pen)
-            p.drawLine(QPointF(c.x() + math.cos(a) * inner, c.y() + math.sin(a) * inner),
-                       QPointF(c.x() + math.cos(a) * (inner + length), c.y() + math.sin(a) * (inner + length)))
-        # The cover, as a record: round, turning while it plays, pulsing on the beat
-        s = size * (1 + 0.035 * self.pulse + 0.015 * f["bass"])
-        box = QRectF(c.x() - s / 2, c.y() - s / 2, s, s)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 130))
-        p.drawEllipse(box.adjusted(-2, 12, 2, 16))
-        clip = QPainterPath()
-        clip.addEllipse(box)
-        p.save()
-        p.setClipPath(clip)
-        p.translate(c)
-        p.rotate(self.spin)
-        p.translate(-c)
-        if self.cover:
-            p.drawPixmap(box.toRect(), self.cover)
-        else:
-            p.fillRect(box, accent.darker(200))
-        p.restore()
-        # The record's grooves and label hole, so the turning shows even on a plain cover
-        p.setBrush(Qt.NoBrush)
-        for k in (0.36, 0.42, 0.48):
-            p.setPen(QPen(QColor(255, 255, 255, 22), 1))
-            p.drawEllipse(c, s * k, s * k)
-        p.setPen(Qt.NoPen)
-        p.setBrush(base.darker(140))
-        p.drawEllipse(c, s * 0.045, s * 0.045)
-        p.setPen(QPen(QColor(255, 255, 255, int(40 + 150 * self.flash)), 2))
-        p.setBrush(Qt.NoBrush)
-        p.drawEllipse(box)
-        # How far into the song: a thin arc just outside the record
-        if self.now.length:
-            arc = box.adjusted(-10, -10, 10, 10)
-            p.setPen(QPen(QColor(255, 255, 255, 40), 3))
-            p.drawEllipse(arc)
-            pen = QPen(accent.lighter(120), 3)
-            pen.setCapStyle(Qt.RoundCap)
-            p.setPen(pen)
-            p.drawArc(arc, 90 * 16, int(-360 * 16 * min(1.0, self.now.position / self.now.length)))
-        # Title and artist
-        now = self.now
-        p.setPen(QColor("#FFFFFF"))
-        p.setFont(QFont("Inter Display", 26, QFont.Bold))
-        y = box.bottom() + 34
-        title = now.title or ("Nothing playing" if not now.available else "")
-        p.drawText(QRectF(0, y, r.width(), 44), Qt.AlignHCenter | Qt.AlignTop,
-                   p.fontMetrics().elidedText(title, Qt.ElideRight, int(r.width() * 0.8)))
-        p.setPen(QColor(255, 255, 255, 190))
-        p.setFont(QFont("Inter", 14))
-        sub = " · ".join(x for x in (now.artist, now.album) if x) or \
-            "Play something in Spotify, or pick music from your library"
-        p.drawText(QRectF(0, y + 44, r.width(), 30), Qt.AlignHCenter | Qt.AlignTop,
-                   p.fontMetrics().elidedText(sub, Qt.ElideRight, int(r.width() * 0.8)))
-
-
-# ------------------------------------------------------------------ scenes
-
-class Scene(QWidget):
-    """Full-window visuals. Click or Esc goes back."""
-    leave = Signal()
-    NAMES = ["Nebula", "Tunnel", "Waves"]
-
-    def __init__(self, art):
-        super().__init__()
-        self.art, self.kind, self.t = art, 0, 0.0
-        self.f = dict(analysis.Features().state)
-        self.stars = [[random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(0.05, 1)] for _ in range(420)]
-        self.rings = []
-        self.flash = 0.0
-        self.setCursor(Qt.BlankCursor)
-
-    def feed(self, f):
-        self.f = f
-        self.t += 1 / 60 * (0.6 + 1.6 * f["intensity"])
-        if f["beat"]:
-            self.flash = 0.6 + 0.4 * f["beat_strength"]
-            self.rings.append([0.02, QColor(self.art.accent if len(self.rings) % 2 else self.art.second)])
-        self.flash *= 0.9
-        for ring in self.rings:
-            ring[0] += 0.012 + 0.03 * f["intensity"]
-        self.rings = [x for x in self.rings if x[0] < 1.6]
-        speed = 0.004 + 0.03 * f["intensity"] + 0.05 * f["bass"]
-        for s in self.stars:
-            s[2] -= speed
-            if s[2] <= 0.02:
-                s[:] = [random.uniform(-1, 1), random.uniform(-1, 1), 1.0]
-        self.update()
-
-    def mousePressEvent(self, _e):
-        self.leave.emit()
-
-    def paintEvent(self, _e):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        r = QRectF(self.rect())
-        p.fillRect(r, QColor("#05060A"))
-        getattr(self, ["nebula", "tunnel", "waves"][self.kind])(p, r)
-        p.setPen(QColor(255, 255, 255, 120))
-        p.setFont(QFont("Inter", 11))
-        p.drawText(r.adjusted(0, 0, -20, -14), Qt.AlignRight | Qt.AlignBottom,
-                   f"{self.NAMES[self.kind]}  ·  V: next scene  ·  Esc: back")
-
-    def nebula(self, p, r):
-        """Stars rushing past, faster with the energy; clouds of the cover's colours breathing with the bass."""
-        c = r.center()
-        for i, col in enumerate((self.art.accent, self.art.second)):
-            g = QRadialGradient(QPointF(c.x() + math.sin(self.t * 0.3 + i * 2) * r.width() * 0.2,
-                                        c.y() + math.cos(self.t * 0.25 + i) * r.height() * 0.15),
-                                r.width() * (0.35 + 0.25 * self.f["bass"]))
-            k = QColor(col)
-            k.setAlphaF(0.25 + 0.3 * (self.f["bass"] if i == 0 else self.f["mid"]) + 0.2 * self.flash)
-            g.setColorAt(0, k)
-            g.setColorAt(1, QColor(0, 0, 0, 0))
-            p.fillRect(r, g)
-        # Stars as streaks: the faster the music, the longer they stretch toward you
-        stretch = 1 + 4 * self.f["intensity"] + 6 * self.f["bass"]
-        for i, (x, y, z) in enumerate(self.stars):
-            sx, sy = c.x() + x / z * r.width() * 0.25, c.y() + y / z * r.height() * 0.25
-            if not r.contains(QPointF(sx, sy)):
-                continue
-            z2 = min(1.0, z + 0.012 * stretch)
-            tx, ty = c.x() + x / z2 * r.width() * 0.25, c.y() + y / z2 * r.height() * 0.25
-            tint = self.art.accent if i % 5 == 0 else self.art.second if i % 7 == 0 else QColor("#FFFFFF")
-            col = QColor(tint)
-            col.setAlphaF(min(1.0, (1 - z) * 1.5))
-            pen = QPen(col, (1 - z) * 3 + 0.5)
-            pen.setCapStyle(Qt.RoundCap)
-            p.setPen(pen)
-            p.drawLine(QPointF(tx, ty), QPointF(sx, sy))
-
-    def tunnel(self, p, r):
-        """Rings fired outward on each beat, a slow twisting tunnel of the spectrum behind them."""
-        c = r.center()
-        bars = self.f["bars"]
-        for k in range(14):
-            depth = ((k / 14) + self.t * 0.15) % 1
-            radius = depth ** 2 * max(r.width(), r.height()) * 0.75
-            v = bars[int(depth * (len(bars) - 1))]
-            col = QColor.fromHsvF((self.art.accent.hsvHueF() + depth * 0.25) % 1, 0.7, 1.0, 0.15 + 0.55 * v)
-            p.setPen(QPen(col, 1.5 + 8 * v * depth))
-            p.setBrush(Qt.NoBrush)
-            path = QPainterPath()
-            sides = 6
-            for j in range(sides + 1):
-                a = j * math.tau / sides + self.t * 0.4 + depth
-                pt = QPointF(c.x() + math.cos(a) * radius, c.y() + math.sin(a) * radius)
-                path.moveTo(pt) if j == 0 else path.lineTo(pt)
-            p.drawPath(path)
-        for radius, col in self.rings:
-            k = QColor(col)
-            k.setAlphaF(max(0.0, 1 - radius / 1.6))
-            p.setPen(QPen(k, 4))
-            p.drawEllipse(c, radius * r.width() * 0.5, radius * r.width() * 0.5)
-        g = QRadialGradient(c, r.height() * 0.2)
-        k = QColor(self.art.accent)
-        k.setAlphaF(0.3 + 0.6 * self.flash)
-        g.setColorAt(0, k)
-        g.setColorAt(1, QColor(0, 0, 0, 0))
-        p.fillRect(r, g)
-
-    def waves(self, p, r):
-        """Ribbons of the spectrum rolling across, low notes at the bottom, high at the top."""
-        bars = self.f["bars"]
-        layers = 7
-        for L in range(layers):
-            frac = L / (layers - 1)
-            band = bars[int(frac * (len(bars) - 1)):int(frac * (len(bars) - 1)) + 6] or [0]
-            amp = (0.03 + 0.22 * (sum(band) / len(band))) * r.height()
-            base_y = r.bottom() - (0.15 + 0.7 * frac) * r.height() * 0.9
-            col = QColor.fromHsvF((self.art.accent.hsvHueF() + frac * 0.35) % 1, 0.65, 1.0, 0.25 + 0.3 * (1 - frac))
-            path = QPainterPath()
-            path.moveTo(r.left(), r.bottom())
-            for i in range(0, int(r.width()) + 24, 24):
-                y = base_y + math.sin(i / r.width() * math.tau * (1.5 + L * 0.4) + self.t * (1 + L * 0.3)) * amp
-                path.lineTo(r.left() + i, y)
-            path.lineTo(r.right(), r.bottom())
-            path.closeSubpath()
-            g = QLinearGradient(0, base_y - amp, 0, r.bottom())
-            g.setColorAt(0, col)
-            g.setColorAt(1, QColor(0, 0, 0, 0))
-            p.fillPath(path, g)
-        if self.flash > 0.05:
-            k = QColor(255, 255, 255, int(40 * self.flash))
-            p.fillRect(r, k)
-
-
-# ------------------------------------------------------------------ the library
-
-class AlbumTile(QPushButton):
-    def __init__(self, album, cover):
-        super().__init__()
-        self.album = album
-        self.pm = cover
-        self.setFixedSize(190, 240)
-        self.setCursor(Qt.PointingHandCursor)
-        self.setToolTip(f"{album['title']} — {album['artist']}")
-
-    def paintEvent(self, _e):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        box = QRectF(5, 5, 180, 180)
-        clip = QPainterPath()
-        clip.addRoundedRect(box, 12, 12)
-        p.save()
-        p.setClipPath(clip)
-        if self.pm and not self.pm.isNull():
-            p.drawPixmap(box.toRect(), self.pm)
-        else:
-            p.fillRect(box, QColor("#232837"))
-            p.setPen(QColor(255, 255, 255, 120))
-            p.setFont(QFont("Inter Display", 48, QFont.Bold))
-            p.drawText(box, Qt.AlignCenter, "♪")
-        p.restore()
-        if self.underMouse() or self.hasFocus():
-            p.setPen(QPen(QColor(S.P.accent), 3))
-            p.drawRoundedRect(box, 12, 12)
-        p.setPen(QColor(S.TEXT))
-        p.setFont(QFont("Inter", 11, QFont.DemiBold))
-        fm = p.fontMetrics()
-        p.drawText(QRectF(6, 192, 180, 20), Qt.AlignLeft, fm.elidedText(self.album["title"], Qt.ElideRight, 178))
-        p.setPen(QColor(S.SUBTEXT))
-        p.setFont(QFont("Inter", 10))
-        p.drawText(QRectF(6, 212, 180, 20), Qt.AlignLeft,
-                   p.fontMetrics().elidedText(self.album["artist"], Qt.ElideRight, 178))
+            img = QImage()
+        if img.isNull():
+            img = QImage(4, 4, QImage.Format_ARGB32)
+            img.fill(Qt.transparent)
+        if size is not None:
+            size.setWidth(img.width())
+            size.setHeight(img.height())
+        return img
 
 
 class Scanner(QThread):
@@ -492,63 +154,58 @@ DEMO_ALBUMS = [("Neon Harbour", "Lumen Drive"), ("Glass Weather", "Saint Ivory")
 
 
 def demo_tracks():
-    out = []
-    for i, (album, artist) in enumerate(DEMO_ALBUMS):
-        for n in range(1, 9):
-            out.append({"path": f"/demo/{i}/{n}.flac", "title": f"{['Afterglow', 'Undertow', 'Satellites', 'Halcyon', 'Copper Sky', 'Slow Burn', 'Tangent', 'Driftwood'][n - 1]}",
-                        "artist": artist, "album": album, "track": n, "duration": 180 + n * 13, "cover": f"demo:{i}"})
-    return out
+    names = ["Afterglow", "Undertow", "Satellites", "Halcyon", "Copper Sky", "Slow Burn", "Tangent", "Driftwood"]
+    return [{"path": f"/demo/{i}/{n}.flac", "title": names[n - 1], "artist": artist, "album": album, "track": n,
+             "duration": 180 + n * 13, "cover": f"demo:{i}"}
+            for i, (album, artist) in enumerate(DEMO_ALBUMS) for n in range(1, 9)]
 
 
-# ------------------------------------------------------------------ the window
+# ------------------------------------------------------------------ the engine the stage reads
 
-class Music(QWidget):
-    def __init__(self):
+class Engine(QObject):
+    """Everything the stage windows show, the same for all of them: the music's numbers (60 times a second), the
+    song, the cover's colours, the world's layout, and when the way in or out started. Every window works out its
+    picture from these and the shared clock (`startMs`), so the screens move together."""
+    frame = Signal()
+    trackChanged = Signal()
+    artChanged = Signal()
+    worldChanged = Signal()
+    stageChanged = Signal()
+    libraryChanged = Signal()
+    poked = Signal()
+
+    def __init__(self, fake_screens=0):
         super().__init__()
-        self.setObjectName("root")
-        self.setWindowTitle("DecKoOS Music")
-        self.setWindowIcon(S.icon("music", S.P.accent, 32))
-        self.resize(1280, 820)
-        self.art = Art()
+        self.t0 = time.time()
+        self.net = QNetworkAccessManager(self)
         self.analyzer = analysis.FakeAnalyzer() if DEMO else analysis.Analyzer()
         self.spotify = sources.Spotify(demo=sources.Now(
             "spotify", "Afterglow (Extended Mix)", "Lumen Drive", "Neon Harbour", "demo:0", 252, 81, True, True)
-            if DEMO else None)
+            if DEMO else None, players="spotify,%any")
         self.local = None  # made on first use: Qt Multimedia starts its backend then
         self.active = self.spotify
-        self.tracks = []
-        self.covers = {}
-
-        outer = QHBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-        self.side = self.sidebar()
-        outer.addWidget(self.side)
-        right = QVBoxLayout()
-        right.setContentsMargins(0, 0, 0, 0)
-        right.setSpacing(0)
-        self.pages = QStackedWidget()
-        self.now_view = NowPlaying(self.art)
-        self.scene = Scene(self.art)
-        self.scene.leave.connect(lambda: self.show_page("now"))
-        self.albums_page, self.album_grid = self.albums_view()
-        self.songs_page = self.songs_view()
-        for w in (self.now_view, self.scene, self.albums_page, self.songs_page):
-            self.pages.addWidget(w)
-        right.addWidget(self.pages, 1)
-        self.bar = self.controls()
-        right.addWidget(self.bar)
-        outer.addLayout(right, 1)
+        self.tracks, self.album_list = [], []
+        self.art_img, self.art_key, self.art_n = QImage(), None, 0
+        self.colours = palette(None)
+        self.fake_screens = fake_screens
+        self.lay = {}
+        self._levels = {"bass": 0.0, "mid": 0.0, "high": 0.0, "energy": 0.0, "intensity": 0.0}
+        self._bars = [0.0] * 64
+        self._beats = []  # when beats landed, in stage seconds
+        self._travel = 0.0
+        self._last_beat, self._last_tick, self._owed = None, time.time(), 0.0
+        self._enter, self._leave, self._mode = -10.0, -10.0, "stage"
+        self._poke = -10.0
+        self.ticker = QTimer(self, interval=16, timeout=self.tick)
 
         self.spotify.changed.connect(lambda n: self.source_changed(self.spotify, n))
-        self.art.ready.connect(self.colours_changed)
-        self.frame = QTimer(self, interval=16, timeout=self.tick)  # ~60 frames a second, only while it matters
-        QShortcut(QKeySequence("Space"), self, activated=lambda: self.active.play_pause())
-        QShortcut(QKeySequence("V"), self, activated=self.next_scene)
-        QShortcut(QKeySequence("Escape"), self, activated=lambda: self.show_page("now"))
-        QShortcut(QKeySequence("F11"), self, activated=lambda: self.showNormal() if self.isFullScreen()
-                  else self.showFullScreen())
-        self.show_page("now")
+        self.relayout()
+        app = QGuiApplication.instance()
+        app.screenAdded.connect(self.relayout)
+        app.screenRemoved.connect(self.relayout)
+        # Games come first: the stage steps aside when workload modes says one started
+        self.game_check = QTimer(self, interval=3000, timeout=self.check_game)
+        self.game_check.start()
         if DEMO:
             self.got_tracks(demo_tracks())
         else:
@@ -556,160 +213,186 @@ class Music(QWidget):
             self.scanner.done.connect(self.got_tracks)
             self.scanner.start()
 
-    # ---- parts
+    def now_s(self):
+        return time.time() - self.t0
 
-    def sidebar(self):
-        side = QFrame()
-        side.setObjectName("sidebar")
-        side.setFixedWidth(220)
-        v = QVBoxLayout(side)
-        v.setContentsMargins(14, 18, 14, 14)
-        v.setSpacing(4)
-        title = QLabel("Music")
-        title.setStyleSheet("font-family: 'Inter Display'; font-size: 20pt; font-weight: 700; padding: 4px 8px 14px;")
-        v.addWidget(title)
-        self.nav, group = {}, QButtonGroup(self)
-        for key, text, icon in (("now", "Now playing", "play"), ("scene", "Scenes", "star"), ("albums", "Albums", "grid"),
-                                ("songs", "Songs", "list")):
-            b = QPushButton("  " + text)
-            b.setObjectName("nav")
-            b.setCheckable(True)
-            b.setFocusPolicy(Qt.NoFocus)
-            b.setIcon(S.icon(icon, S.SUBTEXT, 18, active=S.TEXT))
-            b.setIconSize(QSize(18, 18))
-            b.clicked.connect(lambda _c=False, k=key: self.show_page(k))
-            group.addButton(b)
-            v.addWidget(b)
-            self.nav[key] = b
-        v.addStretch(1)
-        self.source_label = QLabel()
-        self.source_label.setWordWrap(True)
-        self.source_label.setStyleSheet(f"color: {S.SUBTEXT}; padding: 6px 8px;")
-        v.addWidget(self.source_label)
-        return side
+    # ---- the world
 
-    def controls(self):
-        bar = QFrame()
-        bar.setObjectName("playbar")
-        bar.setFixedHeight(84)
-        h = QHBoxLayout(bar)
-        h.setContentsMargins(20, 10, 20, 10)
-        h.setSpacing(12)
-        self.mini_art = QLabel()
-        self.mini_art.setFixedSize(56, 56)
-        h.addWidget(self.mini_art)
-        info = QVBoxLayout()
-        info.setSpacing(0)
-        self.bar_title = QLabel("")
-        self.bar_title.setStyleSheet("font-weight: 600;")
-        self.bar_sub = QLabel("")
-        self.bar_sub.setStyleSheet(f"color: {S.SUBTEXT};")
-        info.addWidget(self.bar_title)
-        info.addWidget(self.bar_sub)
-        holder = QWidget()
-        holder.setLayout(info)
-        holder.setFixedWidth(260)
-        h.addWidget(holder)
+    def relayout(self, *_):
+        if self.fake_screens:  # --demo-screens: monitors side by side, for screenshots anywhere
+            rects = [(i * 1280, 0, 1280, 720) for i in range(self.fake_screens)]
+            primary = 0
+        else:
+            screens = QGuiApplication.screens()
+            rects = [(s.geometry().x(), s.geometry().y(), s.geometry().width(), s.geometry().height())
+                     for s in screens]
+            main = main_screen() or QGuiApplication.primaryScreen().name()
+            primary = next((i for i, s in enumerate(screens) if s.name() == main), 0)
+        self.lay = world.layout(rects, primary)
+        self.worldChanged.emit()
 
-        def ctl(icon, slot, tip, big=False):
-            b = QPushButton()
-            b.setObjectName("playbtn" if big else "ctl")
-            b.setIcon(S.icon(icon, "#FFFFFF" if big else S.TEXT, 22 if big else 18))
-            b.setIconSize(QSize(22, 22) if big else QSize(18, 18))
-            b.setFixedSize(QSize(48, 48) if big else QSize(36, 36))
-            b.setToolTip(tip)
-            b.clicked.connect(slot)
-            return b
-        h.addStretch(1)
-        h.addWidget(ctl("previous", lambda: self.active.previous(), "Previous"))
-        self.play_btn = ctl("play", lambda: self.active.play_pause(), "Play / pause (Space)", big=True)
-        h.addWidget(self.play_btn)
-        h.addWidget(ctl("next", lambda: self.active.next(), "Next"))
-        self.pos_label = QLabel("0:00")
-        self.pos_label.setStyleSheet(f"color: {S.SUBTEXT};")
-        self.seek = QSlider(Qt.Horizontal)
-        self.seek.setFixedWidth(380)
-        self.seek.setRange(0, 1000)
-        self.seek.sliderReleased.connect(lambda: self.active.seek(self.seek.value() / 1000 * (self.active.now.length or 0)))
-        self.len_label = QLabel("0:00")
-        self.len_label.setStyleSheet(f"color: {S.SUBTEXT};")
-        h.addSpacing(12)
-        h.addWidget(self.pos_label)
-        h.addWidget(self.seek)
-        h.addWidget(self.len_label)
-        h.addStretch(1)
-        h.addWidget(ctl("star", self.next_scene, "Scenes (V)"))
-        return bar
+    @Property("QVariantList", notify=worldChanged)
+    def screens(self):
+        return self.lay["screens"]
 
-    def albums_view(self):
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        holder = QWidget()
-        grid = QGridLayout(holder)
-        grid.setContentsMargins(28, 24, 28, 24)
-        grid.setSpacing(12)
-        grid.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        scroll.setWidget(holder)
-        return scroll, grid
+    @Property(float, notify=worldChanged)
+    def worldWidth(self):
+        return float(self.lay["width"])
 
-    def songs_view(self):
-        w = QWidget()
-        v = QVBoxLayout(w)
-        v.setContentsMargins(28, 22, 28, 12)
-        self.find = QLineEdit()
-        self.find.setPlaceholderText("Search your music")
-        self.find.addAction(S.icon("search", S.SUBTEXT, 16), QLineEdit.LeadingPosition)
-        self.find.textChanged.connect(self.fill_songs)
-        v.addWidget(self.find)
-        self.songs = QTreeWidget()
-        self.songs.setHeaderLabels(["Title", "Artist", "Album", "Time"])
-        self.songs.setRootIsDecorated(False)
-        self.songs.setColumnWidth(0, 340)
-        self.songs.setColumnWidth(1, 220)
-        self.songs.setColumnWidth(2, 260)
-        self.songs.itemDoubleClicked.connect(self.play_song)
-        v.addWidget(self.songs, 1)
-        return w
+    @Property(float, notify=worldChanged)
+    def worldHeight(self):
+        return float(self.lay["height"])
 
-    # ---- library
+    @Property(int, notify=worldChanged)
+    def home(self):
+        return self.lay["home"]
 
-    def cover_pixmap(self, ref):
-        if ref not in self.covers:
-            img = demo_cover(int(ref.split(":")[1]) + 1) if ref.startswith("demo:") else QImage(ref) if ref else QImage()
-            self.covers[ref] = QPixmap.fromImage(img.scaled(360, 360, Qt.KeepAspectRatioByExpanding,
-                                                            Qt.SmoothTransformation)) if not img.isNull() else None
-        return self.covers[ref]
+    @Property(QPointF, notify=worldChanged)
+    def cover(self):
+        return QPointF(*self.lay["cover"])
 
-    def got_tracks(self, tracks):
-        self.tracks = tracks
-        while self.album_grid.count():
-            w = self.album_grid.takeAt(0).widget()
-            if w:
-                w.deleteLater()
-        albums = library.albums(tracks)
-        cols = 5
-        for i, a in enumerate(albums):
-            tile = AlbumTile(a, self.cover_pixmap(a["tracks"][0].get("cover", "")))
-            tile.clicked.connect(lambda _c=False, al=a: self.play_album(al))
-            self.album_grid.addWidget(tile, i // cols, i % cols)
-        if not albums:
-            empty = QLabel("No music found yet. Put music in your Music folder (or a Music folder on any drive) and "
-                           "it shows up here. Spotify plays in Now playing.")
-            empty.setWordWrap(True)
-            empty.setStyleSheet(f"color: {S.SUBTEXT}; font-size: 13pt;")
-            self.album_grid.addWidget(empty, 0, 0)
-        self.fill_songs()
-        self.update_source_label()
+    @Property(bool, constant=True)
+    def fake(self):
+        return bool(self.fake_screens)
 
-    def fill_songs(self):
-        self.songs.clear()
-        shown = library.search(self.tracks, self.find.text()) if self.find.text().strip() else self.tracks
-        for t in shown[:3000]:
-            it = QTreeWidgetItem([t.get("title", ""), t.get("artist", ""), t.get("album", ""),
-                                  library.fmt_time(t.get("duration"))])
-            it.setData(0, Qt.UserRole, t)
-            self.songs.addTopLevelItem(it)
+    # ---- the way in and out
+
+    @Property(float, constant=True)
+    def startMs(self):
+        return self.t0 * 1000
+
+    @Property(float, notify=stageChanged)
+    def enterAt(self):
+        return self._enter
+
+    @Property(float, notify=stageChanged)
+    def leaveAt(self):
+        return self._leave
+
+    @Property(str, notify=stageChanged)
+    def mode(self):
+        return self._mode  # stage | leaving | mini
+
+    @Slot()
+    def enter(self):
+        if self._mode == "stage" and self._enter > 0 and self._leave < self._enter:
+            return
+        self._mode, self._enter = "stage", self.now_s() + 0.15
+        self.stageChanged.emit()
+        self.running()
+
+    @Slot()
+    def leave(self):
+        if self._mode != "stage":
+            return
+        self._mode, self._leave = "leaving", self.now_s()
+        self.stageChanged.emit()
+        QTimer.singleShot(1200, self.left)
+
+    def left(self):
+        # Your own music lives in this app: keep it going in the small player. Anything else plays on in its app.
+        if self.local and self.local.now.playing:
+            self._mode = "mini"
+            self.stageChanged.emit()
+            self.running()
+        else:
+            QGuiApplication.quit()
+
+    @Slot()
+    def toggle(self):
+        self.leave() if self._mode == "stage" else self.enter()
+
+    @Slot()
+    def quit(self):
+        QGuiApplication.quit()
+
+    def check_game(self):
+        try:
+            if "game=" in MODE_FILE.read_text():
+                self.leave()
+        except OSError:
+            pass
+
+    # ---- the music's numbers
+
+    def running(self):
+        """Listen and move only while the stage is up and something plays (always, in the demo)."""
+        on = self._mode == "stage" and (self.active.now.playing or DEMO)
+        if on and not self.ticker.isActive():
+            self.analyzer.start()
+            self._last_tick = time.time()
+            self.ticker.start()
+        elif not on and self.ticker.isActive():
+            self.ticker.stop()
+            self.analyzer.stop()
+            self._levels = dict.fromkeys(self._levels, 0.0)
+            self._bars = [0.0] * 64
+            self.frame.emit()
+
+    def tick(self):
+        now = time.time()
+        dt, self._last_tick = min(now - self._last_tick, 0.1), now
+        if DEMO:  # the made-up song runs at its own pace: as many hops as the time that passed
+            self._owed += dt * analysis.RATE / analysis.HOP
+            f = None
+            while self._owed >= 1:
+                f, self._owed = self.analyzer.step(), self._owed - 1
+                if f["beat"]:
+                    self._beats.append(self.now_s())
+            f = f or self.analyzer.latest
+        else:
+            f = self.analyzer.latest
+            beat = self.analyzer.features.last_beat
+            if beat != self._last_beat and self._last_beat is not None and f.get("beat_strength", 0) > 0:
+                self._beats.append(self.now_s())
+            self._last_beat = beat
+        self._beats = self._beats[-10:]
+        self._levels = {k: float(f.get(k, 0.0)) for k in self._levels}
+        self._bars = list(f.get("bars") or self._bars)
+        self._travel += dt * (0.35 + 1.4 * self._levels["intensity"])
+        self.frame.emit()
+
+    @Property(float, notify=frame)
+    def bass(self):
+        return self._levels["bass"]
+
+    @Property(float, notify=frame)
+    def mid(self):
+        return self._levels["mid"]
+
+    @Property(float, notify=frame)
+    def high(self):
+        return self._levels["high"]
+
+    @Property(float, notify=frame)
+    def energy(self):
+        return self._levels["energy"]
+
+    @Property(float, notify=frame)
+    def intensity(self):
+        return self._levels["intensity"]
+
+    @Property(float, notify=frame)
+    def travel(self):
+        return self._travel
+
+    @Property("QVariantList", notify=frame)
+    def bars(self):
+        return self._bars
+
+    @Property("QVariantList", notify=frame)
+    def beats(self):
+        return self._beats
+
+    # ---- the song
+
+    def source_changed(self, src, now):
+        # The one that's playing is the one shown; the player stays when nothing plays
+        if now.playing or src is self.active or not self.active.now.playing:
+            self.active = src
+        self.load_art(self.active.now.art)
+        self.trackChanged.emit()
+        self.running()
 
     def ensure_local(self):
         if self.local is None:
@@ -717,125 +400,181 @@ class Music(QWidget):
             self.local.changed.connect(lambda n: self.source_changed(self.local, n))
         return self.local
 
-    def play_album(self, album):
+    @Property(str, notify=trackChanged)
+    def title(self):
+        return self.active.now.title
+
+    @Property(str, notify=trackChanged)
+    def artist(self):
+        return self.active.now.artist
+
+    @Property(str, notify=trackChanged)
+    def album(self):
+        return self.active.now.album
+
+    @Property(bool, notify=trackChanged)
+    def playing(self):
+        return self.active.now.playing
+
+    @Property(float, notify=trackChanged)
+    def length(self):
+        return float(self.active.now.length or 0)
+
+    @Slot(result=float)
+    def position(self):
+        """Read by the seek bar while it's shown (players report it only now and then)."""
+        if self.active is self.local and self.local:
+            return float(self.local.now.position)
+        return float(self.active.now.position)
+
+    @Slot()
+    def playPause(self):
+        self.active.play_pause()
+
+    @Slot()
+    def next(self):
+        self.active.next()
+
+    @Slot()
+    def previous(self):
+        self.active.previous()
+
+    @Slot(float)
+    def seek(self, seconds):
+        self.active.seek(seconds)
+
+    @Slot()
+    def poke(self):
+        """The mouse moved or a key was pressed: the controls show on every screen for a moment."""
+        self._poke = self.now_s()
+        self.poked.emit()
+
+    @Property(float, notify=poked)
+    def pokedAt(self):
+        return self._poke
+
+    # ---- the cover and its colours
+
+    def load_art(self, ref):
         if DEMO:
+            ref = "demo:0"
+        if ref == self.art_key:
+            return
+        self.art_key = ref
+        if ref.startswith("http"):
+            cached = ART_CACHE / (hashlib.sha1(ref.encode()).hexdigest() + ".jpg")
+            if cached.exists():
+                self.set_art(QImage(str(cached)))
+                return
+            reply = self.net.get(QNetworkRequest(QUrl(ref)))
+            reply.finished.connect(lambda r=reply, c=cached, k=ref: self.got_art(r, c, k))
+        else:
+            self.set_art(cover_image(ref))
+
+    def got_art(self, reply, cached, key):
+        data = bytes(reply.readAll())
+        reply.deleteLater()
+        if key != self.art_key or not data:
+            return
+        ART_CACHE.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(data)
+        self.set_art(QImage.fromData(data))
+
+    def set_art(self, img):
+        self.art_img = img
+        self.colours = palette(img if not img.isNull() else None)
+        self.art_n += 1
+        self.artChanged.emit()
+
+    @Property(str, notify=artChanged)
+    def art(self):
+        return f"image://deckos/cover/{self.art_n}" if not self.art_img.isNull() else ""
+
+    @Property(QColor, notify=artChanged)
+    def base(self):
+        return self.colours[0]
+
+    @Property(QColor, notify=artChanged)
+    def accent(self):
+        return self.colours[1]
+
+    @Property(QColor, notify=artChanged)
+    def second(self):
+        return self.colours[2]
+
+    # ---- your library
+
+    def got_tracks(self, tracks):
+        self.tracks = tracks
+        self.album_list = library.albums(tracks)
+        self.libraryChanged.emit()
+
+    @Property("QVariantList", notify=libraryChanged)
+    def albums(self):
+        return [{"title": a["title"], "artist": a["artist"],
+                 "cover": "image://deckos/album/" + QUrl.toPercentEncoding(a["tracks"][0].get("cover", "")).data()
+                 .decode()} for a in self.album_list]
+
+    @Slot(int)
+    def playAlbum(self, i):
+        if DEMO or not 0 <= i < len(self.album_list):
             return
         if self.spotify.now.playing:
             self.spotify.play_pause()  # one thing at a time
-        self.ensure_local().play_tracks(album["tracks"])
-        self.show_page("now")
+        self.ensure_local().play_tracks(self.album_list[i]["tracks"])
 
-    def play_song(self, item):
-        if DEMO:
-            return
-        t = item.data(0, Qt.UserRole)
-        queue = [self.songs.topLevelItem(i).data(0, Qt.UserRole) for i in range(self.songs.topLevelItemCount())]
-        if self.spotify.now.playing:
-            self.spotify.play_pause()
-        self.ensure_local().play_tracks(queue, queue.index(t))
-        self.show_page("now")
-
-    # ---- what's playing
-
-    def source_changed(self, src, now):
-        # The one that's playing is the one shown; Spotify stays when nothing plays
-        if now.playing or src is self.active or not self.active.now.playing:
-            self.active = src
-        a = self.active.now
-        self.now_view.now = a
-        self.art.load(a.art, demo_seed=1 if DEMO else None)
-        self.play_btn.setIcon(S.icon("pause" if a.playing else "play", "#FFFFFF", 22))
-        self.bar_title.setText(self.bar_title.fontMetrics().elidedText(a.title or "Nothing playing", Qt.ElideRight, 250))
-        self.bar_sub.setText(self.bar_sub.fontMetrics().elidedText(a.artist, Qt.ElideRight, 250))
-        self.update_source_label()
-        self.running()
-
-    def update_source_label(self):
-        a = self.active.now
-        where = ("Playing from Spotify" if a.source == "spotify" else "Playing from your music") if a.playing else \
-            ("Spotify is open" if self.spotify.now.available else "Spotify isn't open")
-        self.source_label.setText(f"{where}<br>{len(self.tracks)} songs in your library")
-
-    def colours_changed(self):
-        base, accent = self.art.base, self.art.accent
-        if not self.art.img.isNull():
-            self.mini_art.setPixmap(QPixmap.fromImage(self.art.img.scaled(56, 56, Qt.KeepAspectRatioByExpanding,
-                                                                          Qt.SmoothTransformation)))
-        # The play bar and the play button take the cover's colours too
-        self.setStyleSheet(f"""
-            #playbar {{ background: {base.darker(130).name()}; border-top: 1px solid {base.lighter(170).name()}; }}
-            #playbtn {{ background: {accent.name()}; border: none; border-radius: 24px; }}
-            #playbtn:hover {{ background: {accent.lighter(115).name()}; }}
-            #ctl {{ background: transparent; border: none; border-radius: 18px; }}
-            #ctl:hover {{ background: rgba(255,255,255,0.08); }}
-            QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; }}
-            QSlider::sub-page:horizontal {{ background: {accent.name()}; border-radius: 2px; }}
-            QSlider::handle:horizontal {{ background: white; width: 12px; height: 12px; margin: -4px 0;
-                                          border-radius: 6px; }}
-            #sidebar {{ background: {base.darker(160).name()}; }}""")
-        self.now_view.update()
-
-    # ---- the frame clock
-
-    def show_page(self, key):
-        self.page = key
-        # Scenes fill the window: no sidebar or play bar (Esc or a click brings them back)
-        for w in (self.side, self.bar):
-            w.setVisible(key != "scene")
-        target = {"now": self.now_view, "scene": self.scene, "albums": self.albums_page, "songs": self.songs_page}[key]
-        self.pages.setCurrentWidget(target)
-        if key in self.nav:
-            self.nav[key].setChecked(True)
-        self.running()
-
-    def next_scene(self):
-        if self.page == "scene":
-            self.scene.kind = (self.scene.kind + 1) % len(Scene.NAMES)
-        self.show_page("scene")
-
-    def running(self):
-        """Draw (and listen) only while there's something to see: a visible window, a moving page, music on."""
-        on = self.isVisible() and not self.isMinimized() and self.page in ("now", "scene") and \
-            (self.active.now.playing or DEMO)
-        if on and not self.frame.isActive():
-            self.analyzer.start()
-            self.frame.start()
-        elif not on and self.frame.isActive():
-            self.frame.stop()
-            self.analyzer.stop()
-
-    def showEvent(self, e):
-        super().showEvent(e)
-        self.running()
-
-    def hideEvent(self, e):
-        super().hideEvent(e)
-        self.running()
-
-    def changeEvent(self, e):
-        super().changeEvent(e)
-        if e.type() == e.Type.WindowStateChange:
-            self.running()
-
-    def tick(self):
-        f = self.analyzer.step() if DEMO else self.analyzer.latest
-        (self.scene if self.page == "scene" else self.now_view).feed(f)
-        a = self.active.now
-        if self.active is self.local and self.local:
-            a.position = self.local.now.position
-        if a.length:
-            if not self.seek.isSliderDown():
-                self.seek.setValue(int(a.position / a.length * 1000))
-            self.pos_label.setText(library.fmt_time(a.position))
-            self.len_label.setText(library.fmt_time(a.length))
-
-    def closeEvent(self, e):
-        self.frame.stop()
+    def close(self):
+        self.ticker.stop()
         self.analyzer.stop()
-        super().closeEvent(e)
+
+
+def main_screen():
+    """The monitor KDE ranks first (Display Configuration's "Primary"): Qt's primaryScreen on Wayland is just the
+    first one it heard of."""
+    try:
+        out = subprocess.run(["kscreen-doctor", "-o"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return world.main_output(out)
+
+
+# ------------------------------------------------------------------ one at a time
+
+def ask_running(message):
+    """Hand a message to the copy that's already running; True if there was one."""
+    s = QLocalSocket()
+    s.connectToServer(SOCKET)
+    if not s.waitForConnected(300):
+        return False
+    s.write(message.encode())
+    s.waitForBytesWritten(300)
+    s.disconnectFromServer()
+    return True
+
+
+def offer():
+    """Music started: ask, once, as a notification with a button. Only on yes does the stage open."""
+    if ask_running("") or "game=" in (MODE_FILE.read_text() if MODE_FILE.exists() else ""):
+        return 0
+    try:
+        r = subprocess.run(["notify-send", "-a", "DecKoOS Music", "-i", "multimedia-audio-player", "-t", "20000",
+                            "-A", "vibe=Vibe mode", "Music's on",
+                            "Turn your screens into a stage that moves with it."],
+                           capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return 0
+    if r.stdout.strip() == "vibe":
+        os.execvp(sys.executable, [sys.executable, str(Path(__file__)), *[a for a in sys.argv[1:] if a != "--offer"]])
+    return 0
 
 
 def main():
+    if "--offer" in sys.argv:
+        return offer()
+    shots = sys.argv[sys.argv.index("--screenshot") + 1] if "--screenshot" in sys.argv else None
+    if not shots and ask_running("toggle"):  # the shortcut again: in or out of the stage
+        return 0
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv)
     app.setApplicationName("DecKoOS Music")
     app.setDesktopFileName("deckos-music")
@@ -843,29 +582,50 @@ def main():
     for f in fonts.glob("*.otf"):
         QFontDatabase.addApplicationFont(str(f))
     app.setFont(QFont("Inter", 10))
-    app.setStyleSheet(S.qss())
-    w = Music()
-    if "--screenshot" in sys.argv:
-        out = Path(sys.argv[sys.argv.index("--screenshot") + 1])
-        out.mkdir(parents=True, exist_ok=True)
-        w.show()
-        shots = [("now", None), ("scene", 0), ("scene", 1), ("scene", 2), ("albums", None)]
 
-        def take(i=0):
-            if i:
-                page, kind = shots[i - 1]
-                w.grab().save(str(out / f"music-{page}{'' if kind is None else '-' + Scene.NAMES[kind].lower()}.png"))
-            if i == len(shots):
-                app.exit(0)
-                return
-            page, kind = shots[i]
-            if kind is not None:
-                w.scene.kind = kind
-            w.show_page(page)
-            QTimer.singleShot(1500, lambda: take(i + 1))
-        QTimer.singleShot(300, take)
-    else:
-        w.show()
+    fake = int(sys.argv[sys.argv.index("--demo-screens") + 1]) if "--demo-screens" in sys.argv else 0
+    engine = Engine(fake)
+    server = QLocalServer()
+    if not shots:
+        QLocalServer.removeServer(SOCKET)
+        server.listen(SOCKET)
+
+        def message():
+            c = server.nextPendingConnection()
+            c.waitForReadyRead(300)
+            if bytes(c.readAll()).decode() == "toggle":
+                engine.toggle()
+        server.newConnection.connect(message)
+
+    qml = QQmlApplicationEngine()
+    qml.addImageProvider("deckos", Pictures(engine))
+    qml.rootContext().setContextProperty("engine", engine)
+    qml.load(QUrl.fromLocalFile(str(HERE / "qml/Main.qml")))
+    if not qml.rootObjects():
+        return 1
+    app.aboutToQuit.connect(engine.close)
+    engine.enter()
+
+    if shots:  # the stage once it's open, every screen's window side by side as one picture
+        out = Path(shots)
+        out.mkdir(parents=True, exist_ok=True)
+
+        def take():
+            wins = sorted((w for w in app.topLevelWindows() if w.objectName() == "stage" and w.isVisible()),
+                          key=lambda w: w.property("originX"))
+            # Each at the window's own size (a 200% monitor grabs twice as many pixels), placed as in the world
+            grabs = [(w, w.grabWindow().scaled(w.width(), w.height(), Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
+                     for w in wins]
+            whole = QImage(QSize(int(engine.worldWidth), int(engine.worldHeight)), QImage.Format_ARGB32)
+            whole.fill(Qt.black)
+            p = QPainter(whole)
+            for w, g in grabs:
+                g.setDevicePixelRatio(1)
+                p.drawImage(int(w.property("originX")), int(w.property("originY")), g)
+            p.end()
+            whole.save(str(out / f"music-vibe-{len(grabs)}-screens.png"))
+            app.exit(0)
+        QTimer.singleShot(4500, take)
     return app.exec()
 
 

@@ -14,7 +14,7 @@ import context  # noqa: E402
 import moments  # noqa: E402
 from context import Facts  # noqa: E402
 
-REACT = {"moments": False, "power": True, "quiet": True, "welcome": True}
+REACT = {"moments": False, "power": True, "quiet": True, "welcome": True, "vibe": False}
 
 
 class Runner:
@@ -110,6 +110,16 @@ class ReactionTests(unittest.TestCase):
         self.assertIn("notifications quiet while you work", r.change("desktop", "developing", Facts(), REACT))
         self.assertIn("notifications back on", r.change("developing", "listening", Facts(), REACT))
         self.assertEqual(run.calls[-1][-1], "--delete")
+
+    def test_music_offers_vibe_mode_once(self):
+        started = []
+        r = context.Reactions(Runner(), spawn=started.append)
+        on = dict(REACT, vibe=True)
+        r.change("desktop", "listening", Facts(music="Nujabes - Aruarian Dance"), on)
+        r.change("listening", "desktop", Facts(), on)
+        self.assertEqual(started, [["deckos-music", "--offer"]])  # only on the way into listening
+        r.change("desktop", "listening", Facts(music="x"), dict(on, vibe=False))
+        self.assertEqual(len(started), 1)
 
     def test_switches_off_do_nothing(self):
         run = Runner()

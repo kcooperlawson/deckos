@@ -70,12 +70,14 @@ class Source(QObject):
 
 class Spotify(Source):
     """The Spotify app, through playerctl: --follow reports each change (no polling); the position between changes
-    is counted here."""
+    is counted here. `players` is playerctl's list: "spotify,%any" follows Spotify first, else whatever plays
+    (a browser, VLC...)."""
 
-    def __init__(self, demo=None):
+    def __init__(self, demo=None, players="spotify"):
         super().__init__()
         self.now = Now("spotify")
         self.demo = demo
+        self.players = players
         self.proc = None
         self.clock = QTimer(self, interval=500, timeout=self.advance)
         if demo:
@@ -89,7 +91,7 @@ class Spotify(Source):
         self.proc = QProcess(self)
         self.proc.readyReadStandardOutput.connect(self.read)
         self.proc.finished.connect(lambda *_: QTimer.singleShot(3000, self.follow))  # Spotify closed: look again
-        self.proc.start("playerctl", ["--player=spotify", "--follow", "metadata", "--format", FORMAT])
+        self.proc.start("playerctl", [f"--player={self.players}", "--follow", "metadata", "--format", FORMAT])
 
     def read(self):
         for line in bytes(self.proc.readAllStandardOutput()).decode(errors="replace").splitlines():
@@ -107,7 +109,7 @@ class Spotify(Source):
 
     def _ctl(self, *args):
         if not self.demo:
-            QProcess.startDetached("playerctl", ["--player=spotify", *args])
+            QProcess.startDetached("playerctl", [f"--player={self.players}", *args])
 
     def play_pause(self):
         if self.demo:

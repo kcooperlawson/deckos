@@ -434,7 +434,7 @@ def set_sound_theme(theme):
 def context_settings():
     """DecKoOS Context's switches and what it sees now: {on, react: {name: bool}, label, why}."""
     if DEMO:
-        return {"on": True, "react": {"moments": True, "power": True, "quiet": False, "welcome": True},
+        return {"on": True, "react": {"moments": True, "power": True, "quiet": False, "welcome": True, "vibe": True},
                 "label": "Developing", "why": "cargo running; working in code"}
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "context"))
     import context

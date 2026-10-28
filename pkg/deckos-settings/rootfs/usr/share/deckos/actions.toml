@@ -94,9 +94,9 @@ run = ["deckos-gamedoctor"]
 
 [[action]]
 id = "music"
-title = "Play music"
-summary = "DecKoOS Music: your music and Spotify, moving with the sound"
-keywords = "music player spotify songs albums playlist visualizer mp3 flac listen"
+title = "Vibe mode"
+summary = "DecKoOS Music: whatever plays takes over every screen and moves with the sound (Meta+M)"
+keywords = "music player spotify songs albums playlist visualizer vibe mode mp3 flac listen"
 icon = "music"
 run = ["deckos-music"]
 

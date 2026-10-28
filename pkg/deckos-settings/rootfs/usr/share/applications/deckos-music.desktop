@@ -1,9 +1,10 @@
 [Desktop Entry]
 Name=DecKoOS Music
 GenericName=Music player
-Comment=Your music and Spotify in one player that moves with the sound
+Comment=Vibe mode: whatever plays takes over your screens and moves with the sound
 Exec=deckos-music
 Icon=multimedia-audio-player
 Type=Application
 Categories=AudioVideo;Audio;Player;
-Keywords=music;player;spotify;songs;albums;visualizer;mp3;flac;
+Keywords=music;player;spotify;songs;albums;visualizer;vibe;mp3;flac;
+X-KDE-Shortcuts=Meta+M

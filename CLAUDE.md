@@ -131,13 +131,20 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   else uses the installed Hub/branding. Everyone signs in with their own GitHub (`gh auth login --web`); `github_role()`
   asks GitHub for the account's permission: admin/maintain see Release, Promote, Build on GitHub and merging,
   everyone else gets Contribute (fork + clone with gh, checks, `gh pr create --web`). GitHub enforces the same rules.
-- DecKoOS Music: `usr/lib/deckos/music/` (`deckos-music`). `library.py` (no Qt: scan with a size/mtime cache, mutagen
-  tags else names, covers in folders or files, albums, search), `analysis.py` (no Qt: parec on the default monitor, 64
-  log bars, bass/mid/high, beats on the low end counted in audio time, a slow `intensity`), `sources.py` (Spotify through
-  `playerctl --follow`, MPRIS only: no sign-in, no streaming of its own; local files with Qt Multimedia), the window
-  (`deckos_music.py`: the cover's palette tints everything, a turning record in a spectrum ring, particles; scenes
-  Nebula/Tunnel/Waves fill the window). It draws and listens only while visible and playing. `--demo --screenshot DIR`.
-  Tests: `tests/test_music.py`.
+- DecKoOS Music: `usr/lib/deckos/music/` (`deckos-music`, Meta+M via X-KDE-Shortcuts) is Vibe mode. `library.py` (no Qt:
+  scan with a size/mtime cache, mutagen tags else names, covers in folders or files, albums, search), `analysis.py` (no Qt:
+  parec on the default monitor, 64 log bars, bass/mid/high, beats on the low end counted in audio time, a slow
+  `intensity`), `sources.py` (MPRIS through `playerctl --follow`, `players="spotify,%any"`: no sign-in, no streaming of its
+  own; local files with Qt Multimedia), `world.py` (no Qt: monitors laid out into one world, the cover on the middle
+  screen, of two the one KDE ranks first: `kscreen-doctor -o` priority 1, since Qt's primaryScreen on Wayland is
+  just the first), `deckos_music.py` (the `Engine` QObject every window reads, image provider, one instance over a
+  QLocalSocket: a second launch toggles the stage; `--offer` is the notification Context sends when listening starts).
+  QML in `qml/`: one `Stage` window per monitor, each drawing its slice of the world at -origin from the shared clock
+  (`engine.startMs`; never per-window animations, or the screens drift apart); `stage.frag` is the sky (aurora, stars,
+  beat shockwaves, the reveal), compiled to `stage.frag.qsb` (commit both; `tests/test_music.py` checks it's current).
+  Esc leaves; your own files keep playing in `Mini`. Steps aside when workload modes says a game runs.
+  `--demo [--demo-screens N] --screenshot DIR` stitches every screen's grab into one picture (offscreen renders without
+  the shader: check the look on real screens). Tests: `tests/test_music.py`.
 - DecKoOS Sounds: `assets/sounds.py` synthesises the sound theme (numpy + ffmpeg; glass tones, a metal-plate accent for
   big events) into `usr/share/sounds/deckos/` (`Inherits=ocean`); `kdeglobals.base` makes it the default; Hub > Appearance
   > Sounds switches it (kwriteconfig6). Not in check.sh's generated check: Vorbis output varies between ffmpeg versions.
