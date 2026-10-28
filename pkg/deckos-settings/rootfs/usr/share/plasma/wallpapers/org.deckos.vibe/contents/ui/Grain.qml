@@ -1,5 +1,7 @@
-// Film grain over a scene: noise drawn once into a small tile, repeated across the screen and nudged a few times a
-// second so it shimmers like film. It's what makes a clean render look photographed. Cheap: one texture, moved.
+// Film grain over a scene: a small noise tile (images/grain.png), repeated across the screen and nudged a few times
+// a second so it shimmers like film. It's what makes a clean render look photographed. Cheap: one texture, moved.
+// The tile ships as a file: drawing it at runtime (a hidden Canvas turned into a data URL) pinned plasmashell's main
+// thread after every Vibe switch, freezing the taskbar and widgets with it.
 import QtQuick
 
 Item {
@@ -8,27 +10,11 @@ Item {
     property real strength: 0.06
     clip: true
 
-    Canvas {
-        id: noise
-        width: 256; height: 256
-        visible: false
-        onPaint: {
-            const ctx = getContext("2d");
-            const img = ctx.createImageData(width, height);
-            for (let i = 0; i < img.data.length; i += 4) {
-                const v = Math.random() * 255;
-                img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-                img.data[i + 3] = 255;
-            }
-            ctx.putImageData(img, 0, 0);
-            tile.source = toDataURL("image/png");
-        }
-        Component.onCompleted: requestPaint()
-    }
     Image {
         id: tile
         x: -256; y: -256
         width: grain.width + 512; height: grain.height + 512
+        source: "../images/grain.png"
         fillMode: Image.Tile
         opacity: grain.strength
         smooth: false
