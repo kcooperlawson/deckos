@@ -1,0 +1,57 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.17.0"
+name = "Make it yours"
+tagline = "Vibes that live with your music, your own photo turned into one, DecKoOS Music, new desktop widgets, and a kids' desktop that feels like their own."
+
+fixes = [
+    "Sound outputs and microphones have plain names instead of driver names.",
+    "A screen plugged in later gets its taskbar too.",
+    "Kid mode shows no grown-up taskbar on any screen, and starts on the main screen.",
+    "Kid mode no longer freezes at the end of a Memory match.",
+    "Vibes keep listening to your music even with the bars turned off.",
+]
+
+[[highlights]]
+title = "Vibes that live with the music"
+text = """Every Vibe is a real photo now, and it plays along: streetlights bloom with the bass in the rainy street, \
+the city's reflections ripple with the song, fireflies flash on the beat. The scenes change with the time of day \
+too, and the lock screen and system sounds follow your Vibe: each one has its own instruments."""
+icon = "appearance"
+try = "Open Appearance"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "Your own photo, brought to life"
+text = """Make your own… turns any photo into a Vibe: DecKoOS finds its lights and colours, you choose which ones \
+move with the bass, the melody or the highs. Share a look as a file, import one from a friend, and let Moments \
+switch Vibes for you when a game starts, music plays or evening comes."""
+icon = "star"
+try = "Make a Vibe"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "DecKoOS Music"
+text = """Your music and Spotify in one player that moves with the sound: the cover's colours tint everything, a \
+record turns inside a ring of the spectrum, and full-window scenes pulse with every beat. Spotify is driven \
+through its own app, with no extra sign-in."""
+icon = "volume"
+try = "Open Music"
+run = ["deckos-music"]
+
+[[highlights]]
+title = "Your desktop, your way"
+text = """New Calendar, Countdown and Photos widgets join the clock, weather and Now Playing, with no boxes behind \
+them. Line them up on either edge or drag them anywhere. The taskbar goes on any edge of the screen, and the boot \
+screen can take your Vibe's colours."""
+icon = "grid"
+try = "Open Appearance"
+run = ["deckos-hub", "--page", "appearance"]
+
+[[highlights]]
+title = "A real desktop for kids"
+text = """Kid mode is a desktop of its own now, not a full-screen launcher: themes they pick, built-in games, \
+their own taskbar on every screen, and still nothing a grown-up wouldn't want them to reach."""
+icon = "user"
+try = "Open Kids"
+run = ["deckos-hub", "--page", "kids"]
