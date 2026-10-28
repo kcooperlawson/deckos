@@ -12,8 +12,8 @@ remember() { mkdir -p "${state%/*}" && echo "$sum" > "$state"; }
 [ "$1" = "--record" ] && { remember; exit 0; }
 [ "$sum" = "$(cat "$state" 2>/dev/null)" ] && exit 0
 command -v mkinitcpio >/dev/null || exit 0
-# Only when the DecKoOS splash is the one in use.
-plymouth-set-default-theme 2>/dev/null | grep -qx deckos || { remember; exit 0; }
+# Only when the DecKoOS splash is the one in use (or its Vibe-coloured copy, which reads the same pictures).
+plymouth-set-default-theme 2>/dev/null | grep -qxE 'deckos|deckos-vibe' || { remember; exit 0; }
 if mkinitcpio -P >/dev/null 2>&1; then
   remember
 else

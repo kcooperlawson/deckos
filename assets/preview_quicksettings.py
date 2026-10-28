@@ -22,7 +22,7 @@ STUBS = ROOT / "assets/qml-stubs"
 
 # What `deckos quick-status` / `deckos updates` would print.
 DEMO_COMMANDS = {
-    "deckos quick-status": "display=1\ngaming=1\nfirewall=1\nauto=1\nmode=gaming\ngame=Cyberpunk 2077\nvram=9126805504\ndocker=3f2a 9c1b\nbaloo=1\nrepo=11\naur=1\nchecked=9999999999\n",
+    "deckos quick-status": "display=1\ngaming=1\nfirewall=1\nauto=1\nmode=normal\nactivity=developing\nlabel=Developing\nicon=code\nwhy=cargo running; working in code\npinned=0\nctxon=1\nrepo=11\naur=1\nchecked=9999999999\n",
     "deckos updates": "repo=11\naur=1\nchecked=9999999999\n",
 }
 

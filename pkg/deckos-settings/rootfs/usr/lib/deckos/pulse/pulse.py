@@ -45,7 +45,7 @@ KINDS = {
     "game-start": ("play", "Games"), "game-stop": ("stop", "Games"), "gamedoctor": ("check", "Games"),
     "profile": ("sliders", "Games"), "retro": ("gaming", "Games"), "mode": ("gauge", "Games"),
     "crash": ("alert", "Health"), "care": ("shield", "Health"), "setup": ("download", "System"),
-    "kids": ("user", "System"), "vibe": ("appearance", "Look"),
+    "kids": ("user", "System"), "vibe": ("appearance", "Look"), "context": ("gauge", "System"),
 }
 
 

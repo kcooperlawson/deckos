@@ -1,9 +1,12 @@
 _setup() {
   /usr/lib/deckos/brand-os-release
-  plymouth-set-default-theme deckos >/dev/null 2>&1 || true
+  # The boot splash, unless it's the one in a Vibe's colours (deckos vibe boot)
+  [[ $(plymouth-set-default-theme 2>/dev/null) == deckos-vibe ]] || plymouth-set-default-theme deckos >/dev/null 2>&1 || true
   systemctl enable deckos-display.service deckos-gpu.service >/dev/null 2>&1 || true
   # Workload modes, for every user from their next login (`deckos mode off` turns it off for one)
   systemctl --global enable deckos-modes.service >/dev/null 2>&1 || true
+  # Context: follows what you're doing and adapts (deckos context off turns it off for one)
+  systemctl --global enable deckos-context.service >/dev/null 2>&1 || true
   # Game Doctor's watcher: offers help when a game closes right after starting
   systemctl --global enable deckos-gamedoctor.service >/dev/null 2>&1 || true
   # DecKoOS Care: System Doctor's checks after a crash or an update, said once in a while

@@ -1,24 +1,22 @@
-"""Moments: Vibes that change with what you're doing. You pick a Vibe for each moment (playing a game, music playing,
-morning, day, evening, night; "" keeps whatever is on), and DecKoOS switches when the moment changes. Only on a change:
-a Vibe you pick yourself stays until the next one, so it never fights you.
+"""Moments: Vibes that change with what you're doing. You pick a Vibe for each moment (playing a game, working,
+watching, music playing, morning, day, evening, night; "" keeps whatever is on), and DecKoOS switches when the moment
+changes. Only on a change: a Vibe you pick yourself stays until the next one, so it never fights you.
 
-~/.config/deckos/moments.json holds {"on": bool, "pick": {moment: vibe key}}. The user unit deckos-moments runs
-`watch` while it's on: every 20 s it reads the workload mode's state file (a game running) and playerctl (music
-playing). No Qt; tests/test_vibes.py feeds `moment()` made-up situations.
+~/.config/deckos/moments.json holds {"on": bool, "pick": {moment: vibe key}}. What you're doing comes from DecKoOS
+Context (usr/lib/deckos/context, docs/context.md), which calls `for_activity()` when the activity changes. No Qt;
+tests/test_vibes.py feeds `moment()` and `for_activity()` made-up situations.
 
-    moments.py show | set MOMENT KEY|keep | on | off | watch
+    moments.py show | set MOMENT KEY|keep | on | off
 """
 import json
-import os
 import re
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 CONF = Path.home() / ".config/deckos/moments.json"
-MODE_STATE = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}") / "deckos-mode"
-MOMENTS = [("game", "Playing a game"), ("music", "Music playing"), ("morning", "Morning (6–11)"),
+MOMENTS = [("game", "Playing a game"), ("work", "Developing"), ("watching", "Watching a video"),
+           ("music", "Music playing"), ("morning", "Morning (6–11)"),
            ("day", "Day (11–17)"), ("evening", "Evening (17–22)"), ("night", "Night (22–6)")]
 NAMES = dict(MOMENTS)
 
@@ -52,35 +50,16 @@ def moment(gaming, music, hour, pick):
     return time_slot(hour), ""
 
 
-def gaming_now(path=None):
-    try:
-        return "mode=gaming" in Path(path or MODE_STATE).read_text()
-    except OSError:
-        return False
+# Context's activities that have a moment of their own
+ACTIVITY_MOMENT = {"gaming": "game", "developing": "work", "watching": "watching", "listening": "music"}
 
 
-def music_now():
-    try:
-        out = subprocess.run(["playerctl", "-a", "status"], capture_output=True, text=True, timeout=5).stdout
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return "Playing" in out.split()
-
-
-def watch():
-    last = None
-    while True:
-        data = load()
-        if not data["on"]:
-            return
-        now, key = moment(gaming_now(), music_now(), time.localtime().tm_hour, data["pick"])
-        # Only when the moment changes: what you picked yourself stays until then
-        if now != last:
-            last = now
-            if key:
-                subprocess.run(["deckos", "vibe", "apply", key], stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL)
-        time.sleep(20)
+def for_activity(activity, hour, pick):
+    """Like moment(), from Context's activity: its own moment if a Vibe is picked for it, else the time of day."""
+    m = ACTIVITY_MOMENT.get(activity)
+    if m and pick.get(m):
+        return m, pick[m]
+    return time_slot(hour), pick.get(time_slot(hour), "")
 
 
 def main(argv):
@@ -103,11 +82,9 @@ def main(argv):
     if argv[:1] in (["on"], ["off"]):
         data["on"] = argv[0] == "on"
         save(data)
-        subprocess.run(["systemctl", "--user", "enable" if data["on"] else "disable", "--now",
-                        "deckos-moments.service"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return 0
-    if argv[:1] == ["watch"]:
-        watch()
+        if data["on"]:  # Context tells Moments what you're doing: make sure it's following
+            subprocess.run(["systemctl", "--user", "enable", "--now", "deckos-context.service"], check=False,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return 0
     print(__doc__.split("\n\n")[-1].strip(), file=sys.stderr)
     return 2

@@ -1,0 +1,11 @@
+[Unit]
+Description=DecKoOS Context: follows what you're doing (gaming, developing, listening...) and adapts to it
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/lib/deckos/context/context.py watch
+Restart=on-failure
+RestartSec=30
+Nice=10
+
+[Install]
+WantedBy=default.target

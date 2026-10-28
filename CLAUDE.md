@@ -322,6 +322,12 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   offers those in its notification (suggest on); after a recipe fix `deckos heal ask` notifies "Did that fix it?".
   Bugs only: triage skips reports without a finding, `draft` refuses one without, and the prompt answers "none" for
   features/tweaks/looks. Tests: `tests/test_heal.py`.
+- **Context** (`usr/lib/deckos/context/context.py`, no Qt; design in `docs/context.md`): what you're doing (gaming, watching,
+  away, developing, listening, desktop) from /proc, playerctl (browser media: by address, else no album = video), logind
+  idle and the workload mode's state. `classify(facts)` is pure and tested; `Steady` holds a change for two looks. User
+  unit `deckos-context.service` (global from the .install) runs the reactions, each a switch in `context.json`: power while
+  building, quiet while developing, Welcome back after a game (from Pulse), Moments (`moments.for_activity`). Quick
+  Settings' `ContextRow` shows it and why, and corrects it (`deckos context set|auto`). Tests: `tests/test_context.py`.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

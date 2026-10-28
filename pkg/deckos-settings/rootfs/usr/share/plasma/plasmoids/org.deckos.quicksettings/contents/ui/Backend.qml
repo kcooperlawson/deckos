@@ -28,6 +28,13 @@ Item {
     property int modeContainers: 0
     property bool modeIndexing: false
 
+    // Context (deckos-context.service): what you're doing, as DecKoOS sees it
+    property string activity: ""
+    property string activityLabel: ""
+    property string activityIcon: ""
+    property string activityWhy: ""
+    property bool activityPinned: false
+
     readonly property int checkEvery: 3 * 3600  // seconds between background update checks
 
     readonly property string updatesText: {
@@ -88,6 +95,15 @@ Item {
             modeContainers = (v.docker || "").split(" ").filter(s => s).length;
             modeIndexing = v.baloo === "1";
         }
+        if ("activity" in v) {
+            activity = v.activity;
+            activityLabel = v.label || "";
+            activityIcon = v.icon || "";
+            activityWhy = v.why || "";
+            activityPinned = v.pinned === "1";
+        } else if ("ctxon" in v) {
+            activity = "";
+        }
         if ("checked" in v) {
             repoUpdates = parseInt(v.repo);
             aurUpdates = parseInt(v.aur) || 0;
@@ -111,6 +127,13 @@ Item {
     function setModes(on: bool): void {
         modeAuto = on;
         run("deckos mode " + (on ? "on" : "off"), () => refresh());
+    }
+
+    // A pick for an hour, or "auto" to hand it back
+    function setActivity(name: string): void {
+        if (name !== "auto" && ["developing", "listening", "watching", "desktop"].indexOf(name) < 0)
+            return;
+        run("deckos context " + (name === "auto" ? "auto" : "set " + name + " 60"), () => refresh());
     }
 
     function refresh(): void {

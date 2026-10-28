@@ -574,6 +574,9 @@ quick_status() {
   if /usr/lib/deckos/gaming-session --check >/dev/null 2>&1; then echo gaming=1; else echo gaming=0; fi
   if command -v firewall-cmd >/dev/null; then echo firewall=1; else echo firewall=0; fi
   mode_status
+  # Context: what you're doing (activity=, label=, icon=, why=, pinned=) and its switches
+  cat "${XDG_RUNTIME_DIR:-/run/user/$UID}/deckos-context" 2>/dev/null || true
+  python3 "${DECKOS_CONTEXT_DIR:-/usr/lib/deckos/context}/context.py" status 2>/dev/null || true
   if [[ -r $UPDATES_CACHE ]]; then
     cat "$UPDATES_CACHE"
     if [[ /var/lib/pacman/local -nt $UPDATES_CACHE ]]; then echo stale=1; fi
@@ -2280,6 +2283,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
   deckos report [--out FILE|--print]                    one file of hardware, drivers and errors for whoever helps
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
+  deckos context [now|set ACTIVITY [MIN]|auto|on|off]  what you're doing now, and DecKoOS adapting to it
   deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
@@ -2336,6 +2340,7 @@ case ${1:-} in
   restore) shift; restore_cmd "$@" ;;
   snapshot-first) shift; snapshot_first_cmd "$@" ;;
   mode) shift; mode_cmd "$@" ;;
+  context) shift; exec python3 "${DECKOS_CONTEXT_DIR:-/usr/lib/deckos/context}/context.py" "${@:-now}" ;;
   layout) shift; layout_cmd "$@" ;;
   theme) shift; theme_cmd "$@" ;;
   accent) shift; accent_cmd "$@" ;;

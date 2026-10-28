@@ -126,7 +126,14 @@ Item {
                 backend: full.backend
             }
             Piece { id: power; file: "PowerRow.qml" }
+            ContextRow {
+                // Not while a game runs: the workload mode's row says more then
+                visible: full.backend.activity !== "" && full.backend.mode !== "gaming"
+                Layout.fillWidth: true
+                backend: full.backend
+            }
             ModeRow {
+                visible: full.backend.activity === "" || full.backend.mode === "gaming"
                 Layout.fillWidth: true
                 backend: full.backend
             }

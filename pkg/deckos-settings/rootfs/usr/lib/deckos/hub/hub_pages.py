@@ -1048,6 +1048,29 @@ class SystemPage(Page):
         up.body.addWidget(self.testing)
         self.lay.addWidget(up)
 
+        # Context: DecKoOS follows what you're doing (docs/context.md); each reaction is a switch
+        ctx = sysinfo.context_settings()
+        follow = Card("Follows what you do", "Gaming, developing, listening, watching", "gauge")
+        follow.body.addWidget(label("DecKoOS notices what you're doing from what's running on this PC (nothing leaves "
+                                    "it) and adapts. Quick Settings shows what it thinks and why; correct it there.",
+                                    "sub"))
+        follow.body.addWidget(label(f"Right now: {ctx['label']} ({ctx['why']})" if ctx["label"]
+                                    else "Not following yet: it starts with your next login.", "muted"))
+        on = QCheckBox("Follow what I'm doing")
+        on.setChecked(ctx["on"])
+        on.clicked.connect(lambda c: QProcess.startDetached("deckos", ["context", "on" if c else "off"]))
+        follow.body.addWidget(on)
+        for key, text in (("power", "Full power while code builds, back to normal after"),
+                          ("quiet", "Hold notifications while I'm developing"),
+                          ("welcome", "After a game, tell me what happened while I played"),
+                          ("moments", "Switch Vibes with what I'm doing (pick them in Appearance › Moments)")):
+            box = QCheckBox(text)
+            box.setChecked(ctx["react"][key])
+            box.clicked.connect(lambda c, k=key: QProcess.startDetached("deckos", ["context", "react", k,
+                                                                                  "on" if c else "off"]))
+            follow.body.addWidget(box)
+        self.lay.addWidget(follow)
+
         carry = Card("Take my setup with me", "For a new PC, or after a reinstall", "download")
         carry.body.addWidget(label("One file with your look, your panel and pinned apps, DecKoOS's settings, game "
                                    "profiles and Game Doctor's fixes. No passwords, games or system files.", "sub"))

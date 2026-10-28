@@ -431,6 +431,21 @@ def set_sound_theme(theme):
     subprocess.run(["kwriteconfig6", "--file", "kdeglobals", "--group", "Sounds", "--key", "Theme", theme])
 
 
+def context_settings():
+    """DecKoOS Context's switches and what it sees now: {on, react: {name: bool}, label, why}."""
+    if DEMO:
+        return {"on": True, "react": {"moments": True, "power": True, "quiet": False, "welcome": True},
+                "label": "Developing", "why": "cargo running; working in code"}
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "context"))
+    import context
+    c = context.conf()
+    try:
+        state = dict(line.split("=", 1) for line in context.STATE.read_text().splitlines() if "=" in line)
+    except OSError:
+        state = {}
+    return {"on": c["on"], "react": c["react"], "label": state.get("label", ""), "why": state.get("why", "")}
+
+
 def booted_snapshot():
     """The snapshot GRUB's snapshots menu started, or None (grub-btrfs runs it read-only under an overlay)."""
     if DEMO:
