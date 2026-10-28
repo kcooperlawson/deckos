@@ -1499,11 +1499,18 @@ class AppearancePage(Page):
 
     def build(self):
         vibes = Card("Vibes", "A whole mood, in one go", "star")
-        vibes.body.addWidget(label("Colours, an animated wallpaper and a music visualizer that dances to what's "
-                                   "playing. It pauses during games and full-screen videos.", "sub"))
+        vibes.body.addWidget(label("Colours and a living wallpaper that moves with what's playing and with the time of "
+                                   "day. It pauses during games and full-screen videos.", "sub"))
+        vibes.actions.addWidget(button("Make your own…", "primary", lambda: self.edit_vibe(None), icon="plus",
+                                       tip="Your photo, with lights that glow with the music"))
+        vibes.actions.addWidget(button("Import a look…", slot=self.import_vibe, icon="download",
+                                       tip="A .deckos-look file someone shared"))
         self.vibe_grid = QGridLayout()
         self.vibe_grid.setSpacing(10)
         vibes.body.addLayout(self.vibe_grid)
+        self.own_vibes = QVBoxLayout()  # your own Vibes: edit, share, delete
+        self.own_vibes.setSpacing(6)
+        vibes.body.addLayout(self.own_vibes)
         group = QButtonGroup(self)
         buttons = []
         shown = sysinfo.visualizer_style()
@@ -1724,6 +1731,35 @@ class AppearancePage(Page):
         if ok and town.strip():
             self.apply(["deckos", "vibe", "weather", town.strip()], f"Weather for {town.strip()}")
 
+    def edit_vibe(self, key):
+        from hub_vibe_editor import VibeEditor
+        d = VibeEditor(self, key)
+        if d.exec() == QDialog.Accepted:
+            if d.use:
+                self.apply_vibe(d.key, d.name.text().strip() or "My Vibe")
+            else:
+                self.hub.toast("Saved: it's with the other Vibes", "ok")
+            self.refresh()
+
+    def share_vibe(self, key, name):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(self, "Share your Vibe", str(Path.home() / f"{key}.deckos-look"),
+                                              "DecKoOS looks (*.deckos-look)")
+        if path:
+            self.apply(["deckos", "vibe", "export", key, path], f"Saved {name} to share: {Path(path).name}")
+
+    def import_vibe(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(self, "Import a look", str(Path.home() / "Downloads"),
+                                              "DecKoOS looks (*.deckos-look)")
+        if path:
+            self.apply(["deckos", "vibe", "import", path], "Added to your Vibes", self.refresh)
+
+    def delete_vibe(self, key, name):
+        if QMessageBox.question(self, "Delete this Vibe?", f"Delete {name}? Its copy of the photo goes too (your "
+                                "original stays where it is).") == QMessageBox.Yes:
+            self.apply(["deckos", "vibe", "delete", key], f"Deleted {name}", self.refresh)
+
     def apply_vibe(self, key, name):
         self.demo_vibe = key
         args = ["deckos", "vibe", "off"] if key == "off" else ["deckos", "vibe", "apply", key]
@@ -1768,6 +1804,14 @@ class AppearancePage(Page):
                                                        lambda k=key, n=name: self.apply_vibe(k, n), small=True),
                                      i // small, i % small, Qt.AlignTop)
         self.vibe_grid.setColumnStretch(small, 1)
+        self.clear(self.own_vibes)
+        for key, name, _summary, _p in sysinfo.vibes():
+            if key in sysinfo.own_vibe_keys():
+                self.own_vibes.addWidget(RowItem("star", name, "Your own Vibe", S.P.accent, [
+                    button("Edit…", slot=lambda _=False, k=key: self.edit_vibe(k), icon="rename"),
+                    button("Share…", slot=lambda _=False, k=key, n=name: self.share_vibe(k, n), icon="arrow-up"),
+                    button("", slot=lambda _=False, k=key, n=name: self.delete_vibe(k, n), icon="trash",
+                           tip="Delete this Vibe")]))
         self.clear(self.theme_grid)
         demo = sysinfo.DEMO and hasattr(self, "demo_look")
         current = self.demo_look if demo else sysinfo.current_look()

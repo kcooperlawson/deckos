@@ -578,13 +578,25 @@ def vibes():
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
     import vibes as v
     out = []
-    for key, x in v.VIBES.items():
-        preview = next((b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg" for b in _dirs("")
-                        if (b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg").exists()), None)
-        out.append((key, x["name"], x["summary"], preview))
+    for key, x in v.all_vibes().items():
+        if x.get("own"):  # yours: its own photo is the picture
+            preview = Path(x["photo"]) if x.get("photo") else None
+        else:
+            preview = next((b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg" for b in _dirs("")
+                            if (b / f"plasma/wallpapers/org.deckos.vibe/contents/previews/{key}.jpg").exists()), None)
+        out.append((key, x["name"], x.get("summary", ""), preview))
     home = next((p for tid, _n, _d, p in look_and_feels() if tid == "org.deckos.desktop"), None)
     out.append(("off", "DecKoOS", "No Vibe: the DecKoOS look", home))
     return out
+
+
+def own_vibe_keys():
+    """The keys of your own Vibes (made in the editor or imported)."""
+    if DEMO:
+        return set()
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
+    import vibes as v
+    return set(v.user_vibes())
 
 
 def taskbar_settings():

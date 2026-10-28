@@ -53,7 +53,7 @@ WallpaperItem {
     Loader {
         anchors.fill: parent
         source: ({ lofi: "LofiScene.qml", neon: "NeonScene.qml", midnight: "MidnightScene.qml",
-                   cozy: "CozyScene.qml" })[root.scene] || "LofiScene.qml"
+                   cozy: "CozyScene.qml", photo: "PhotoScene.qml" })[root.scene] || "LofiScene.qml"
         onLoaded: {
             item.running = Qt.binding(() => root.running);
             item.colorA = Qt.binding(() => root.colorA);
@@ -68,6 +68,14 @@ WallpaperItem {
             }
             if ("levels" in item)
                 item.levels = Qt.binding(() => feed.levels);
+            if ("photo" in item) {  // your own Vibe: its picture, lights and finish
+                item.photo = Qt.binding(() => root.configuration.Photo || "");
+                item.lights = Qt.binding(() => { try { return JSON.parse(root.configuration.Lights || "[]"); }
+                                                 catch (e) { return []; } });
+                item.grain = Qt.binding(() => root.configuration.Grain);
+                item.vignette = Qt.binding(() => root.configuration.Vignette);
+                item.clock = Qt.binding(() => root.configuration.Clock !== false);
+            }
         }
     }
 

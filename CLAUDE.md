@@ -292,7 +292,15 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   a window is full screen. `visualizer.py serve` (user unit `deckos-visualizer`) reads the default output's monitor
   through parec, numpy FFT to 48 bars, sends bytes over a localhost-only WebSocket, only while the wallpaper is
   connected, silent after 3 s of quiet and off during games. `assets/preview_vibes.py` renders them (and the Hub's tile
-  previews). Tests: `tests/test_vibes.py`.
+  previews). Tests: `tests/test_vibes.py`. Scenes get the music themselves (`MusicFeed.qml`: bass/mid/high/energy/beats;
+  the bars on top are optional, off by default) and live on the clock (hour, rare events); shared `Glow` (an ellipse that
+  always fades out), `Vignette`, `Grain`. Your own Vibes: `~/.config/deckos/vibes/KEY.json` (photo copied to
+  `~/.local/share/deckos/vibes`), the `photo` scene (`PhotoScene.qml`: lights at fractions of the 16:9 crop, each on
+  bass/mid/high), made in the Hub's editor (`hub/hub_vibe_editor.py`: `find_lights`, `photo_colours`), shared as a
+  `.deckos-look` zip (`deckos vibe export|import`). Every value passes `vibes.CHECKS` first: they go into a desktop
+  script, and imported looks are untrusted (picture by magic bytes). Tests: `tests/test_vibe_custom.py`.
+  `deckos vibe widgets arrange` (`vibes/arrange.py`): widgets in a column on the right, written to Plasma's
+  ItemGeometries while the shell restarts (a running desktop ignores scripted positions).
 - **Taskbar settings**: `deckos taskbar height|colors|motion` writes every DecKoOS taskbar (`colorMode` accent|vibe|custom;
   a Vibe never overrides custom). `deckos layout set` saves pins to `~/.config/deckos/pins` before replacing panels.
   A tile pulses while its app plays sound: `org.kde.plasma.private.volume`'s SinkInputModel (not corked), matched by pid,

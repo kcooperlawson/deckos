@@ -1694,7 +1694,8 @@ taskbar_screens() {
 VIBES=${DECKOS_VIBES_LIB:-/usr/lib/deckos/vibes}/vibes.py
 VIBE_STATE=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/vibe
 
-vibe_wallpaper() {  # SCENE VISUALIZER COLOR_A COLOR_B: the Vibe wallpaper on every screen
+vibe_wallpaper() {  # SCENE VISUALIZER COLOR_A COLOR_B [PHOTO LIGHTS GRAIN VIGNETTE CLOCK]: on every screen
+  # Every value was checked by vibes.py (colours, a known scene, a photo path without quotes, lights as numbers)
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
     desktops().forEach(function (d) {
       d.wallpaperPlugin = 'org.deckos.vibe';
@@ -1703,6 +1704,11 @@ vibe_wallpaper() {  # SCENE VISUALIZER COLOR_A COLOR_B: the Vibe wallpaper on ev
       d.writeConfig('Visualizer', '$2');
       d.writeConfig('ColorA', '$3');
       d.writeConfig('ColorB', '$4');
+      d.writeConfig('Photo', '${5:-}');
+      d.writeConfig('Lights', '${6:-[]}');
+      d.writeConfig('Grain', ${7:-0.05});
+      d.writeConfig('Vignette', ${8:-0.5});
+      d.writeConfig('Clock', ${9:-true});
     });" >/dev/null
 }
 
@@ -1762,21 +1768,25 @@ vibe_cmd() {
     current) if [[ -s $VIBE_STATE ]]; then cat "$VIBE_STATE"; else echo "none (DecKoOS)"; fi ;;
     apply)
       local key=${2:-} scene="" visualizer="" colorA="" colorB="" accent="" theme="" corners="" name="" k v was
-      [[ $key =~ ^[a-z]+$ ]] || { err "usage: deckos vibe apply NAME (deckos vibe list)"; exit 2; }
+      local photo="" lights="[]" grain=0.05 vignette=0.5 clock=true
+      [[ $key =~ ^[a-z][a-z0-9-]{0,30}$ ]] || { err "usage: deckos vibe apply NAME (deckos vibe list)"; exit 2; }
       while IFS='=' read -r k v; do
-        case $k in scene|visualizer|colorA|colorB|accent|theme|corners|name) printf -v "$k" '%s' "$v" ;; esac
+        case $k in scene|visualizer|colorA|colorB|accent|theme|corners|name|photo|lights|grain|vignette|clock)
+          printf -v "$k" '%s' "$v" ;; esac
       done < <(python3 "$VIBES" get "$key" || true)
+      [[ $grain =~ ^[0-9.]+$ && $vignette =~ ^[0-9.]+$ && $clock =~ ^(true|false)$ ]] || { grain=0.05; vignette=0.5; clock=true; }
       [[ -n $scene ]] || { err "no Vibe called '$key' (deckos vibe list)"; exit 2; }
       was=$(cat "$VIBE_STATE" 2>/dev/null || true)
       theme_cmd apply "$theme" >/dev/null
       accent_apply "$accent"
-      vibe_wallpaper "$scene" "$visualizer" "$colorA" "$colorB"
+      vibe_wallpaper "$scene" "$visualizer" "$colorA" "$colorB" "$photo" "$lights" "$grain" "$vignette" "$clock"
       vibe_style_corners "$corners"
       vibe_widgets_style "$key" "$colorA" "$colorB"
       # The taskbar takes the Vibe's colours, unless the person picked their own (theirs always wins)
       taskbar_script "w.writeConfig('colorA', '$colorA'); w.writeConfig('colorB', '$colorB');
         if (w.readConfig('colorMode', 'accent') !== 'custom') w.writeConfig('colorMode', 'vibe')" 2>/dev/null || true
-      vibe_visualizer_service "$([[ $visualizer == none ]] && echo off || echo on)"
+      # The scenes react to the music themselves, so the sound analysis runs whenever a Vibe is on (bars or not)
+      vibe_visualizer_service on
       vibe_visualizer_remember "$visualizer"
       mkdir -p "${VIBE_STATE%/*}" && echo "$key" > "$VIBE_STATE"
       pulse vibe "Vibe: $name" --app Appearance --undo deckos vibe "$([[ -n $was ]] && echo "apply $was" || echo off)"
@@ -1787,9 +1797,11 @@ vibe_cmd() {
       qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
         desktops().forEach(function (d) { if (d.wallpaperPlugin !== 'org.deckos.vibe') return;
           d.currentConfigGroup = ['Wallpaper', 'org.deckos.vibe', 'General']; d.writeConfig('Visualizer', '$style'); });" >/dev/null
-      vibe_visualizer_service "$([[ $style == none ]] && echo off || echo on)"
       vibe_visualizer_remember "$style"
       ok "music visualizer: $style" ;;
+    export) python3 "$VIBES" export "${2:-}" "${3:-}" >/dev/null && ok "saved: $3 (share it; deckos vibe import opens it)" ;;
+    import) key=$(python3 "$VIBES" import "${2:-}") && ok "added your Vibe: $key (deckos vibe apply $key)" ;;
+    delete) python3 "$VIBES" delete "${2:-}" && ok "deleted: $2" ;;
     widgets) [[ ${2:-} == arrange ]] || { err "usage: deckos vibe widgets arrange"; exit 2; }
       vibe_widgets_arrange
       ok "widgets lined up along the right edge" ;;
@@ -1824,7 +1836,7 @@ vibe_cmd() {
       rm -f "$VIBE_STATE"
       pulse vibe "Vibe off: back to DecKoOS" --app Appearance
       ok "back to DecKoOS" ;;
-    *) err "usage: deckos vibe [list|current|apply NAME|visualizer bars|wave|ring|none|widget ID on|off|weather TOWN|off]"; exit 2 ;;
+    *) err "usage: deckos vibe [list|current|apply NAME|export NAME FILE|import FILE|delete NAME|visualizer bars|wave|ring|none|widget ID on|off|weather TOWN|off]"; exit 2 ;;
   esac
 }
 

@@ -10,5 +10,11 @@
     <entry name="ColorA" type="Color"><default>#FF9E7A</default></entry>
     <entry name="ColorB" type="Color"><default>#B36BFF</default></entry>
     <entry name="Animate" type="Bool"><default>true</default></entry>
+    <!-- Your own Vibe (the Photo scene): its picture, its lights as JSON, the finish -->
+    <entry name="Photo" type="String"><default></default></entry>
+    <entry name="Lights" type="String"><default>[]</default></entry>
+    <entry name="Grain" type="Double"><default>0.05</default></entry>
+    <entry name="Vignette" type="Double"><default>0.5</default></entry>
+    <entry name="Clock" type="Bool"><default>true</default></entry>
   </group>
 </kcfg>
