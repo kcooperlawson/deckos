@@ -1,0 +1,9 @@
+[Sound Theme]
+Name=DecKoOS: Cozy
+Comment=DecKoOS's sounds on this Vibe's instruments
+Inherits=deckos
+Directories=stereo
+Example=theme-demo
+
+[stereo]
+OutputProfile=stereo

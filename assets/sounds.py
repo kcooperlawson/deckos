@@ -5,7 +5,10 @@ Two voices, like the brand: glass (clean near-harmonic tones with a soft shimmer
 metal plate (inharmonic partials of a struck plate, with a short "bolt" tick) as the accent for bigger events:
 login, devices, errors. Quiet by design: peaks at -9 dBFS, most sounds under half a second.
 
-    python3 assets/sounds.py [--play NAME] [--only NAME,...]
+Each Vibe has its own set too, the same melodies on its own instruments (`KITS`), into sounds/deckos-SCENE/
+(Inherits=deckos): `deckos vibe apply` switches to it while you're on DecKoOS's sounds.
+
+    python3 assets/sounds.py [--kit NAME] [--play NAME] [--only NAME,...]
 
 Needs numpy and ffmpeg (Vorbis). Re-run after changing it and commit the .oga files with it.
 """
@@ -70,6 +73,85 @@ def plate(freq, dur=0.6, decay=0.22, level=1.0, tick=0.35):
     return out * level
 
 
+def keys(freq, dur=0.45, decay=0.16, level=1.0, tick=0.0):
+    """Rainy street: a warm electric piano, a little slower to speak, with a slow tremolo and tape wobble."""
+    n = int(RATE * dur * 1.3)
+    t = np.arange(n) / RATE
+    wobble = 1 + 0.0025 * np.sin(2 * np.pi * 5.2 * t)
+    trem = 1 - 0.18 * (0.5 + 0.5 * np.sin(2 * np.pi * 4.5 * t))
+    out = np.zeros((n, 2))
+    f = freq / 2
+    for ratio, amp, dec in ((1.0, 1.0, 1.0), (2.0, 0.4, 0.5), (3.0, 0.08, 0.3), (14.0, 0.02, 0.04)):
+        for ch, pan in ((0, 1.0), (1, 0.85)):
+            out[:, ch] += amp * pan * np.sin(2 * np.pi * f * ratio * wobble * t) * env(n, 0.008, decay * 1.4 * dec)
+    out *= trem[:, None]
+    if tick:  # the accent: a soft low thump under it
+        out += 0.6 * tick * np.sin(2 * np.pi * 70 * t)[:, None] * env(n, 0.002, 0.05)[:, None]
+    return out * level
+
+
+def synth(freq, dur=0.45, decay=0.16, level=1.0, tick=0.0):
+    """City nights: two detuned saws through a closing filter (high harmonics fade first), wide in stereo."""
+    n = int(RATE * dur)
+    t = np.arange(n) / RATE
+    out = np.zeros((n, 2))
+    for k in range(1, 10):
+        amp = 1 / k * np.exp(-t / (decay * 1.2 / (1 + 0.5 * k)))
+        for ch, detune in ((0, 0.996), (1, 1.004)):
+            out[:, ch] += amp * np.sin(2 * np.pi * freq * k * detune * t)
+    out *= env(n, 0.003, decay * 1.5)[:, None] / 2
+    if tick:  # the accent: a sub drop
+        out += tick * np.sin(2 * np.pi * (55 + 60 * np.exp(-t / 0.03)) * t)[:, None] * env(n, 0.001, 0.12)[:, None]
+    return out * level
+
+
+def air(freq, dur=0.45, decay=0.16, level=1.0, tick=0.0):
+    """Midnight: a breathy sine pad, an octave and a fifth floating above, long and quiet."""
+    n = int(RATE * dur * 1.6)
+    t = np.arange(n) / RATE
+    out = np.zeros((n, 2))
+    breath = np.convolve(RNG.standard_normal(n), np.ones(40) / 40, mode="same") * 0.05
+    for ratio, amp in ((1.0, 1.0), (2.0, 0.25), (3.0, 0.12)):
+        for ch, detune in ((0, 0.998), (1, 1.002)):
+            out[:, ch] += amp * np.sin(2 * np.pi * freq * ratio * detune * t + ch)
+    out[:, 0] += breath
+    out[:, 1] += breath[::-1]
+    out *= env(n, 0.03, decay * 2.2)[:, None]
+    if tick:  # the accent: a deep singing bowl
+        bowl = glass(freq / 4, dur * 1.6, decay * 3)[:n]
+        out[:len(bowl)] += tick * bowl
+    return out * level
+
+
+def wood(freq, dur=0.45, decay=0.16, level=1.0, tick=0.0):
+    """Cozy: a marimba bar (its tuned overtone at 4x, a quick knock at 10x), dry and round."""
+    n = int(RATE * dur)
+    t = np.arange(n) / RATE
+    out = np.zeros((n, 2))
+    for ratio, amp, dec in ((1.0, 1.0, 1.0), (3.93, 0.35, 0.3), (9.2, 0.12, 0.08)):
+        for ch, pan in ((0, 0.9), (1, 1.0)):
+            out[:, ch] += amp * pan * np.sin(2 * np.pi * freq * 0.5 * ratio * t) * env(n, 0.001, decay * 0.8 * dec)
+    if tick:  # the accent: a woodblock knock
+        k = int(RATE * 0.03)
+        out[:k] += tick * 0.7 * (np.sin(2 * np.pi * 900 * t[:k]) * np.exp(-t[:k] / 0.006))[:, None]
+    return out * level
+
+
+def struck(voice, strength, shift, freq, dur=0.6, decay=0.22, level=1.0, tick=0.35):
+    """A kit's accent, called like plate(): its own voice, lower if asked, with its accent sound under it."""
+    return voice(freq * shift, dur, decay, level, strength if tick else 0.0)
+
+
+# Each Vibe's instruments: (everyday tone, accent for bigger events, name for index.theme)
+KITS = {
+    "deckos": (glass, plate, "DecKoOS"),
+    "lofi": (keys, lambda *a: struck(keys, 0.6, 0.5, *a), "DecKoOS: Rainy street"),
+    "neon": (synth, lambda *a: struck(synth, 0.7, 1.0, *a), "DecKoOS: City nights"),
+    "midnight": (air, lambda *a: struck(air, 0.5, 1.0, *a), "DecKoOS: Midnight"),
+    "cozy": (wood, lambda *a: struck(wood, 0.6, 1.0, *a), "DecKoOS: Cozy"),
+}
+
+
 def seq(*parts, gap=0.0):
     """Sounds one after another, each starting `gap` (or its own given offset) after the last began."""
     total = 0.0
@@ -93,8 +175,8 @@ def chord(*sounds):
     return seq(*[(0.0, s) for s in sounds])
 
 
-# The sounds, by freedesktop name. Everyday ones are glass; bigger events get the plate.
-def sounds():
+# The sounds, by freedesktop name. Everyday ones are glass; bigger events get the plate (a kit swaps both).
+def sounds(glass=glass, plate=plate):
     up = lambda a, b, g=0.09: seq((g, glass(note(a))), glass(note(b)))  # noqa: E731
     down = lambda a, b, g=0.09: seq((g, glass(note(a))), glass(note(b)))  # noqa: E731
     success = seq((0.05, glass(note("C6"), 0.3)), (0.05, glass(note("E6"), 0.3)), (0.05, glass(note("G6"), 0.3)),
@@ -184,9 +266,9 @@ def write_wav(path, x):
 
 
 INDEX = """[Sound Theme]
-Name=DecKoOS
-Comment=Glass tones and a bolted-plate accent, made for DecKoOS
-Inherits=ocean
+Name={name}
+Comment={comment}
+Inherits={inherits}
 Directories=stereo
 Example=theme-demo
 
@@ -198,21 +280,36 @@ OutputProfile=stereo
 def main(argv):
     only = set(argv[argv.index("--only") + 1].split(",")) if "--only" in argv else None
     play = argv[argv.index("--play") + 1] if "--play" in argv else None
-    (OUT / "stereo").mkdir(parents=True, exist_ok=True)
-    (OUT / "index.theme").write_text(INDEX)
+    for kit in [argv[argv.index("--kit") + 1]] if "--kit" in argv else KITS:
+        write_kit(kit, only)
+    if play:
+        kit = argv[argv.index("--kit") + 1] if "--kit" in argv else "deckos"
+        subprocess.run(["pw-play", str(kit_dir(kit) / "stereo" / f"{play}.oga")])
+    return 0
+
+
+def kit_dir(kit):
+    return OUT if kit == "deckos" else OUT.with_name(f"deckos-{kit}")
+
+
+def write_kit(kit, only):
+    tone, accent, title = KITS[kit]
+    out = kit_dir(kit)
+    (out / "stereo").mkdir(parents=True, exist_ok=True)
+    (out / "index.theme").write_text(INDEX.format(
+        name=title, inherits="ocean" if kit == "deckos" else "deckos",
+        comment="Glass tones and a bolted-plate accent, made for DecKoOS" if kit == "deckos"
+        else "DecKoOS's sounds on this Vibe's instruments"))
     with tempfile.TemporaryDirectory() as tmp:
-        for name, x in sounds().items():
+        for name, x in sounds(tone, accent).items():
             if only and name not in only:
                 continue
             wav = Path(tmp) / f"{name}.wav"
             write_wav(wav, finish(x))
             # -bitexact and no metadata: the same input gives the same file, so regenerating doesn't churn git
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(wav), "-c:a", "libvorbis", "-q:a", "5",
-                            "-bitexact", "-map_metadata", "-1", str(OUT / "stereo" / f"{name}.oga")], check=True)
-    print(f"wrote {OUT}")
-    if play:
-        subprocess.run(["pw-play", str(OUT / "stereo" / f"{play}.oga")])
-    return 0
+                            "-bitexact", "-map_metadata", "-1", str(out / "stereo" / f"{name}.oga")], check=True)
+    print(f"wrote {out}")
 
 
 if __name__ == "__main__":

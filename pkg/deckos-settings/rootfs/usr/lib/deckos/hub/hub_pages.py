@@ -1561,6 +1561,15 @@ class AppearancePage(Page):
                                                                "Drag widgets anywhere, then click Done"),
                    tip="Drag widgets anywhere and resize them from their edges"),
             button("Weather town…", slot=self.weather_town, icon="globe")))
+        name = label("Boot screen")
+        name.setFixedWidth(140)
+        vibes.body.addWidget(row(
+            name,
+            button("Match this Vibe", slot=lambda: self.apply(["deckos", "vibe", "boot", "on"],
+                                                              "The boot screen takes your Vibe's colours"),
+                   tip="Asks for your password and takes about a minute. Shows from the next start."),
+            button("DecKoOS's own", slot=lambda: self.apply(["deckos", "vibe", "boot", "off"],
+                                                            "The boot screen is DecKoOS's own again"))))
         self.lay.addWidget(vibes)
 
         themes = Card("Theme", "Global theme", "appearance")
@@ -1655,7 +1664,9 @@ class AppearancePage(Page):
 
         sounds = Card("Sounds", "System sounds", "volume")
         sounds.body.addWidget(label("Notifications, devices, errors and logging in. DecKoOS's own: glass tones, "
-                                    "with a bolted-plate accent for the bigger moments.", "sub"))
+                                    "with a bolted-plate accent for the bigger moments. With a Vibe on, they play on "
+                                    "its instruments: electric piano in the rain, synths in the city, and so on.",
+                                    "sub"))
         group = QButtonGroup(self)
         now = sysinfo.sound_theme()
         buttons = []
@@ -1663,7 +1674,7 @@ class AppearancePage(Page):
             b = QPushButton(text)
             b.setObjectName("seg")
             b.setCheckable(True)
-            b.setChecked(now == value)
+            b.setChecked(now == value or (value == "deckos" and now.startswith("deckos-")))
             b.clicked.connect(lambda _c, v=value, t=text: self.set_sounds(v, t))
             group.addButton(b)
             buttons.append(b)

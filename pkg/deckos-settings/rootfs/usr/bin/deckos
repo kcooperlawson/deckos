@@ -1758,6 +1758,49 @@ vibe_widgets_arrange() {  # [right|left]: widgets already on the desktop stack d
   python3 "${DECKOS_VIBES_DIR:-/usr/lib/deckos/vibes}/arrange.py" "${1:-right}"
 }
 
+# Each Vibe's own sound set (sounds/deckos-SCENE, made by assets/sounds.py), only while the person is on DecKoOS's
+# sounds: Plasma's own, another theme or sounds off stay as they are.
+vibe_sounds() {  # SCENE (deckos for the plain set; a scene without its own set gets it too)
+  local now set=deckos
+  now=$(kreadconfig6 --file kdeglobals --group Sounds --key Theme 2>/dev/null || true)
+  [[ -z $now || $now == deckos || $now == deckos-* ]] || return 0
+  [[ -d /usr/share/sounds/deckos-$1 ]] && set=deckos-$1
+  kwriteconfig6 --file kdeglobals --group Sounds --key Theme "$set"
+}
+
+# The boot splash in a Vibe's colours: a second Plymouth theme (deckos-vibe) that is DecKoOS's own script with the
+# background tinted, its pictures read from the deckos theme. Root, and it rebuilds the initramfs, so it is asked
+# for (deckos vibe boot), never done by every vibe apply.
+boot_look() {  # vibe COLOR_A COLOR_B | off
+  need_root boot-look
+  local themes=/usr/share/plymouth/themes top bottom
+  local dir=$themes/deckos-vibe
+  case ${1:-} in
+    vibe)
+      [[ ${2:-} =~ ^#[0-9A-Fa-f]{6}$ && ${3:-} =~ ^#[0-9A-Fa-f]{6}$ ]] || { err "usage: deckos boot-look vibe #RRGGBB #RRGGBB | off"; exit 2; }
+      top=$(boot_tint "$2" 0.22) bottom=$(boot_tint "$3" 0.12)
+      mkdir -p "$dir"
+      sed -e "s/^Window.SetBackgroundTopColor(.*/Window.SetBackgroundTopColor($top);/" \
+          -e "s/^Window.SetBackgroundBottomColor(.*/Window.SetBackgroundBottomColor($bottom);/" \
+          "$themes/deckos/deckos.script" > "$dir/deckos-vibe.script"
+      printf '%s\n' "[Plymouth Theme]" "Name=DecKoOS (Vibe)" "Description=DecKoOS's boot splash in your Vibe's colours" \
+        "ModuleName=script" "" "[script]" "ImageDir=$themes/deckos" "ScriptFile=$dir/deckos-vibe.script" > "$dir/deckos-vibe.plymouth"
+      plymouth-set-default-theme -R deckos-vibe
+      ok "the boot screen takes your Vibe's colours from the next start" ;;
+    off)
+      plymouth-set-default-theme -R deckos
+      rm -rf "$dir"
+      ok "the boot screen is DecKoOS's own again" ;;
+    *) err "usage: deckos boot-look vibe #RRGGBB #RRGGBB | off"; exit 2 ;;
+  esac
+}
+
+boot_tint() {  # #RRGGBB SHARE: the colour mixed into DecKoOS's slate, as Plymouth's "r, g, b" (0..1)
+  local hex=${1#\#} share=$2
+  awk -v r=$((16#${hex:0:2})) -v g=$((16#${hex:2:2})) -v b=$((16#${hex:4:2})) -v k="$share" \
+    'BEGIN { printf "%.3f, %.3f, %.3f", (r*k + 15*(1-k))/255, (g*k + 17*(1-k))/255, (b*k + 21*(1-k))/255 }'
+}
+
 vibe_widget_toggle() {  # ID on|off: add it to the first screen's desktop in its usual spot, or take it away
   local id=$1 on=$2
   [[ " $VIBE_WIDGETS " == *" $id "* ]] || { err "unknown widget: $id ($VIBE_WIDGETS)"; exit 2; }
@@ -1790,6 +1833,7 @@ vibe_cmd() {
       # The lock screen shows the Vibe's picture too: your photo, or the scene's own
       local still=${photo:-/usr/share/plasma/wallpapers/org.deckos.vibe/contents/images/$scene.jpg}
       [[ -f $still ]] && lock_wallpaper "$still"
+      vibe_sounds "$scene"
       vibe_style_corners "$corners"
       vibe_widgets_style "$key" "$colorA" "$colorB"
       # The taskbar takes the Vibe's colours, unless the person picked their own (theirs always wins)
@@ -1823,6 +1867,17 @@ vibe_cmd() {
           ok "drag widgets where you like; click Done at the top when finished" ;;
         *) err "usage: deckos vibe widgets arrange [right|left] | move"; exit 2 ;;
       esac ;;
+    boot)  # deckos vibe boot on|off: the boot screen in this Vibe's colours (asks for the password)
+      case ${2:-} in
+        on)
+          local a b
+          a=$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorA=//p' || true)
+          b=$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorB=//p' || true)
+          [[ -n $a && -n $b ]] || { err "turn a Vibe on first"; exit 1; }
+          pkexec /usr/bin/deckos boot-look vibe "$a" "$b" ;;
+        off) pkexec /usr/bin/deckos boot-look off ;;
+        *) err "usage: deckos vibe boot on|off"; exit 2 ;;
+      esac ;;
     widget)  # deckos vibe widget ID on|off
       [[ ${3:-} == on || ${3:-} == off ]] || { err "usage: deckos vibe widget ID on|off"; exit 2; }
       vibe_widget_toggle "${2:-}" "$3"
@@ -1848,13 +1903,14 @@ vibe_cmd() {
       theme_cmd apply org.deckos.desktop >/dev/null  # its still wallpaper takes over from the Vibe one
       vibe_style_corners default
       vibe_widgets_style deckos "#4C8DFF" "#7A5CFF"
+      vibe_sounds deckos
       taskbar_script "if (w.readConfig('colorMode', 'accent') === 'vibe') w.writeConfig('colorMode', 'accent')" 2>/dev/null || true
       vibe_visualizer_service off
       vibe_visualizer_remember none
       rm -f "$VIBE_STATE"
       pulse vibe "Vibe off: back to DecKoOS" --app Appearance
       ok "back to DecKoOS" ;;
-    *) err "usage: deckos vibe [list|current|apply NAME|export NAME FILE|import FILE|delete NAME|visualizer bars|wave|ring|none|widget ID on|off|widgets arrange [right|left]|widgets move|weather TOWN|off]"; exit 2 ;;
+    *) err "usage: deckos vibe [list|current|apply NAME|export NAME FILE|import FILE|delete NAME|visualizer bars|wave|ring|none|widget ID on|off|widgets arrange [right|left]|widgets move|boot on|off|weather TOWN|off]"; exit 2 ;;
   esac
 }
 
@@ -2328,6 +2384,7 @@ case ${1:-} in
       *) err "usage: deckos decky [install|plugin]"; exit 2 ;;
     esac ;;
   doctor) doctor_cmd ;;
+  boot-look) shift; boot_look "$@" ;;
   hub) exec /usr/bin/deckos-hub ;;
   version|--version) echo "$VERSION" ;;
   ""|help|-h|--help) usage ;;
