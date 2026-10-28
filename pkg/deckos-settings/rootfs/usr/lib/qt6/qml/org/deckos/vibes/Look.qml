@@ -14,7 +14,8 @@ QtObject {
                                   ?? Font.Light
     readonly property bool italic: style === "lofi"
     readonly property bool glow: style === "neon"  // text lit in the Vibe's colour
-    // A soft plate behind cards; Lo-fi and Neon float on the scene with only a shadow
-    readonly property bool plate: style !== "lofi" && style !== "neon"
+    // No plate behind the cards: every Vibe floats its widgets on the scene with only a shadow, so they sit in the
+    // picture instead of on top of it (plates read as bubbles, and got in the way of desktop icons)
+    readonly property bool plate: false
     readonly property real radius: ({ midnight: 6, neon: 4, cozy: 22, lofi: 18 })[style] ?? 14
 }

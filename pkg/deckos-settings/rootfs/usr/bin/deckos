@@ -1731,14 +1731,26 @@ vibe_widgets_style() {  # STYLE COLOR_A COLOR_B: every DecKoOS desktop widget ta
       w.writeConfig('colorB', '$3'); w.reloadConfig(); }); });" >/dev/null 2>&1 || true
 }
 
+# Where the widgets go: one column down the right edge, so the left (where Plasma puts desktop icons) stays free.
+# JS for an object {id: [x, y, width, height]} on screen g.
+widget_spots() {
+  printf '%s' "(function () { var x = g.width - 500, y = 40, out = {};
+    [['org.deckos.bigclock', 460, 220], ['org.deckos.weather', 300, 130], ['org.deckos.nowplaying', 440, 140],
+     ['org.deckos.focus', 220, 240], ['org.deckos.note', 300, 170]].forEach(function (w) {
+      out[w[0]] = [g.width - 40 - w[1], y, w[1], w[2]]; y += w[2] + 24; });
+    return out; })()"
+}
+
+vibe_widgets_arrange() {  # widgets already on the desktop stack down the right edge (the desktop reloads)
+  python3 "${DECKOS_VIBES_DIR:-/usr/lib/deckos/vibes}/arrange.py"
+}
+
 vibe_widget_toggle() {  # ID on|off: add it to the first screen's desktop in its usual spot, or take it away
   local id=$1 on=$2
   [[ " $VIBE_WIDGETS " == *" $id "* ]] || { err "unknown widget: $id ($VIBE_WIDGETS)"; exit 2; }
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
     var d = desktops()[0], g = screenGeometry(d.screen), have = d.widgets('$id');
-    var spot = { 'org.deckos.bigclock': [60, 60, 480, 240], 'org.deckos.nowplaying': [g.width - 500, g.height - 240, 440, 140],
-                 'org.deckos.weather': [g.width - 360, 60, 300, 130], 'org.deckos.focus': [g.width - 280, 260, 220, 240],
-                 'org.deckos.note': [60, g.height - 300, 300, 180] }['$id'];
+    var spot = $(widget_spots)['$id'];
     if ('$on' === 'on' && have.length === 0) d.addWidget('$id', spot[0], spot[1], spot[2], spot[3]);
     if ('$on' === 'off') have.forEach(function (w) { w.remove(); });" >/dev/null
 }
@@ -1778,6 +1790,9 @@ vibe_cmd() {
       vibe_visualizer_service "$([[ $style == none ]] && echo off || echo on)"
       vibe_visualizer_remember "$style"
       ok "music visualizer: $style" ;;
+    widgets) [[ ${2:-} == arrange ]] || { err "usage: deckos vibe widgets arrange"; exit 2; }
+      vibe_widgets_arrange
+      ok "widgets lined up along the right edge" ;;
     widget)  # deckos vibe widget ID on|off
       [[ ${3:-} == on || ${3:-} == off ]] || { err "usage: deckos vibe widget ID on|off"; exit 2; }
       vibe_widget_toggle "${2:-}" "$3"

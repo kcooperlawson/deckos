@@ -62,24 +62,6 @@ Item {
     }
     Rectangle { anchors.fill: parent; color: "black"; opacity: 0.22 }
 
-    // A soft round light, drawn once and reused: lamps, reflections, the tram's lights
-    component Glow: Canvas {
-        property color tint: "#FFD9A0"
-        width: 200; height: 200
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
-            const g = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width / 2);
-            g.addColorStop(0, Qt.rgba(tint.r, tint.g, tint.b, 0.9));
-            g.addColorStop(0.25, Qt.rgba(tint.r, tint.g, tint.b, 0.35));
-            g.addColorStop(1, Qt.rgba(tint.r, tint.g, tint.b, 0));
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, width, height);
-        }
-        onTintChanged: requestPaint()
-        Component.onCompleted: requestPaint()  // a Canvas draws only when asked
-    }
-
     // ---- the lamps, and their reflections down the wet road
     Repeater {
         model: scene.lamps
@@ -207,19 +189,6 @@ Item {
 
     // ---- the finish: the hour's colour, a vignette, and film grain
     Rectangle { anchors.fill: parent; color: scene.grade; opacity: scene.gradeAmount }
-    Canvas {
-        anchors.fill: parent
-        onWidthChanged: requestPaint()
-        Component.onCompleted: requestPaint()
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
-            const g = ctx.createRadialGradient(width / 2, height / 2, height * 0.35, width / 2, height / 2, width * 0.7);
-            g.addColorStop(0, "rgba(0,0,0,0)");
-            g.addColorStop(1, "rgba(0,0,0,0.55)");
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, width, height);
-        }
-    }
+    Vignette { anchors.fill: parent }
     Grain { anchors.fill: parent; running: scene.running }
 }

@@ -66,6 +66,8 @@ WallpaperItem {
                 item.energy = Qt.binding(() => feed.energy);
                 item.beats = Qt.binding(() => feed.beats);
             }
+            if ("levels" in item)
+                item.levels = Qt.binding(() => feed.levels);
         }
     }
 

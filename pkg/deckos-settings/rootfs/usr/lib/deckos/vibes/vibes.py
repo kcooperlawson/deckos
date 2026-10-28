@@ -8,20 +8,21 @@ No Qt: tests/test_vibes.py checks the list.
 import json
 import sys
 
-# scene: a scene in the org.deckos.vibe wallpaper; visualizer: bars, wave, ring or none; theme: an org.deckos.*
-# look-and-feel; style: DecKoOS apps' corners (hub_style.STYLE)
+# scene: a scene in the org.deckos.vibe wallpaper (each reacts to the music itself); visualizer: bars, wave or ring on
+# top, or none (the default: the scene is the visualizer); theme: an org.deckos.* look-and-feel; style: DecKoOS apps'
+# corners (hub_style.STYLE)
 VIBES = {
-    "lofi": {"name": "Lo-fi", "summary": "Warm dusk, rain on the window, mellow bars", "scene": "lofi",
-             "visualizer": "bars", "colorA": "#FF9E7A", "colorB": "#B36BFF", "accent": "#FF9E7A",
+    "lofi": {"name": "Rainy street", "summary": "Lisbon in the rain: the streetlights bloom with the bass", "scene": "lofi",
+             "visualizer": "none", "colorA": "#FF9E7A", "colorB": "#B36BFF", "accent": "#FF9E7A",
              "theme": "org.deckos.ember", "corners": "round"},
-    "neon": {"name": "Neon", "summary": "Synthwave sun, a glowing grid, punchy bars", "scene": "neon",
-             "visualizer": "bars", "colorA": "#FF4FD8", "colorB": "#3DE0FF", "accent": "#FF4FD8",
+    "neon": {"name": "City nights", "summary": "Manhattan across the river: its reflections play the song",
+             "scene": "neon", "visualizer": "none", "colorA": "#FF4FD8", "colorB": "#3DE0FF", "accent": "#FF4FD8",
              "theme": "org.deckos.midnight", "corners": "default"},
-    "midnight": {"name": "Midnight", "summary": "Near-black and quiet: breathing stars, a thin wave",
-                 "scene": "midnight", "visualizer": "wave", "colorA": "#8FA8FF", "colorB": "#4C8DFF",
+    "midnight": {"name": "Midnight", "summary": "The Milky Way: stars glint with the music, shooting stars on drops",
+                 "scene": "midnight", "visualizer": "none", "colorA": "#8FA8FF", "colorB": "#4C8DFF",
                  "accent": "#8FA8FF", "theme": "org.deckos.graphite", "corners": "sharp"},
-    "cozy": {"name": "Cozy", "summary": "Pine hills at dusk, fireflies, a soft ring", "scene": "cozy",
-             "visualizer": "ring", "colorA": "#F2C46D", "colorB": "#6FBF8E", "accent": "#6FBF8E",
+    "cozy": {"name": "Cozy", "summary": "Pines at dusk: fireflies flash together on the beat", "scene": "cozy",
+             "visualizer": "none", "colorA": "#F2C46D", "colorB": "#6FBF8E", "accent": "#6FBF8E",
              "theme": "org.deckos.aurora", "corners": "round"},
 }
 VISUALIZERS = ["bars", "wave", "ring", "none"]

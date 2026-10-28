@@ -1,91 +1,108 @@
-// Cozy / Forest: layered hills of pine at dusk, with fireflies wandering and glowing.
+// Cozy: pines at dusk with the last light in the gap, and the music lives in the forest. Fireflies drift in the dark
+// and flash together on the beat (real fireflies do sync up), more of them come out as the song builds, the last
+// light in the gap breathes with the bass, and ground mist rolls with the energy. On its own time: the afterglow
+// fades into night and the moon comes up in the gap, and now and then a breeze pushes the mist through.
+// Positions are fractions of the photo (credits in images/CREDITS.md).
 import QtQuick
 
 Item {
     id: scene
     property bool running: true
-    property color colorA: "#F2C46D"
-    property color colorB: "#6FBF8E"
+    property color colorA: "#F5B84B"
+    property color colorB: "#3DD68C"
+    property real bass: 0
+    property real mid: 0
+    property real high: 0
+    property real energy: 0
+    property int beats: 0
 
-    Rectangle {  // evening sky
-        anchors.fill: parent
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#14211F" }
-            GradientStop { position: 0.6; color: "#2C3B2C" }
-            GradientStop { position: 1.0; color: "#3E3324" }
+    property int hour: new Date().getHours()
+    readonly property bool night: hour >= 22 || hour < 5
+    property real tick: 0
+    property real flash: 0  // the fireflies' shared blink, set by each beat and fading
+    property real breeze: 0
+    Timer {
+        interval: 60000; repeat: true; running: scene.running; triggeredOnStart: true
+        onTriggered: scene.hour = new Date().getHours()
+    }
+    Timer {
+        interval: 50; repeat: true; running: scene.running
+        onTriggered: {
+            scene.tick += 0.05;
+            scene.flash *= 0.9;
+            scene.breeze *= 0.995;
         }
     }
-    Canvas {  // three ridges of pines, nearer ones darker (drawn once)
-        anchors.fill: parent
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
-            const ridges = [[0.55, "#24372B"], [0.68, "#1A2A20"], [0.8, "#111C15"]];
-            let seed = 11;
-            const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-            for (const [base, colour] of ridges) {
-                ctx.fillStyle = colour;
-                ctx.beginPath();
-                ctx.moveTo(0, height);
-                for (let x = 0; x <= width; x += width / 60) {
-                    const top = height * base - Math.sin(x / width * 6 + base * 9) * height * 0.03;
-                    const tree = height * (0.03 + rnd() * 0.05);
-                    ctx.lineTo(x, top);
-                    ctx.lineTo(x + width / 120, top - tree);
-                }
-                ctx.lineTo(width, height);
-                ctx.closePath();
-                ctx.fill();
-            }
-        }
+    Timer {  // a breeze through the trees, every few minutes
+        interval: 120000 + Math.random() * 180000; repeat: true; running: scene.running
+        onTriggered: scene.breeze = 1
     }
-    Image {  // pines at dusk (the drawing above shows only if the photo can't load; credits in images/CREDITS.md)
+    onBeatsChanged: flash = 1
+
+    Image {
         anchors.fill: parent
         source: "../images/cozy.jpg"
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         sourceSize.width: 3840
     }
-    Rectangle {  // a little darker, so the visualizer and desktop icons stand out
-        anchors.fill: parent
-        color: "black"
-        opacity: 0.15
+    Rectangle { anchors.fill: parent; color: "#050812"; opacity: scene.night ? 0.35 : 0.1 }
+
+    // ---- the last light in the gap, breathing with the bass (gone at night: the moon takes over)
+    Glow {
+        x: scene.width * 0.5 - width / 2; y: scene.height * 0.8 - height / 2
+        width: scene.height * 0.75; height: width * 0.8
+        tint: scene.colorA
+        core: 0.3
+        opacity: (scene.night ? 0.05 : 0.25) + 0.35 * scene.bass
     }
-    Repeater {  // fireflies
-        model: 28
-        Rectangle {
+    Glow {  // the moon, risen in the gap at night
+        x: scene.width * 0.53 - width / 2; y: scene.height * 0.42 - height / 2
+        width: scene.height * 0.16; height: width
+        tint: "#EAF0FF"
+        core: 0.12
+        opacity: scene.night ? 0.85 : 0
+        Behavior on opacity { NumberAnimation { duration: 8000 } }
+    }
+
+    // ---- fireflies: wandering in the dark, flashing together on the beat; more come out as the song builds
+    Repeater {
+        model: 46
+        Glow {
             id: fly
             required property int index
             readonly property real r: ((index * 7919) % 1000) / 1000
             readonly property real r2: ((index * 104729) % 1000) / 1000
-            width: 4
-            height: 4
-            radius: 2
-            color: scene.colorA
-            x: r * scene.width
-            y: scene.height * (0.55 + r2 * 0.4)
-            Rectangle {  // the glow
-                anchors.centerIn: parent
-                width: 18
-                height: 18
-                radius: 9
-                color: scene.colorA
-                opacity: 0.18
-            }
-            SequentialAnimation on opacity {
-                loops: Animation.Infinite
-                running: scene.running
-                NumberAnimation { to: 1; duration: 1200 + fly.r * 2000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 0.1; duration: 1600 + fly.r2 * 2400; easing.type: Easing.InOutSine }
-            }
-            SequentialAnimation on x {
-                loops: Animation.Infinite
-                running: scene.running
-                NumberAnimation { to: fly.r * scene.width + 60; duration: 7000 + fly.r2 * 5000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: fly.r * scene.width - 40; duration: 8000 + fly.r * 5000; easing.type: Easing.InOutSine }
-            }
+            readonly property real r3: ((index * 3571) % 1000) / 1000
+            // Drift: each on its own slow loop, kept out of the bright gap in the trees
+            readonly property real fx: (r < 0.5 ? r * 0.76 : 0.62 + (r - 0.5) * 0.76) + 0.04 * Math.sin(scene.tick * (0.3 + r2 * 0.4) + index)
+            readonly property real fy: 0.55 + r2 * 0.4 + 0.03 * Math.cos(scene.tick * (0.25 + r3 * 0.35) + index * 2)
+            readonly property bool out: index / 46 < 0.35 + 0.65 * scene.energy
+            x: fx * scene.width - width / 2; y: fy * scene.height - height / 2
+            width: scene.height * (0.018 + 0.02 * r3); height: width
+            tint: index % 4 === 0 ? scene.colorB : "#E8FF7A"
+            core: 0.2
+            // Their own slow glow, and every one lights up at once on the beat
+            opacity: out ? Math.min(1, 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(scene.tick * 1.7 + index * 1.3))
+                                       + 0.8 * scene.flash * (0.6 + 0.4 * r)) : 0
+            Behavior on opacity { NumberAnimation { duration: 120 } }
         }
     }
+
+    // ---- ground mist rolling across, thicker with the energy, pushed along by a breeze
+    Repeater {
+        model: 4
+        Glow {
+            required property int index
+            x: scene.width * ((index * 0.31 + scene.tick * (0.004 + 0.02 * scene.breeze) * (1 + index * 0.3)) % 1.5 - 0.25) - width / 2
+            y: scene.height * (0.9 + (index % 2) * 0.05) - height / 2
+            width: scene.width * 0.8; height: scene.height * 0.22
+            tint: scene.night ? "#9FB3D9" : "#C8B8C8"
+            core: 0.5
+            opacity: 0.06 + 0.16 * scene.energy + 0.1 * scene.breeze
+        }
+    }
+
+    Vignette { anchors.fill: parent; strength: 0.6 }
+    Grain { anchors.fill: parent; running: scene.running; strength: 0.05 }
 }

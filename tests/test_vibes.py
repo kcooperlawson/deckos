@@ -74,5 +74,36 @@ class VibesTests(unittest.TestCase):
         self.assertNotIn('QHostAddress.Any', src)
 
 
+
+class ArrangeTests(unittest.TestCase):
+    """Widgets line up down the right edge, clear of desktop icons; nothing else in the file changes."""
+
+    def test_widgets_stack_on_the_right(self):
+        sys.path.insert(0, str(RFS / "usr/lib/deckos/vibes"))
+        import arrange
+        text = ("[Containments][1][Applets][5]\nplugin=org.deckos.bigclock\n\n"
+                "[Containments][1][Applets][6]\nplugin=org.deckos.note\n\n"
+                "[Containments][1][Applets][7]\nplugin=org.kde.plasma.folder\n\n"
+                "[Containments][1][General]\n"
+                "ItemGeometries-1920x1080=Applet-5:60,60,480,240,0;Applet-6:60,780,300,180,0;Applet-7:10,10,100,100,0;\n"
+                "ItemGeometries-320x240=Applet-5:1,1,480,240,0;\n"
+                "ItemGeometriesHorizontal=Applet-5:60,60,480,240,0;\n")
+        out = arrange.arrange(text)
+        geo = dict(arrange.parse(re.search(r"ItemGeometries-1920x1080=(.*)", out).group(1)))
+        self.assertEqual(geo["5"], [1920 - 40 - 480, 40, 480, 240, 0])  # the clock, top right
+        self.assertEqual(geo["6"], [1920 - 40 - 300, 40 + 240 + 24, 300, 180, 0])  # the note under it
+        self.assertEqual(geo["7"], [10, 10, 100, 100, 0])  # not ours: untouched
+        self.assertIn("ItemGeometries-320x240=Applet-5:1,1,480,240,0;", out)  # a leftover size: untouched
+        self.assertIn("ItemGeometriesHorizontal=Applet-5:1400,40,480,240,0;", out)
+
+    def test_a_full_column_continues_to_the_left(self):
+        sys.path.insert(0, str(RFS / "usr/lib/deckos/vibes"))
+        import arrange
+        items = [(str(i), [0, 0, 400, 400, 0]) for i in range(3)]
+        kinds = {str(i): "org.deckos.note" for i in range(3)}
+        geo = dict(arrange.lay_out(items, kinds, 1920, 1080))
+        self.assertEqual([geo[k][0] for k in "012"], [1480, 1480, 1480 - 400 - 24])
+
+
 if __name__ == '__main__':
     unittest.main()

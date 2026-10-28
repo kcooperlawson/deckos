@@ -21,10 +21,12 @@ import QtQuick
 Item {
     width: 1920; height: 1080
     Loader { anchors.fill: parent; source: "%(scene)s"
-             onLoaded: { item.colorA = "%(a)s"; item.colorB = "%(b)s"; item.running = true } }
-    Visualizer { id: vis; anchors.fill: parent; style: "%(style)s"; active: false
-                 colorA: "%(a)s"; colorB: "%(b)s"; levels: %(levels)s
-                 Component.onCompleted: if (style === "wave") children[1].requestPaint() }
+             onLoaded: { item.colorA = "%(a)s"; item.colorB = "%(b)s"; item.running = true;
+                         // a made-up song mid-chorus: the scenes react to it themselves
+                         item.bass = 0.75; item.mid = 0.6; item.high = 0.5; item.energy = 0.7;
+                         if ("levels" in item) item.levels = %(levels)s; } }
+    Visualizer { id: vis; anchors.fill: parent; style: "%(style)s"; visible: %(overlay)s
+                 colorA: "%(a)s"; colorB: "%(b)s"; levels: %(levels)s }
 }
 """
 
@@ -41,7 +43,7 @@ def main():
         qml = UI / f".preview-{key}.qml"
         qml.write_text(QML % {"scene": v["scene"].title() + "Scene.qml", "a": v["colorA"], "b": v["colorB"],
                               "style": v["visualizer"] if v["visualizer"] != "none" else "bars",
-                              "levels": levels})
+                              "overlay": "true" if v["visualizer"] != "none" else "false", "levels": levels})
         view = QQuickView()
         view.setSource(QUrl.fromLocalFile(str(qml)))
         view.show()
@@ -58,7 +60,7 @@ def main():
             qml.unlink()
             print("wrote", out)
         app.quit()
-    QTimer.singleShot(1800, shoot)  # let the animations run a little
+    QTimer.singleShot(2500, shoot)  # let the animations run a little
     app.exec()
 
 

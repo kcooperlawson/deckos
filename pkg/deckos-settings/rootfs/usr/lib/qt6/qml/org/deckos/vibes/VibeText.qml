@@ -14,8 +14,8 @@ Text {
     layer.effect: MultiEffect {
         shadowEnabled: true
         shadowColor: look.glow ? look.colorA : "#000000"
-        shadowOpacity: look.glow ? 0.9 : 0.55
-        shadowBlur: look.glow ? 0.8 : 0.5
+        shadowOpacity: look.glow ? 0.9 : 0.75  // stronger now there's no plate behind the text
+        shadowBlur: look.glow ? 0.8 : 0.6
         shadowHorizontalOffset: 0
         shadowVerticalOffset: look.glow ? 0 : 1
     }
