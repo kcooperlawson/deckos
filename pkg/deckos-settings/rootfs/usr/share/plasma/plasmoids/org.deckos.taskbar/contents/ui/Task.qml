@@ -106,7 +106,7 @@ Item {
                 SequentialAnimation {
                     running: model.IsStartup === true
                     loops: Animation.Infinite
-                    alwaysRunToEnd: true
+                    onStopped: bounce.y = 0
                     NumberAnimation { target: bounce; property: "y"; to: -4; duration: 260; easing.type: Easing.OutQuad }
                     NumberAnimation { target: bounce; property: "y"; to: 0; duration: 260; easing.type: Easing.InQuad }
                 }
@@ -135,8 +135,8 @@ Item {
         opacity: 0.55
         SequentialAnimation on opacity {
             running: task.playing && deckTasks.motion
-            loops: Animation.Infinite
-            alwaysRunToEnd: true
+            loops: Animation.Infinite  // no alwaysRunToEnd on endless loops: a stream that corks and uncorks as
+                                       // playback starts left it spinning on a hidden tile, plasmashell at 100%
             NumberAnimation { from: 0.2; to: 0.75; duration: 900; easing.type: Easing.InOutSine }
             NumberAnimation { from: 0.75; to: 0.2; duration: 900; easing.type: Easing.InOutSine }
         }
@@ -169,6 +169,7 @@ Item {
     }
     // The active app gets the accent gradient pill; other open apps a dot per window (up to 3)
     Rectangle {
+        id: pill
         visible: !task.launcherOnly
         anchors.horizontalCenter: deckTasks.vertical ? undefined : parent.horizontalCenter
         anchors.verticalCenter: deckTasks.vertical ? parent.verticalCenter : undefined
@@ -191,7 +192,7 @@ Item {
         SequentialAnimation on opacity {
             running: model.IsDemandingAttention === true
             loops: Animation.Infinite
-            alwaysRunToEnd: true
+            onStopped: pill.opacity = 1
             NumberAnimation { to: 0.3; duration: 500 }
             NumberAnimation { to: 1; duration: 500 }
         }
