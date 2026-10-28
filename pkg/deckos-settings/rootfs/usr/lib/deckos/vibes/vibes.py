@@ -19,26 +19,27 @@ import sys
 
 # scene: a scene in the org.deckos.vibe wallpaper (each reacts to the music itself); visualizer: bars, wave or ring on
 # top, or none (the default: the scene is the visualizer); theme: an org.deckos.* look-and-feel; style: DecKoOS apps'
-# corners (hub_style.STYLE)
+# corners (hub_style.STYLE); stage: how Vibe mode (DecKoOS Music) looks with this Vibe on
 VIBES = {
     "lofi": {"name": "Rainy street", "summary": "Lisbon in the rain: the streetlights bloom with the bass", "scene": "lofi",
              "visualizer": "none", "colorA": "#FF9E7A", "colorB": "#B36BFF", "accent": "#FF9E7A",
-             "theme": "org.deckos.ember", "corners": "round"},
+             "theme": "org.deckos.ember", "corners": "round", "stage": "trails"},
     "neon": {"name": "City nights", "summary": "Manhattan across the river: its reflections play the song",
              "scene": "neon", "visualizer": "none", "colorA": "#FF4FD8", "colorB": "#3DE0FF", "accent": "#FF4FD8",
-             "theme": "org.deckos.midnight", "corners": "default"},
+             "theme": "org.deckos.midnight", "corners": "default", "stage": "spectrum"},
     "midnight": {"name": "Midnight", "summary": "The Milky Way: stars glint with the music, shooting stars on drops",
                  "scene": "midnight", "visualizer": "none", "colorA": "#8FA8FF", "colorB": "#4C8DFF",
-                 "accent": "#8FA8FF", "theme": "org.deckos.graphite", "corners": "sharp"},
+                 "accent": "#8FA8FF", "theme": "org.deckos.graphite", "corners": "sharp", "stage": "aurora"},
     "cozy": {"name": "Cozy", "summary": "Pines at dusk: fireflies flash together on the beat", "scene": "cozy",
              "visualizer": "none", "colorA": "#F2C46D", "colorB": "#6FBF8E", "accent": "#6FBF8E",
-             "theme": "org.deckos.aurora", "corners": "round"},
+             "theme": "org.deckos.aurora", "corners": "round", "stage": "glow"},
 }
 VISUALIZERS = ["bars", "wave", "ring", "none"]
 SCENES = ["lofi", "neon", "midnight", "cozy", "photo"]
 THEMES = ["org.deckos.ember", "org.deckos.midnight", "org.deckos.graphite", "org.deckos.aurora", "org.deckos.crimson",
           "org.deckos.paper", "org.deckos.desktop"]
 CORNERS = ["round", "default", "sharp"]
+STAGES = ["aurora", "spectrum", "trails", "glow"]  # music/looks.py draws them
 PARTS = ["bass", "mid", "high"]  # what a light in a photo answers to
 USER = Path.home() / ".config/deckos/vibes"
 PHOTOS = Path.home() / ".local/share/deckos/vibes"
@@ -54,6 +55,7 @@ CHECKS = {
     "accent": lambda v: isinstance(v, str) and bool(COLOR.match(v)),
     "theme": lambda v: v in THEMES,
     "corners": lambda v: v in CORNERS,
+    "stage": lambda v: v in STAGES,
     "photo": lambda v: v == "" or (isinstance(v, str) and Path(v).is_file() and not re.search(r"['\"\\\n]", v)),
     "lights": lambda v: isinstance(v, list) and len(v) <= 40 and all(
         isinstance(l, list) and len(l) == 4 and all(isinstance(n, (int, float)) for n in l[:3])
@@ -62,7 +64,8 @@ CHECKS = {
     "vignette": lambda v: isinstance(v, (int, float)) and 0 <= v <= 0.9,
     "clock": lambda v: isinstance(v, bool),
 }
-DEFAULTS = {"summary": "", "visualizer": "none", "theme": "org.deckos.graphite", "corners": "default", "photo": "",
+DEFAULTS = {"summary": "", "visualizer": "none", "theme": "org.deckos.graphite", "corners": "default", "stage": "glow",
+            "photo": "",
             "lights": [], "grain": 0.05, "vignette": 0.5, "clock": True}
 
 

@@ -5,6 +5,7 @@ Column {
     id: controls
     property bool shown: false
     signal library()
+    signal look()
 
     spacing: 18
     opacity: shown ? 1 : 0
@@ -23,7 +24,7 @@ Column {
             onClicked: engine.playPause()
         }
         IconButton { icon: "next"; anchors.verticalCenter: parent.verticalCenter; onClicked: engine.next() }
-        Item { width: 52; height: 1 }  // keeps play in the middle
+        IconButton { icon: "appearance"; anchors.verticalCenter: parent.verticalCenter; onClicked: controls.look() }
     }
 
     Item {  // how far in; click to jump

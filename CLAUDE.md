@@ -140,10 +140,14 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   just the first), `deckos_music.py` (the `Engine` QObject every window reads, image provider, one instance over a
   QLocalSocket: a second launch toggles the stage; `--offer` is the notification Context sends when listening starts).
   QML in `qml/`: one `Stage` window per monitor, each drawing its slice of the world at -origin from the shared clock
-  (`engine.startMs`; never per-window animations, or the screens drift apart); `stage.frag` is the sky (aurora, stars,
-  beat shockwaves, the reveal), compiled to `stage.frag.qsb` (commit both; `tests/test_music.py` checks it's current).
+  (`engine.startMs`; never per-window animations, or the screens drift apart). Four looks (`looks.py`, no Qt; the
+  `stage` of each Vibe in vibes.py picks one unless you do, in the look picker or with V; `~/.config/deckos/music.conf`):
+  aurora (`stage.frag`: aurora, stars, beat shockwaves, plus Horizon/Comets/marquee), spectrum (`spectrum.frag`, the
+  2000s analyzer), trails (`Trails.qml`: a recursive ShaderEffectSource feeding `trails.frag` back into itself,
+  Milkdrop-style, shown by `trails_show.frag`) and glow (`glow.frag`, calm). Bars reach shaders as 16 vec4 uniforms
+  (`Bars.qml`). Each `.frag` is compiled to `.frag.qsb` (commit both; `tests/test_music.py` checks they're current).
   Esc leaves; your own files keep playing in `Mini`. Steps aside when workload modes says a game runs.
-  `--demo [--demo-screens N] --screenshot DIR` stitches every screen's grab into one picture (offscreen renders without
+  `--demo [--demo-screens N] [--style S] --screenshot DIR` stitches every screen's grab into one picture (offscreen renders without
   the shader: check the look on real screens). Tests: `tests/test_music.py`.
 - DecKoOS Sounds: `assets/sounds.py` synthesises the sound theme (numpy + ffmpeg; glass tones, a metal-plate accent for
   big events) into `usr/share/sounds/deckos/` (`Inherits=ocean`); `kdeglobals.base` makes it the default; Hub > Appearance

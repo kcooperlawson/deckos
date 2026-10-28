@@ -7,10 +7,11 @@ screen, comets fly from one monitor to another, and the aurora, the horizon and 
 edge; more monitors, a bigger world. Your library slides in from the side (L). Esc plays the way out; your own
 music keeps going in a small player, anything else just carries on in its app.
 
-The sound comes from analysis.py (what the PC actually plays); the colours from the cover. Everything that moves
+The sound comes from analysis.py (what the PC actually plays). How it looks (aurora, a 2000s spectrum analyzer,
+2000s feedback trails or a calm glow, in your Vibe's colours or the cover's) is looks.py: it follows your Vibe. Everything that moves
 is drawn on the graphics card (qml/stage.frag and plain items), and it stops when a game starts.
 
-    deckos-music [--demo] [--demo-screens N] [--offer] [--screenshot DIR]
+    deckos-music [--demo] [--demo-screens N] [--offer] [--screenshot DIR] [--style aurora|spectrum|trails|glow]
 
 --offer asks first ("Vibe mode?" as a notification): DecKoOS Context does that when music starts.
 """
@@ -22,7 +23,8 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import (Property, QObject, QPointF, QSize, Qt, QThread, QTimer, QUrl, Signal, Slot)
+from PySide6.QtCore import (Property, QFileSystemWatcher, QObject, QPointF, QSize, Qt, QThread, QTimer, QUrl, Signal,
+                            Slot)
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QGuiApplication, QImage, QLinearGradient, QPainter
 from PySide6.QtNetwork import QLocalServer, QLocalSocket, QNetworkAccessManager, QNetworkRequest
 from PySide6.QtQml import QQmlApplicationEngine
@@ -34,6 +36,7 @@ sys.path[:0] = [str(HERE), str(HERE.parent / "hub")]
 import analysis  # noqa: E402
 import hub_style as S  # noqa: E402
 import library  # noqa: E402
+import looks  # noqa: E402
 import sources  # noqa: E402
 import world  # noqa: E402
 
@@ -176,6 +179,7 @@ class Engine(QObject):
     worldChanged = Signal()
     stageChanged = Signal()
     libraryChanged = Signal()
+    lookChanged = Signal()
     poked = Signal()
 
     def __init__(self, fake_screens=0):
@@ -195,12 +199,17 @@ class Engine(QObject):
         self.lay = {}
         self._levels = {"bass": 0.0, "mid": 0.0, "high": 0.0, "energy": 0.0, "intensity": 0.0}
         self._bars = [0.0] * 64
+        self._peaks = [0.0] * 64  # each bar's recent top, falling slowly (the spectrum's caps)
         self._beats = []  # when beats landed, in stage seconds
         self._travel = 0.0
         self._last_beat, self._last_tick, self._owed = None, time.time(), 0.0
         self._enter, self._leave, self._mode = -10.0, -10.0, "stage"
         self._poke = -10.0
         self.ticker = QTimer(self, interval=16, timeout=self.tick)
+        self.choices, self.vibe = looks.load(), looks.current_vibe()
+        # `deckos vibe` rewrites the file: watch its folder, so a new Vibe changes the stage while it's up
+        self.vibe_watch = QFileSystemWatcher([str(looks.VIBE_FILE.parent)], self)
+        self.vibe_watch.directoryChanged.connect(self.reload_vibe)
 
         self.spotify.changed.connect(lambda n: self.source_changed(self.spotify, n))
         self.relayout()
@@ -331,6 +340,7 @@ class Engine(QObject):
             self.analyzer.stop()
             self._levels = dict.fromkeys(self._levels, 0.0)
             self._bars = [0.0] * 64
+            self._peaks = [0.0] * 64
             self.frame.emit()
 
     def tick(self):
@@ -353,6 +363,7 @@ class Engine(QObject):
         self._beats = self._beats[-12:]
         self._levels = {k: float(f.get(k, 0.0)) for k in self._levels}
         self._bars = list(f.get("bars") or self._bars)
+        self._peaks = [max(b, p - dt * 0.45) for b, p in zip(self._bars, self._peaks)]
         self._travel += dt * (0.35 + 1.4 * self._levels["intensity"])
         self.frame.emit()
 
@@ -383,6 +394,10 @@ class Engine(QObject):
     @Property("QVariantList", notify=frame)
     def bars(self):
         return self._bars
+
+    @Property("QVariantList", notify=frame)
+    def peaks(self):
+        return self._peaks
 
     @Property("QVariantList", notify=frame)
     def beats(self):
@@ -494,17 +509,74 @@ class Engine(QObject):
     def art(self):
         return f"image://deckos/cover/{self.art_n}" if not self.art_img.isNull() else ""
 
+    def shown_colours(self):
+        if looks.resolve(self.choices, self.vibe)[1] == "vibe":
+            return [QColor(c) for c in looks.vibe_colours(self.vibe)]
+        return self.colours
+
     @Property(QColor, notify=artChanged)
     def base(self):
-        return self.colours[0]
+        return self.shown_colours()[0]
 
     @Property(QColor, notify=artChanged)
     def accent(self):
-        return self.colours[1]
+        return self.shown_colours()[1]
 
     @Property(QColor, notify=artChanged)
     def second(self):
-        return self.colours[2]
+        return self.shown_colours()[2]
+
+    # ---- how it looks (looks.py)
+
+    def reload_vibe(self, *_):
+        vibe = looks.current_vibe()
+        if vibe != self.vibe:
+            self.vibe = vibe
+            self.lookChanged.emit()
+            self.artChanged.emit()
+
+    @Property(str, notify=lookChanged)
+    def style(self):
+        return looks.resolve(self.choices, self.vibe)[0]
+
+    @Property(str, notify=lookChanged)
+    def styleChoice(self):
+        return self.choices["style"]
+
+    @Property(str, notify=lookChanged)
+    def colourChoice(self):
+        return looks.resolve(self.choices, self.vibe)[1]
+
+    @Property(str, notify=lookChanged)
+    def vibeName(self):
+        return (self.vibe or {}).get("name", "")
+
+    @Property(str, notify=lookChanged)
+    def vibeStyle(self):
+        return looks.NAMES[looks.resolve({**self.choices, "style": "auto"}, self.vibe)[0]]
+
+    @Slot(str)
+    def setStyle(self, style):
+        if style in ["auto", *looks.STYLES]:
+            self.choices["style"] = style
+            self.remember()
+
+    @Slot()
+    def cycleStyle(self):
+        order = looks.STYLES
+        self.setStyle(order[(order.index(self.style) + 1) % len(order)])
+
+    @Slot(str)
+    def setColours(self, colours):
+        if colours in looks.COLOURS:
+            self.choices["colours"] = colours
+            self.remember()
+
+    def remember(self):
+        if not DEMO:
+            looks.save(self.choices)
+        self.lookChanged.emit()
+        self.artChanged.emit()
 
     # ---- your library
 
@@ -589,6 +661,8 @@ def main():
 
     fake = int(sys.argv[sys.argv.index("--demo-screens") + 1]) if "--demo-screens" in sys.argv else 0
     engine = Engine(fake)
+    if "--style" in sys.argv:  # for screenshots: this look, without remembering it
+        engine.choices["style"] = sys.argv[sys.argv.index("--style") + 1]
     server = QLocalServer()
     if not shots:
         QLocalServer.removeServer(SOCKET)

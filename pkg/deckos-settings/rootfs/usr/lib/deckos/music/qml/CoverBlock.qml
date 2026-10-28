@@ -9,6 +9,8 @@ Item {
     property real reveal: 1
     property real kick: 0
     property real t: 0
+    property bool ring: true  // the stages that draw their own sound around it turn this off
+    property bool quiet: false  // the title steps back while the look picker is over it
     readonly property real size: screenHeight * 0.34
 
     x: engine.cover.x
@@ -19,7 +21,7 @@ Item {
         scale: (0.35 + 0.65 * block.reveal) * (1 + 0.035 * engine.bass + 0.04 * block.kick)
 
         Repeater {  // the spectrum ring
-            model: 64
+            model: block.ring ? 64 : 0
             Rectangle {
                 required property int index
                 readonly property real level: engine.bars[index < 32 ? index : 63 - index] ?? 0
@@ -66,13 +68,25 @@ Item {
         }
     }
 
+    Rectangle {  // without the ring, the title sits closer, on a soft plate so bars and trails don't run through it
+        visible: engine.style === "spectrum" || engine.style === "trails"
+        anchors.centerIn: info
+        width: Math.min(info.width, Math.max(titleText.contentWidth, artistText.contentWidth) + 56)
+        height: info.height + 28
+        radius: height / 2
+        color: Qt.rgba(engine.base.r * 0.5, engine.base.g * 0.5, engine.base.b * 0.5, 0.72)
+        opacity: info.opacity
+    }
     Column {
-        y: block.size * 0.8 + 50
+        id: info
+        y: block.ring ? block.size * 0.8 + 50 : block.size * 0.5 + 40
         x: -width / 2
         width: block.size * 2
         spacing: 6
-        opacity: Math.max(0, block.reveal * 1.4 - 0.4)
+        opacity: Math.max(0, block.reveal * 1.4 - 0.4) * (block.quiet ? 0 : 1)
+        Behavior on opacity { NumberAnimation { duration: 200 } }
         Text {
+            id: titleText
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             text: engine.title || "Nothing playing"
@@ -83,6 +97,7 @@ Item {
             elide: Text.ElideRight
         }
         Text {
+            id: artistText
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             text: engine.artist

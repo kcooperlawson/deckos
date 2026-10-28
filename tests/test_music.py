@@ -14,6 +14,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/music"))
 import analysis  # noqa: E402
+import looks  # noqa: E402
 import library  # noqa: E402
 import world  # noqa: E402
 
@@ -125,17 +126,59 @@ class WorldTests(unittest.TestCase):
 class ShaderTests(unittest.TestCase):
     QML = ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/music/qml"
 
-    def test_compiled_shader_is_current(self):
+    def test_compiled_shaders_are_current(self):
         qsb = shutil.which("qsb") or next((p for p in ("/usr/lib/qt6/bin/qsb", "/usr/lib/qt6/libexec/qsb")
                                            if Path(p).exists()), None)
         if not qsb:
             self.skipTest("qsb (qt6-shadertools) isn't installed")
+        frags = sorted(self.QML.glob("*.frag"))
+        self.assertGreaterEqual(len(frags), 5)
         with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "stage.frag.qsb"
-            subprocess.run([qsb, "--qt6", "-o", str(out), str(self.QML / "stage.frag")], check=True)
-            self.assertEqual(out.read_bytes(), (self.QML / "stage.frag.qsb").read_bytes(),
-                             "run: qsb --qt6 -o stage.frag.qsb stage.frag (in usr/lib/deckos/music/qml)")
+            for frag in frags:
+                out = Path(d) / (frag.name + ".qsb")
+                subprocess.run([qsb, "--qt6", "-o", str(out), str(frag)], check=True)
+                self.assertEqual(out.read_bytes(), (self.QML / out.name).read_bytes(),
+                                 f"run: qsb --qt6 -o {out.name} {frag.name} (in usr/lib/deckos/music/qml)")
 
+
+class LooksTests(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.dir = Path(self.d.name)
+
+    def tearDown(self):
+        self.d.cleanup()
+
+    def test_choices_round_trip_and_ignore_junk(self):
+        conf = self.dir / "music.conf"
+        self.assertEqual(looks.load(conf), looks.DEFAULT)
+        looks.save({"style": "spectrum", "colours": "cover"}, conf)
+        self.assertEqual(looks.load(conf), {"style": "spectrum", "colours": "cover"})
+        conf.write_text("style=milkdrop\ncolours=rainbow\n")
+        self.assertEqual(looks.load(conf), looks.DEFAULT)
+
+    def test_style_follows_the_vibe_unless_you_pick_one(self):
+        neon = looks.vibes.all_vibes(self.dir)["neon"]
+        self.assertEqual(looks.resolve(looks.DEFAULT, neon), ("spectrum", "vibe"))
+        self.assertEqual(looks.resolve({"style": "trails", "colours": "vibe"}, neon), ("trails", "vibe"))
+        self.assertEqual(looks.resolve(looks.DEFAULT, None), ("glow", "cover"))  # no Vibe: calm, the cover's
+
+    def test_every_built_in_vibe_has_a_stage(self):
+        for key, vibe in looks.vibes.VIBES.items():
+            self.assertIn(vibe["stage"], looks.STYLES, key)
+
+    def test_current_vibe(self):
+        f = self.dir / "vibe"
+        self.assertIsNone(looks.current_vibe(f, self.dir))
+        f.write_text("cozy\n")
+        self.assertEqual(looks.current_vibe(f, self.dir)["stage"], "glow")
+        f.write_text("gone\n")
+        self.assertIsNone(looks.current_vibe(f, self.dir))
+
+    def test_vibe_colours_keep_a_dark_ground(self):
+        base, a, b = looks.vibe_colours({"colorA": "#FF4FD8", "colorB": "#3DE0FF"})
+        self.assertEqual((a, b), ("#FF4FD8", "#3DE0FF"))
+        self.assertLess(max(int(base[i:i + 2], 16) for i in (1, 3, 5)), 40)
 
 if __name__ == "__main__":
     unittest.main()
