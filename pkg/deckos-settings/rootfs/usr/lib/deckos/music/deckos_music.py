@@ -41,6 +41,10 @@ DEMO = "--demo" in sys.argv
 ART_CACHE = library.CACHE / "art"
 SOCKET = f"deckos-music-{os.getuid()}"
 MODE_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "deckos-mode"
+# Beats are drawn as if they came this much sooner: the picture trails the sound (capture ~15 ms, analysis ~24,
+# drawing ~16-25) by more than the speakers do (20-45 ms on a 1024-sample PipeWire quantum). Worked out, not measured
+# with a microphone.
+BEAT_LEAD = 0.03
 
 
 # ------------------------------------------------------------------ colours from a cover
@@ -342,11 +346,11 @@ class Engine(QObject):
             f = f or self.analyzer.latest
         else:
             f = self.analyzer.latest
-            beat = self.analyzer.features.last_beat
-            if beat != self._last_beat and self._last_beat is not None and f.get("beat_strength", 0) > 0:
-                self._beats.append(self.now_s())
+            beat = self.analyzer.beat_at
+            if beat and beat != self._last_beat:  # dated when it was heard, not when this frame looked
+                self._beats.append(beat - self.t0 - BEAT_LEAD)
             self._last_beat = beat
-        self._beats = self._beats[-10:]
+        self._beats = self._beats[-12:]
         self._levels = {k: float(f.get(k, 0.0)) for k in self._levels}
         self._bars = list(f.get("bars") or self._bars)
         self._travel += dt * (0.35 + 1.4 * self._levels["intensity"])

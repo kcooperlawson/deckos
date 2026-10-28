@@ -51,10 +51,10 @@ Window {
         property real high: engine.high
         property real energy: engine.energy
         property real reveal: win.reveal
-        property vector4d beats: {
-            const b = engine.beats, n = b.length;
-            return Qt.vector4d(n > 3 ? b[n - 4] : -10, n > 2 ? b[n - 3] : -10, n > 1 ? b[n - 2] : -10, n > 0 ? b[n - 1] : -10);
-        }
+        // the last eight beats, oldest first (-10: none yet)
+        function beat(k) { const b = engine.beats; return b.length > k ? b[b.length - 1 - k] : -10; }
+        property vector4d beats: Qt.vector4d(beat(7), beat(6), beat(5), beat(4))
+        property vector4d beats2: Qt.vector4d(beat(3), beat(2), beat(1), beat(0))
         property color base: engine.base
         property color accent: engine.accent
         property color second: engine.second

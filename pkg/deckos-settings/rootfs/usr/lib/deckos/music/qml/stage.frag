@@ -21,7 +21,8 @@ layout(std140, binding = 0) uniform buf {
     float high;
     float energy;
     float reveal;  // 0: the desktop, 1: the whole world is the stage
-    vec4 beats;    // when the last four beats landed (t), oldest first
+    vec4 beats;    // when the last eight beats landed (t), oldest first: four here...
+    vec4 beats2;   // ...and the newest four
     vec4 base;
     vec4 accent;
     vec4 second;
@@ -90,8 +91,8 @@ void main() {
     col += vec3(0.9, 0.93, 1.0) * st * (0.5 + 0.5 * energy);
 
     // Each beat sends a ring out of the cover that rolls across the monitors and fades as it goes
-    for (int i = 0; i < 4; i++) {
-        float age = t - beats[i];
+    for (int i = 0; i < 8; i++) {
+        float age = t - (i < 4 ? beats[i] : beats2[i - 4]);
         if (age < 0.0 || age > 2.4)
             continue;
         float front = age * far / 1.7;
