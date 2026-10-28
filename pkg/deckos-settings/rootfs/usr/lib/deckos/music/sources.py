@@ -7,7 +7,10 @@ import re
 from dataclasses import dataclass, field
 
 from PySide6.QtCore import QObject, QProcess, QTimer, QUrl, Signal
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+try:  # only local playback needs it; Spotify's side (and its tests) work without
+    from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+except ImportError:
+    QAudioOutput = QMediaPlayer = None
 
 SEP = "\x1f"  # between playerctl's fields: nothing in a title uses it
 
