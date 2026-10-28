@@ -407,8 +407,9 @@ class Task(QRunnable):
 
 def github_role(repo):
     """(login, role) for the signed-in GitHub account on `repo`: role is 'maintainer' (admin or maintain:
-    releases, promotes, merges), 'contributor' (everyone else: watches, builds locally, sends pull requests)
-    or 'signed-out'. GitHub enforces the same rules: this only decides which buttons make sense to show."""
+    releases, promotes, merges), 'contributor' (everyone else: watches, builds locally, sends pull requests),
+    'no-repo' (GitHub has no such repository: a typo in the box) or 'signed-out'. GitHub enforces the same rules:
+    this only decides which buttons make sense to show."""
     exe = gh_path()
     if not exe:
         return None, "no-gh"
@@ -418,7 +419,11 @@ def github_role(repo):
     login = gh("api", "user", "--jq", ".login").strip()
     try:
         perms = json.loads(gh("api", f"repos/{repo}", "--jq", ".permissions") or "{}")
-    except (RuntimeError, ValueError):
+    except RuntimeError as e:
+        if "Not Found" in str(e) or "404" in str(e):
+            return login, "no-repo"  # otherwise every list stays empty and nothing says why
+        perms = {}
+    except ValueError:
         perms = {}
     return login, "maintainer" if perms.get("admin") or perms.get("maintain") else "contributor"
 
@@ -1449,6 +1454,9 @@ class Builder(QWidget):
         def done(res, err):
             login, role = (None, "signed-out") if err else res
             self.set_role(login, role)
+            if role == "no-repo":
+                self.subtitle.setText(f"GitHub has no repository called {repo}: check the name in the box")
+                self.subtitle.setToolTip("owner/repo, like kcooperlawson/deckos")
             if role in ("maintainer", "contributor"):
                 self.refresh()
 
