@@ -93,6 +93,14 @@ icon = "gaming"
 run = ["deckos-gamedoctor"]
 
 [[action]]
+id = "music"
+title = "Play music"
+summary = "DecKoOS Music: your music and Spotify, moving with the sound"
+keywords = "music player spotify songs albums playlist visualizer mp3 flac listen"
+icon = "music"
+run = ["deckos-music"]
+
+[[action]]
 id = "retro"
 title = "Play retro games"
 summary = "DecKoOS Retro: your games, set up and in Steam"
