@@ -8,7 +8,6 @@ Only runs while the window shows music. tests/test_music.py feeds `Features` mad
 """
 import subprocess
 import threading
-import time
 
 import numpy as np
 
@@ -129,9 +128,10 @@ class FakeAnalyzer:
     """For --demo: a made-up song (a kick every half second, a melody, swells), no sound needed."""
 
     def __init__(self):
-        self.features, self.t0 = Features(), time.monotonic()
+        self.features = Features()
         self.latest = dict(self.features.state)
         self.phase = 0
+        self.tone = 0.0  # the melody's phase, carried across blocks
 
     def start(self):
         pass
@@ -140,12 +140,16 @@ class FakeAnalyzer:
         pass
 
     def step(self):
-        t = time.monotonic() - self.t0
+        t = self.phase / RATE  # the song's own time, not the clock's: a slow machine (CI) must hear the same song
         n = np.arange(HOP) + self.phase
         self.phase += HOP
         x = n / RATE
         kick = np.exp(-((x % 0.5) * 18)) * np.sin(2 * np.pi * 55 * x)
-        melody = 0.3 * np.sin(2 * np.pi * (440 + 110 * np.sin(t * 0.7)) * x)
+        # Its pitch glides, so its phase carries on from the last block: restarting it clicked, and the clicks'
+        # low end read as extra kicks
+        step = 2 * np.pi * (440 + 110 * np.sin(t * 0.7)) / RATE
+        melody = 0.3 * np.sin(self.tone + step * np.arange(1, HOP + 1))
+        self.tone = (self.tone + step * HOP) % (2 * np.pi)
         hats = 0.05 * np.random.default_rng(self.phase).standard_normal(HOP) * (x % 0.25 < 0.03)
         swell = 0.4 + 0.6 * (0.5 + 0.5 * np.sin(t * 0.25))
         self.latest = dict(self.features.push((kick + melody + hats).astype(np.float32) * 0.3 * swell))
