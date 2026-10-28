@@ -119,7 +119,7 @@ Item {
                 x: 38
                 width: parent.width - 46
                 anchors.verticalCenter: parent.verticalCenter
-                text: cat.index === 0 ? "All apps" : cat.model.display
+                text: cat.index === 0 ? "All apps" : cat.model.display ?? ""  // undefined while the app list reloads
                 color: cat.current ? deckMenu.text : Qt.tint(deckMenu.text, Qt.rgba(deckMenu.subtext.r, deckMenu.subtext.g, deckMenu.subtext.b, 0.4))
                 font.pixelSize: 13
                 elide: Text.ElideRight

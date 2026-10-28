@@ -141,14 +141,14 @@ PlasmoidItem {
 
             Graph {
                 title: "Processor"
-                value: cpuUsage.value
+                value: cpuUsage.value || 0
                 valueText: Math.round(cpuUsage.value || 0) + "%"
                 detail: cpuTemp.value > 0 ? Math.round(cpuTemp.value) + " °C" : ""
                 maximum: 100
             }
             Graph {
                 title: "Graphics card"
-                value: gpuUsage.value
+                value: gpuUsage.value || 0
                 valueText: Math.round(gpuUsage.value || 0) + "%"
                 detail: gpuTemp.value > 0 ? Math.round(gpuTemp.value) + " °C" : ""
                 maximum: 100
@@ -156,7 +156,7 @@ PlasmoidItem {
             }
             Graph {
                 title: "Video memory"
-                value: gpuMem.value
+                value: gpuMem.value || 0
                 valueText: deckPerf.gib(gpuMem.value || 0) + " GB"
                 detail: gpuMemTotal.value > 0 ? "of " + deckPerf.gib(gpuMemTotal.value) + " GB" : ""
                 maximum: gpuMemTotal.value || 1
@@ -164,7 +164,7 @@ PlasmoidItem {
             }
             Graph {
                 title: "Memory"
-                value: ram.value
+                value: ram.value || 0
                 valueText: deckPerf.gib(ram.value || 0) + " GB"
                 detail: ramTotal.value > 0 ? "of " + deckPerf.gib(ramTotal.value) + " GB" : ""
                 maximum: ramTotal.value || 1
@@ -172,8 +172,8 @@ PlasmoidItem {
             Graph {
                 title: "Network"
                 visible: Plasmoid.configuration.showNetwork
-                value: down.value
-                second: up.value
+                value: down.value || 0
+                second: up.value || 0
                 valueText: "↓ " + deckPerf.rate_(down.value || 0)
                 detail: "↑ " + deckPerf.rate_(up.value || 0)
                 maximum: -1  // scales to the busiest moment shown
