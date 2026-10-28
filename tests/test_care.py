@@ -50,6 +50,15 @@ class CareTests(unittest.TestCase):
         self.care.crash('not json')
         self.assertEqual(self.said, [])
 
+    def test_code_being_worked_on_is_not_a_system_crash(self):
+        dev = '/home/me/Documents/DeckOS/pkg/deckos-settings/rootfs/usr/lib/deckos/kids/deckos_kids.py --demo'
+        for cmd in (f'python3 {dev}', 'python3 -m unittest tests.test_kids', 'python3 /tmp/zz_test_kids.py',
+                    'python3 /home/me/DeckOS/tests/test_kids_home.py', 'bash tests/check.sh tests'):
+            self.care.crash(crash_line('python3', cmd))
+        self.assertEqual((self.said, self.recorded), ([], []))
+        self.care.crash(crash_line('python3', 'python3 /usr/lib/deckos/kids/deckos_kids.py --session'))
+        self.assertEqual(len(self.said), 1)  # the installed one is still said
+
     def test_after_an_update_the_quick_checks_run(self):
         restart = sd.Finding('restart', sd.WARN, 'Restart to finish an update', 'The kernel was replaced.',
                              fixes=[sd.Fix('Restart now', ['systemctl', 'reboot'])])

@@ -2,7 +2,8 @@
 it. A user service (deckos-care.service) that follows three streams and never polls:
 
 - the journal's crash reports: a program of yours crashed -> one calm notification, with "Why?" opening
-  System Doctor, and a line in the timeline. Games are Game Doctor's (it watches Steam itself).
+  System Doctor, and a line in the timeline. Games are Game Doctor's (it watches Steam itself); code being worked
+  on (a DecKoOS checkout, a test run) is the developer's, who sees it in their terminal.
 - the system timeline (DecKoOS Pulse): after an update, install or removal -> "restart to finish", a service
   that failed, a drive filling up.
 - this user's timeline: a game stopped -> is the drive filling up?
@@ -27,6 +28,15 @@ STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") /
 KEEP_QUIET = {"crash": 3600, "finding": 6 * 3600}  # seconds before the same thing is said again
 AFTER_CHANGES = (sd.restart_pending, sd.failed_units, sd.disk_space)  # quick checks, after a system change
 CRASH_FIELDS = "COREDUMP_COMM,COREDUMP_CMDLINE,COREDUMP_UID,COREDUMP_SIGNAL_NAME"
+# Crashes of code being worked on, not of the system: DecKoOS run from a checkout, and test runners. Left out, or
+# a morning of development fills the timeline (26 "crashes" in four minutes once) and buries a real one.
+DEVELOPMENT = ("/pkg/deckos-settings/rootfs/", "/tests/", "-m unittest", "-m pytest", "/pytest", "check.sh")
+
+
+def development(cmd):
+    """True for a command line that's code being developed or tested rather than the installed system."""
+    return any(mark in cmd for mark in DEVELOPMENT) or any(Path(a).name.startswith(("test_", "zz_test"))
+                                                          for a in cmd.split())
 
 
 class Care:
@@ -68,6 +78,8 @@ class Care:
         comm, cmd = str(e.get("COREDUMP_COMM", "")), str(e.get("COREDUMP_CMDLINE", ""))
         if not comm or str(e.get("COREDUMP_UID", "")) != str(self.uid):
             return  # someone else's, or the system's: System Doctor's checkup lists those
+        if development(cmd):
+            return
         name, kind = sd.name_program(comm, cmd)
         if kind == "game":
             return  # Game Doctor's job
