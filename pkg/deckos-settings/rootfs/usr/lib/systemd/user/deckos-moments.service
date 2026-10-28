@@ -1,0 +1,14 @@
+[Unit]
+Description=DecKoOS Moments: Vibes that change with what you're doing
+After=plasma-plasmashell.service
+PartOf=graphical-session.target
+ConditionPathExists=%h/.config/deckos/moments.json
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/lib/deckos/vibes/moments.py watch
+Restart=on-failure
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=graphical-session.target

@@ -9,8 +9,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtGui import QColor, QPixmap
-from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFileDialog, QFrame,
+                               QGridLayout,
+                               QFormLayout, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QSlider,
                                QVBoxLayout, QWidget)
 
 import hub_style as S
@@ -1505,6 +1506,8 @@ class AppearancePage(Page):
                                        tip="Your photo, with lights that glow with the music"))
         vibes.actions.addWidget(button("Import a look…", slot=self.import_vibe, icon="download",
                                        tip="A .deckos-look file someone shared"))
+        vibes.actions.addWidget(button("Moments…", slot=self.moments, icon="clock",
+                                       tip="Vibes that change with what you're doing: playing, music, time of day"))
         self.vibe_grid = QGridLayout()
         self.vibe_grid.setSpacing(10)
         vibes.body.addLayout(self.vibe_grid)
@@ -1620,6 +1623,9 @@ class AppearancePage(Page):
                                 tb["colorMode"], self.taskbar_colors))
         bar.body.addWidget(segs("Motion", (("on", "On"), ("off", "Off")), "on" if tb["motion"] else "off",
                                 lambda v, t: self.apply(["deckos", "taskbar", "motion", v], f"Taskbar motion: {v}")))
+        bar.body.addWidget(segs("Position", (("bottom", "Bottom"), ("top", "Top"), ("left", "Left"), ("right", "Right")),
+                                tb["position"], lambda v, t: self.apply(["deckos", "taskbar", "position", v],
+                                                                        f"Taskbar: {t.lower()} of the screen")))
         bar.body.addWidget(segs("Screens", (("one", "Main screen"), ("all", "Every screen")), tb["screens"],
                                 lambda v, t: self.apply(["deckos", "taskbar", "screens", v],
                                                         "Taskbar on every screen" if v == "all" else
@@ -1740,6 +1746,40 @@ class AppearancePage(Page):
             else:
                 self.hub.toast("Saved: it's with the other Vibes", "ok")
             self.refresh()
+
+    def moments(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
+        import moments as mo
+        data = {"on": True, "pick": {"game": "midnight", "music": "neon", "evening": "lofi"}} if sysinfo.DEMO \
+            else mo.load()
+        d = QDialog(self)
+        d.setWindowTitle("Moments")
+        f = QFormLayout(d)
+        f.addRow(label("Pick a Vibe for each moment, and DecKoOS switches when the moment changes: a game starts, "
+                       "music plays, evening comes. One you pick yourself stays until the next change.", "sub"))
+        on = QCheckBox("Switch Vibes with the moment")
+        on.setChecked(data["on"])
+        f.addRow(on)
+        boxes = {}
+        names = [(k, n) for k, n, _s, _p in sysinfo.vibes() if k != "off"]
+        for m, title in mo.MOMENTS:
+            box = QComboBox()
+            box.addItem("Keep what's on", "keep")
+            for k, n in names:
+                box.addItem(n, k)
+            box.setCurrentIndex(max(0, box.findData(data["pick"].get(m, "keep"))))
+            boxes[m] = box
+            f.addRow(title, box)
+        bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        bb.accepted.connect(d.accept)
+        bb.rejected.connect(d.reject)
+        f.addRow(bb)
+        if d.exec() != QDialog.Accepted:
+            return
+        script = " && ".join([f"deckos vibe moments set {m} {shlex.quote(b.currentData())}" for m, b in boxes.items()]
+                             + [f"deckos vibe moments {'on' if on.isChecked() else 'off'}"])
+        self.apply(["sh", "-c", script], "Moments on: Vibes follow what you're doing" if on.isChecked()
+                   else "Moments off")
 
     def share_vibe(self, key, name):
         from PySide6.QtWidgets import QFileDialog

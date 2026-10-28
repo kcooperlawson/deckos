@@ -107,3 +107,24 @@ class ArrangeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MomentsTests(unittest.TestCase):
+    def setUp(self):
+        sys.path.insert(0, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/vibes"))
+        import moments
+        self.m = moments
+
+    def test_time_slots(self):
+        self.assertEqual([self.m.time_slot(h) for h in (5, 6, 12, 17, 22, 0)],
+                         ["night", "morning", "day", "evening", "night", "night"])
+
+    def test_game_beats_music_beats_time(self):
+        pick = {"game": "midnight", "music": "neon", "day": "cozy"}
+        self.assertEqual(self.m.moment(True, True, 12, pick), ("game", "midnight"))
+        self.assertEqual(self.m.moment(False, True, 12, pick), ("music", "neon"))
+        self.assertEqual(self.m.moment(False, False, 12, pick), ("day", "cozy"))
+
+    def test_unpicked_steps_aside(self):
+        self.assertEqual(self.m.moment(True, False, 12, {"day": "cozy"}), ("day", "cozy"))
+        self.assertEqual(self.m.moment(True, True, 23, {}), ("night", ""))

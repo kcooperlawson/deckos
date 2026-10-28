@@ -1602,6 +1602,11 @@ taskbar_cmd() {
       esac
       taskbar_script "p.height = $px"
       ok "taskbar height: $px px" ;;
+    position)  # which edge: the DecKoOS taskbar turns vertical on the sides by itself
+      [[ ${2:-} =~ ^(bottom|top|left|right)$ ]] || { err "usage: deckos taskbar position bottom|top|left|right"; exit 2; }
+      taskbar_script "p.location = '$2'"
+      mkdir -p "${TASKBAR_SCREENS%/*}" && echo "$2" > "${TASKBAR_SCREENS%/*}/taskbar-position"
+      ok "taskbar: $2 of the screen" ;;
     colors)
       local mode=${2:-} a=${3:-} b=${4:-}
       case $mode in
@@ -1626,7 +1631,7 @@ taskbar_cmd() {
         follow) taskbar_follow ;;
         *) err "usage: deckos taskbar screens all|one"; exit 2 ;;
       esac ;;
-    *) err "usage: deckos taskbar height SIZE | colors accent|vibe|custom COLOR [COLOR] | motion on|off | screens all|one"
+    *) err "usage: deckos taskbar height SIZE | colors accent|vibe|custom COLOR [COLOR] | motion on|off | screens all|one | position EDGE"
        exit 2 ;;
   esac
 }
@@ -1780,6 +1785,9 @@ vibe_cmd() {
       theme_cmd apply "$theme" >/dev/null
       accent_apply "$accent"
       vibe_wallpaper "$scene" "$visualizer" "$colorA" "$colorB" "$photo" "$lights" "$grain" "$vignette" "$clock"
+      # The lock screen shows the Vibe's picture too: your photo, or the scene's own
+      local still=${photo:-/usr/share/plasma/wallpapers/org.deckos.vibe/contents/images/$scene.jpg}
+      [[ -f $still ]] && lock_wallpaper "$still"
       vibe_style_corners "$corners"
       vibe_widgets_style "$key" "$colorA" "$colorB"
       # The taskbar takes the Vibe's colours, unless the person picked their own (theirs always wins)
@@ -1799,6 +1807,7 @@ vibe_cmd() {
           d.currentConfigGroup = ['Wallpaper', 'org.deckos.vibe', 'General']; d.writeConfig('Visualizer', '$style'); });" >/dev/null
       vibe_visualizer_remember "$style"
       ok "music visualizer: $style" ;;
+    moments) python3 "${VIBES%/*}/moments.py" "${@:2}" ;;  # Vibes that change with what you're doing
     export) python3 "$VIBES" export "${2:-}" "${3:-}" >/dev/null && ok "saved: $3 (share it; deckos vibe import opens it)" ;;
     import) key=$(python3 "$VIBES" import "${2:-}") && ok "added your Vibe: $key (deckos vibe apply $key)" ;;
     delete) python3 "$VIBES" delete "${2:-}" && ok "deleted: $2" ;;
