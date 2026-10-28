@@ -27,6 +27,9 @@ WIDGET = {
                            (300, 128)),
     "org.deckos.focus": ({"workMinutes": 25, "breakMinutes": 5}, (220, 240)),
     "org.deckos.note": ({"text": ""}, (300, 180)),
+    "org.deckos.calendar": ({"mondayFirst": True}, (300, 280)),
+    "org.deckos.countdown": ({"title": "Holiday", "date": "2026-12-24"}, (260, 170)),
+    "org.deckos.photos": ({"folder": str(WALL), "minutes": 5}, (360, 240)),
 }
 errors = []
 
@@ -118,7 +121,8 @@ def compose(shots):
             p.drawImage(canvas.rect(), QImage(str(photo)))
             p.fillRect(canvas.rect(), QColor(0, 0, 0, 60))
         spots = {"org.deckos.bigclock": (80, 70), "org.deckos.nowplaying": (1420, 860),
-                 "org.deckos.weather": (1540, 80), "org.deckos.focus": (1600, 560), "org.deckos.note": (90, 820)}
+                 "org.deckos.weather": (1540, 80), "org.deckos.focus": (1600, 560), "org.deckos.note": (90, 820),
+                 "org.deckos.calendar": (620, 80), "org.deckos.countdown": (980, 80), "org.deckos.photos": (620, 420)}
         for wid, img in imgs.items():
             p.drawImage(*spots[wid], img)
         p.end()

@@ -1533,7 +1533,9 @@ class AppearancePage(Page):
         shown = sysinfo.desktop_widgets()
         toggles = []
         for wid, text in (("org.deckos.bigclock", "Clock"), ("org.deckos.nowplaying", "Now Playing"),
-                          ("org.deckos.weather", "Weather"), ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note")):
+                          ("org.deckos.weather", "Weather"), ("org.deckos.calendar", "Calendar"),
+                          ("org.deckos.countdown", "Countdown"), ("org.deckos.photos", "Photos"),
+                          ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note")):
             b = QPushButton(text)
             b.setObjectName("seg")
             b.setCheckable(True)
@@ -1543,7 +1545,22 @@ class AppearancePage(Page):
             toggles.append(b)
         name = label("Desktop widgets")
         name.setFixedWidth(140)
-        vibes.body.addWidget(row(name, *toggles, button("Weather town…", slot=self.weather_town, icon="globe")))
+        vibes.body.addWidget(row(name, *toggles))
+        # Where they go: lined up along an edge (the desktop reloads), or anywhere, by hand, in Plasma's edit mode
+        name = label("Place widgets")
+        name.setFixedWidth(140)
+        vibes.body.addWidget(row(
+            name,
+            button("Right edge", slot=lambda: self.apply(["deckos", "vibe", "widgets", "arrange", "right"],
+                                                         "Widgets lined up on the right"),
+                   tip="Leaves the left free for desktop icons. The desktop reloads for a moment."),
+            button("Left edge", slot=lambda: self.apply(["deckos", "vibe", "widgets", "arrange", "left"],
+                                                        "Widgets lined up on the left"),
+                   tip="The desktop reloads for a moment."),
+            button("Move them myself", slot=lambda: self.apply(["deckos", "vibe", "widgets", "move"],
+                                                               "Drag widgets anywhere, then click Done"),
+                   tip="Drag widgets anywhere and resize them from their edges"),
+            button("Weather town…", slot=self.weather_town, icon="globe")))
         self.lay.addWidget(vibes)
 
         themes = Card("Theme", "Global theme", "appearance")

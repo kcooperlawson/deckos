@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Multimedia",
+        "Description": "Your pictures on the desktop, a new one every few minutes",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.photos",
+        "License": "MIT",
+        "Name": "DecKoOS Photos",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

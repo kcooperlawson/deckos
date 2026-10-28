@@ -1,12 +1,12 @@
-"""Lines DecKoOS's desktop widgets up along the right edge of the screen, so the left (where Plasma puts desktop
-icons) stays free. `deckos vibe widgets arrange` runs it.
+"""Lines DecKoOS's desktop widgets up along the right edge of the screen (the left is where Plasma puts desktop
+icons), or the left if you'd rather. `deckos vibe widgets arrange` runs it.
 
 Plasma 6 keeps a desktop's widget positions in its ItemGeometries settings ("Applet-ID:x,y,w,h,rotation;" per screen
 size) and ignores positions set from a script while it runs, so this edits plasma-org.kde.plasma.desktop-appletsrc
 while the desktop shell is stopped, then starts it again. Widgets keep their size; a column that fills the screen
 continues to its left. No Qt; tests/test_vibes.py checks it.
 
-    arrange.py [--dry-run]
+    arrange.py [right|left] [--dry-run]
 """
 import re
 import subprocess
@@ -15,8 +15,8 @@ import time
 from pathlib import Path
 
 APPLETSRC = Path.home() / ".config/plasma-org.kde.plasma.desktop-appletsrc"
-ORDER = ["org.deckos.bigclock", "org.deckos.weather", "org.deckos.nowplaying", "org.deckos.perfgraphs",
-         "org.deckos.focus", "org.deckos.note"]
+ORDER = ["org.deckos.bigclock", "org.deckos.weather", "org.deckos.calendar", "org.deckos.countdown",
+         "org.deckos.nowplaying", "org.deckos.photos", "org.deckos.perfgraphs", "org.deckos.focus", "org.deckos.note"]
 MARGIN, GAP, BOTTOM = 40, 24, 110  # px; BOTTOM leaves room for the panel
 
 
@@ -45,21 +45,21 @@ def parse(value):
     return out
 
 
-def lay_out(items, kinds, width, height):
-    """New positions for DecKoOS's widgets (stacked down the right edge, column after column toward the left);
-    other applets keep theirs."""
+def lay_out(items, kinds, width, height, side="right"):
+    """New positions for DecKoOS's widgets (stacked down one edge, column after column toward the middle); other
+    applets keep theirs."""
     ours = sorted((i for i in items if kinds.get(i[0]) in ORDER), key=lambda i: ORDER.index(kinds[i[0]]))
-    placed, right, y, colw = {}, width - MARGIN, MARGIN, 0
+    placed, edge, y, colw = {}, MARGIN, MARGIN, 0  # edge: distance of this column from the screen's side
     for aid, (_x, _y, w, h, r) in ours:
         if y + h > height - BOTTOM and y > MARGIN:
-            right, y, colw = right - colw - GAP, MARGIN, 0
-        placed[aid] = [right - w, y, w, h, r]
+            edge, y, colw = edge + colw + GAP, MARGIN, 0
+        placed[aid] = [width - edge - w if side == "right" else edge, y, w, h, r]
         y += h + GAP
         colw = max(colw, w)
     return [(aid, placed.get(aid, geo)) for aid, geo in items]
 
 
-def arrange(text):
+def arrange(text, side="right"):
     """The file with each desktop's ItemGeometries lines rearranged for their screen size (in the key's name;
     ItemGeometriesHorizontal follows that desktop's biggest real screen). Sizes too small to be a screen (leftovers
     like 320x240) are left as they are."""
@@ -78,7 +78,7 @@ def arrange(text):
                 out.append(ln)
                 continue
             out.append(f"{m.group(1)}=" + "".join(f"Applet-{a}:{','.join(map(str, g))};"
-                                                    for a, g in lay_out(items, kinds, *size)))
+                                                    for a, g in lay_out(items, kinds, *size, side)))
         block.clear()
 
     for line in text.splitlines():
@@ -92,8 +92,9 @@ def arrange(text):
 
 
 def main(argv):
+    side = "left" if "left" in argv else "right"
     text = APPLETSRC.read_text()
-    new = arrange(text)
+    new = arrange(text, side)
     if "--dry-run" in argv:
         print(new)
         return 0
@@ -103,7 +104,7 @@ def main(argv):
     subprocess.run(["systemctl", "--user", "stop", "plasma-plasmashell.service"], check=False)
     time.sleep(1)
     APPLETSRC.with_name(APPLETSRC.name + ".deckos-bak").write_text(APPLETSRC.read_text())
-    APPLETSRC.write_text(arrange(APPLETSRC.read_text()))
+    APPLETSRC.write_text(arrange(APPLETSRC.read_text(), side))
     subprocess.run(["systemctl", "--user", "start", "plasma-plasmashell.service"], check=False)
     return 0
 

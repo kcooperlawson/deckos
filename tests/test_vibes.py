@@ -104,9 +104,13 @@ class ArrangeTests(unittest.TestCase):
         geo = dict(arrange.lay_out(items, kinds, 1920, 1080))
         self.assertEqual([geo[k][0] for k in "012"], [1480, 1480, 1480 - 400 - 24])
 
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_the_left_edge_mirrors_it(self):
+        sys.path.insert(0, str(RFS / "usr/lib/deckos/vibes"))
+        import arrange
+        items = [(str(i), [0, 0, 400, 400, 0]) for i in range(3)]
+        kinds = {"0": "org.deckos.calendar", "1": "org.deckos.photos", "2": "org.deckos.note"}
+        geo = dict(arrange.lay_out(items, kinds, 1920, 1080, "left"))
+        self.assertEqual([geo[k][:2] for k in "012"], [[40, 40], [40, 464], [464, 40]])
 
 
 class MomentsTests(unittest.TestCase):
@@ -128,3 +132,7 @@ class MomentsTests(unittest.TestCase):
     def test_unpicked_steps_aside(self):
         self.assertEqual(self.m.moment(True, False, 12, {"day": "cozy"}), ("day", "cozy"))
         self.assertEqual(self.m.moment(True, True, 23, {}), ("night", ""))
+
+
+if __name__ == '__main__':
+    unittest.main()

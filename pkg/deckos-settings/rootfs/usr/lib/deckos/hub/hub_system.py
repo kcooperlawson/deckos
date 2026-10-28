@@ -642,7 +642,8 @@ def desktop_widgets():
         text = (Path.home() / ".config/plasma-org.kde.plasma.desktop-appletsrc").read_text()
     except OSError:
         return set()
-    return set(re.findall(r"^plugin=(org\.deckos\.(?:bigclock|nowplaying|weather|focus|note))$", text, re.M))
+    return set(re.findall(r"^plugin=(org\.deckos\.(?:bigclock|nowplaying|weather|calendar|countdown|photos|focus|note))$",
+                          text, re.M))
 
 
 def weather_place():

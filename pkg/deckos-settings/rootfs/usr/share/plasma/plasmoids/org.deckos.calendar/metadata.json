@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "This month at a glance, today lit in the Vibe's colour",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.calendar",
+        "License": "MIT",
+        "Name": "DecKoOS Calendar",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

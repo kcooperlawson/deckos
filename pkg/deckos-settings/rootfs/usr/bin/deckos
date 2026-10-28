@@ -1733,6 +1733,7 @@ vibe_style_corners() {  # DecKoOS apps' corners (hub_style's style.conf), keepin
 }
 
 VIBE_WIDGETS="org.deckos.bigclock org.deckos.nowplaying org.deckos.weather org.deckos.focus org.deckos.note"
+VIBE_WIDGETS+=" org.deckos.calendar org.deckos.countdown org.deckos.photos"
 
 vibe_widgets_style() {  # STYLE COLOR_A COLOR_B: every DecKoOS desktop widget takes the look
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
@@ -1747,13 +1748,14 @@ vibe_widgets_style() {  # STYLE COLOR_A COLOR_B: every DecKoOS desktop widget ta
 widget_spots() {
   printf '%s' "(function () { var x = g.width - 500, y = 40, out = {};
     [['org.deckos.bigclock', 460, 220], ['org.deckos.weather', 300, 130], ['org.deckos.nowplaying', 440, 140],
-     ['org.deckos.focus', 220, 240], ['org.deckos.note', 300, 170]].forEach(function (w) {
+     ['org.deckos.focus', 220, 240], ['org.deckos.note', 300, 170], ['org.deckos.calendar', 300, 280],
+     ['org.deckos.countdown', 260, 170], ['org.deckos.photos', 360, 240]].forEach(function (w) {
       out[w[0]] = [g.width - 40 - w[1], y, w[1], w[2]]; y += w[2] + 24; });
     return out; })()"
 }
 
-vibe_widgets_arrange() {  # widgets already on the desktop stack down the right edge (the desktop reloads)
-  python3 "${DECKOS_VIBES_DIR:-/usr/lib/deckos/vibes}/arrange.py"
+vibe_widgets_arrange() {  # [right|left]: widgets already on the desktop stack down that edge (the desktop reloads)
+  python3 "${DECKOS_VIBES_DIR:-/usr/lib/deckos/vibes}/arrange.py" "${1:-right}"
 }
 
 vibe_widget_toggle() {  # ID on|off: add it to the first screen's desktop in its usual spot, or take it away
@@ -1811,9 +1813,16 @@ vibe_cmd() {
     export) python3 "$VIBES" export "${2:-}" "${3:-}" >/dev/null && ok "saved: $3 (share it; deckos vibe import opens it)" ;;
     import) key=$(python3 "$VIBES" import "${2:-}") && ok "added your Vibe: $key (deckos vibe apply $key)" ;;
     delete) python3 "$VIBES" delete "${2:-}" && ok "deleted: $2" ;;
-    widgets) [[ ${2:-} == arrange ]] || { err "usage: deckos vibe widgets arrange"; exit 2; }
-      vibe_widgets_arrange
-      ok "widgets lined up along the right edge" ;;
+    widgets)  # deckos vibe widgets arrange [right|left] | move
+      case ${2:-}:${3:-right} in
+        arrange:right|arrange:left)
+          vibe_widgets_arrange "${3:-right}"
+          ok "widgets lined up along the ${3:-right} edge" ;;
+        move:*)  # Plasma's own edit mode: drag them anywhere, resize from their edges
+          qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.editMode true >/dev/null
+          ok "drag widgets where you like; click Done at the top when finished" ;;
+        *) err "usage: deckos vibe widgets arrange [right|left] | move"; exit 2 ;;
+      esac ;;
     widget)  # deckos vibe widget ID on|off
       [[ ${3:-} == on || ${3:-} == off ]] || { err "usage: deckos vibe widget ID on|off"; exit 2; }
       vibe_widget_toggle "${2:-}" "$3"
@@ -1845,7 +1854,7 @@ vibe_cmd() {
       rm -f "$VIBE_STATE"
       pulse vibe "Vibe off: back to DecKoOS" --app Appearance
       ok "back to DecKoOS" ;;
-    *) err "usage: deckos vibe [list|current|apply NAME|export NAME FILE|import FILE|delete NAME|visualizer bars|wave|ring|none|widget ID on|off|weather TOWN|off]"; exit 2 ;;
+    *) err "usage: deckos vibe [list|current|apply NAME|export NAME FILE|import FILE|delete NAME|visualizer bars|wave|ring|none|widget ID on|off|widgets arrange [right|left]|widgets move|weather TOWN|off]"; exit 2 ;;
   esac
 }
 

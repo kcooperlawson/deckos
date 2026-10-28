@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "Days to something you're looking forward to",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.countdown",
+        "License": "MIT",
+        "Name": "DecKoOS Countdown",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
