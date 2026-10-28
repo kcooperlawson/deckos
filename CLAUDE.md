@@ -202,7 +202,10 @@ not die: a finished install must never be reported as failed.
 - Feature releases (X.Y.0) bundle features and get release notes: `usr/share/deckos/releases/X.Y.0.toml` (+ images in
   `X.Y.0/`), shown once by `deckos-whatsnew` (login autostart, after a Hub update, Hub > Home > What's new). Patch
   releases (X.Y.Z) are fixes only, no notes file: they update quietly. Write the notes as the features land.
-- **Release**: bump `VERSION`, commit, `git tag -a vX.Y.Z -m …`, push `main` and the tag. CI checks the
+- **Release** only through `pkg/deckos-settings/rootfs/usr/lib/deckos/builder/release.py X.Y.Z "summary" [--hotfix] [--iso]`
+  (Builder's Release button runs the same): clean `main`, `check.sh lint` and `tests` here, the code pushed alone, the
+  `checks.yml` workflow green on that exact commit, and only then VERSION bumped, tagged and pushed. One release per
+  12 h (`RELEASE_GAP`); sooner only as `--hotfix`. Never tag by hand or push past failing checks. CI checks the
   tag matches `VERSION`, signs `deckos-settings` and `deckos-theme-tmpikes` with the DeckOS key
   (fingerprint `F67E15FABF95D2DA72BE5D3F6322881773088C41`, secret `DECKOS_SIGNING_KEY`) and replaces the
   pacman repo in the `repo-testing` release (`.github/publish-repo`); PCs on the testing channel
@@ -214,7 +217,8 @@ not die: a finished install must never be reported as failed.
   workflow), or when the tag/commit message has `[iso]` (DeckOS Builder's "Build an ISO too");
   Build ISO (workflow_dispatch) always builds one. The squashfs is zstd: the ISO job takes ~12 minutes.
 - `deckos-theme-tmpikes` only reaches installed systems when its own `pkgver` goes up.
-- Commit messages: `area: summary` (or `DeckOS X.Y.Z: summary` for releases), then a short body.
+- Commit messages: `area: summary` (or `DecKoOS X.Y.Z: summary` for releases), then a short body. The name is
+  DecKoOS in anything people read; `deckos` only for commands, packages and paths.
 
 ## Testing
 

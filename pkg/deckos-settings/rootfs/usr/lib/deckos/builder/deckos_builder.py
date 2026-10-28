@@ -74,6 +74,7 @@ HUB = _share("usr/lib/deckos/hub")
 sys.path.insert(0, str(HUB))  # same look as DecKoOS Hub: its palette, QSS, line icons and widgets
 
 import hub_style as S  # noqa: E402
+import release as R  # noqa: E402  (a release with brakes: checks pass on GitHub before a tag, one a day)
 import site_publish as SP  # noqa: E402  (the Website card's logic, beside this file)
 from hub_widgets import Card, Meter, RowItem, StatusTile, Toast, button, label, row  # noqa: E402
 
@@ -456,10 +457,11 @@ class ReleaseDialog(QDialog):
         v.setContentsMargins(22, 18, 22, 16)
         v.setSpacing(10)
         v.addWidget(label("Release DecKoOS", "title"))
-        v.addWidget(label(f"Now {version}. Tags and pushes main; CI signs the packages and PCs on the testing "
-                          "channel get the update about 5 minutes later. Stable gets it when you run Promote to "
-                          "stable on GitHub. An ISO is only built when the installer or live USB changed since the "
-                          "last release.", "sub"))
+        v.addWidget(label(f"Now {version}. The checks run here, then the code goes to main and GitHub's checks "
+                          "must pass on it; only then is the version tagged. CI signs the packages and PCs on the "
+                          "testing channel get the update about 5 minutes later; stable gets it when you run Promote "
+                          "to stable on GitHub. An ISO is only built when the installer or live USB changed since the "
+                          "last release. Fixes are gathered into one release a day: sooner only as a hotfix.", "sub"))
         # The notes already written say which release is next; otherwise it's a patch release
         self.version = QLineEdit(next(iter(notes), next_version(version)))
         self.notes = notes
@@ -482,10 +484,8 @@ class ReleaseDialog(QDialog):
         self.describe()
         self.iso = QCheckBox("Build an ISO too, even if the installer and live USB didn't change")
         v.addWidget(self.iso)
-        self.checks = QCheckBox("Run the checks first (tests/check.sh): don't release if they fail")
-        self.checks.setChecked(bash_exe() is not None)
-        self.checks.setEnabled(bash_exe() is not None)
-        v.addWidget(self.checks)
+        self.hotfix = QCheckBox("Hotfix: people can't wait for the next daily release")
+        v.addWidget(self.hotfix)
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         ok = bb.button(QDialogButtonBox.Ok)
         ok.setText("Release")
@@ -1805,7 +1805,11 @@ class Builder(QWidget):
         if dlg.exec() != QDialog.Accepted:
             return
         ver, summary, want_iso = dlg.version.text().strip(), dlg.summary.text().strip(), dlg.iso.isChecked()
-        run_checks = dlg.checks.isChecked()
+        hotfix = dlg.hotfix.isChecked()
+        if bash_exe() is None:
+            QMessageBox.warning(self, "DecKoOS Builder", "Releasing runs the checks first, and they need bash "
+                                "(Git Bash on Windows).")
+            return
         if not re.fullmatch(r"\d+(\.\d+)+", ver) or vkey(ver) <= vkey(lo["version"]):
             self.toast.show_message(f"Version must be newer than {lo['version']}", "bad")
             return
@@ -1816,21 +1820,8 @@ class Builder(QWidget):
         self.say(f"Releasing DecKoOS {ver}…")
 
         def work(progress):
-            if git("tag", "-l", f"v{ver}"):
-                raise RuntimeError(f"tag v{ver} already exists")
-            if run_checks:
-                progress(0, "Running the checks…")
-                r = subprocess.run([bash_exe(), "tests/check.sh", "lint"], cwd=REPO_DIR, capture_output=True, text=True,
-                                   encoding="utf-8", errors="replace", creationflags=NO_WINDOW)
-                if r.returncode != 0:
-                    tail = "\n".join(re.sub(r"\x1b\[[0-9;]*m", "", r.stdout).splitlines()[-12:])
-                    raise RuntimeError(f"the checks failed, so nothing was released:\n{tail}")
-            (REPO_DIR / "VERSION").write_text(ver + "\n")
-            msg = f"DecKoOS {ver}: {summary}"
-            git("commit", "-m", msg, "--", "VERSION")
-            git("tag", "-a", f"v{ver}", "-m", msg + (" [iso]" if want_iso else ""))  # [iso]: CI's plan job builds one
-            git("push", "origin", "HEAD:main")
-            git("push", "origin", f"v{ver}")
+            R.REPO_DIR = REPO_DIR
+            R.release(ver, summary, hotfix=hotfix, iso=want_iso, say=lambda text: progress(0, text), bash=bash_exe())
 
         def done(_, err):
             self.release_btn.setEnabled(True)

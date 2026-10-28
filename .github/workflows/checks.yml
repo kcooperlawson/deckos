@@ -1,0 +1,41 @@
+name: Checks
+
+# Every push to main gets the same lint and unit tests a release does, so a release is only tagged on a commit
+# that already passed (builder/release.py waits for this run). Tags and pull requests run them in build-iso.yml.
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          bash tests/check.sh lint
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Qt runtime libraries
+        run: sudo apt-get update -q && sudo apt-get install -yq libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 ripgrep
+      - run: python -m pip install PySide6-Essentials numpy  # numpy: the Vibes visualizer tests
+      - name: Unit tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: bash tests/check.sh tests
+      - name: Generated files match their generators
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install fonttools
+          bash tests/check.sh generated
