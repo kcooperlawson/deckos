@@ -12,8 +12,10 @@ import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(1, str(Path(__file__).resolve().parent.parent / "desktopenv"))
 
 import gamedoctor as gd  # noqa: E402
+import desktopenv  # noqa: E402
 import steamfiles as sf  # noqa: E402
 
 TOOLS = re.compile(r"Proton|Steam Linux Runtime|Steamworks|SteamVR|Linux Runtime", re.I)
@@ -31,7 +33,8 @@ def offer(appid, seconds):
          "Game Doctor can read why and suggest a fix."],
         capture_output=True, text=True).stdout.strip()
     if chosen == "look":
-        subprocess.Popen(["deckos-gamedoctor", "--appid", str(appid)], start_new_session=True)
+        # the session's display as it is now: this service can have started before Plasma set it
+        subprocess.Popen(["deckos-gamedoctor", "--appid", str(appid)], start_new_session=True, env=desktopenv.env())
 
 
 def main():

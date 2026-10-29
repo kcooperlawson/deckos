@@ -18,6 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pulse"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "desktopenv"))
+import desktopenv  # noqa: E402
 try:
     import pulse
 except ImportError:  # the timeline is a nice-to-have here
@@ -240,9 +242,10 @@ class Reactions:
 
     def __init__(self, run=None, spawn=None):
         self.run = run or (lambda argv: subprocess.run(argv, capture_output=True, text=True, timeout=30))
-        # for what waits on the person (the Vibe mode offer): started and left to it
+        # for what waits on the person (the Vibe mode offer): started and left to it, with the session's display
+        # as it is now (this service can have started before Plasma set it)
         self.spawn = spawn or (lambda argv: subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                                             start_new_session=True))
+                                                             start_new_session=True, env=desktopenv.env()))
         self.power_before = ""
         self.quiet = False
         self.game_since = 0.0

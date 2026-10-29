@@ -86,7 +86,7 @@ class FixButton(QWidget):
         if DEMO:
             self.window_.say(f"Demo: {gd.describe_fix(self.fix, self.appid)[0]}")
             return
-        if self.fix not in ("verify", "prefix-reset") and sf.steam_running() and not self.confirm():
+        if self.fix not in ("verify", "prefix-reset", "prefix-home") and sf.steam_running() and not self.confirm():
             return
         self.button.setEnabled(False)
         fn = gd.undo if self.is_applied() else gd.apply

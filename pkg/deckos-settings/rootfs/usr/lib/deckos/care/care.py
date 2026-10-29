@@ -20,7 +20,8 @@ import time
 from pathlib import Path
 
 LIB = Path(__file__).resolve().parent.parent
-sys.path[:0] = [str(LIB / "sysdoctor"), str(LIB / "pulse")]
+sys.path[:0] = [str(LIB / "sysdoctor"), str(LIB / "pulse"), str(LIB / "desktopenv")]
+import desktopenv  # noqa: E402
 import pulse  # noqa: E402
 import sysdoctor as sd  # noqa: E402
 
@@ -142,9 +143,11 @@ def notify(title, body, button, cmd):
                 i = cmd.index("apply")
                 finding = next((a.split("=", 1)[1] for a in cmd if a.startswith("--finding=")), "")
                 subprocess.Popen(["deckos", "heal", "ask", cmd[i + 1], finding], start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=desktopenv.env())
             return
-        subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # it may open a window: with the session's display as it is now (this service can predate it)
+        subprocess.Popen(cmd, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         env=desktopenv.env())
     threading.Thread(target=wait, daemon=True).start()
 
 

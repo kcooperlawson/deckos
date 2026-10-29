@@ -25,6 +25,8 @@ except ImportError:
 QUICK = 45  # seconds: a game gone sooner than this didn't really start
 LOGS = sf.STEAM / "logs"
 STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "deckos/gamedoctor"
+# Where a library on a Windows (NTFS) drive keeps its Proton prefixes instead ("prefix-home")
+PREFIXES = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "deckos/proton-prefixes"
 
 EVENT = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] Game process (added|removed)\s*: AppID (\d+)")
 STAMP = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\]")
@@ -89,6 +91,12 @@ def game_output(start, end, log=LOGS / "console-linux.txt", limit=400):
 
 # (id, pattern, title, explanation, fixes in the order to try them)
 RULES = [
+    # first: the drive itself, which no Proton setting gets round
+    ("ntfs-prefix", r"dosdevices/c:|Errno 22\] Invalid argument.*(compatdata|pfx)",
+     "Proton can't set up on this drive",
+     "The game is on a Windows (NTFS) drive. Proton builds a small Windows setup for each game (its prefix) next "
+     "to it, and that needs names Windows drives refuse, like c:. Keeping the prefixes on your Linux drive fixes "
+     "it for every game in that library; the games stay where they are.", ["prefix-home"]),
     ("anticheat", r"EasyAntiCheat|BattlEye|BEService|EAC.*(error|fail)|anti-?cheat",
      "Anti-cheat stopped the game",
      "The game's anti-cheat doesn't allow Linux, or needs its Proton support switched on by the developer. "
@@ -106,7 +114,9 @@ RULES = [
      "The game crashed while starting",
      "Something in the game or its Proton prefix crashed early. Another Proton version, a clean prefix or "
      "checking the game files fixes most of these.", ["proton-other", "verify", "prefix-reset"]),
-    ("sync", r"fsync|esync|ntsync.*(fail|error)|futex_waitv",
+    # whole words, and a failure: "esync" is in game names ("Resynced") and "fsync: up and running" is fine
+    ("sync", r"\b[ef]sync\b.*\b(fail\w*|error|not supported|unavailable)|\bntsync\b.*\b(fail\w*|error)|"
+             r"futex_waitv.*(not supported|ENOSYS)",
      "Proton's sync method misbehaved",
      "Proton's fast synchronisation (NTSync/fsync) didn't work for this game. Turning it off costs a little "
      "speed but often fixes start-up hangs and crashes.", ["no-fsync", "proton-other"]),
@@ -197,6 +207,9 @@ def describe_fix(fix, appid):
     return {
         "wined3d": ("Use the OpenGL path (WineD3D)", "Adds PROTON_USE_WINED3D=1 to the game's launch options."),
         "no-fsync": ("Turn off fast sync", "Adds PROTON_NO_FSYNC=1 PROTON_NO_NTSYNC=1 to the launch options."),
+        "prefix-home": ("Keep Proton's files on your Linux drive",
+                        "Moves this library's Proton prefixes to your home drive and links them back; "
+                        "the games stay on the Windows drive."),
         "prefix-reset": ("Start the Proton prefix fresh",
                          "Moves the game's Windows folder aside (kept, so this can be undone); Proton makes a "
                          "new one at the next start. Saves stored in Steam Cloud come back by themselves."),
@@ -245,6 +258,10 @@ def _apply(fix, appid, confirm_steam_restart=lambda: True):
     if fix == "verify":
         sf.start_steam(f"steam://validate/{appid}")
         return "Steam is checking the game files now."
+    if fix == "prefix-home":
+        if not g:
+            raise RuntimeError("this game isn't installed")
+        return _prefixes_home(appid, g["compatdata"].parent)
     if fix == "prefix-reset":
         if not g or not g["compatdata"].exists():
             raise RuntimeError("this game has no Proton prefix yet")
@@ -282,10 +299,39 @@ def _apply(fix, appid, confirm_steam_restart=lambda: True):
     return done
 
 
+def _prefixes_home(appid, compat):
+    """A library's compatdata folder moved to PREFIXES (a Linux filesystem) and linked back in its place."""
+    if compat.is_symlink():
+        raise RuntimeError("this library's Proton files are already on another drive")
+    target = PREFIXES / (re.sub(r"[^A-Za-z0-9]+", "-", str(compat.parent.parent)).strip("-") or "library")
+    target.mkdir(parents=True, exist_ok=True)
+    if compat.exists():
+        for child in compat.iterdir():  # a prefix that failed half way is moved too: Proton finishes it there
+            shutil.move(str(child), str(target / child.name))
+        compat.rmdir()
+    compat.symlink_to(target, target_is_directory=True)
+    _record(appid, {"fix": "prefix-home", "library": str(compat), "target": str(target)})
+    return "This library's Proton files are on your Linux drive now; start the game again."
+
+
+def _prefixes_back(entry):
+    compat, target = Path(entry["library"]), Path(entry["target"])
+    if compat.is_symlink():
+        compat.unlink()
+    compat.mkdir(exist_ok=True)
+    for child in target.iterdir():
+        shutil.move(str(child), str(compat / child.name))
+    target.rmdir()
+
+
 def undo(fix, appid, confirm_steam_restart=lambda: True):
     entry = next((e for e in reversed(applied(appid)) if e["fix"] == fix), None)
     if entry is None:
         raise RuntimeError("that fix isn't applied")
+    if fix == "prefix-home":
+        _prefixes_back(entry)
+        _forget(appid, fix)
+        return "The Proton files are back on the game's drive."
     if fix == "prefix-reset":
         g = sf.game(appid)
         aside = Path(entry["aside"])

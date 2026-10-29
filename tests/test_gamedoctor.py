@@ -117,6 +117,31 @@ class GameDoctorTests(unittest.TestCase):
         self.assertTrue((compat / '42/pfx').exists())
         self.assertEqual(len(list(compat.glob('42.deckos-fresh-*'))), 1)  # the fresh one is kept too
 
+    def test_rules_ignore_names_and_good_news(self):
+        # "Resynced" holds "esync", and fsync running is fine: neither is a sync problem
+        lines = ['[2026-10-28 21:13:45] chdir "/games/Assassin\'s Creed Black Flag Resynced"',
+                 'fsync: up and running.']
+        self.assertNotIn('sync', [f['id'] for f in self.gd.diagnose(lines)])
+        self.assertEqual(self.gd.diagnose(['fsync: futex_waitv not supported'])[0]['id'], 'sync')
+
+    def test_a_windows_drive_gets_its_prefixes_moved_home_and_back(self):
+        line = ("OSError: [Errno 22] Invalid argument: '../drive_c' -> "
+                "'/mnt/SSD/SteamLibrary/steamapps/compatdata/3751950/pfx//dosdevices/c:'")
+        found = self.gd.diagnose([line])
+        self.assertEqual(found[0]['id'], 'ntfs-prefix')
+        self.assertEqual(found[0]['fixes'], ['prefix-home'])
+        self.gd.PREFIXES = self.root / 'home-prefixes'
+        compat = self.root / 'steamapps/compatdata'
+        self.gd.apply('prefix-home', '42')
+        self.assertTrue(compat.is_symlink())
+        self.assertTrue((compat / '42/pfx').is_dir())  # through the link, on the "Linux drive"
+        with self.assertRaises(RuntimeError):
+            self.gd.apply('prefix-home', '42')  # once is enough
+        self.gd.undo('prefix-home', '42')
+        self.assertFalse(compat.is_symlink())
+        self.assertTrue((compat / '42/pfx').is_dir())
+        self.assertEqual(self.gd.applied('42'), [])
+
     def test_writes_keep_a_backup(self):
         self.gd.apply('wined3d', '42')
         self.assertTrue((self.root / 'userdata/1/config/localconfig.vdf.deckos-bak').exists())
