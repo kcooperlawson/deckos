@@ -119,6 +119,20 @@ def free_disk(target):
     return target.split(":")[1] if target and target.startswith("free:") else ""
 
 
+def space_disk(target):
+    """The disk any place is on: free:DISK:..., erase:DISK, or a partition (/dev/nvme0n1p2 -> /dev/nvme0n1)."""
+    if not target:
+        return ""
+    if target.startswith(("free:", "erase:")):
+        return target.split(":")[1]
+    return re.sub(r"p\d+$", "", target) if re.search(r"(nvme\d+n\d+|mmcblk\d+)p\d+$", target) else re.sub(r"\d+$", "", target)
+
+
+def erases(target):
+    """Whether picking this place erases something: a partition, or a whole disk."""
+    return bool(target) and not target.startswith("free:")
+
+
 def table(name):
     """Rows of installer/NAME.tsv (the same file deckos-install reads), without comments."""
     try:
@@ -253,6 +267,7 @@ class Installer(QWidget):
         main.addLayout(nav)
         outer.addLayout(main, 1)
 
+        self.built = False  # pages ask update_nav while they're built; it waits until all of them exist
         self.build_welcome()
         self.build_disk()
         self.build_you()
@@ -260,6 +275,7 @@ class Installer(QWidget):
         self.build_confirm()
         self.build_install()
         self.build_done()
+        self.built = True
         self.go(WELCOME)
         QTimer.singleShot(150, self.check_system)
 
@@ -267,8 +283,8 @@ class Installer(QWidget):
 
     def build_welcome(self):
         p = Page("Welcome to DecKoOS",
-                 "DecKoOS installs next to Windows, on one partition you pick. Windows, its boot files and "
-                 "your other drives are left exactly as they are.")
+                 "Install DecKoOS next to Windows or on drives of its own, even across two drives as one. Nothing "
+                 "is erased unless you pick it: everything else stays exactly as it is.")
         hero = QSvgWidget(str(BRANDING / "installer-welcome.svg"))
         hero.renderer().setAspectRatioMode(Qt.KeepAspectRatio)
         hero.setMinimumHeight(170)
@@ -290,9 +306,13 @@ class Installer(QWidget):
 
     def build_disk(self):
         p = Page("Where should DecKoOS go?",
-                 "Pick a partition, free space or an empty disk. Only a partition you pick is erased; in free "
-                 "space or on an empty disk DecKoOS makes a new partition and erases nothing. The EFI boot "
-                 "partition is shared with Windows and never formatted.")
+                 "Pick a partition, free space or an empty disk, or erase a whole disk. Only what you pick is "
+                 "erased; free space and empty disks get a new partition and nothing is erased. Add a second "
+                 "drive below to make one bigger system.")
+        # First: the second-drive card below asks which place is picked as soon as it's built
+        self.disk_group = QButtonGroup(self)
+        self.disk_group.buttonToggled.connect(self.disk_picked)
+        self.disk_cards = {}
         self.disk_area = QScrollArea()
         self.disk_area.setWidgetResizable(True)
         self.disk_box = QWidget()
@@ -301,13 +321,23 @@ class Installer(QWidget):
         self.disk_list.setSpacing(8)
         self.disk_area.setWidget(self.disk_box)
         p.lay.addWidget(self.disk_area, 1)
+        # The second drive: one more place on another disk, and both become one file system
+        extra = Card("Optional", "Second drive")
+        self.extra_on = QCheckBox("Add a second drive, so DecKoOS spans both as one bigger system")
+        self.extra_on.toggled.connect(self.extra_changed)
+        extra.body.addWidget(self.extra_on)
+        self.extra_pick = QComboBox()
+        self.extra_pick.currentIndexChanged.connect(lambda _: self.update_nav())
+        extra.body.addWidget(self.extra_pick)
+        self.extra_note = label(f"<span style='color:{WARNING}'>Your files are spread over both drives: if either one "
+                                "fails, DecKoOS on both is lost. Keep backups of what matters.</span>", rich=True)
+        extra.body.addWidget(self.extra_note)
+        p.lay.addWidget(extra)
+        self.extra_changed()
         row = QHBoxLayout()
         row.addWidget(button("Refresh", slot=self.load_disks))
         row.addStretch(1)
         p.lay.addLayout(row)
-        self.disk_group = QButtonGroup(self)
-        self.disk_group.buttonToggled.connect(self.disk_picked)
-        self.disk_cards = {}
         self.stack.addWidget(p)
 
     def build_you(self):
@@ -434,6 +464,11 @@ class Installer(QWidget):
         self.software_text = label("", "sub")
         sw.body.addWidget(self.software_text)
         p.lay.addWidget(sw)
+        # A whole disk is erased only once its name is typed here (the script checks the same names)
+        self.erase_card = Card("To erase a whole disk", "Type its name")
+        self.erase_rows = QVBoxLayout()
+        self.erase_card.body.addLayout(self.erase_rows)
+        p.lay.addWidget(self.erase_card)
         self.agree = QCheckBox()
         self.agree.toggled.connect(lambda _: self.update_nav())
         p.lay.addWidget(self.agree)
@@ -483,18 +518,20 @@ class Installer(QWidget):
         self.update_nav()
 
     def update_nav(self):
+        if not self.built:
+            return
         i = self.stack.currentIndex()
         self.back_btn.setVisible(i in (WHERE, YOU, SOFTWARE, CONFIRM))
         self.next_btn.setVisible(i != INSTALL)
-        self.next_btn.setObjectName("danger" if i == CONFIRM and not free_disk(self.target() or "") else "primary")
+        wipes = erases(self.target()) or erases(self.extra())
+        self.next_btn.setObjectName("danger" if i == CONFIRM and wipes else "primary")
         self.next_btn.style().unpolish(self.next_btn)
         self.next_btn.style().polish(self.next_btn)
-        erases = not free_disk(self.target() or "")
-        text = {CONFIRM: "Erase and install" if erases else "Install",
+        text = {CONFIRM: "Erase and install" if wipes else "Install",
                 DONE: "Restart now" if self.finished_ok else "Close"}.get(i, "Next")
         self.next_btn.setText(text)
-        ok = {WELCOME: self.net_ok, WHERE: self.target() is not None, YOU: self.validate_you(),
-              CONFIRM: self.agree.isChecked()}
+        ok = {WELCOME: self.net_ok, WHERE: self.target() is not None and (not self.extra_on.isChecked() or bool(self.extra())),
+              YOU: self.validate_you(), CONFIRM: self.agree.isChecked() and self.erase_typed()}
         self.next_btn.setEnabled(ok.get(i, True))
 
     def back(self):
@@ -606,57 +643,95 @@ class Installer(QWidget):
                    "free:/dev/sdb:disk\t500 GB\tfree\tEmpty disk\tCrucial MX500\t0\t\n"
                    "free:/dev/nvme0n1:976773120:629145600\t322 GB\tfree\tFree space\tWD_BLACK SN850X\t0\t\n"
                    "free:/dev/sda:1953519616:41943040\t21 GB\tfree\tFree space\tST1000DM010\t0\tOnly 21 GB free "
-                   "here: DecKoOS needs 64 GB.\n")
+                   "here: DecKoOS needs 64 GB.\n"
+                   "erase:/dev/nvme1n1\t250 GB\tdisk\tWhole disk\tSamsung SSD 970 EVO Plus 250GB\t0\t\n"
+                   "erase:/dev/nvme0n1\t500 GB\tdisk\tWhole disk\tWD_BLACK SN850X\t0\t\n"
+                   "erase:/dev/sda\t1000 GB\tdisk\tWhole disk\tST1000DM010\t0\tIn use: mounted at /run/media/live/BIG. "
+                   "Unmount it (eject it in Dolphin), then refresh.\n")
         else:
             out = run([INSTALLER, "--list-targets"], timeout=20)
         # path, size, fs, label, model, default, and why it's blocked (empty = usable)
-        rows = [(line.split("\t") + [""])[:7] for line in out.splitlines() if line.count("\t") >= 5]
-        if not any(not why for *_, why in rows):
+        self.rows = [(line.split("\t") + [""])[:7] for line in out.splitlines() if line.count("\t") >= 5]
+        if not any(not why for *_, why in self.rows):
             self.disk_list.addWidget(label("No space found that DecKoOS can use. In Windows, shrink a drive in Disk "
                                            "Management to leave 64 GB or more of unallocated space, then press "
                                            "Refresh.", "sub"))
         default = None
-        for path, size, fs, lab, model, is_default, why in rows:
-            card = QFrame()
-            card.setObjectName("disk")
-            card.setAttribute(Qt.WA_StyledBackground, True)
-            card.setProperty("blocked", bool(why))
-            h = QHBoxLayout(card)
-            h.setContentsMargins(16, 12, 16, 12)
-            rb = QRadioButton()
-            rb.setProperty("path", path)
-            rb.setEnabled(not why)
-            self.disk_group.addButton(rb)
-            h.addWidget(rb)
-            info = QVBoxLayout()
-            info.setSpacing(2)
-            name = html.escape(lab if lab not in ("-", "") else "No label")
-            where = free_disk(path) or path
-            info.addWidget(label(f"<b>{name}</b> &nbsp;<span style='color:{SUBTEXT}'>{where} · {size}"
-                                 f"{'' if fs == 'free' else ' · ' + ('empty' if fs == 'empty' else fs)}</span>"))
-            note = html.escape(model)
-            if why:
-                note += f" · <span style='color:{DANGER}'>Can't install here: {html.escape(why)}</span>"
-            elif path.endswith(":disk"):
-                note += f" · <span style='color:{SUCCESS}'>Nothing on it: DecKoOS gets the whole disk, with its own boot partition</span>"
-            elif fs == "free":
-                note += f" · <span style='color:{SUCCESS}'>DecKoOS adds its own partition here; nothing is erased</span>"
-            elif fs == "ntfs":
-                note += f" · <span style='color:{WARNING}'>Windows-format partition: everything on it will be erased</span>"
-            elif fs != "empty":
-                note += f" · <span style='color:{WARNING}'>has a {fs} file system: it will be erased</span>"
-            info.addWidget(label(f"<span style='color:{SUBTEXT}'>{note}</span>"))
-            h.addLayout(info, 1)
-            if not why:
-                card.mousePressEvent = lambda _e, r=rb: r.setChecked(True)
-            self.disk_list.addWidget(card)
-            self.disk_cards[path] = card
-            if is_default == "1" and default is None and not why:
-                default = rb
+        places = [r for r in self.rows if not r[0].startswith("erase:")]
+        wholes = [r for r in self.rows if r[0].startswith("erase:")]
+        for rows, heading in ((places, None), (wholes, "Or erase a whole disk")):
+            if rows and heading:
+                self.disk_list.addSpacing(8)
+                self.disk_list.addWidget(label(f"<b>{heading}</b> &nbsp;<span style='color:{SUBTEXT}'>Everything on "
+                                               "it goes, Windows too. You'll type its name to confirm.</span>", rich=True))
+            for row in rows:
+                rb = self.add_disk_card(*row)
+                if row[5] == "1" and default is None and not row[6]:
+                    default = rb
         self.disk_list.addStretch(1)
         if default:
             default.setChecked(True)
+        self.fill_extra()
         self.update_nav()
+
+    def add_disk_card(self, path, size, fs, lab, model, _default, why):
+        card = QFrame()
+        card.setObjectName("disk")
+        card.setAttribute(Qt.WA_StyledBackground, True)
+        card.setProperty("blocked", bool(why))
+        h = QHBoxLayout(card)
+        h.setContentsMargins(16, 12, 16, 12)
+        rb = QRadioButton()
+        rb.setProperty("path", path)
+        rb.setEnabled(not why)
+        self.disk_group.addButton(rb)
+        h.addWidget(rb)
+        info = QVBoxLayout()
+        info.setSpacing(2)
+        whole = path.startswith("erase:")
+        name = html.escape(model if whole else lab if lab not in ("-", "") else "No label")
+        where = space_disk(path) if whole else free_disk(path) or path
+        info.addWidget(label(f"<b>{name}</b> &nbsp;<span style='color:{SUBTEXT}'>{where} · {size}"
+                             f"{'' if fs in ('free', 'disk') else ' · ' + ('empty' if fs == 'empty' else fs)}</span>"))
+        note = "" if whole else html.escape(model)
+        if why:
+            note += f"{' · ' if note else ''}<span style='color:{DANGER}'>Can't install here: {html.escape(why)}</span>"
+        elif whole:
+            note = f"<span style='color:{DANGER}'>Erases the whole disk.</span> {self.contents_text(where)}"
+        elif path.endswith(":disk"):
+            note += f" · <span style='color:{SUCCESS}'>Nothing on it: DecKoOS gets the whole disk, with its own boot partition</span>"
+        elif fs == "free":
+            note += f" · <span style='color:{SUCCESS}'>DecKoOS adds its own partition here; nothing is erased</span>"
+        elif fs == "ntfs":
+            note += f" · <span style='color:{WARNING}'>Windows-format partition: everything on it will be erased</span>"
+        elif fs != "empty":
+            note += f" · <span style='color:{WARNING}'>has a {fs} file system: it will be erased</span>"
+        info.addWidget(label(f"<span style='color:{SUBTEXT}'>{note}</span>"))
+        h.addLayout(info, 1)
+        if not why:
+            card.mousePressEvent = lambda _e, r=rb: r.setChecked(True)
+        self.disk_list.addWidget(card)
+        self.disk_cards[path] = card
+        return rb
+
+    @staticmethod
+    def contents_text(disk):
+        """What's on a disk now, for its erase card ("On it: Windows (476 GB, ntfs), …")."""
+        if DEMO:
+            out = {"/dev/nvme0n1": "/dev/nvme0n1p1\t0 GB\t-\t-\tempty\n/dev/nvme0n1p2\t476 GB\tntfs\t-\tWindows\n"
+                                   "/dev/nvme0n1p3\t0 GB\tntfs\t-\tWindows recovery\n",
+                   "/dev/nvme1n1": "/dev/nvme1n1p1\t0 GB\tvfat\t-\tWindows boot\n/dev/nvme1n1p2\t232 GB\tbtrfs\tDecKoOS\tdata\n"}.get(disk, "")
+        else:
+            # Root: it mounts each partition read-only to look for Windows (the live user's sudo needs no password)
+            out = run(["sudo", "-n", INSTALLER, "--disk-contents", disk], timeout=30)
+        parts = []
+        for line in out.splitlines():
+            f = (line.split("\t") + [""] * 5)[:5]
+            if f[4] == "empty" and f[1] == "0 GB":
+                continue  # Windows' small reserved partition: nothing to show
+            what = {"data": f[2] if f[3] == "-" else f"{f[3]} ({f[2]})"}.get(f[4], f[4])
+            parts.append(f"{html.escape(what)} ({f[1]})")
+        return ("On it: " + ", ".join(parts)) if parts else "Its partitions couldn't be read."
 
     def disk_picked(self, rb, checked):
         card = self.disk_cards.get(rb.property("path"))
@@ -664,11 +739,47 @@ class Installer(QWidget):
             card.setProperty("picked", checked)
             card.style().unpolish(card)
             card.style().polish(card)
+        if checked:
+            self.fill_extra()
         self.update_nav()
 
     def target(self):
         b = self.disk_group.checkedButton()
         return b.property("path") if b else None
+
+    def fill_extra(self):
+        """The second drive's choices: every usable place on another disk than the first pick."""
+        main = space_disk(self.target() or "")
+        keep = self.extra_pick.currentData()
+        self.extra_pick.blockSignals(True)
+        self.extra_pick.clear()
+        for path, size, fs, lab, model, _d, why in getattr(self, "rows", []):
+            if why or space_disk(path) == main:
+                continue
+            kind = ("erase the whole disk" if path.startswith("erase:") else "empty disk" if path.endswith(":disk")
+                    else "free space" if fs == "free" else f"erase {path} ({fs})")
+            self.extra_pick.addItem(f"{model} · {space_disk(path)} · {size} · {kind}", path)
+        i = self.extra_pick.findData(keep)
+        self.extra_pick.setCurrentIndex(max(0, i))
+        self.extra_pick.blockSignals(False)
+        self.extra_changed()
+
+    def extra_changed(self):
+        has = self.extra_pick.count() > 0
+        self.extra_on.setEnabled(has)
+        if not has:
+            self.extra_on.setChecked(False)
+        self.extra_pick.setVisible(self.extra_on.isChecked())
+        self.extra_note.setVisible(self.extra_on.isChecked())
+        if hasattr(self, "next_btn"):
+            self.update_nav()
+
+    def extra(self):
+        return self.extra_pick.currentData() if self.extra_on.isChecked() else None
+
+    def erase_disks(self):
+        """Whole disks this install erases: each needs its name typed on the confirm page."""
+        return [space_disk(t) for t in (self.target(), self.extra()) if t and t.startswith("erase:")]
 
     # ------------------------------------------------------------- you
 
@@ -697,23 +808,50 @@ class Installer(QWidget):
 
     # ------------------------------------------------------------- confirm
 
+    @staticmethod
+    def what_row(t):
+        """The summary's row for one place."""
+        disk = space_disk(t)
+        if t.startswith("erase:"):
+            return (f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>All of {disk}</b>"
+                    f" → DecKoOS</td></tr>")
+        if not t.startswith("free:"):
+            return f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>{t}</b> → DecKoOS</td></tr>"
+        if t.endswith(":disk"):
+            return f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td><b>{disk}</b>, empty → DecKoOS</td></tr>"
+        return (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td>A partition in the free space on <b>{disk}</b> "
+                f"→ DecKoOS; nothing is erased</td></tr>")
+
+    def erase_typed(self):
+        return all(e.text().strip() == e.property("want") for e in getattr(self, "erase_edits", []))
+
     def fill_summary(self):
-        t = self.target()
-        disk = free_disk(t)
-        if not disk:
-            what = (f"<tr><td style='color:{SUBTEXT}'>Erase&nbsp;&nbsp;</td><td><b style='color:{DANGER}'>{t}</b> → "
-                    f"DecKoOS (btrfs with snapshots)</td></tr>"
-                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DecKoOS and "
-                    f"Windows</td></tr>")
-        elif t.endswith(":disk"):
-            what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td><b>{disk}</b>, empty → a boot partition "
-                    f"and DecKoOS (btrfs with snapshots)</td></tr>"
-                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>On {disk}, so it starts without any other disk</td></tr>")
+        t, x = self.target(), self.extra()
+        own_boot = t.startswith("erase:") or t.endswith(":disk")
+        what = self.what_row(t) + (self.what_row(x) if x else "")
+        if x:
+            what += (f"<tr><td style='color:{SUBTEXT}'>Together</td><td>One btrfs file system over both drives, with "
+                     f"snapshots. <span style='color:{WARNING}'>If either drive fails, both are lost.</span></td></tr>")
         else:
-            what = (f"<tr><td style='color:{SUBTEXT}'>New&nbsp;&nbsp;</td><td>A partition in the free space on <b>{disk}</b> "
-                    f"→ DecKoOS (btrfs with snapshots); nothing is erased</td></tr>"
-                    f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>Shared EFI partition, not formatted — DecKoOS and "
-                    f"Windows</td></tr>")
+            what += f"<tr><td style='color:{SUBTEXT}'>System</td><td>btrfs with snapshots</td></tr>"
+        what += (f"<tr><td style='color:{SUBTEXT}'>Boot menu</td><td>"
+                 + (f"A new boot partition on {space_disk(t)}, so it starts without any other disk" if own_boot
+                    else "Shared EFI partition, not formatted — DecKoOS and Windows") + "</td></tr>")
+        # the typed names, one per whole disk
+        while self.erase_rows.count():
+            item = self.erase_rows.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.erase_edits = []
+        for disk in self.erase_disks():
+            name = disk.removeprefix("/dev/")
+            edit = QLineEdit()
+            edit.setProperty("want", name)
+            edit.setPlaceholderText(f"Type {name} to erase all of {disk}")
+            edit.textChanged.connect(lambda _: self.update_nav())
+            self.erase_rows.addWidget(edit)
+            self.erase_edits.append(edit)
+        self.erase_card.setVisible(bool(self.erase_edits))
         self.summary_text.setText(
             f"<table cellspacing=6>" + what +
             f"<tr><td style='color:{SUBTEXT}'>Keep</td><td>Every other partition and drive</td></tr>"
@@ -726,9 +864,9 @@ class Installer(QWidget):
             "CachyOS kernel, KDE Plasma desktop, Firefox, graphics drivers and snapshots"
             + (f", plus {', '.join(extras)}." if extras else ". Nothing extra: add software later with Discover or pacman.")
             + " Your NTFS drives are mounted as they are. It takes 20–60 minutes depending on your internet.")
-        self.agree.setText(f"I understand everything on {t} will be erased" if not disk else
-                           f"I understand DecKoOS will use the empty disk {disk}" if t.endswith(":disk") else
-                           f"I understand DecKoOS will add a partition on {disk}")
+        lost = [f"all of {space_disk(p)}" if p.startswith("erase:") else p for p in (t, x) if erases(p)]
+        self.agree.setText(f"I understand everything on {' and '.join(lost)} will be erased" if lost else
+                           "I understand DecKoOS will use the space shown above")
         self.agree.setChecked(False)
 
     # ------------------------------------------------------------- install
@@ -754,7 +892,8 @@ class Installer(QWidget):
         env = {"DECKOS_GUI": "1", "DECKOS_TARGET": self.target(), "DECKOS_HOSTNAME": self.host.text(),
                "DECKOS_USER": self.user.text(), "DECKOS_PASSWORD_FILE": pwfile, "DECKOS_TZ": self.tz.currentText(),
                "DECKOS_LOCALE": self.lang.currentData(), "DECKOS_KEYMAP": self.kbd.currentData(),
-               "DECKOS_GROUPS": ",".join(self.groups()), "DECKOS_CONFIRM": "ERASE"}
+               "DECKOS_GROUPS": ",".join(self.groups()), "DECKOS_CONFIRM": "ERASE", "DECKOS_EXTRA": self.extra() or "",
+               "DECKOS_ERASE_DISKS": " ".join(e.text().strip() for e in getattr(self, "erase_edits", []))}
         self.proc = QProcess(self)
         self.proc.setProcessChannelMode(QProcess.MergedChannels)
         self.proc.readyReadStandardOutput.connect(self.read_output)

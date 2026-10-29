@@ -4,7 +4,7 @@
 #   truncate -s 100G $W/mbr.img
 #   printf 'label: gpt\nstart=1MiB, size=20GiB, type=L\nstart=150GiB, size=40GiB, type=L\n' | sfdisk -q $W/gpt.img
 #   printf 'label: dos\nstart=1MiB, size=20GiB, type=83\n' | sfdisk -q $W/mbr.img
-#   sed -n '/^MIN_GB=/p; /^list_free() {/,/^}/p; /^make_partition() {/,/^}/p' installer/deckos-install \
+#   sed -n '/^MNT=/p; /^ESP_GUID=/p; /^MIN_GB=/p; /^mnt_disk() {/,/^}/p; /^list_free() {/,/^}/p; /^list_erase() {/,/^}/p; /^disk_contents() {/,/^}/p; /^make_space() {/,/^}/p' installer/deckos-install \
 #     > $W/serve/functions.bash; cp tests/vm/partition_harness.bash $W/serve/
 #   VM_EXTRA_DISKS=$W/empty.img,$W/gpt.img,$W/mbr.img python3 tests/vm/vm.py DISK VARS $W/serve tests/vm/partition_steps.py
 

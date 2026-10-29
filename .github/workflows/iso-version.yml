@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layout: [partition, empty, free]
+        layout: [partition, empty, free, span, erase]
     steps:
       - uses: actions/checkout@v4  # main's test harness (its fixes), testing the old version's ISO
       - uses: actions/download-artifact@v4

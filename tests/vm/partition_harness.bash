@@ -1,6 +1,6 @@
-# Runs the installer's list_free and make_partition (functions.bash: extracted from installer/deckos-install
-# by partition_steps.py) as root, with the installer's messages stubbed. One case per call:
-#   bash partition_harness.bash list | make FREE
+# Runs the installer's disk functions (functions.bash: extracted from installer/deckos-install, see
+# partition_steps.py and erase_steps.py) as root, with the installer's messages stubbed. One case per call:
+#   bash partition_harness.bash list | erase-list | contents DISK | make SPEC [yes|no]
 set -Eeuo pipefail
 LOG=/tmp/deckos-parttest.log
 CHANGED=nothing
@@ -16,9 +16,10 @@ spin() { local t=$1; shift; "$@" >>"$LOG" 2>&1 || die "$t failed"; good "$t"; }
 
 case $1 in
   list) list_free ;;
+  erase-list) list_erase ;;
+  contents) disk_contents "$2" ;;
   make)
-    # shellcheck disable=SC2034  # read by make_partition (functions.bash)
-    FREE=$2 ESP="" TARGET=""
-    make_partition
-    echo "TARGET=$TARGET ESP=$ESP PARTNO=$TARGET_PARTNO" ;;
+    # A whole disk (empty or erased) gets its own EFI partition unless told no, as the installer does without one
+    make_space "$2" "${3:-yes}"
+    echo "TARGET=$MADE_PART ESP=$MADE_ESP PARTNO=$MADE_PARTNO" ;;
 esac
