@@ -1,0 +1,35 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.20.0"
+name = "Moving in"
+tagline = "Back up everything before a reinstall and get it all back after, a tour with pictures, and a boot menu in the DecKo look."
+
+fixes = [
+    "Game Doctor opens on your desktop when it finds a problem, and fixes Proton games on Windows drives.",
+    "Proton's files for a Steam library on a Windows drive can live on your Linux drive (deckos drives prefixes).",
+    "Game Doctor checks a drive can take links before moving Proton's files onto it.",
+]
+
+[[highlights]]
+title = "Before a reinstall"
+text = """Hub › System › Before a reinstall packs your whole home folder (documents, game saves, Proton's files, \
+settings) into one backup on another drive, a Windows drive included, and checks it reads back. After you \
+reinstall, Welcome finds it on your drive and brings everything back in one click, never over a file that's newer."""
+icon = "snapshot"
+try = "Open System"
+run = ["deckos-hub", "--page", "system"]
+
+[[highlights]]
+title = "The DecKoOS tour"
+text = """Two minutes with real pictures: where everything lives, from the menu and Quick Settings to Vibes, Vibe \
+mode, your games and the timeline, each with a button to try it. In Welcome, the Hub's Home and the app menu, and \
+on the live USB before you install."""
+icon = "play"
+try = "Take the tour"
+run = ["deckos-tour"]
+
+[[highlights]]
+title = "A boot menu in the DecKo look"
+text = """The menu that starts DecKoOS, its snapshots and Windows now matches the desktop: a notched plate lit blue \
+to violet, a notched highlight and Chakra Petch lettering."""
+icon = "appearance"
