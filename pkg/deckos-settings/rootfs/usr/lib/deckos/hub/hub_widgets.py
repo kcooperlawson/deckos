@@ -14,6 +14,10 @@ def label(text="", cls=None, wrap=True):
     lab.setTextFormat(Qt.RichText if "<" in text else Qt.AutoText)
     if cls:
         lab.setObjectName(cls)
+    if cls == "kicker":  # spaced capitals, as on the desktop (a stylesheet can't space letters)
+        f = lab.font()
+        f.setLetterSpacing(f.SpacingType.AbsoluteSpacing, 1.6)
+        lab.setFont(f)
     return lab
 
 
@@ -31,7 +35,7 @@ def button(text, kind=None, slot=None, icon=None, tip=None):
     if kind:
         b.setObjectName(kind)
     if icon:
-        b.setIcon(S.icon(icon, "white" if kind in ("primary", "danger") else S.TEXT, 16))
+        b.setIcon(S.icon(icon, "#0B0D16" if kind == "primary" else "white" if kind == "danger" else S.TEXT, 16))
         b.setIconSize(QSize(16, 16))
     if tip:
         b.setToolTip(tip)
@@ -87,7 +91,8 @@ class Card(QFrame):
 
 
 class Meter(QWidget):
-    """4px rounded track with the accent gradient; value is 0..1, colour overridable."""
+    """A meter in lit segments, like the desktop's (the Spectrum look's LEDs): through the accent's gradient, or one
+    colour if given; value is 0..1."""
 
     def __init__(self, height=4):
         super().__init__()
@@ -100,21 +105,22 @@ class Meter(QWidget):
 
     def paintEvent(self, _):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
         r = self.rect()
-        rad = r.height() / 2
-        p.setBrush(QColor(S.BORDER))
-        p.drawRoundedRect(r, rad, rad)
-        if self.value > 0:
-            if self.color:
-                p.setBrush(QColor(self.color))
+        gap = 2
+        n = max(8, round((r.width() + gap) / 9))  # about 9 px a segment
+        w = (r.width() - gap * (n - 1)) / n
+        lit = round(self.value * n)
+        a, b = QColor(S.P.accent), QColor(S.P.grad_b)
+        for i in range(n):
+            x = round(i * (w + gap))
+            if i < lit:
+                t = i / max(1, n - 1)
+                c = QColor(self.color) if self.color else QColor(
+                    round(a.red() + (b.red() - a.red()) * t), round(a.green() + (b.green() - a.green()) * t),
+                    round(a.blue() + (b.blue() - a.blue()) * t))
             else:
-                g = QLinearGradient(0, 0, r.width(), 0)
-                g.setColorAt(0, QColor(S.P.accent))
-                g.setColorAt(1, QColor(S.P.grad_b))
-                p.setBrush(g)
-            p.drawRoundedRect(0, 0, max(r.height(), int(r.width() * self.value)), r.height(), rad, rad)
+                c = QColor(S.BORDER)
+            p.fillRect(x, 0, max(1, round(w)), r.height(), c)
 
 
 class Sparkline(QWidget):
@@ -232,7 +238,7 @@ class StatusTile(QFrame):
     def set(self, value, detail, state="info"):
         color = self.COLORS.get(state) or S.P.accent
         c = QColor(color)
-        self.badge.setStyleSheet(f"background: rgba({c.red()},{c.green()},{c.blue()},40); border-radius: 10px;")
+        self.badge.setStyleSheet(f"background: rgba({c.red()},{c.green()},{c.blue()},40); border-radius: 2px;")
         self.badge.setPixmap(S.pixmap(self._icon, color, 19))
         self.value.setText(value)
         self.detail.setText(detail)

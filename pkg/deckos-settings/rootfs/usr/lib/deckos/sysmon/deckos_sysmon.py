@@ -34,26 +34,24 @@ KIND = {"cpu": "#4C8DFF", "mem": "#A27BFF", "gpu": "#3DD68C", "disk": "#F5B84B",
 UPLOAD = "#7BE0F0"  # the network's second line: upload, beside cyan download
 
 QSS = f"""
-QTreeWidget {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 10px; padding: 4px;
+QTreeWidget {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 2px; padding: 4px;
     alternate-background-color: {S.SURFACE}; outline: 0; }}
 QTreeWidget::item {{ height: 30px; border: none; }}
 QTreeWidget::item:selected {{ background: rgba(76, 141, 255, 0.16); color: {S.TEXT}; }}
 QTreeWidget::item:hover {{ background: {S.RAISED}; }}
 QHeaderView::section {{ background: transparent; color: {S.SUBTEXT}; border: none; border-bottom: 1px solid {S.BORDER};
     padding: 6px 8px; font-weight: 600; }}
-QFrame#device {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 10px; }}
-QFrame#device:hover {{ background: {S.RAISED}; }}
-QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 22pt; font-weight: 600; }}
-QLabel#headline {{ font-family: "Inter Display", "Inter"; font-size: 26pt; font-weight: 700; }}
+QFrame#device, QFrame#stat {{ background: transparent; border: none; }}  /* notched plates: hub_style */
+QLabel#big {{ font-family: "Chakra Petch", "Inter"; font-size: 22pt; font-weight: 600; }}
+QLabel#headline {{ font-family: "Chakra Petch", "Inter"; font-size: 26pt; font-weight: 700; }}
 QLabel#devValue {{ font-weight: 700; }}
-QFrame#stat {{ background: {S.RAISED}; border: 1px solid {S.BORDER}; border-radius: 9px; }}
 QFrame#stat QLabel {{ background: transparent; }}
-QLabel#statValue {{ font-family: "Inter Display", "Inter"; font-size: 14pt; font-weight: 600; }}
-QLabel#chip {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 9px; padding: 5px 11px; }}
+QLabel#statValue {{ font-family: "Chakra Petch", "Inter"; font-size: 14pt; font-weight: 600; }}
+QLabel#chip {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 2px; padding: 5px 11px; }}
 QLabel#mode {{ background: rgba(61, 214, 140, 0.12); border: 1px solid rgba(61, 214, 140, 0.35); color: #9BEBC4;
-    border-radius: 9px; padding: 5px 11px; font-weight: 600; }}
+    border-radius: 2px; padding: 5px 11px; font-weight: 600; }}
 QPushButton#danger:disabled {{ background: {S.RAISED}; color: {S.MUTED}; }}
-QPushButton#seg {{ padding: 6px 14px; border-radius: 8px; background: transparent; border: 1px solid transparent; }}
+QPushButton#seg {{ padding: 6px 14px; border-radius: 2px; background: transparent; border: 1px solid transparent; }}
 QPushButton#seg:checked {{ background: {S.RAISED}; border-color: {S.BORDER}; color: {S.TEXT}; }}
 """
 
@@ -393,9 +391,9 @@ class Device(QFrame):
         self.picked(False)
 
     def picked(self, on):
-        c = QColor(self.color)
-        self.setStyleSheet(f"QFrame#device {{ background: rgba({c.red()},{c.green()},{c.blue()},0.10); "
-                           f"border: 1px solid rgba({c.red()},{c.green()},{c.blue()},0.55); }}" if on else "")
+        self.setProperty("picked", on)  # a plate tinted in its resource's colour (hub_style)
+        self.setProperty("plateColor", QColor(self.color))
+        self.update()
 
     def mousePressEvent(self, _e):
         self.mon.perf.pick(self.key)

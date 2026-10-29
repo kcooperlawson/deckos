@@ -158,7 +158,7 @@ class Store(QWidget):
         self.search.setClearButtonEnabled(True)
         self.search.setMinimumHeight(38)
         self.search.setStyleSheet(f"QLineEdit {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; "
-                                  f"border-radius: 9px; padding: 6px 10px; font-size: 10.5pt; }}"
+                                  f"border-radius: 2px; padding: 6px 10px; font-size: 10.5pt; }}"
                                   f"QLineEdit:focus {{ border-color: {S.P.accent}; }}")
         self.search_timer = QTimer(self, singleShot=True, interval=280, timeout=self.run_search)
         self.search.textChanged.connect(lambda _t: self.search_timer.start())
@@ -274,9 +274,7 @@ class Store(QWidget):
     def home_page(self):
         w, lay = self.page("")
         hero = QFrame()
-        hero.setAttribute(Qt.WA_StyledBackground, True)
-        hero.setStyleSheet(f"background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {S.P.accent}, "
-                           f"stop:1 {S.P.grad_b}); border-radius: 14px;")
+        hero.setObjectName("hero")  # a notched plate in the accent's gradient (hub_style)
         hv = QVBoxLayout(hero)
         hv.setContentsMargins(28, 24, 28, 24)
         hv.setSpacing(4)

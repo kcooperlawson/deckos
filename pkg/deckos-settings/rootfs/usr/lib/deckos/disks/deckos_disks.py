@@ -34,15 +34,12 @@ ROLE_NAME = {"system": "DecKoOS", "efi": "Boot (EFI)", "swap": "Swap", "windows"
              "reserved": "Reserved", "data": "Files"}
 
 QSS = f"""
-QFrame#banner {{ border-radius: 12px; }}
+QFrame#banner, QFrame#disk, QFrame#erase {{ background: transparent; border: none; }}  /* notched plates: hub_style */
 QFrame#banner QLabel {{ background: transparent; }}
-QFrame#disk {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 11px; }}
-QFrame#disk:hover {{ background: {S.RAISED}; }}
 QFrame#disk QLabel {{ background: transparent; }}
-QLabel#model {{ font-family: "Inter Display", "Inter"; font-size: 20pt; font-weight: 700; }}
-QLabel#chip {{ background: {S.RAISED}; border: 1px solid {S.BORDER}; border-radius: 7px; padding: 3px 9px; }}
-QDoubleSpinBox {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 7px; padding: 5px 8px; }}
-QFrame#erase {{ background: {S.SURFACE}; border: 1px solid #5A2A2E; border-radius: 9px; }}
+QLabel#model {{ font-family: "Chakra Petch", "Inter"; font-size: 20pt; font-weight: 700; }}
+QLabel#chip {{ background: {S.RAISED}; border: 1px solid {S.BORDER}; border-radius: 2px; padding: 3px 9px; }}
+QDoubleSpinBox {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 2px; padding: 5px 8px; }}
 QFrame#erase QLabel {{ background: transparent; }}
 """
 
@@ -104,8 +101,7 @@ class PartitionBar(QWidget):
         x = 0.0
         for (kind, item), w in zip(self.segments, self.widths()):
             r = QRectF(x + 1.5, 1.5, max(4.0, w - 3), self.height() - 3)
-            path = QPainterPath()
-            path.addRoundedRect(r, 9, 9)
+            path = S.notch_path(r, 8)
             picked = self.picked is not None and item == self.picked  # free space is made anew each time
             if kind == "free":
                 p.fillPath(path, QColor(S.RAISED if picked else S.SURFACE))
@@ -180,8 +176,8 @@ class DiskTile(QFrame):
             h.addWidget(dot, 0, Qt.AlignTop)
 
     def picked(self, on):
-        self.setStyleSheet(f"QFrame#disk {{ background: {rgba(S.P.accent, 0.10)}; border-color: {rgba(S.P.accent, 0.55)}; }}"
-                           if on else "")
+        self.setProperty("picked", on)  # a tinted, lit plate (hub_style)
+        self.update()
 
     def mousePressEvent(self, _e):
         self.on_click(self.disk)
@@ -222,6 +218,8 @@ class Change(QDialog):
         v.addWidget(label(title, "title", wrap=False))
         box = QFrame()
         box.setObjectName("erase" if danger else "")
+        if danger:
+            box.setProperty("plateColor", QColor(S.DANGER))
         box.setAttribute(Qt.WA_StyledBackground, True)
         b = QHBoxLayout(box)
         b.setContentsMargins(14, 12, 14, 12)
@@ -414,7 +412,8 @@ class Disks(QWidget):
         bad = self.problems()
         worst = D.BAD if any(c.state == D.BAD for c in bad) else D.WARN if bad else D.GOOD
         color, icon = STATE[worst]
-        self.banner.setStyleSheet(f"QFrame#banner {{ background: {rgba(color, 0.10)}; border: 1px solid {rgba(color, 0.40)}; }}")
+        self.banner.setProperty("plateColor", QColor(color))  # a plate tinted in the state's colour (hub_style)
+        self.banner.update()
         lay = self.banner_icon.layout()
         while lay.count():
             drop(lay.takeAt(0))
@@ -549,7 +548,7 @@ class Disks(QWidget):
         top = QHBoxLayout()
         swatch = QFrame()
         swatch.setFixedSize(14, 14)
-        swatch.setStyleSheet(f"background: {color}; border-radius: 4px;")
+        swatch.setStyleSheet(f"background: {color}; border-radius: 1px;")
         top.addWidget(swatch, 0, Qt.AlignVCenter)
         top.addWidget(label(part.label or ROLE_NAME.get(part.role, part.name), "cardTitle", wrap=False))
         top.addWidget(label(f"{part.fstype or 'not formatted'} · {D.size(part.size)} · {ROLE_NAME.get(part.role, '')}",

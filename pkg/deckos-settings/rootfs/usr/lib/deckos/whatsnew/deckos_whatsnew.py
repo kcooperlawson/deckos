@@ -75,15 +75,13 @@ def mark_seen(version):
 
 
 QSS = f"""
-#hero {{ border-radius: 14px; background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {S.P.accent},
-    stop:1 {S.P.grad_b}); }}
+#hero, #feature {{ background: transparent; border: none; }}  /* notched plates: hub_style */
 #hero QLabel {{ background: transparent; color: white; }}
-QLabel#heroKicker {{ font-size: 9pt; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.8); }}
+QLabel#heroKicker {{ font-family: "Chakra Petch"; font-size: 9.5pt; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,0.8); }}
 QLabel#heroName {{ font-family: "Inter Display", "Inter"; font-size: 26pt; font-weight: 700; }}
 QLabel#heroTag {{ font-size: 11pt; color: rgba(255,255,255,0.9); }}
-#feature {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 12px; }}
 #feature QLabel {{ background: transparent; }}
-QLabel#shot {{ border-radius: 8px; }}
+QLabel#shot {{ border-radius: 2px; }}
 QLabel#featTitle {{ font-size: 12pt; font-weight: 600; }}
 """
 

@@ -5,8 +5,10 @@ collects the answers, then runs `sudo deckos-install` in its unattended mode (DE
 and turns its output into a progress view. The install itself is the same script as the
 text installer, so both behave identically.
 
-Same visual language as DecKoOS Hub: slate surfaces, 1px borders,
-10px radii, Inter, and the blue-violet gradient on primary actions and progress.
+The DecKo look, like DecKoOS Hub (hub_style.py, which the live USB's installer doesn't load, so the few pieces it
+needs are here): notched plates (the wordmark's cut corners at the top right and bottom left) with a 1px edge lit
+in the blue-violet gradient when picked, notched buttons, Chakra Petch for labels and steps, Inter for sentences,
+and a segmented progress meter.
 """
 import html
 import json
@@ -18,12 +20,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QProcessEnvironment, Qt, QTimer
-from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter, QTextCursor
+from PySide6.QtCore import QEvent, QObject, QPointF, QProcess, QProcessEnvironment, QRectF, Qt, QTimer
+from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QTextCursor
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QCompleter, QFrame,
                                QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
-                               QPushButton, QRadioButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget)
+                               QProxyStyle, QPushButton, QRadioButton, QScrollArea, QStackedWidget, QStyle,
+                               QVBoxLayout, QWidget)
 
 BRANDING = Path(os.environ.get("DECKOS_BRANDING", "/usr/share/deckos/branding"))
 INSTALLER = os.environ.get("DECKOS_INSTALLER", "/usr/local/bin/deckos-install")
@@ -48,45 +51,38 @@ QWidget {{ background: transparent; color: {TEXT}; font-family: "Inter", "Noto S
 QLabel#title {{ font-family: "Inter Display", "Inter"; font-size: 18pt; font-weight: 600; }}
 QLabel#sub {{ color: {SUBTEXT}; }}
 QLabel#muted {{ color: {MUTED}; font-size: 9pt; }}
-QLabel#step {{ color: {MUTED}; padding: 7px 12px; border-radius: 7px; font-weight: 600; }}
-QLabel#stepDone {{ color: {SUBTEXT}; padding: 7px 12px; border-radius: 7px; font-weight: 600; }}
-QLabel#stepNow {{ color: white; padding: 7px 12px; border-radius: 7px; font-weight: 600; background: {SURFACE};
-    border: 1px solid {BORDER}; }}
+QLabel#step, QLabel#stepDone, QLabel#stepNow {{ font-family: "Chakra Petch", "Inter"; padding: 7px 12px;
+    border-radius: 2px; font-weight: 600; letter-spacing: 0.5px; }}
+QLabel#step {{ color: {MUTED}; }}
+QLabel#stepDone {{ color: {SUBTEXT}; }}
+QLabel#stepNow {{ color: white; background: {SURFACE}; border: 1px solid {BORDER}; border-left: 2px solid {ACCENT}; }}
 QLabel#cardTitle {{ font-size: 10.5pt; font-weight: 600; }}
-QLabel#cardKicker {{ color: {SUBTEXT}; font-size: 8.5pt; font-weight: 600; }}
+QLabel#cardKicker {{ color: {SUBTEXT}; font-family: "Chakra Petch", "Inter"; font-size: 8.5pt; font-weight: 600;
+    letter-spacing: 1.6px; }}
 QLabel#now {{ font-family: "Inter Display", "Inter"; font-size: 13pt; font-weight: 600; }}
 QLabel#error {{ color: {DANGER}; }}
-#card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
+#card, #disk, #choice {{ background: transparent; border: none; }}  /* notched plates: _Plates */
 #card QLabel, #card QCheckBox, #card QRadioButton {{ background: transparent; }}
-#disk, #choice {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
-#disk[picked="true"], #choice[picked="true"] {{ border: 1px solid {ACCENT}; background: #182033; }}
-#disk[blocked="true"] {{ background: #13161C; }}
 #disk QLabel, #disk QRadioButton, #choice QLabel, #choice QCheckBox {{ background: transparent; }}
-QPushButton {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 8px 16px; }}
-QPushButton:hover {{ background: {HOVER}; }}
-QPushButton:pressed {{ background: {PRESSED}; }}
-QPushButton:disabled {{ color: {MUTED}; background: #13161C; }}
-QPushButton#primary {{ color: white; font-weight: 600; border: none; padding: 9px 20px;
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {GRAD_A}, stop:1 {GRAD_B}); }}
-QPushButton#primary:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {ACCENT_HOVER}, stop:1 #8E75FF); }}
-QPushButton#primary:disabled {{ color: {MUTED}; background: #1B1F27; }}
-QPushButton#danger {{ color: white; font-weight: 600; border: none; padding: 9px 20px; background: #D9534F; }}
-QPushButton#danger:hover {{ background: {DANGER}; }}
-QPushButton#danger:disabled {{ color: {MUTED}; background: #1B1F27; }}
-QLineEdit, QComboBox {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 7px; padding: 8px 10px;
+QPushButton {{ padding: 8px 16px; }}  /* drawn as notched plates: DecoStyle */
+QPushButton:disabled {{ color: {MUTED}; }}
+QPushButton#primary, QPushButton#danger {{ color: white; font-family: "Chakra Petch", "Inter"; font-size: 10.5pt;
+    font-weight: 700; padding: 9px 22px; }}
+QPushButton#primary:disabled, QPushButton#danger:disabled {{ color: {MUTED}; }}
+QLineEdit, QComboBox {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 2px; padding: 8px 10px;
     selection-background-color: {ACCENT}; }}
 QLineEdit:focus, QComboBox:focus {{ border: 1px solid {ACCENT}; }}
 QComboBox QAbstractItemView {{ background: #22262F; border: 1px solid {BORDER}; selection-background-color: {ACCENT}; }}
-QPlainTextEdit {{ background: #0B0D11; border: 1px solid {BORDER}; border-radius: 10px; padding: 8px;
+QPlainTextEdit {{ background: #0B0D11; border: 1px solid {BORDER}; border-radius: 2px; padding: 8px;
     font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace; font-size: 9pt; color: {SUBTEXT}; }}
 QCheckBox, QRadioButton {{ spacing: 8px; }}
-QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {BORDER}; background: {SURFACE}; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 2px; border: 1px solid {BORDER}; background: {SURFACE}; }}
 QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; }}
 QRadioButton::indicator {{ width: 16px; height: 16px; border-radius: 8px; border: 1px solid {MUTED}; background: {SURFACE}; }}
 QRadioButton::indicator:checked {{ background: {ACCENT}; border: 1px solid {ACCENT}; }}
 QScrollArea {{ border: none; }}
 QScrollBar:vertical {{ width: 10px; background: transparent; }}
-QScrollBar::handle:vertical {{ background: {HOVER}; border-radius: 4px; margin: 2px; min-height: 30px; }}
+QScrollBar::handle:vertical {{ background: {HOVER}; border-radius: 2px; margin: 2px; min-height: 30px; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 """
 
@@ -161,6 +157,93 @@ def button(text, kind=None, slot=None):
     return b
 
 
+# ------------------------------------------------------------------ the DecKo notch (as hub_style.py draws it)
+
+PLATES = {"card": 14, "disk": 10, "choice": 10}  # frames drawn as notched plates, and their cut
+
+
+def notch(r, cut):
+    """The wordmark's notch: a rectangle with its top right and bottom left corners cut."""
+    cut = min(cut, r.width() / 3, r.height() / 3)
+    path = QPainterPath()
+    path.addPolygon(QPolygonF([
+        QPointF(r.left(), r.top()), QPointF(r.right() - cut, r.top()), QPointF(r.right(), r.top() + cut),
+        QPointF(r.right(), r.bottom()), QPointF(r.left() + cut, r.bottom()), QPointF(r.left(), r.bottom() - cut)]))
+    path.closeSubpath()
+    return path
+
+
+def plate(p, rect, fill, cut, lit=False, edge=BORDER, gradient=None):
+    """A notched plate: filled (or in a gradient's two colours), with a 1px edge, in the blue-violet gradient if lit."""
+    r = QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5)
+    path = notch(r, cut)
+    p.save()
+    p.setRenderHint(QPainter.Antialiasing)
+    if gradient:
+        g = QLinearGradient(r.topLeft(), r.bottomRight())
+        g.setColorAt(0, QColor(gradient[0]))
+        g.setColorAt(1, QColor(gradient[1]))
+        p.fillPath(path, g)
+    else:
+        p.fillPath(path, QColor(fill))
+        if lit:
+            g = QLinearGradient(r.topLeft(), r.bottomRight())
+            g.setColorAt(0, QColor(GRAD_A))
+            g.setColorAt(0.5, QColor(255, 255, 255, 30))
+            g.setColorAt(1, QColor(GRAD_B))
+            p.setPen(QPen(g, 1))
+        else:
+            p.setPen(QPen(QColor(edge), 1))
+        p.drawPath(path)
+    p.restore()
+
+
+class _Plates(QObject):
+    """Paints the plate behind every card and disk or choice row (by object name), before the frame paints what's
+    in it: picked ones tinted and lit, blocked disks darker."""
+
+    def eventFilter(self, obj, ev):
+        if ev.type() == QEvent.Paint and obj.isWidgetType() and obj.objectName() in PLATES:
+            picked, blocked = bool(obj.property("picked")), bool(obj.property("blocked"))
+            p = QPainter(obj)
+            plate(p, obj.rect(), "#182033" if picked else "#13161C" if blocked else SURFACE,
+                  PLATES[obj.objectName()], lit=picked)
+            p.end()
+        return False
+
+
+class DecoStyle(QProxyStyle):
+    """Push buttons as notched plates: primary ones in the blue-violet gradient, danger ones red."""
+
+    def _plate(self, opt, p, w):
+        kind = w.objectName() if w else ""
+        on, down = bool(opt.state & QStyle.State_Enabled), bool(opt.state & QStyle.State_Sunken)
+        hover = bool(opt.state & QStyle.State_MouseOver)
+        cut = min(8, opt.rect.height() / 3)
+        if not on:
+            plate(p, opt.rect, "#1B1F27" if kind in ("primary", "danger") else "#13161C", cut)
+        elif kind == "primary":
+            plate(p, opt.rect, None, cut, gradient=(ACCENT_HOVER, "#8E75FF") if hover or down else (GRAD_A, GRAD_B))
+        elif kind == "danger":
+            plate(p, opt.rect, DANGER if hover or down else "#D9534F", cut, edge=DANGER)
+        else:
+            plate(p, opt.rect, PRESSED if down else HOVER if hover else SURFACE, cut)
+
+    def drawControl(self, el, opt, p, w=None):
+        if el == QStyle.CE_PushButtonBevel and isinstance(w, QPushButton):
+            self._plate(opt, p, w)
+            return
+        super().drawControl(el, opt, p, w)
+
+    def drawPrimitive(self, el, opt, p, w=None):
+        if el == QStyle.PE_PanelButtonCommand and isinstance(w, QPushButton):
+            self._plate(opt, p, w)
+            return
+        if el == QStyle.PE_FrameFocusRect and isinstance(w, QPushButton):
+            return
+        super().drawPrimitive(el, opt, p, w)
+
+
 class Card(QFrame):
     def __init__(self, kicker=None, title=None):
         super().__init__()
@@ -176,7 +259,7 @@ class Card(QFrame):
 
 
 class Meter(QWidget):
-    """6px rounded track with the blue-violet fill; value is 0..1."""
+    """A segmented LED meter: 6px tall, lit through the blue-violet gradient as far as value (0..1)."""
 
     def __init__(self):
         super().__init__()
@@ -189,17 +272,19 @@ class Meter(QWidget):
 
     def paintEvent(self, _):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
         r = self.rect()
-        p.setBrush(QColor(BORDER))
-        p.drawRoundedRect(r, 3, 3)
-        if self.value > 0:
-            g = QLinearGradient(0, 0, r.width(), 0)
-            g.setColorAt(0, QColor(GRAD_A))
-            g.setColorAt(1, QColor(GRAD_B))
-            p.setBrush(g)
-            p.drawRoundedRect(0, 0, max(6, int(r.width() * self.value)), r.height(), 3, 3)
+        n = max(1, (r.width() + 2) // 11)  # 9px segments, 2px apart
+        w = (r.width() + 2) / n
+        g = QLinearGradient(0, 0, r.width(), 0)
+        g.setColorAt(0, QColor(GRAD_A))
+        g.setColorAt(1, QColor(GRAD_B))
+        lit = round(n * self.value)
+        for i in range(n):
+            seg = QRectF(i * w, 0, w - 2, r.height())
+            if i < lit:
+                p.fillRect(seg, g)
+            else:
+                p.fillRect(seg, QColor(BORDER))
 
 
 class Page(QWidget):
@@ -433,6 +518,7 @@ class Installer(QWidget):
         card.setProperty("picked", on)
         card.style().unpolish(card)
         card.style().polish(card)
+        card.update()
 
     @staticmethod
     def has_ai_gpu():
@@ -739,6 +825,7 @@ class Installer(QWidget):
             card.setProperty("picked", checked)
             card.style().unpolish(card)
             card.style().polish(card)
+            card.update()
         if checked:
             self.fill_extra()
         self.update_nav()
@@ -1016,6 +1103,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Install DecKoOS")
     app.setDesktopFileName("deckos-install")
+    app.setStyle(DecoStyle())
+    plates = _Plates(app)
+    app.installEventFilter(plates)
     app.setStyleSheet(QSS)
     w = Installer()
     w.show()

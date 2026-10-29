@@ -198,12 +198,17 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   OS, Windows included. Keep demo data working when adding features; render with
   `QT_QPA_PLATFORM=offscreen` (and `QT_QPA_FONTDIR` on Windows) to check layouts.
 - **Design language**: slate `#0F1115` / `#171A21`, borders `#262B36`, text `#E8EAF0` / `#8C94A6`,
-  accent `#4C8DFF` with a violet gradient partner, 10px radii, Inter / Inter Display, the DeckOS line
-  icons (24px, 1.75 stroke, drawn in `#000` and recoloured; add new ones in `assets/icons.py`).
+  accent `#4C8DFF` with a violet gradient partner, 2px radii (the plates are notched, below), Inter / Inter
+  Display, the DecKoOS line icons (24px, 1.75 stroke, drawn in `#000` and recoloured; add new ones in `assets/icons.py`).
 - **The DecKo look (the desktop: panel, widgets, taskbar, Vibe mode)**: built from the brand itself. The notch
   (the wordmark's cut corners, top right and bottom left) is the shape of every card; a 1px edge lit by the
   Vibe's two colours; Chakra Petch (OFL, `usr/share/fonts/deckos`) for numbers, labels and buttons, Inter for
   names and sentences; segmented meters (like the Spectrum look's LEDs); gauges shaped like the logo's stick eye.
+  The apps have it too: a stylesheet can't cut corners, so `hub_style.py` paints the plates from an app-wide event
+  filter (`_Plates`, by object name: add a frame's name to `PLATES` and leave it see-through in the QSS; the
+  `picked` property tints and lights one, `plateColor` tints it in another colour) and draws push buttons in
+  `DecoStyle` (a QProxyStyle). So never give a QPushButton a background or border in QSS: the stylesheet would draw
+  it instead. The installer, which doesn't load hub_style, has its own small copy.
   Shared QML in `usr/lib/qt6/qml/org/deckos/vibes` (Look, Notch, Segments, Hud, Levels); the Plasma style's
   frames are notched too (`assets/plasma_theme.py`, accent-lit corners). The dock is three islands: the Plasma style's
   `translucent/` panel background is see-through (used under adaptive opacity until a window is maximised against

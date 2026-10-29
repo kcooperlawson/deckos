@@ -97,7 +97,7 @@ def badge(source, small=True):
     c = QColor(BADGE[source])
     lab = QLabel(SOURCE_NAMES[source])
     lab.setStyleSheet(f"background: rgba({c.red()},{c.green()},{c.blue()},38); color: {c.name()}; "
-                      f"border-radius: 6px; padding: {'1px 6px' if small else '3px 9px'}; "
+                      f"border-radius: 2px; padding: {'1px 6px' if small else '3px 9px'}; "
                       f"font-size: {'8pt' if small else '9pt'}; font-weight: 600;")
     return lab
 
@@ -213,7 +213,7 @@ class Screenshots(QScrollArea):
             lab = QLabel()
             lab.setFixedSize(int(self.h * 16 / 9), self.h)
             lab.setAlignment(Qt.AlignCenter)
-            lab.setStyleSheet(f"background: {S.RAISED}; border-radius: 10px; color: {S.MUTED};")
+            lab.setStyleSheet(f"background: {S.RAISED}; border-radius: 2px; color: {S.MUTED};")
             lab.setText("Loading…")
             self.row.addWidget(lab)
             if url.startswith("demo:"):
@@ -234,12 +234,12 @@ class Screenshots(QScrollArea):
             rounded.fill(Qt.transparent)
             p = QPainter(rounded)
             p.setRenderHint(QPainter.Antialiasing)
-            path = QPainterPath()
-            path.addRoundedRect(QRectF(rounded.rect()), S.corner(18), S.corner(18))
+            path = S.notch_path(rounded.rect(), 28)  # the plates' notch (at twice the size: drawn at 2x)
             p.setClipPath(path)
             p.drawPixmap(0, 0, pm)
             p.end()
             rounded.setDevicePixelRatio(2)
+            lab.setStyleSheet("background: transparent;")
             lab.setPixmap(rounded)
         except RuntimeError:  # the page was closed before the image arrived
             pass
