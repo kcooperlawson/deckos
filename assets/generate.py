@@ -63,6 +63,8 @@ class Font:
 
 INTER = Font(FONT)
 INTER_MED = Font(FONT_MEDIUM)
+# The DecKo look's lettering for labels and numbers (OFL, shipped in usr/share/fonts/deckos)
+CHAKRA = Font(str(HERE.parent / "pkg/deckos-settings/rootfs/usr/share/fonts/deckos/ChakraPetch-SemiBold.ttf"))
 
 
 def text_path(font, text, x, baseline, size, tracking=0.0):
@@ -434,21 +436,45 @@ def wallpaper(w=3840, h=2160):
     return svg(w, h, body, defs)
 
 
+# Where theme.txt puts the boot menu (left/top/width/height as fractions of the screen): the frame is drawn round it
+GRUB_MENU = (0.33, 0.38, 0.34, 0.36)
+
+
+def notched(x, y, w, h, c):
+    """The DecKo notch: a rectangle with its top-right and bottom-left corners cut by c (the wordmark's corners)."""
+    return (f"M{x:.1f},{y:.1f} H{x + w - c:.1f} L{x + w:.1f},{y + c:.1f} V{y + h:.1f} H{x + c:.1f} "
+            f"L{x:.1f},{y + h - c:.1f} Z")
+
+
 def grub_background(w=1920, h=1080):
+    """The boot menu in the DecKo look: the glowing wordmark above a notched plate lit blue to violet, the menu
+    inside it (GRUB draws the entries), a Chakra Petch kicker, and the keys along the bottom."""
     defs, body = backdrop(w, h, glow_a=(0.5, 0.0), glow_b=(0.5, 1.15))
-    size = 120
+    size = 104
     frag, ww, stick = wordmark(0, 0, size)
-    x = (w - ww) / 2
     baseline = h * 0.25
-    frag, ww, stick = wordmark(x, baseline, size, glow="glow")
+    frag, ww, stick = wordmark((w - ww) / 2, baseline, size, glow="glow")
     defs += wordmark_defs(stick, ww) + glow_filter("glow", 14)
     defs += (f'<linearGradient id="streak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{GRAD_A}" stop-opacity="0"/>'
-             f'<stop offset="0.7" stop-color="{GRAD_A}"/><stop offset="1" stop-color="{GRAD_B}"/></linearGradient>')
+             f'<stop offset="0.7" stop-color="{GRAD_A}"/><stop offset="1" stop-color="{GRAD_B}"/></linearGradient>'
+             f'<linearGradient id="edge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{GRAD_A}"/>'
+             f'<stop offset="1" stop-color="{GRAD_B}"/></linearGradient>')
     body += streaks(w, h, w / 3840, count=5, seed=3)
     body += frag
-    tag, tw = text_path(INTER_MED, "Choose what to start", 0, 0, 26)
-    tag, tw = text_path(INTER_MED, "Choose what to start", (w - tw) / 2, baseline + 70, 26)
-    body += f'<path fill="{SUBTEXT}" d="{tag}"/>'
+    # The plate round the menu: a little larger than GRUB's menu box, room for the kicker on top
+    mx, my, mw, mh = (GRUB_MENU[0] * w, GRUB_MENU[1] * h, GRUB_MENU[2] * w, GRUB_MENU[3] * h)
+    px, py, pw, ph = mx - 28, my - 64, mw + 56, mh + 84
+    body += (f'<path d="{notched(px, py, pw, ph, 26)}" fill="#13161D" fill-opacity="0.82" stroke="url(#edge)" '
+             f'stroke-width="1.5" stroke-opacity="0.75"/>')
+    kick, kw = text_path(CHAKRA, "BOOT MENU", 0, 0, 17, tracking=3.2)
+    kick, kw = text_path(CHAKRA, "BOOT MENU", px + 28, py + 38, 17, tracking=3.2)
+    body += f'<path fill="{GRAD_A}" d="{kick}"/>'
+    hint = "CHOOSE WHAT TO START"
+    t, tw = text_path(CHAKRA, hint, 0, 0, 13, tracking=2.4)
+    t, tw = text_path(CHAKRA, hint, px + pw - 28 - tw, py + 37, 13, tracking=2.4)
+    body += f'<path fill="{SUBTEXT}" d="{t}"/>'
+    # A short lit tick under the kicker, like the Hub's card headers
+    body += f'<rect x="{px + 28:.1f}" y="{py + 48:.1f}" width="{kw:.1f}" height="2" fill="url(#edge)"/>'
     return svg(w, h, body, defs)
 
 
@@ -467,19 +493,20 @@ def readme_banner(w=1600, h=420):
                + body + frag + f'<path fill="{SUBTEXT}" d="{t}"/></g>', defs)
 
 
-def grub_select_pieces(r=10, fill="#1C2130", stroke="#2E3546"):
-    """9-slice highlight bar for the GRUB menu: rounded corners, 1px border."""
+def grub_select_pieces(q=14, fill="#1B2440", top=GRAD_A, bottom=GRAD_B):
+    """9-slice highlight for the GRUB menu in the DecKo look: notched (top-right and bottom-left cut), a lit edge
+    blue at the top and left, violet at the bottom and right, and a 3 px accent bar down the left."""
     out = {}
-    q = r + 1
-    # Corners are drawn from one full rounded rect clipped to each corner box.
-    full = (f'<rect x="0.5" y="0.5" width="{2 * q - 1}" height="{2 * q - 1}" rx="{r}" '
-            f'fill="{fill}" stroke="{stroke}" stroke-width="1"/>')
+    full = (f'<defs><linearGradient id="e" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{top}"/>'
+            f'<stop offset="1" stop-color="{bottom}"/></linearGradient></defs>'
+            f'<path d="{notched(0.75, 0.75, 2 * q - 1.5, 2 * q - 1.5, q - 2)}" fill="{fill}" stroke="url(#e)" '
+            f'stroke-width="1.5"/><rect x="0.75" y="0.75" width="3" height="{2 * q - 1.5}" fill="{top}"/>')
     for name, (ox, oy) in {"nw": (0, 0), "ne": (q, 0), "sw": (0, q), "se": (q, q)}.items():
         out[f"select_{name}.svg"] = svg(q, q, full, vb=f"{ox} {oy} {q} {q}")
-    out["select_n.svg"] = svg(4, q, f'<rect width="4" height="{q}" fill="{fill}"/><rect width="4" height="1" fill="{stroke}"/>')
-    out["select_s.svg"] = svg(4, q, f'<rect width="4" height="{q}" fill="{fill}"/><rect y="{q - 1}" width="4" height="1" fill="{stroke}"/>')
-    out["select_w.svg"] = svg(q, 4, f'<rect width="{q}" height="4" fill="{fill}"/><rect width="1" height="4" fill="{stroke}"/>')
-    out["select_e.svg"] = svg(q, 4, f'<rect width="{q}" height="4" fill="{fill}"/><rect x="{q - 1}" width="1" height="4" fill="{stroke}"/>')
+    out["select_n.svg"] = svg(4, q, f'<rect width="4" height="{q}" fill="{fill}"/><rect width="4" height="1.5" fill="{top}"/>')
+    out["select_s.svg"] = svg(4, q, f'<rect width="4" height="{q}" fill="{fill}"/><rect y="{q - 1.5}" width="4" height="1.5" fill="{bottom}"/>')
+    out["select_w.svg"] = svg(q, 4, f'<rect width="{q}" height="4" fill="{fill}"/><rect width="3.75" height="4" fill="{top}"/>')
+    out["select_e.svg"] = svg(q, 4, f'<rect width="{q}" height="4" fill="{fill}"/><rect x="{q - 1.5}" width="1.5" height="4" fill="{bottom}"/>')
     out["select_c.svg"] = svg(4, 4, f'<rect width="4" height="4" fill="{fill}"/>')
     return out
 

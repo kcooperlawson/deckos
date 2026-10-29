@@ -298,6 +298,8 @@ class Installer(QWidget):
         actions.addWidget(button("Wi-Fi and network settings", slot=self.open_network))
         actions.addWidget(button("Check again", slot=self.check_system))
         actions.addStretch(1)
+        # The tour runs on the live USB too: a look around before deciding
+        actions.addWidget(button("Take the tour", slot=lambda: QProcess.startDetached("deckos-tour", [])))
         card.body.addLayout(actions)
         p.lay.addWidget(card)
         self.stack.addWidget(p)
@@ -945,6 +947,8 @@ class Installer(QWidget):
                 "1. BIOS: Secure Boot off. DecKoOS is now first in the boot order.<br>"
                 "2. Windows: run <code>powercfg /h off</code> as admin once, or your NTFS drives open read-only.<br><br>"
                 "<b>After you log in</b><br>"
+                "DecKoOS Welcome opens. If you backed up before reinstalling (Hub › System › Before a reinstall), "
+                "it finds the backup on your drive and brings your files, saves and settings back in one click. "
                 "DecKoOS Hub (bottom panel) has the display fix level, Gaming Mode and your drives.")
         else:
             saved = self.save_log()

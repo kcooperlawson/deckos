@@ -367,6 +367,19 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   unit `deckos-context.service` (global from the .install) runs the reactions, each a switch in `context.json`: power while
   building, quiet while developing, Welcome back after a game (from Pulse), Moments (`moments.for_activity`). Quick
   Settings' `ContextRow` shows it and why, and corrects it (`deckos context set|auto`). Tests: `tests/test_context.py`.
+- **Before a reinstall** (`usr/lib/deckos/backup/backup.py`, no Qt): `deckos backup make|verify|restore|plan|list` packs the
+  whole home into one `home.tar.zst` (a tar keeps links and permissions on NTFS, which refuses symlinks; caches, Trash
+  and downloaded games left out) plus the setup export, package lists and fstab, in "DecKoOS backup DATE" with a
+  manifest (file count, SHA-256) that `verify` checks; `restore` verifies, unpacks to a staging folder and merges with
+  `rsync --update` (never over a newer file; tar's --keep-newer-files fails on existing folders). Plain `deckos backup
+  DEST` is still the everyday rsync mirror. Hub > System > Before a reinstall; Welcome's first step finds a backup on
+  the drives (`welcome_system.find_backups`) and offers it. Tests: `tests/test_backup.py`.
+- **Tour** (`welcome/deckos_tour.py`, `deckos-tour`): one picture per stop with a Try button; Welcome, the Hub's Home,
+  the menu and the live USB's installer open it. Pictures in `usr/share/deckos/tour/` come from `assets/tour_images.py`
+  (docs/screenshots plus Hub/Vibe/Vibe mode renders): re-run it after retaking screenshots.
+- **Boot menu**: GRUB theme in the DecKo look (`assets/generate.py`'s `grub_background`/`grub_select_pieces`: a notched
+  plate round the menu, notched lit highlight, Chakra Petch via grub-mkfont in the PKGBUILD). `GRUB_MENU` must match
+  theme.txt's boot_menu box. Check the look on a real boot: GRUB can't be rendered here.
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

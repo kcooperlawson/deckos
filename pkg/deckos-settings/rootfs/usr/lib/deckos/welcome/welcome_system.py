@@ -119,3 +119,26 @@ def spotify_installed():
 def gaming_conf():
     """Gaming Mode settings: system defaults with the user's own on top (as the Hub reads them)."""
     return {**sysinfo.conf("/etc/deckos/gaming.conf"), **sysinfo.conf(Path.home() / ".config/deckos/gaming.conf")}
+
+
+def find_backups():
+    """[(folder, made, files, GB)] newest first: DecKoOS backups (deckos backup make) on mounted drives, so a fresh
+    install can offer to bring one back. Looks at each drive's top folder and its "DecKoOS backups" folder."""
+    if DEMO:
+        import time
+        return [(Path("/mnt/BIG/DecKoOS backups/DecKoOS backup 2026-10-28 1412"),
+                 time.mktime((2026, 10, 28, 14, 12, 0, 0, 0, -1)), 412873, 96.4)]
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backup"))
+    import backup
+    roots = [p for base in (Path("/mnt"), Path("/run/media") / os.environ.get("USER", ""), Path("/media"))
+             if base.is_dir() for p in base.iterdir() if p.is_dir()]
+    found = []
+    for root in roots:
+        for place in (root, root / "DecKoOS backups"):
+            try:
+                found += [(f, m.get("made", 0), m.get("files", 0), m.get("bytes", 0) / 1e9)
+                          for f, m in backup.backups_in(place)]
+            except OSError:
+                continue
+    return sorted(found, key=lambda b: -b[1])
