@@ -152,8 +152,9 @@ def make(dest, base=None, say=print):
     return folder
 
 
-def verify(folder):
-    """(ok, message): the archive is the one the manifest describes, and reads all the way through."""
+def verify(folder, say=lambda s: None):
+    """(ok, message): the archive is the one the manifest describes, and reads all the way through. Both passes read
+    the whole archive (a 100 GB+ home over USB takes a while), so SAY hears what it's on."""
     folder = Path(folder)
     try:
         m = json.loads((folder / "manifest.json").read_text())
@@ -164,8 +165,10 @@ def verify(folder):
         return False, "home.tar.zst is missing"
     if archive.stat().st_size != m.get("bytes"):
         return False, "home.tar.zst isn't the size it was when it was made"
+    say(f"Checking the archive matches ({archive.stat().st_size / 1e9:.0f} GB, the slow part)…")
     if sha256(archive) != m.get("sha256"):
         return False, "home.tar.zst changed since it was made (damaged?)"
+    say(f"Checking all {m.get('files')} files read back…")
     try:
         n = count(archive)
     except RuntimeError as e:
@@ -178,13 +181,15 @@ def verify(folder):
 def restore(folder, base=None, say=print):
     """Unpacks the home folder (never over a newer file), then brings the setup in. Verifies first."""
     folder = Path(folder)
-    ok, why = verify(folder)
+    ok, why = verify(folder, say=say)
     if not ok:
         raise RuntimeError(f"this backup didn't check out: {why}")
     h = Path(base or home())
     say("Unpacking your home folder…")
     # Into a folder beside it first (same drive), then merged in with rsync --update: a file that's newer on the PC
-    # stays (tar's own --keep-newer-files trips over folders that already exist)
+    # stays (tar's own --keep-newer-files trips over folders that already exist); --sparse, or a disk image that's
+    # mostly holes (tar --sparse kept it small) is written out full size
+    say("Putting your files back…")
     stage = h / ".local/state/deckos/restore-staging"
     shutil.rmtree(stage, ignore_errors=True)
     stage.mkdir(parents=True)
@@ -192,7 +197,7 @@ def restore(folder, base=None, say=print):
         tar = _run(["tar", "--zstd", "-xf", str(folder / "home.tar.zst"), "-C", str(stage)])
         if tar.returncode != 0:
             raise RuntimeError(f"unpacking failed: {tar.stderr.strip()[-400:]}")
-        sync = _run(["rsync", "-aHAX", "--update", f"{stage}/", f"{h}/"])
+        sync = _run(["rsync", "-aHAX", "--sparse", "--update", f"{stage}/", f"{h}/"])
         if sync.returncode != 0:
             raise RuntimeError(f"putting files back failed: {sync.stderr.strip()[-400:]}")
     finally:
@@ -227,7 +232,7 @@ def main(argv):
         elif cmd == "make" and len(argv) == 2:
             print(f"BACKUP={make(argv[1], say=lambda s: print(s, flush=True))}")
         elif cmd == "verify" and len(argv) == 2:
-            ok, why = verify(argv[1])
+            ok, why = verify(argv[1], say=lambda s: print(s, flush=True))
             print(why)
             return 0 if ok else 1
         elif cmd == "restore" and len(argv) == 2:

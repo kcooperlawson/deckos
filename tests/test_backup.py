@@ -62,6 +62,21 @@ class BackupTests(unittest.TestCase):
         backup.restore(folder, base=new, say=lambda s: None)
         self.assertEqual(mine.read_text(), "written after the reinstall")
 
+    def test_sparse_image_stays_sparse(self):
+        # A test disk image is mostly holes: restored full size, a 380 GB set of them nearly filled the disk
+        img = self.home / "Documents/disk.img"
+        with open(img, "wb") as f:
+            f.truncate(1 << 30)
+        folder = self.make()
+        new = Path(self.tmp.name) / "newhome"
+        new.mkdir()
+        heard = []
+        backup.restore(folder, base=new, say=heard.append)
+        out = new / "Documents/disk.img"
+        self.assertEqual(out.stat().st_size, 1 << 30)
+        self.assertLess(out.stat().st_blocks * 512, 1 << 20)
+        self.assertTrue(any("Checking" in s for s in heard))  # the long verify isn't silent
+
     def test_damage_is_caught(self):
         folder = self.make()
         with open(folder / "home.tar.zst", "r+b") as f:

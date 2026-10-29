@@ -1005,14 +1005,15 @@ inchroot sed -i 's|^#DECKOS-INSTALL# ||' /etc/pacman.conf \
   || warn "Turn DecKoOS updates on in /etc/pacman.conf (remove the #DECKOS-INSTALL# marks)"
 # pacstrap copied the live USB's unsigned [deckos] database; with the signed repo back on, every pacman
 # command would say "missing required signature" until the first update. Fetch the signed one now,
-# [deckos] alone (a pacman.conf with only that repo), so no other repo is half-updated.
-printf '[options]\nArchitecture = auto\n\n[deckos]\nInclude = /etc/pacman.d/deckos-repo\n' > "$MNT/tmp/deckos-only.conf"
-if inchroot pacman -Sy --config /tmp/deckos-only.conf >>"$LOG" 2>&1; then good "DecKoOS updates on"
+# [deckos] alone (a pacman.conf with only that repo), so no other repo is half-updated. In /root, not /tmp:
+# arch-chroot mounts a fresh tmpfs on /tmp, which hides a file written there from outside.
+printf '[options]\nArchitecture = auto\n\n[deckos]\nInclude = /etc/pacman.d/deckos-repo\n' > "$MNT/root/deckos-only.conf"
+if inchroot pacman -Sy --config /root/deckos-only.conf >>"$LOG" 2>&1; then good "DecKoOS updates on"
 else
   rm -f "$MNT"/var/lib/pacman/sync/deckos.{db,files}{,.sig}
   warn "DecKoOS updates are on but couldn't be checked yet (no connection?); the first 'deckos update' does it"
 fi
-rm -f "$MNT/tmp/deckos-only.conf"
+rm -f "$MNT/root/deckos-only.conf"
 
 # ------------------------------------------------------------------ drives
 
