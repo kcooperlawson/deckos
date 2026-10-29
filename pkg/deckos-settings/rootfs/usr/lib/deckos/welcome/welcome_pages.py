@@ -1190,6 +1190,7 @@ class DoneStep(Step):
     hint = "Finish closes this window. It's in the app menu as DecKoOS Welcome if you want it again."
 
     def build(self):
+        self.head_actions.addWidget(button("Take the tour", slot=lambda: launch("deckos-tour"), icon="play"))
         self.head_actions.addWidget(button("Open DecKoOS Hub", "primary", self.win.open_hub, icon="external"))
         self.changed = Card("What changed", None, "check")
         self.changed_box = QVBoxLayout()
