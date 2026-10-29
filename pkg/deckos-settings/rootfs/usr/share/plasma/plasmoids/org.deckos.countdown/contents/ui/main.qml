@@ -47,6 +47,7 @@ PlasmoidItem {
             look: vibe
             text: !count.when || count.daysLeft < 0 ? "—" : count.daysLeft === 0 ? "Today!" : count.daysLeft
             font.pixelSize: count.daysLeft === 0 ? 46 : 64
+            font.family: vibe.hud  // numbers in the DecKo type
         }
         Vibes.VibeText {
             look: vibe

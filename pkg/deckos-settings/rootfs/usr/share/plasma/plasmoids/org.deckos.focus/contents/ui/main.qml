@@ -91,6 +91,7 @@ PlasmoidItem {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Math.floor(pomo.remaining / 60) + ":" + String(pomo.remaining % 60).padStart(2, "0")
                 font.pixelSize: 34
+                font.family: look.hud  // numbers in the DecKo type
             }
             Vibes.VibeText {
                 look: look

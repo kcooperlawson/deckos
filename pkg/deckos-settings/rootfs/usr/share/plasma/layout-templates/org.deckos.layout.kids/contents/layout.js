@@ -6,6 +6,7 @@ panel.location = "bottom";
 panel.height = 2 * Math.floor(gridUnit * 3 / 2);
 panel.floating = true;
 panel.lengthMode = "fit";
+panel.opacity = "opaque";  // Plasma's own volume and clock draw no islands: the plate stays
 panel.alignment = "center";
 var tasks = panel.addWidget("org.deckos.taskbar");
 tasks.currentConfigGroup = ["General"];

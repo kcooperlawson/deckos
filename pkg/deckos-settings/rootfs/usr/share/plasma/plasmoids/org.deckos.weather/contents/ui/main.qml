@@ -103,6 +103,7 @@ PlasmoidItem {
                 look: look
                 text: weather.now ? weather.now.temp + "°" : "–"
                 font.pixelSize: 44
+                font.family: look.hud  // numbers in the DecKo type
             }
             Vibes.VibeText {
                 look: look

@@ -48,6 +48,7 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 text: cal.shown.toLocaleDateString(Qt.locale(), "MMMM yyyy")
                 font.pixelSize: 20
+                font.family: vibe.hud  // numbers in the DecKo type
             }
             Repeater {
                 model: [["‹", -1], ["›", 1]]
@@ -104,6 +105,7 @@ PlasmoidItem {
                         visible: cell.day > 0
                         text: cell.day
                         font.pixelSize: 14
+                        font.family: vibe.hud  // numbers in the DecKo type
                         font.bold: cell.today
                     }
                 }

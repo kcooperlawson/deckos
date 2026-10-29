@@ -157,14 +157,13 @@ METADATA = {
     "X-Plasma-API-Minimum-Version": "6.0",
 }
 
+# No blur or contrast behind panels and popups: the dock's islands float on a see-through panel, and KWin's blur
+# would frost the whole strip behind them; the popups are 95% solid, so they don't miss it
 PLASMARC = """[ContrastEffect]
-enabled=true
-contrast=0.3
-intensity=1.4
-saturation=1.6
+enabled=false
 
 [BlurBehindEffect]
-enabled=true
+enabled=false
 
 [AdaptiveTransparency]
 enabled=true

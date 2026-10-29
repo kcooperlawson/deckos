@@ -174,7 +174,7 @@ class WhatsNew(QWidget):
         hl = QVBoxLayout(hero)
         hl.setContentsMargins(26, 22, 26, 24)
         hl.setSpacing(4)
-        kicker = QLabel(("WHAT'S NEW IN DECKOS " if first else "ALSO NEW: DECKOS ") + rel["version"])
+        kicker = QLabel(("WHAT'S NEW IN DECKOOS " if first else "ALSO NEW: DECKOOS ") + rel["version"])
         kicker.setObjectName("heroKicker")
         name = QLabel(rel.get("name", "DecKoOS " + rel["version"]))
         name.setObjectName("heroName")

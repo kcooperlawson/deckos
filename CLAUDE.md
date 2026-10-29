@@ -198,7 +198,10 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   frames are notched too (`assets/plasma_theme.py`, accent-lit corners). The dock is three islands: the Plasma style's
   `translucent/` panel background is see-through (used under adaptive opacity until a window is maximised against
   the panel, when the plate comes back), and the menu, the taskbar and Quick Settings each draw their island;
-  Quick Settings' reaches over whatever follows it in the panel's layout (Plasma's tray and clock). The taskbar
+  Quick Settings' reaches over whatever follows it in the panel's layout (Plasma's tray and clock). Panels the islands
+  don't cover keep the plate (`opacity = "opaque"`): the top bar's top panel, Kid mode's, and existing ones the
+  update script `deckos_islands.js` finds (spacers, other widgets, no Quick Settings). No blur/contrast behind
+  panels (plasmarc): it frosted the whole see-through strip. The taskbar
   shows apps DecKoOS knows as line icons (`lineFor` in its main.qml; drawn as recoloured Images, since
   Kirigami.Icon looks file names up in the icon theme first), the rest in grey until active. Widgets get the Vibe through their
   style/colorA/colorB settings (`deckos vibe`); Quick Settings (`Deck.look`), the menu (`deckMenu.look`) and Vibe

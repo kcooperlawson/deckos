@@ -96,7 +96,7 @@ Item {
         }
 
         Section {
-            kicker: "DECKOS"
+            kicker: "DecKoOS"
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Deck.spacing

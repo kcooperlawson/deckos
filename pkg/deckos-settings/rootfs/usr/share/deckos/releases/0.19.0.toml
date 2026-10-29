@@ -1,0 +1,32 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.19.0"
+name = "The DecKo look"
+tagline = "A desktop built from the DecKoOS logo itself, and Vibe mode in four looks that follow your Vibe."
+
+fixes = [
+    "The Performance widget changes colour with your Vibe, like the other widgets.",
+    "Taskbars on your other screens are the same fitted dock as the main one.",
+    "Album covers in Vibe mode, Now Playing and Quick Settings get their shaped corners (they were square).",
+]
+
+[[highlights]]
+title = "The DecKo look"
+image = "0.19.0/dock.png"
+text = """The desktop now looks like DecKoOS and nothing else: every card, button and the dock take the logo's \
+notched corners, with an edge lit in your Vibe's colours, and numbers and labels are in a type cut the same way. \
+The dock floats as three islands (the eyes, your apps as line icons, and the tray), the clock counts the day in \
+ticks, Performance shows the processor and graphics card as gauges shaped like the logo's eye, and Now Playing \
+shows the music's own spectrum. The Start menu, Quick Settings and Vibe mode match. Switch Vibe and all of it \
+changes colour together."""
+icon = "appearance"
+
+[[highlights]]
+title = "Vibe mode, four ways"
+image = "0.19.0/vibe-mode.png"
+text = """Pick how Vibe mode looks: Aurora (the full show), Spectrum (a 2000s analyzer across all your screens), \
+Trails (2000s feedback trails flowing out of the cover) or Glow (calm). Each Vibe picks one, in its colours; \
+choose your own with the palette button, or press V to flip through them."""
+icon = "music"
+try = "Start Vibe mode"
+run = ["deckos-music"]
