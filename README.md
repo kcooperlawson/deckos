@@ -128,9 +128,10 @@ DecKoOS is early, and these are on the list:
   NVIDIA and Intel tuning. The FSR 4 upgrade needs a Radeon RX 9000. Local AI on Intel graphics runs on
   the CPU.
 - **The live USB** is set up for AMD graphics; on NVIDIA it runs on nouveau, which is enough to install.
-- **Disk layout:** DecKoOS installs onto a partition, unallocated space on a GPT disk, or an empty disk. It
-  doesn't erase or repartition a whole disk that has something on it, or resize partitions: make room in
-  Windows first.
+- **Disk layout:** DecKoOS installs onto a partition, unallocated space on a GPT disk, an empty disk, or a whole
+  disk you choose to erase (it shows what's on it and asks you to type its name). It can span a second drive as
+  one bigger system; then losing either drive loses DecKoOS on both. It doesn't resize partitions: to keep
+  Windows on the same disk, make room in Windows first.
 - **Secure Boot** has to stay off.
 
 Bug reports are welcome. Please attach the output of `deckos doctor` and, for install problems,

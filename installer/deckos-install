@@ -223,20 +223,27 @@ set_grub() {  # set_grub KEY VALUE - set or append in /etc/default/grub
 # reserved and recovery partitions. Encrypted, RAID/LVM members and anything mounted are listed
 # but blocked: the Windows check below has to mount a partition to look inside, and can't.
 # Runs as the live user for the window, so it only uses what lsblk can see without root.
-# Mounted under /mnt is a previous failed install, which the installer unmounts itself.
+# Mounted under /mnt is a previous failed install, which the installer unmounts itself: but only on the disk /mnt
+# itself comes from. A drive someone mounted at /mnt/SSD is in use like any other mount.
+mnt_disk() {
+  local src
+  src=$(findmnt -no SOURCE "$MNT" 2>/dev/null | sed 's/\[.*//') || true
+  [[ -n $src ]] && lsblk -no PKNAME "$src" 2>/dev/null | head -n1 || true
+}
+
 list_targets() {
   local live_disk="" src
   if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
   # The default is the empty 232 GB "NVME" partition on the Samsung 970 EVO Plus.
   lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,PARTTYPE,MODEL,MOUNTPOINTS | jq -r \
-    --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" --arg mnt "$MNT" '
+    --arg esp "$ESP_GUID" --arg msr "$MSR_GUID" --arg rec "$RECOVERY_GUID" --arg live "$live_disk" --arg mnt "$MNT" --arg mntdisk "$(mnt_disk)" '
     .blockdevices[] | . as $d
     | select($d.name != $live)
     | select(([$d.children[]?.label] | index("Ventoy")) | not)
     | ($d.children // [])[] | select(.type == "part")
     | select(.parttype != $esp and .parttype != $msr and .parttype != $rec)
     | (.fstype // "") as $fs
-    | [.mountpoints[]? | select(. != null and . != $mnt and (startswith($mnt + "/") | not))] as $mp
+    | [.mountpoints[]? | select(. != null and ($d.name != $mntdisk or (. != $mnt and (startswith($mnt + "/") | not))))] as $mp
     | (if $fs == "BitLocker" then "BitLocker-encrypted, so DecKoOS cannot check what is on it. Turn BitLocker off or delete this partition in Windows first."
        elif $fs == "crypto_LUKS" then "Encrypted (LUKS), so DecKoOS cannot check what is on it. Delete it in a partition manager first if you want to use it."
        elif ($fs | endswith("_member")) then "Part of a RAID, LVM or ZFS set. Erasing it would break the whole set."
@@ -295,14 +302,14 @@ list_erase() {
   local live_disk="" src
   if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
   lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,MODEL,MOUNTPOINTS | jq -r \
-    --arg live "$live_disk" --arg mnt "$MNT" --argjson min "$MIN_GB" '
+    --arg live "$live_disk" --arg mnt "$MNT" --arg mntdisk "$(mnt_disk)" --argjson min "$MIN_GB" '
     def gb: (. / 1e9 | floor | tostring) + " GB";
     .blockdevices[] | . as $d
     | select($d.type == "disk" and $d.name != $live and ($d.name | test("^(zram|loop|sr|ram)") | not))
     | select(([$d.children[]?.label] | index("Ventoy")) | not)
     | [($d.children // [])[] | select(.type == "part")] as $parts
     | select(($parts | length) > 0)
-    | [$d, $parts[] | .mountpoints[]? | select(. != null and . != $mnt and (startswith($mnt + "/") | not))] as $mp
+    | [$d, $parts[] | .mountpoints[]? | select(. != null and ($d.name != $mntdisk or (. != $mnt and (startswith($mnt + "/") | not))))] as $mp
     | ["erase:" + $d.path, ($d.size | gb), "disk", "Whole disk", ($d.model // "?"), "0",
        (if ([$parts[].fstype // ""] | map(endswith("_member")) | any) then "Part of a RAID, LVM or ZFS set. Erasing it would break the whole set."
         elif ($mp | index("[SWAP]")) then "Used as swap right now."

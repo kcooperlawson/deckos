@@ -222,6 +222,10 @@ The installer only erases the partition the user picks; the EFI partition is sha
 Free space and empty disks (`list_free`, `make_partition`) only ever add: one partition in a gap that
 `sfdisk -F` still reports free, or GPT + a new EFI partition + DeckOS on a disk with no table and no file
 system. Nothing existing is deleted, moved or resized; tests/vm/partition_steps.py checks that on real disks.
+The one exception is a whole disk the person picks to erase (`list_erase`, `make_space erase:DISK`): only that disk,
+only after its contents are shown (`--disk-contents`) and its name typed (`DECKOS_ERASE_DISKS`); refused while
+anything on it is mounted, swap, a RAID/LVM/ZFS member, the live USB or under 64 GB. A second drive (`DECKOS_EXTRA`,
+another disk) joins one btrfs (`-d single -m raid1`). tests/vm/erase_steps.py checks those on real disks.
 `list_targets` blocks BitLocker/LUKS/RAID/mounted partitions; a partition that won't mount (so it can't
 be checked for Windows) is refused. `CHANGED` (nothing → partition → boot) drives the failure message;
 keep it accurate. Optional steps (drives, Flathub, themes, home snapshots, final unmount) must warn,

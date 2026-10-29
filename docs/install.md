@@ -61,13 +61,21 @@ first (Wi-Fi, your monitors, DecKoOS Hub), then double-click **Install DecKoOS**
    and erases nothing, and an empty disk gets its own boot partition too. Nothing existing is ever moved
    or resized. Partitions it can't safely check (BitLocker, encrypted, in use, part of a RAID) are shown
    greyed out with the reason, and a partition that holds Windows is always refused.
+   **Or erase a whole disk**: each disk is listed with what's on it (Windows, its boot and recovery partitions,
+   data, encrypted). Erasing one removes everything on it, Windows included; you type the disk's name on the
+   Confirm page before anything happens. Disks in use, swap, members of a RAID/LVM/ZFS set, the live USB and
+   disks under 64 GB aren't offered.
+   **Second drive** (optional): pick one more place on another disk, and DecKoOS spans both as one file system
+   (files spread over both, metadata kept on both). If either drive fails, DecKoOS on both is lost, so keep
+   backups.
 3. **You**: username, computer name, language, keyboard layout, password and time zone. The live
    desktop switches to your keyboard layout right away, so the password you type is the one that works
    at login.
 4. **Software**: tick Gaming, Local AI and/or Development. The desktop, kernel, graphics drivers and
    snapshots are always installed. Local AI starts unticked if no Radeon RX 7000/9000 or NVIDIA card is
    found.
-5. **Confirm**: read the summary, tick the box, *Erase and install* (just *Install* in free space or on an empty disk).
+5. **Confirm**: read the summary, type the name of each whole disk you're erasing (`nvme1n1`), tick the box,
+   *Erase and install* (just *Install* in free space or on an empty disk).
 6. **Install** shows progress and the live log. It takes 20–60 minutes, depending on your internet.
 
 Behind the scenes it installs Arch from mirrors in your time zone's country, switches to the CachyOS repos for your CPU, installs the desktop and

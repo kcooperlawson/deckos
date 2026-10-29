@@ -41,7 +41,19 @@ cards with their contents (`contents_text`, via `sudo -n deckos-install --disk-c
 (`extra_on`, `extra_pick`, `fill_extra`, `extra()`); confirm page has one typed-name box per erased disk
 (`erase_edits`, `erase_typed`), summary rows via `what_row`; env passes DECKOS_EXTRA and DECKOS_ERASE_DISKS.
 
-## Known bug to fix first
+## Progress (second session, 2026-10-28)
+
+- Fixed: the window crashed building the disk page (`disk_group` now made first; `update_nav` waits for all pages).
+  Walked through in `--demo`: erase + second drive, typed name and consent enable Install, env is right.
+- Fixed (found by the VM test): `list_targets`/`list_erase` ignored every mount under /mnt, so a drive mounted at
+  /mnt/SSD looked free. Now only mounts on the disk /mnt itself comes from (`mnt_disk`) are skipped.
+- `tests/vm/erase_steps.py` (new) and `partition_steps.py` pass in a VM on real disks: listing, contents, refused
+  erase while mounted, erase with/without EFI, FAT32 clusters, one btrfs over two devices (~159 GB).
+- Docs: CLAUDE.md Installer safety, README Known limitations, docs/install.md.
+- Next: the five CI install-test layouts on an ISO built from this branch (Build ISO workflow_dispatch), then the
+  GRUB-on-two-devices boot (`span`), then merge. Then items 2-4 and the backup.
+
+## Known bug to fix first (fixed)
 
 The demo crashes: `build_disk` creates the second-drive card (and calls `extra_changed`, which ends in
 `update_nav` → `self.target()`) before `self.disk_group` exists. Create `disk_group` before the extra card, or
