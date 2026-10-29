@@ -1,4 +1,4 @@
-# Handoff: getting ready to reinstall (two-drive install, live USB, boot menu, quality pass)
+# Handoff: getting ready to reinstall (item 1 done and merged 2026-10-29: all five install tests pass) (two-drive install, live USB, boot menu, quality pass)
 
 Written 2026-10-28 when the previous session ran out of room. Work in progress is on the branch
 `wip/two-drive-install` (not `main`). Read CLAUDE.md first, especially "Installer safety".

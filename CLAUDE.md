@@ -265,9 +265,12 @@ not die: a finished install must never be reported as failed.
 - **Install test (CI)**: the `install-test` job runs `tests/install-test.sh` on every ISO the workflow
   builds: QEMU + OVMF (KVM), a blank disk with an EFI partition and an empty one, the live kernel booted
   with `deckos.autoinstall`, then a first boot of the installed system until graphical.target with SDDM.
-  Three layouts (`DECKOS_TEST_LAYOUT`, a matrix in CI): `partition` (an EFI partition + an empty one),
+  Five layouts (`DECKOS_TEST_LAYOUT`, a matrix in CI): `partition` (an EFI partition + an empty one),
   `empty` (a blank 80 GB disk the installer takes whole) and `free` (EFI + a 20 GB ext4 to keep + free space; the
-  harness fails if a partition or file system that was there changed).
+  harness fails if a partition or file system that was there changed), `span` (two blank disks, one btrfs over both)
+  and `erase` (two used disks erased whole: partitions labelled `deckos-erase` mark them). The autoinstall runs the
+  installer's listing with stdin from /dev/null and a time limit: on the live USB it otherwise sat waiting for input
+  with nothing on the console.
   Serial consoles are in the log and the `install-test-logs-LAYOUT` artifacts; runs locally on Arch too
   (`bash tests/install-test.sh out/deckos-*.iso`). The live side is `deckos-autoinstall` (service in
   `iso/airootfs`): it only acts with that kernel flag, in a VM, with answers from QEMU's fw_cfg and a

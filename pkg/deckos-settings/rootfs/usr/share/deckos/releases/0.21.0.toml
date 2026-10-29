@@ -1,0 +1,22 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.21.0"
+name = "Room to grow"
+tagline = "Install DecKoOS across two drives as one bigger system, or onto a whole disk you choose to erase."
+
+fixes = [
+    "A drive mounted under /mnt (like /mnt/SSD) is never offered as free to install onto or erase.",
+]
+
+[[highlights]]
+title = "Two drives, one system"
+text = """The installer can add a second drive, and DecKoOS spans both as one bigger file system, with snapshots like \
+always. Files are spread over both drives, so if either one fails, DecKoOS on both is lost: keep backups of what \
+matters (Hub › System › Before a reinstall)."""
+icon = "drives"
+
+[[highlights]]
+title = "Erase a whole disk"
+text = """Moving over for good? Pick a whole disk to erase, Windows included. The installer shows what's on it first \
+and asks you to type its name before anything happens. Disks in use, the live USB and small disks are never offered."""
+icon = "alert"
