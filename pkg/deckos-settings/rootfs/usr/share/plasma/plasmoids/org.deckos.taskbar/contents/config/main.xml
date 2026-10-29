@@ -22,6 +22,10 @@
     </entry>
     <entry name="colorA" type="Color"><default>#4C8DFF</default></entry>
     <entry name="colorB" type="Color"><default>#7A5CFF</default></entry>
+    <entry name="lineIcons" type="Bool">
+      <label>Apps DecKoOS knows as DecKo line icons (others in grey until active), instead of their own icons</label>
+      <default>true</default>
+    </entry>
     <entry name="motion" type="Bool">
       <label>Gentle motion: the active app's pill breathes, icons lift on hover, a soft glow behind the tiles</label>
       <default>true</default>

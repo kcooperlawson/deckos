@@ -30,6 +30,39 @@ PlasmoidItem {
         ? Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04), accent.hsvValue, 1)
         : Plasmoid.configuration.colorB
     readonly property bool motion: Plasmoid.configuration.motion !== false
+    // The DecKo look's app icons: apps DecKoOS knows get a line icon (DecKoOS's own set, by .desktop name or
+    // window app id); the rest keep their own icon, in grey until active or pointed at
+    readonly property bool lineIcons: Plasmoid.configuration.lineIcons !== false
+    readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")
+    readonly property var lineFor: ({
+        "org.deckos.files": "folder", "org.kde.dolphin": "folder", "dolphin": "folder", "org.gnome.nautilus": "folder", "nemo": "folder",
+        "thunar": "folder", "pcmanfm-qt": "folder",
+        "org.deckos.terminal": "terminal", "org.kde.konsole": "terminal", "konsole": "terminal", "kitty": "terminal",
+        "alacritty": "terminal", "org.wezfurlong.wezterm": "terminal", "com.mitchellh.ghostty": "terminal",
+        "foot": "terminal",
+        "deckos-hub": "system", "deckos-store": "store", "deckos-builder": "code", "deckos-bench": "gauge",
+        "deckos-music": "music", "deckos-assistant": "ai",
+        "firefox": "globe", "org.mozilla.firefox": "globe", "librewolf": "globe", "zen": "globe", "chromium": "globe",
+        "google-chrome": "globe", "brave-browser": "globe", "vivaldi-stable": "globe", "microsoft-edge": "globe",
+        "steam": "gaming", "com.valvesoftware.steam": "gaming", "net.lutris.lutris": "gaming",
+        "com.heroicgameslauncher.hgl": "gaming", "heroic": "gaming",
+        "discord": "chat", "com.discordapp.discord": "chat", "vesktop": "chat", "dev.vencord.vesktop": "chat",
+        "org.telegram.desktop": "chat", "signal-desktop": "chat", "org.signal.signal": "chat",
+        "com.anthropic.claude": "ai", "claude": "ai",
+        "com.spotify.client": "headphones", "spotify": "headphones",
+        "code": "code", "code-oss": "code", "codium": "code", "visual-studio-code": "code", "dev.zed.zed": "code",
+        "org.kde.kate": "doc", "org.kde.kwrite": "doc", "org.kde.gwenview": "image", "org.kde.spectacle": "snapshot",
+        "systemsettings": "sliders", "org.kde.systemsettings": "sliders", "vlc": "play", "mpv": "play",
+        "org.kde.haruna": "play"
+    })
+    function lineIcon(url, appId) {
+        if (!lineIcons)
+            return "";
+        for (const k of [appKey(url), appKey(appId)])
+            if (k && lineFor[k])
+                return lineFor[k];
+        return "";
+    }
     Vibes.Look { id: deckLook; colorA: deckTasks.accent; colorB: deckTasks.accentB }
     readonly property var look: deckLook
 
@@ -80,7 +113,7 @@ PlasmoidItem {
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
     readonly property bool labels: Plasmoid.configuration.showLabels && !vertical
     // A square tile per app, as tall as the panel is thick
-    readonly property real tile: Math.max(24, vertical ? width : height)
+    readonly property real tile: Math.max(24, (vertical ? width : height) - 12)  // inside the island
     // With titles, apps share the panel: up to 220 px each, never narrower than an icon and a few letters
     readonly property real labelWidth: Math.max(tile * 3, Math.min(220, (width - 4 * repeater.count) / Math.max(1, repeater.count)))
 
@@ -89,8 +122,8 @@ PlasmoidItem {
     Layout.fillWidth: !vertical && labels
     Layout.fillHeight: vertical
     // The strip of apps, then the + tile
-    Layout.preferredWidth: vertical ? -1 : strip.implicitWidth + Math.round(tile * 0.7)
-    Layout.preferredHeight: vertical ? strip.implicitHeight + Math.round(tile * 0.7) : -1
+    Layout.preferredWidth: vertical ? -1 : strip.implicitWidth + Math.round(tile * 0.7) + 16
+    Layout.preferredHeight: vertical ? strip.implicitHeight + Math.round(tile * 0.7) + 16 : -1
     Layout.minimumWidth: vertical ? -1 : Math.min(strip.implicitWidth, tile * 3) + Math.round(tile * 0.7)
 
     // `deckos accent` bumps iconEpoch after it recolours the icons: the tiles keep the icons they were
@@ -319,10 +352,21 @@ PlasmoidItem {
         }
     }
 
+    Vibes.Notch {  // the apps island
+        x: 0
+        y: deckTasks.vertical ? 0 : 3
+        width: parent.width
+        height: deckTasks.vertical ? parent.height : parent.height - 6
+        look: deckTasks.look
+        cut: 12
+        fill: deckTasks.look.glass
+    }
     Grid {
         id: strip
         anchors.left: deckTasks.vertical ? undefined : parent.left
+        anchors.leftMargin: 8
         anchors.top: deckTasks.vertical ? parent.top : undefined
+        anchors.topMargin: 8
         anchors.verticalCenter: deckTasks.vertical ? undefined : parent.verticalCenter
         anchors.horizontalCenter: deckTasks.vertical ? parent.horizontalCenter : undefined
         rows: deckTasks.vertical ? -1 : 1

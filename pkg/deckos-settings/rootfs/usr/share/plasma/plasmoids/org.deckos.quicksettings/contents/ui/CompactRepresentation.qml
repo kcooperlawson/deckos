@@ -31,13 +31,43 @@ MouseArea {
                                     && mpris.currentPlayer.playbackStatus === Mpris.PlaybackStatus.Playing
     Vibes.Levels { id: levels; active: compact.playing }
 
+    // The tray island: one notched plate from here over everything after it in the panel (Plasma's tray and
+    // clock), which Plasma draws on top. Found through our place in the panel's layout; on a vertical panel, or
+    // anywhere else, it's just this button's own.
+    property Item container: null
+    function findContainer() {
+        let it = compact;
+        while (it && it.parent && !String(it.parent).startsWith("QQuickGridLayout"))
+            it = it.parent;
+        container = it && it.parent ? it : null;
+    }
+    Component.onCompleted: Qt.callLater(findContainer)
+    readonly property real islandWidth: {
+        if (vertical || !container || !container.parent)
+            return width;
+        let right = 0;
+        for (const c of container.parent.children)
+            if (c.visible && c.width > 0 && String(c).startsWith("AppletContainer"))
+                right = Math.max(right, c.x + c.width);
+        return Math.max(width, right - container.x);
+    }
     Vibes.Notch {
+        x: 0
+        y: 3
+        width: compact.islandWidth
+        height: compact.height - 6
+        look: Deck.look
+        cut: 12
+        fill: Deck.look.glass
+    }
+    Vibes.Notch {  // pointed at or open: this button's own plate inside the island
         visible: compact.containsMouse || compact.expanded
         anchors.fill: parent
-        anchors.margins: 3
+        anchors.margins: 7
         look: Deck.look
-        cut: 9
-        lit: compact.expanded
+        cut: 7
+        lit: false
+        edge: 0
         fill: compact.expanded ? Deck.tint : Deck.hover
     }
     Row {  // the music, while it plays

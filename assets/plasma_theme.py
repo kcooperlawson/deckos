@@ -133,6 +133,10 @@ FRAMES = {
     # the floating dock
     "widgets/panel-background.svg": frame(14, 0.90, 0.12, margins=(6, 6, 12, 12), shadow=(10, 22, 16, 16),
                                          notch=True),
+    # The same dock, see-through: Plasma uses translucent/ while nothing is maximised against the panel (adaptive
+    # opacity) or always (translucent). Then DecKoOS's widgets draw their own notched islands (start, apps, tray);
+    # a maximised window brings the plate above back
+    "translucent/widgets/panel-background.svg": frame(14, 0.0, 0.0, margins=(6, 6, 12, 12), notch=True, lit=0.0),
     # the Start menu, Quick Settings, tray popups, menus
     "dialogs/background.svg": frame(16, 0.95, 0.12, margins=(12, 12, 12, 12), shadow=(14, 28, 22, 22), notch=True),
     "widgets/tooltip.svg": frame(8, 0.97, 0.12, margins=(8, 8, 10, 10), shadow=(8, 16, 12, 12), notch=True, lit=0.6),

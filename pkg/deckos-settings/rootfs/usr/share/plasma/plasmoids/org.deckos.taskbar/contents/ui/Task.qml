@@ -2,6 +2,7 @@
 // Click opens, focuses or minimizes; with several windows it cycles through them. Middle-click
 // opens a new window, drag reorders, right-click lists the windows and pin/close actions.
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
@@ -99,10 +100,29 @@ Item {
 
             Kirigami.Icon {
                 id: icon
+                // A DecKo line icon in the text colour (open apps bright, pinned ones dim), or the app's own icon,
+                // in grey until it's active or pointed at
+                readonly property string line: deckTasks.lineIcon(task.url, model.AppId)
+                readonly property bool lit: task.active || mouse.containsMouse
                 Layout.alignment: Qt.AlignCenter
-                Layout.preferredWidth: Math.round(deckTasks.tile * 0.56)
+                Layout.preferredWidth: Math.round(deckTasks.tile * 0.52)
                 Layout.preferredHeight: Layout.preferredWidth
-                source: model.decoration
+                source: line ? "" : model.decoration
+                opacity: lit || !task.launcherOnly ? 1 : 0.55
+                layer.enabled: line === "" && deckTasks.lineIcons && !lit
+                layer.effect: MultiEffect { saturation: -1; brightness: -0.08 }
+                // The line icon as a plain picture recoloured to the text colour: Kirigami.Icon looks a file's name
+                // up in the icon theme first, so "code" came out as an editor's logo and "terminal" as a block
+                Image {
+                    visible: icon.line !== ""
+                    anchors.centerIn: parent
+                    width: Math.round(deckTasks.tile * 0.44)
+                    height: width
+                    source: icon.line ? deckTasks.iconDir + icon.line + ".svg" : ""
+                    sourceSize: Qt.size(width * 2, height * 2)
+                    layer.enabled: visible
+                    layer.effect: MultiEffect { colorization: 1; colorizationColor: deckTasks.text; brightness: 1 }
+                }
                 active: mouse.containsMouse
                 // Pressed: a little in; hovered (with motion on): a little lift
                 scale: mouse.pressed ? 0.9 : deckTasks.motion && mouse.containsMouse ? 1.08 : 1

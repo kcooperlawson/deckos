@@ -225,7 +225,7 @@ PlasmoidItem {
         onPressed: wasExpanded = deckMenu.expanded
         onClicked: deckMenu.expanded = !wasExpanded
 
-        // DecKoOS's own button: the logo's eyes as line art on a notched plate, lit while pointed at or open.
+        // DecKoOS's own button: the logo's eyes as line art on its own notched island (the dock's first).
         // An icon someone picked instead is shown as it is.
         readonly property bool own: Plasmoid.configuration.icon === "deckos"
         Vibes.Notch {
@@ -234,8 +234,7 @@ PlasmoidItem {
             anchors.margins: 3
             look: deckMenu.look
             cut: 9
-            lit: button.containsMouse || deckMenu.expanded
-            fill: deckMenu.expanded ? deckMenu.hot : button.containsMouse ? deckMenu.raised : Qt.rgba(1, 1, 1, 0.05)
+            fill: deckMenu.expanded ? deckMenu.hot : button.containsMouse ? deckMenu.raised : deckMenu.look.glass
         }
         Vibes.Eyes {
             visible: button.own

@@ -39,13 +39,13 @@ tray.writeConfig("hiddenItems", [
 ]);
 var clock = panel.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];
-clock.writeConfig("showDate", "true");
-// the DecKo type (Chakra Petch), sized to fit the panel
+clock.writeConfig("showDate", "false");  // the time only, in the tray island: the desktop's clock has the date
+// the DecKo type (Chakra Petch), a little under half the panel's height
 clock.writeConfig("autoFontAndSize", "false");
 clock.writeConfig("fontFamily", "Chakra Petch");
 clock.writeConfig("fontStyleName", "SemiBold");
 clock.writeConfig("fontWeight", "600");
-clock.writeConfig("fontSize", "72");
+clock.writeConfig("fontSize", "24");
 clock.writeConfig("dateFormat", "isoDate");
 
 var all = desktops();

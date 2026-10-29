@@ -1,4 +1,4 @@
-// DecKoOS 0.19: the panel clock in the DecKo type (Chakra Petch, sized to fit the panel), once per user (Plasma
+// DecKoOS 0.19: the panel clock in the DecKo type (Chakra Petch, a little under half the panel's height), once per user (Plasma
 // records it in plasmashellrc [Updates]). Only clocks still on Plasma's automatic font: a font someone picked stays.
 const all = panels();
 for (var i = 0; i < all.length; i++) {
@@ -12,6 +12,6 @@ for (var i = 0; i < all.length; i++) {
         c.writeConfig("fontFamily", "Chakra Petch");
         c.writeConfig("fontStyleName", "SemiBold");
         c.writeConfig("fontWeight", "600");
-        c.writeConfig("fontSize", "72");
+        c.writeConfig("fontSize", "24");
     }
 }

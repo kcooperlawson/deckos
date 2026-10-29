@@ -195,7 +195,12 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   Vibe's two colours; Chakra Petch (OFL, `usr/share/fonts/deckos`) for numbers, labels and buttons, Inter for
   names and sentences; segmented meters (like the Spectrum look's LEDs); gauges shaped like the logo's stick eye.
   Shared QML in `usr/lib/qt6/qml/org/deckos/vibes` (Look, Notch, Segments, Hud, Levels); the Plasma style's
-  frames are notched too (`assets/plasma_theme.py`, accent-lit corners). Widgets get the Vibe through their
+  frames are notched too (`assets/plasma_theme.py`, accent-lit corners). The dock is three islands: the Plasma style's
+  `translucent/` panel background is see-through (used under adaptive opacity until a window is maximised against
+  the panel, when the plate comes back), and the menu, the taskbar and Quick Settings each draw their island;
+  Quick Settings' reaches over whatever follows it in the panel's layout (Plasma's tray and clock). The taskbar
+  shows apps DecKoOS knows as line icons (`lineFor` in its main.qml; drawn as recoloured Images, since
+  Kirigami.Icon looks file names up in the icon theme first), the rest in grey until active. Widgets get the Vibe through their
   style/colorA/colorB settings (`deckos vibe`); Quick Settings (`Deck.look`), the menu (`deckMenu.look`) and Vibe
   mode build a Look from the accent. The previewers (`assets/preview_*.py`) use the GPU when there's a screen (the
   software renderer can't draw Shapes or effects) and still break some layouts: check the look in Plasma too
