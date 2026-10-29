@@ -1,0 +1,3 @@
+#!/bin/sh
+# DecKoOS's tour: what's here and where it lives, with pictures (usr/lib/deckos/welcome/deckos_tour.py)
+exec python3 /usr/lib/deckos/welcome/deckos_tour.py "$@"

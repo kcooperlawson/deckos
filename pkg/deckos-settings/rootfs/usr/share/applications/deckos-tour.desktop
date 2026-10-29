@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=DecKoOS Tour
+GenericName=What's here
+Comment=Two minutes with pictures: where everything lives in DecKoOS
+Exec=deckos-tour
+Icon=deckos
+Type=Application
+Categories=System;
+Keywords=deckos;tour;help;introduction;guide;start;new;

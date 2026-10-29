@@ -148,7 +148,9 @@ class HomePage(Page):
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
                                         tip="DecKoOS Work: code, documents and images with your local AI"),
-                                 button("Welcome tour", slot=lambda: QProcess.startDetached("deckos-welcome", []),
+                                 button("Tour", slot=lambda: QProcess.startDetached("deckos-tour", []),
+                                        icon="play", tip="Two minutes with pictures: what's here and where it lives"),
+                                 button("Welcome", slot=lambda: QProcess.startDetached("deckos-welcome", []),
                                         icon="star", tip="DecKoOS Welcome: the first-login setup, again")))
         self.lay.addWidget(quick)
         from hub_timeline import RecentCard  # here: hub_timeline builds on this module's Page
@@ -992,6 +994,21 @@ class SystemPage(Page):
         if path:
             _setup_run(self, ["export", path], f"Saved your setup to {Path(path).name}")
 
+    def backup_all(self):
+        dest = QFileDialog.getExistingDirectory(self, "Where should the backup go? (another drive)", "/mnt")
+        if not dest:
+            return
+        if str(Path(dest).resolve()).startswith(str(Path.home().resolve())):
+            QMessageBox.warning(self, "Pick another drive", "The backup has to go outside your home folder: "
+                                "that's what a reinstall erases. Pick a folder on another drive.")
+            return
+        self.hub.terminal(f"deckos backup make {shlex.quote(dest)}")
+
+    def backup_folder(self, what):
+        folder = QFileDialog.getExistingDirectory(self, "Pick the \"DecKoOS backup …\" folder", "/mnt")
+        if folder:
+            self.hub.terminal(f"deckos backup {what} {shlex.quote(folder)}")
+
     def import_setup(self):
         path, _ = QFileDialog.getOpenFileName(self, "Bring in a setup", str(Path.home()), "DecKoOS setup (*.tar.gz)")
         if path and QMessageBox.question(self, "Bring in this setup?",
@@ -1078,6 +1095,19 @@ class SystemPage(Page):
         carry.body.addWidget(row(button("Save my setup…", "primary", self.export_setup, icon="download"),
                                  button("Bring in a setup…", slot=self.import_setup, icon="folder")))
         self.lay.addWidget(carry)
+
+        # Before a reinstall: the whole home folder (a reinstall wipes it), checked after writing (deckos backup)
+        whole = Card("Before a reinstall", "Back up everything, and bring it back after", "snapshot")
+        whole.body.addWidget(label("Reinstalling erases your home folder: documents, game saves, Proton's files, "
+                                   "settings. This packs all of it into one backup on another drive (a game or "
+                                   "Windows drive works), checks it reads back, and restores it after the "
+                                   "reinstall, never over a file that's newer. Caches and downloaded games are "
+                                   "left out: they come back by themselves.", "sub"))
+        whole.body.addWidget(row(button("Back up everything…", "primary", self.backup_all, icon="download"),
+                                 button("Check a backup…", slot=lambda: self.backup_folder("verify"), icon="check"),
+                                 button("Restore a backup…", slot=lambda: self.backup_folder("restore"),
+                                        icon="restore")))
+        self.lay.addWidget(whole)
 
         snaps = Card("Undo an update", "If something broke after updating", "undo")
         snaps.body.addWidget(label("DecKoOS takes a snapshot before every update. Undo one and the system goes back to "

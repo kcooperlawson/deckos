@@ -3,6 +3,7 @@ away, through `deckos` or Plasma's own tools as DecKoOS Hub does, and are noted 
 (`win.note`)."""
 import shlex
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QRectF, Qt, Signal
@@ -167,7 +168,26 @@ class WelcomeStep(Step):
                           "drives stay as they are, readable and writable.", "sub"))
         facts = [self.win.gpu.name, sysinfo.cpu_name(), sysinfo.deckos_version()]
         v.addWidget(label("  ·  ".join(f for f in facts if f), "muted"))
+        v.addWidget(row(button("Take the tour", "primary", lambda: launch("deckos-tour"), icon="play",
+                               tip="Two minutes, with pictures: what's here and where it lives")))
         self.lay.addWidget(hero)
+
+        # Just reinstalled? A backup from Hub › System › Before a reinstall, found on a drive, comes back in one click
+        backups = ws.find_backups()
+        if backups:
+            folder, made, files, gb = backups[0]
+            when = time.strftime("%-d %B %Y, %H:%M", time.localtime(made))
+            back = Card("Just reinstalled?", "Welcome back", "restore")
+            back.body.addWidget(label(f"There's a DecKoOS backup on your drive from {when}: {files:,} files, "
+                                      f"{gb:.0f} GB. Bring back your files, game saves and settings? It checks the "
+                                      "backup first and never replaces a file that's newer here.", "sub"))
+            back.body.addWidget(label(str(folder), "muted"))
+            back.body.addWidget(row(
+                button("Bring it back", "primary",
+                       lambda: self.win.terminal(f"deckos backup restore {shlex.quote(str(folder))}"),
+                       icon="restore"),
+                button("Pick another backup…", slot=self.pick_backup, icon="folder")))
+            self.lay.addWidget(back)
 
         self.lay.addWidget(label("A QUICK TOUR", "kicker"))
         grid = QGridLayout()
@@ -211,6 +231,11 @@ class WelcomeStep(Step):
             h.addWidget(label(text, "sub"), 1)
             how.body.addLayout(h)
         self.lay.addWidget(how)
+
+    def pick_backup(self):
+        folder = QFileDialog.getExistingDirectory(self, "Pick the \"DecKoOS backup …\" folder", "/mnt")
+        if folder:
+            self.win.terminal(f"deckos backup restore {shlex.quote(folder)}")
 
 
 # ------------------------------------------------------------------ 2. look

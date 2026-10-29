@@ -198,6 +198,22 @@ icon = "ai"
 run = ["deckos-assistant"]
 
 [[action]]
+id = "tour"
+title = "Take the DecKoOS tour"
+summary = "Two minutes with pictures: what's here and where it lives"
+keywords = "tour help introduction guide new start learn what"
+icon = "play"
+run = ["deckos-tour"]
+
+[[action]]
+id = "backup-all"
+title = "Back up everything before a reinstall"
+summary = "Your whole home folder on another drive, checked, and restored after"
+keywords = "backup reinstall wipe home documents saves restore fresh install move"
+icon = "snapshot"
+run = ["deckos-hub", "--page", "system"]
+
+[[action]]
 id = "setup-export"
 title = "Take my setup with me"
 summary = "Saves your look, panel, pinned apps and DecKoOS settings to one file"

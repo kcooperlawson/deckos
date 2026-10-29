@@ -146,7 +146,7 @@ package() {
     rsvg-convert -w 640 -h 360 "$b/choice-$c.svg" -o "$b/choice-$c.png"
   done
 
-  # GRUB theme: background, rounded highlight (9-slice), Inter Display fonts.
+  # GRUB theme: background, notched highlight (9-slice), Chakra Petch (the DecKo look's lettering) and Inter Display.
   local gt=$pkgdir/usr/share/grub/themes/deckos
   rsvg-convert -w 1920 -h 1080 "$b/grub-background.svg" -o "$gt/background.png"
   local piece
@@ -157,6 +157,10 @@ package() {
     grub-mkfont -n "DecKoOS Sans" -s "$s" -o "$gt/deckos-sans-$s.pf2" "$fonts/InterDisplay-Medium.otf"
   done
   grub-mkfont -n "DecKoOS Sans Strong" -s 22 -o "$gt/deckos-sans-strong-22.pf2" "$fonts/InterDisplay-SemiBold.otf"
+  for s in 16 22; do
+    grub-mkfont -n "DecKoOS Petch" -s "$s" -o "$gt/deckos-petch-$s.pf2" "$fonts/ChakraPetch-Medium.ttf"
+  done
+  grub-mkfont -n "DecKoOS Petch Strong" -s 22 -o "$gt/deckos-petch-strong-22.pf2" "$fonts/ChakraPetch-SemiBold.ttf"
 
   # System-wide KDE defaults = base settings + the DecKoOS color groups.
   {
