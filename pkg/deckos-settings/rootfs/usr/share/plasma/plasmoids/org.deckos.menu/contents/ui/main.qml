@@ -225,7 +225,28 @@ PlasmoidItem {
         onPressed: wasExpanded = deckMenu.expanded
         onClicked: deckMenu.expanded = !wasExpanded
 
+        // DecKoOS's own button: the logo's eyes as line art on a notched plate, lit while pointed at or open.
+        // An icon someone picked instead is shown as it is.
+        readonly property bool own: Plasmoid.configuration.icon === "deckos"
+        Vibes.Notch {
+            visible: button.own
+            anchors.fill: parent
+            anchors.margins: 3
+            look: deckMenu.look
+            cut: 9
+            lit: button.containsMouse || deckMenu.expanded
+            fill: deckMenu.expanded ? deckMenu.hot : button.containsMouse ? deckMenu.raised : Qt.rgba(1, 1, 1, 0.05)
+        }
+        Vibes.Eyes {
+            visible: button.own
+            anchors.centerIn: parent
+            implicitWidth: Math.round(button.height * 0.66)
+            look: deckMenu.look
+            scale: button.pressed ? 0.92 : 1
+            Behavior on scale { NumberAnimation { duration: 90 } }
+        }
         Kirigami.Icon {
+            visible: !button.own
             anchors.fill: parent
             source: Plasmoid.configuration.icon
             active: button.containsMouse

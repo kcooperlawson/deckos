@@ -124,7 +124,7 @@ Item {
                 color: task.active ? deckTasks.text : deckTasks.subtext
                 elide: Text.ElideRight
                 font.family: "Inter"
-                font.pixelSize: 13
+                font.pixelSize: 13  // window titles stay in Inter: names read better than in the DecKo type
             }
         }
     }
@@ -208,8 +208,8 @@ Item {
         anchors.margins: 4
         text: task.windows
         color: deckTasks.subtext
-        font.family: "Inter"
-        font.pixelSize: 9
+        font.family: deckTasks.look.hud
+        font.pixelSize: 11
         font.bold: true
     }
 

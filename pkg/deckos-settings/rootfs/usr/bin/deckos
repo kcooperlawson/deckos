@@ -1679,7 +1679,7 @@ taskbar_screens() {
           p.location = main.location;
           p.height = main.height;
           p.floating = main.floating;
-          p.lengthMode = 'fill';
+          p.lengthMode = main.lengthMode;  // the same dock on every screen
           var t = p.addWidget('org.deckos.taskbar');
           t.currentConfigGroup = ['General'];
           ['colorMode', 'colorA', 'colorB', 'motion', 'lockedPins'].forEach(function (k) {

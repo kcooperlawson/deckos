@@ -346,20 +346,26 @@ PlasmoidItem {
         y: deckTasks.vertical ? strip.y + strip.height : 0
         width: deckTasks.vertical ? deckTasks.width : Math.round(deckTasks.tile * 0.7)
         height: deckTasks.vertical ? Math.round(deckTasks.tile * 0.7) : deckTasks.tile
-        Rectangle {
+        Item {
             anchors.centerIn: parent
             width: Math.round(deckTasks.tile * 0.5)
             height: width
-            radius: 8
-            color: addArea.containsMouse ? deckTasks.raised : "transparent"
-            border.width: 1
-            border.color: addArea.containsMouse ? deckTasks.border : "transparent"
+            Vibes.Notch {
+                anchors.fill: parent
+                visible: addArea.containsMouse
+                look: deckTasks.look
+                cut: 6
+                lit: false
+                fill: deckTasks.raised
+            }
             Text {
                 anchors.centerIn: parent
                 text: "+"
                 color: addArea.containsMouse ? deckTasks.text : deckTasks.subtext
                 opacity: addArea.containsMouse ? 1 : 0.6
-                font.pixelSize: Math.round(deckTasks.tile * 0.36)
+                font.family: deckTasks.look.hud
+                font.weight: Font.Medium
+                font.pixelSize: Math.round(deckTasks.tile * 0.4)
             }
         }
         MouseArea {
