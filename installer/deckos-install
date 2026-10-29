@@ -647,7 +647,7 @@ else
   esp_clusters=$(fat32_clusters "$ESP")
   [[ -z $esp_clusters || $esp_clusters -ge 65525 ]] \
     || die "EFI partition $ESP is formatted in a way the PC's firmware can't read (FAT32 with only $esp_clusters clusters), so DecKoOS wouldn't start from it. Nothing was changed."
-  good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found')"
+  good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found' || true)"
 fi
 # Windows may boot from its own EFI partition on another disk; any Windows left decides the clock below.
 WINDOWS=$WIN_BOOT
@@ -741,7 +741,7 @@ what_line() {
 lines=("$(what_line "$TARGET")")
 [[ -z $EXTRA ]] || lines+=("$(what_line "$EXTRA")" "Spanning  both as one btrfs file system (if either drive fails, both are lost)")
 if [[ $MAIN_KIND == disk || $MAIN_KIND == erase ]]; then lines+=("Boot menu  a new EFI partition on $TARGET_DISK")
-else lines+=("Boot menu  $ESP (kept$( [[ $WIN_BOOT == yes ]] && echo '; DecKoOS + Windows'))"); fi
+else lines+=("Boot menu  $ESP (kept$( [[ $WIN_BOOT == yes ]] && echo '; DecKoOS + Windows' || true))"); fi
 style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0 2" \
   "${lines[@]}" \
   "Keep       every other partition and drive" \
@@ -1034,7 +1034,7 @@ section "Boot"
 if gpu_has amd; then modules=amdgpu; else modules=""; fi
 sed -i -E "s/^MODULES=.*/MODULES=($modules)/" "$MNT/etc/mkinitcpio.conf"
 # btrfs: a file system over two drives needs both found before it mounts (the hook scans for them)
-hooks="base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block$( [[ -n $EXTRA ]] && echo ' btrfs') filesystems grub-btrfs-overlayfs"
+hooks="base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block$( [[ -n $EXTRA ]] && echo ' btrfs' || true) filesystems grub-btrfs-overlayfs"
 sed -i -E "s/^HOOKS=.*/HOOKS=($hooks)/" "$MNT/etc/mkinitcpio.conf"
 inchroot plymouth-set-default-theme deckos >>"$LOG" 2>&1 || warn "plymouth theme not set"
 spin "Building initramfs" arch-chroot "$MNT" mkinitcpio -P
