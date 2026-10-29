@@ -4,12 +4,14 @@
 #   - the kernel command line has deckos.autoinstall (no boot menu entry has it),
 #   - this is the live USB, inside a virtual machine,
 #   - QEMU was given the answers through fw_cfg (opt/deckos/autoinstall; real firmware has no fw_cfg),
-#   - the disk to install on has the test's serial (virtio, serial deckos-autotest).
+#   - the disk to install on has the test's serial (virtio, serial deckos-autotest), and a second drive to span,
+#     if any, the serial deckos-autotest2.
 # The answers are DECKOS_* lines (see deckos-install); the target is never taken from them.
 set -Eeuo pipefail
 
 FW_CFG=/sys/firmware/qemu_fw_cfg/by_name/opt/deckos/autoinstall/raw
 DISK=/dev/disk/by-id/virtio-deckos-autotest
+DISK2=/dev/disk/by-id/virtio-deckos-autotest2
 # Lines the test harness waits for on the serial console.
 say() { echo "DECKOS-AUTOINSTALL: $*"; }
 refuse() { say "not starting: $*"; exit 0; }
@@ -22,12 +24,16 @@ modprobe qemu_fw_cfg 2>/dev/null || true
 udevadm settle || true
 [[ -b $DISK ]] || refuse "no test disk ($DISK)"
 disk=$(readlink -f "$DISK")
+# A disk with a partition labelled deckos-erase is erased whole (install-test.sh's erase layout)
+marked() { [[ -n $(lsblk -lno LABEL "$1" | grep -x deckos-erase || true) ]]; }
 # The harness makes partition 1 the EFI partition and leaves 2 empty for DecKoOS; or leaves the whole
 # disk blank (DECKOS_TEST_LAYOUT=empty): then DecKoOS gets the empty disk, as list_free offers it; or
 # fills 2 with a file system to keep and leaves free space after it (free): DecKoOS gets that gap.
 part2=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
 if [[ $(lsblk -lno TYPE "$disk" | grep -c part || true) == 0 ]]; then
   target="free:$disk:disk"
+elif marked "$disk"; then
+  target="erase:$disk"
 elif [[ -n $part2 && -n $(blkid -o value -s TYPE "$part2" || true) ]]; then
   # The installer's own list of free space, so the test takes the gap exactly as a person would
   target=$(/usr/local/bin/deckos-install --list-targets 2>/dev/null \
@@ -38,6 +44,15 @@ else
   [[ -b $target ]] || refuse "the test disk $disk has no second partition"
 fi
 
+# The second drive (span and erase layouts): an empty disk, or one marked to erase
+extra="" erase_disks=""
+[[ $target != erase:* ]] || erase_disks=${disk#/dev/}
+if [[ -b $DISK2 ]]; then
+  disk2=$(readlink -f "$DISK2")
+  if [[ $(lsblk -lno TYPE "$disk2" | grep -c part || true) == 0 ]]; then extra="free:$disk2:disk"
+  elif marked "$disk2"; then extra="erase:$disk2" erase_disks+=" ${disk2#/dev/}"
+  else refuse "the second test disk $disk2 is neither empty nor marked to erase"; fi
+fi
 # Only DECKOS_* answers are read, as data: nothing from fw_cfg is ever run.
 pwfile=$(mktemp)
 declare -A ans=()
@@ -50,9 +65,10 @@ done < <(tr -d '\r' < "$FW_CFG"; echo)
 envs=()
 for k in "${!ans[@]}"; do envs+=("$k=${ans[$k]}"); done
 
-say "installing to $target (disk $disk)"
+say "installing to $target (disk $disk)${extra:+, spanning $extra}"
 rc=0
-env DECKOS_GUI=1 DECKOS_CONFIRM=ERASE DECKOS_TARGET="$target" DECKOS_PASSWORD_FILE="$pwfile" "${envs[@]}" \
+env DECKOS_GUI=1 DECKOS_CONFIRM=ERASE DECKOS_TARGET="$target" DECKOS_EXTRA="$extra" DECKOS_ERASE_DISKS="$erase_disks" \
+  DECKOS_PASSWORD_FILE="$pwfile" "${envs[@]}" \
   /usr/local/bin/deckos-install || rc=$?
 rm -f "$pwfile"
 if [[ $rc -ne 0 ]]; then
@@ -64,7 +80,8 @@ if [[ $rc -ne 0 ]]; then
 fi
 
 # In free space DecKoOS's partition is the disk's last (on an empty disk: after the new EFI partition).
-[[ $target != free:* ]] || target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {p = $1} END {print p}')
+[[ $target != free:* && $target != erase:* ]] || target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {p = $1} END {print p}')
+btrfs device scan >/dev/null 2>&1 || true  # a file system over two drives mounts once both are known
 
 # Test-only changes to the new system, so its boot shows on the serial console: no quiet/splash,
 # console on ttyS0 (which also gives a login prompt there), and a line once graphical.target is up.

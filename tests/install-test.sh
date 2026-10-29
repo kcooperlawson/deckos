@@ -16,7 +16,8 @@ BOOT_MIN=${BOOT_MIN:-15}
 # Optional software groups to install (comma-separated); none keeps the test quick.
 GROUPS_=${DECKOS_TEST_GROUPS:-}
 # partition: an EFI partition + an empty one, next to "Windows"; empty: a blank disk DecKoOS gets whole;
-# free: an EFI partition + a file system to keep, and free space after them that DecKoOS goes into.
+# free: an EFI partition + a file system to keep, and free space after them that DecKoOS goes into;
+# span: two blank disks, DecKoOS over both; erase: two disks with partitions on them, both erased whole.
 LAYOUT=${DECKOS_TEST_LAYOUT:-partition}
 
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$*"; }
@@ -50,8 +51,25 @@ cp "$VARS" "$W/vars.fd"  # the installed system's boot entry lands here, for the
 # ------------------------------------------------------------------ blank disk
 # An EFI partition and an empty partition for DecKoOS: the installer installs onto a partition, next
 # to whatever shares the disk, and reuses the EFI partition it finds.
-rm -f "$W/disk.img"
-if [[ $LAYOUT == empty ]]; then
+rm -f "$W/disk.img" "$W/disk2.img"
+# ext4_in IMG N LABEL: a file system in partition N of IMG (no loop device needed)
+ext4_in() {
+  local start sectors
+  read -r start sectors < <(sfdisk -J "$1" | jq -r ".partitiontable.partitions[$(($2 - 1))] | \"\(.start) \(.size)\"")
+  mkfs.ext4 -q -L "$3" -E offset=$((start * 512)) "$1" $((sectors / 2))k
+}
+if [[ $LAYOUT == span ]]; then
+  step "Two blank 80 GB disks: DecKoOS over both"
+  truncate -s 80G "$W/disk.img" "$W/disk2.img"
+elif [[ $LAYOUT == erase ]]; then
+  # Partitions labelled deckos-erase mark a disk the test erases whole (deckos-autoinstall)
+  step "Two 80 GB disks with partitions on them: both erased whole"
+  truncate -s 80G "$W/disk.img" "$W/disk2.img"
+  printf 'label: gpt\nsize=300MiB, type=U, name="EFI system partition"\nsize=30GiB, type=L, name="Old"\n' | sfdisk -q "$W/disk.img"
+  ext4_in "$W/disk.img" 2 deckos-erase
+  printf 'label: gpt\nsize=40GiB, type=L, name="Data"\n' | sfdisk -q "$W/disk2.img"
+  ext4_in "$W/disk2.img" 1 deckos-erase
+elif [[ $LAYOUT == empty ]]; then
   # 80 GB (sparse): the installer offers empty disks of 64 GB and up
   step "Blank 80 GB disk, no partitions: DecKoOS gets the whole disk"
   truncate -s 80G "$W/disk.img"
@@ -69,7 +87,7 @@ else
   printf 'label: gpt\nsize=300MiB, type=U, name="EFI system partition"\ntype=L, name="DeckOS"\n' \
     | sfdisk -q "$W/disk.img"
 fi
-if [[ $LAYOUT != empty ]]; then
+if [[ $LAYOUT != empty && $LAYOUT != span ]]; then
   read -r esp_start esp_sectors < <(sfdisk -J "$W/disk.img" | jq -r '.partitiontable.partitions[0] | "\(.start) \(.size)"')
   # Cluster size explicitly: mkfs.fat sizes it for the whole 40 GB image, which leaves this partition too
   # few clusters for FAT32. Linux mounts that anyway; UEFI firmware counts clusters and can't read it.
@@ -78,7 +96,7 @@ if [[ $LAYOUT != empty ]]; then
 fi
 # What was on the disk before: the install may add to it, never change it (Installer safety, CLAUDE.md)
 kept_parts() {  # the EFI partition, and in free space the file system next to it (partition 2 is DecKoOS's otherwise)
-  [[ $LAYOUT != empty ]] || return 0  # nothing was there: everything on it is new
+  [[ $LAYOUT != empty && $LAYOUT != span && $LAYOUT != erase ]] || return 0  # nothing kept: everything on it is new
   sfdisk -d "$W/disk.img" | grep -E "^\\S+img$([[ $LAYOUT == free ]] && echo '[12]' || echo 1) :" || true
 }
 kept_fs() { [[ $LAYOUT != free ]] || blkid -p -o value -s UUID -O $((keep_start * 512)) "$W/disk.img"; }
@@ -109,6 +127,11 @@ DECKOS_GROUPS=$GROUPS_
 DECKOS_DISPLAY_LEVEL=0
 EOF
 
+# The second disk, for span and erase: the second drive DecKoOS spans (serial deckos-autotest2)
+second=()
+[[ ! -f $W/disk2.img ]] || second=(-drive "file=$W/disk2.img,format=raw,if=none,id=disk2,cache=unsafe"
+                                   -device virtio-blk-pci,drive=disk2,serial=deckos-autotest2)
+
 # vm LOG MINUTES DONE_REGEX [qemu args...] - runs the VM with its serial console in LOG (shown live)
 # until it powers off, LOG matches DONE_REGEX, or MINUTES pass. Returns 0, or 124 on timeout.
 vm() {
@@ -119,7 +142,7 @@ vm() {
     -drive "if=pflash,format=raw,readonly=on,file=$CODE" -drive "if=pflash,format=raw,file=$W/vars.fd" \
     -drive "file=$W/disk.img,format=raw,if=none,id=disk,cache=unsafe" \
     -device virtio-blk-pci,drive=disk,serial=deckos-autotest \
-    -nic user,model=virtio-net-pci "$@" &
+    "${second[@]}" -nic user,model=virtio-net-pci "$@" &
   local qemu=$! deadline=$((SECONDS + minutes * 60)) rc=0
   tail -F -n +1 --pid="$qemu" "$log" 2>/dev/null &
   local tailer=$!

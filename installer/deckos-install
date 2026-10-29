@@ -288,23 +288,93 @@ list_free() {
     | @tsv'
 }
 
-# make_partition: FREE's partition(s), after the confirmation. Sets TARGET, TARGET_PARTNO (and ESP for an
-# empty disk). Checks again that the space is still unused first: nothing existing is ever touched.
-make_partition() {
-  local disk start sectors parts
-  IFS=: read -r _ disk start sectors <<<"$FREE"
+# Whole disks DecKoOS may erase, in list_targets' columns: erase:DISK. Only when you pick one, and only after you
+# type its name: everything on it goes (Windows too), nothing on any other disk. Never the live USB; blocked while
+# anything on it is mounted, swap or part of a RAID/LVM/ZFS set, since erasing it would pull that from under the PC.
+list_erase() {
+  local live_disk="" src
+  if src=$(findmnt -no SOURCE /run/archiso/bootmnt 2>/dev/null); then live_disk=$(lsblk -no PKNAME "$src" 2>/dev/null | head -n1); fi
+  lsblk -J -b -o PATH,NAME,TYPE,SIZE,FSTYPE,LABEL,MODEL,MOUNTPOINTS | jq -r \
+    --arg live "$live_disk" --arg mnt "$MNT" --argjson min "$MIN_GB" '
+    def gb: (. / 1e9 | floor | tostring) + " GB";
+    .blockdevices[] | . as $d
+    | select($d.type == "disk" and $d.name != $live and ($d.name | test("^(zram|loop|sr|ram)") | not))
+    | select(([$d.children[]?.label] | index("Ventoy")) | not)
+    | [($d.children // [])[] | select(.type == "part")] as $parts
+    | select(($parts | length) > 0)
+    | [$d, $parts[] | .mountpoints[]? | select(. != null and . != $mnt and (startswith($mnt + "/") | not))] as $mp
+    | ["erase:" + $d.path, ($d.size | gb), "disk", "Whole disk", ($d.model // "?"), "0",
+       (if ([$parts[].fstype // ""] | map(endswith("_member")) | any) then "Part of a RAID, LVM or ZFS set. Erasing it would break the whole set."
+        elif ($mp | index("[SWAP]")) then "Used as swap right now."
+        elif ($mp | length) > 0 then "In use: mounted at " + ($mp | join(", ")) + ". Unmount it (eject it in Dolphin), then refresh."
+        elif $d.size < $min * 1e9 then "Too small: DecKoOS needs \($min) GB."
+        else "" end)]
+    | @tsv'
+}
+
+# What's on DISK, for the erase confirmation: PARTITION, SIZE, FS, LABEL, WHAT (Windows, encrypted, data, empty)
+disk_contents() {
+  local disk=$1 part size fs label what probe
+  while IFS=$'\t' read -r part size fs label; do  # "-" for no file system or label: tab reads collapse empty fields
+    what=data
+    case $fs in
+      BitLocker|crypto_LUKS) what=encrypted ;;
+      -) what=empty ;;
+      vfat) what=$( [[ $(lsblk -no PARTTYPE "$part") == "$ESP_GUID" ]] && echo boot || echo data) ;;
+    esac
+    probe=$(mktemp -d)
+    if [[ $what == data || $what == boot ]] && mount -o ro "$part" "$probe" 2>/dev/null; then
+      if [[ -d $probe/Windows/System32 ]]; then what=Windows
+      elif [[ -d $probe/EFI/Microsoft ]]; then what="Windows boot"
+      elif [[ -d $probe/Recovery/WindowsRE || -e $probe/hiberfil.sys ]]; then what="Windows recovery"; fi
+      umount "$probe"
+    fi
+    rmdir "$probe"
+    printf '%s\t%s GB\t%s\t%s\t%s\n' "$part" "$((size / 1000000000))" "$fs" "$label" "$what"
+  done < <(lsblk -J -b -o NAME,PATH,SIZE,FSTYPE,LABEL,TYPE "$disk" | jq -r '.blockdevices[0].children[]?
+             | select(.type == "part") | [.path, (.size | tostring), (.fstype // "-"), (.label // "-")] | @tsv')
+}
+
+# make_space SPEC WANT_ESP: makes the chosen space after the confirmation. SPEC is free:DISK:START:SECTORS (one
+# partition in that gap), free:DISK:disk (an empty disk) or erase:DISK (a disk you chose to erase); the whole-disk
+# kinds get GPT and, with WANT_ESP=yes, a 1 GB EFI partition first. Checks again first that the space is still
+# what was listed. Sets MADE_PART, MADE_ESP (or "") and MADE_PARTNO.
+make_space() {
+  local spec=$1 want_esp=$2 kind disk start sectors parts layout
+  MADE_PART="" MADE_ESP="" MADE_PARTNO=""
+  IFS=: read -r kind disk start sectors <<<"$spec"
   section "Making room on $disk"
-  if [[ $start == disk ]]; then
-    [[ -z $(lsblk -dno PTTYPE "$disk") && -z $(lsblk -dno FSTYPE "$disk") && $(lsblk -lno NAME "$disk" | wc -l) == 1 ]] \
-      || die "$disk isn't empty any more. Nothing was changed."
+  if [[ $kind == erase ]]; then
+    # $MNT was unmounted before this: nothing at all on the disk may be mounted now
+    [[ -z $(lsblk -lnpo MOUNTPOINTS "$disk" | grep -v '^$' || true) ]] \
+      || die "Something on $disk is mounted. Nothing was changed."
     CHANGED=partition
-    printf 'label: gpt\nsize=1GiB, type=U, name="EFI system partition"\ntype=L, name="DeckOS"\n' \
-      | sfdisk -q "$disk" >>"$LOG" 2>&1 || die "Couldn't partition $disk. $(changed_note)"
+    local p
+    while read -r p; do wipefs -aq "$p" >>"$LOG" 2>&1 || true; done < <(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {print $1}')
+    wipefs -aq "$disk" >>"$LOG" 2>&1 || die "Couldn't clear $disk. $(changed_note)"
+    start=disk
+  fi
+  if [[ $start == disk ]]; then
+    if [[ $kind == free ]]; then
+      [[ -z $(lsblk -dno PTTYPE "$disk") && -z $(lsblk -dno FSTYPE "$disk") && $(lsblk -lno NAME "$disk" | wc -l) == 1 ]] \
+        || die "$disk isn't empty any more. Nothing was changed."
+    fi
+    CHANGED=partition
+    layout='label: gpt\n'
+    [[ $want_esp == yes ]] && layout+='size=1GiB, type=U, name="EFI system partition"\n'
+    layout+='type=L, name="DeckOS"\n'
+    # shellcheck disable=SC2059  # the layout is ours, with \n meant as newlines
+    printf "$layout" | sfdisk -q "$disk" >>"$LOG" 2>&1 || die "Couldn't partition $disk. $(changed_note)"
     udevadm settle
     mapfile -t parts < <(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {print $1}')
-    ESP=${parts[0]:-} TARGET=${parts[1]:-}
-    [[ -b $ESP && -b $TARGET ]] || die "The new partitions on $disk didn't show up. $(changed_note)"
-    spin "Formatting the EFI partition $ESP" mkfs.fat -F 32 -n EFI "$ESP"
+    if [[ $want_esp == yes ]]; then
+      MADE_ESP=${parts[0]:-} MADE_PART=${parts[1]:-}
+      [[ -b $MADE_ESP && -b $MADE_PART ]] || die "The new partitions on $disk didn't show up. $(changed_note)"
+      spin "Formatting the EFI partition $MADE_ESP" mkfs.fat -F 32 -n EFI "$MADE_ESP"
+    else
+      MADE_PART=${parts[0]:-}
+      [[ -b $MADE_PART ]] || die "The new partition on $disk didn't show up. $(changed_note)"
+    fi
   else
     # sfdisk -F: the unused ranges now (start end sectors size); the gap has to be one of them still
     sfdisk -F "$disk" 2>>"$LOG" | awk -v s="$start" -v n="$sectors" \
@@ -316,14 +386,52 @@ make_partition() {
       || die "Couldn't add a partition on $disk. Nothing else was changed."
     partx -a "$disk" >>"$LOG" 2>&1 || true
     udevadm settle
-    TARGET=$(lsblk -lnpo PATH,TYPE,START "$disk" | awk -v s="$start" '$2 == "part" && $3 == s {print $1}')
-    [[ -b $TARGET ]] || die "The new partition on $disk didn't show up. $(changed_note)"
+    MADE_PART=$(lsblk -lnpo PATH,TYPE,START "$disk" | awk -v s="$start" '$2 == "part" && $3 == s {print $1}')
+    [[ -b $MADE_PART ]] || die "The new partition on $disk didn't show up. $(changed_note)"
   fi
-  TARGET_PARTNO=$(cat "/sys/class/block/$(basename "$TARGET")/partition")
-  good "New partition $TARGET"
+  MADE_PARTNO=$(cat "/sys/class/block/$(basename "$MADE_PART")/partition")
+  good "New partition $MADE_PART"
 }
 
-if [[ ${1:-} == --list-targets ]]; then list_targets; list_free; exit 0; fi
+# check_partition PART: refuses Windows and anything DecKoOS can't look inside, and shows anything that would be
+# lost. Only a partition that mounts can be checked for Windows, so one with a file system that won't mount (a
+# hibernated Windows drive, a damaged or unknown one) is refused rather than trusted.
+check_partition() {
+  local part=$1 fstype probe used contents
+  [[ -b $part ]] || die "No partition $part."
+  fstype=$(lsblk -no FSTYPE "$part" | head -n1)
+  probe=$(mktemp -d)
+  if mount -o ro "$part" "$probe" 2>/dev/null; then
+    if [[ -d $probe/Windows/System32 || -e $probe/bootmgr || -e $probe/hiberfil.sys || -d $probe/Recovery/WindowsRE ]]; then
+      umount "$probe"; rmdir "$probe"
+      die "$part holds Windows or its boot or recovery files. Pick a different partition, or erase its whole disk."
+    fi
+    mapfile -t contents < <(find "$probe" -mindepth 1 -maxdepth 1 ! -name 'System Volume Information' ! -name '$RECYCLE.BIN' -printf '%f\n' | head -n 15)
+    used=$(df -h --output=used "$probe" | tail -1 | tr -d ' ')
+    umount "$probe"
+    if [[ ${#contents[@]} -gt 0 ]]; then
+      warn "$part is NOT empty ($used used). These will be destroyed:"
+      printf '      %s\n' "${contents[@]}"
+    else
+      good "$part is empty"
+    fi
+  elif [[ -n $fstype ]]; then
+    rmdir "$probe"
+    die "$part has a $fstype file system that DecKoOS can't open to check what's on it, so it won't erase it. If it's a Windows drive, start Windows and run 'powercfg /h off' as administrator (hibernation keeps it locked), or delete the partition in Disk Management to leave it empty."
+  fi
+  rmdir "$probe" 2>/dev/null || true
+}
+
+# The disk a choice is on: free:DISK:..., erase:DISK or a partition
+choice_disk() {
+  case $1 in
+    free:*|erase:*) local _k d; IFS=: read -r _k d _ <<<"$1"; echo "$d" ;;
+    *) echo "/dev/$(lsblk -no PKNAME "$1" | head -n1)" ;;
+  esac
+}
+
+if [[ ${1:-} == --list-targets ]]; then list_targets; list_free; list_erase; exit 0; fi
+if [[ ${1:-} == --disk-contents ]]; then disk_contents "${2:?}"; exit 0; fi
 
 banner() {
   [[ -n $GUI ]] && return
@@ -417,87 +525,111 @@ else good "Display: blackout fix level $DISPLAY_LEVEL ($display_why)"; fi
 # ------------------------------------------------------------------ target partition
 
 section "Where should DecKoOS go?"
-note "Only a partition you pick is erased; free space and empty disks get a new partition. Windows, its EFI partition and your other drives stay untouched."
+note "Only what you pick is erased: a partition, or a whole disk you choose to erase (you type its name to confirm). Free space and empty disks get a new partition. Everything else stays untouched."
 
 # A failed earlier run leaves the target mounted under /mnt; free it before checking it.
 umount -R "$MNT" 2>/dev/null || true
-mapfile -t rows < <(list_targets; list_free)
+mapfile -t rows < <(list_targets; list_free; list_erase)
 mapfile -t usable < <(printf '%s\n' "${rows[@]}" | awk -F'\t' 'NF && $7 == ""')
 [[ ${#usable[@]} -gt 0 ]] || die "No suitable partitions found."
 
+# choose_space HEADER [SKIP_DISK]: the text installer's list of usable places (none on SKIP_DISK)
+choose_space() {
+  local header=$1 skip=${2:-} r p s f l m d choices=() default="" line args
+  for r in "${usable[@]}"; do
+    IFS=$'\t' read -r p s f l m d _ <<<"$r"
+    [[ -n $skip && $(choice_disk "$p") == "$skip" ]] && continue
+    line=$(printf '%-24s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
+    choices+=("$line")
+    [[ -z $default && $d == 1 ]] && default=$line
+  done
+  [[ ${#choices[@]} -gt 0 ]] || return 1
+  args=(--header "$header")
+  [[ -n $default ]] && args+=(--selected "$default")
+  line=$(gum choose "${args[@]}" "${choices[@]}")
+  echo "${line%% *}"
+}
+
+# kind_of CHOICE: partition, gap (free space), disk (an empty disk) or erase (a disk to erase)
+kind_of() {
+  case $1 in
+    free:*:disk) echo disk ;;
+    free:*) echo gap ;;
+    erase:*) echo erase ;;
+    *) echo partition ;;
+  esac
+}
+
 if [[ -n $GUI ]]; then
-  TARGET=${DECKOS_TARGET:-}
-  printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a partition DecKoOS can use."
+  TARGET=${DECKOS_TARGET:-} EXTRA=${DECKOS_EXTRA:-}
+  printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$TARGET" || die "$TARGET is not a place DecKoOS can use."
+  if [[ -n $EXTRA ]]; then
+    printf '%s\n' "${usable[@]}" | cut -f1 | grep -qxF "$EXTRA" || die "$EXTRA is not a place DecKoOS can use."
+  fi
 else
   for r in "${rows[@]}"; do
     IFS=$'\t' read -r p _ _ _ _ _ why <<<"$r"
     [[ -n $why ]] && note "Not offered: $p - $why"
   done
-  choices=() default=""
-  for r in "${usable[@]}"; do
-    IFS=$'\t' read -r p s f l m d _ <<<"$r"
-    line=$(printf '%-16s %8s  %-6s %-10s %s' "$p" "$s" "$f" "$l" "$m")
-    choices+=("$line")
-    [[ -z $default && $d == 1 ]] && default=$line
-  done
-  choose_args=(--header "  Partition         Size     FS     Label      Disk")
-  [[ -n $default ]] && choose_args+=(--selected "$default")
-  pick=$(gum choose "${choose_args[@]}" "${choices[@]}")
-  TARGET=${pick%% *}
-fi
-FREE=""  # free:DISK:START:SECTORS or free:DISK:disk (list_free): the partition is made after you confirm
-if [[ $TARGET == free:* ]]; then
-  FREE=$TARGET
-  IFS=: read -r _ TARGET_DISK _ <<<"$FREE"
-  [[ -b $TARGET_DISK ]] || die "No disk $TARGET_DISK."
-  if [[ $FREE == *:disk ]]; then good "$TARGET_DISK is empty: DecKoOS gets the whole disk"
-  else good "Free space on $TARGET_DISK: DecKoOS adds a partition there; nothing on the disk is erased"; fi
-else
-  [[ -b $TARGET ]] || die "No partition selected."
-
-  # Refuse Windows and anything DecKoOS can't look inside; show anything that would be lost.
-  # Only a partition that mounts can be checked for Windows, so one with a file system that won't
-  # mount (a hibernated Windows drive, a damaged or unknown one) is refused rather than trusted.
-  fstype=$(lsblk -no FSTYPE "$TARGET" | head -n1)
-  probe=$(mktemp -d)
-  if mount -o ro "$TARGET" "$probe" 2>/dev/null; then
-    if [[ -d $probe/Windows/System32 || -e $probe/bootmgr || -e $probe/hiberfil.sys || -d $probe/Recovery/WindowsRE ]]; then
-      umount "$probe"; rmdir "$probe"
-      die "$TARGET holds Windows or its boot or recovery files. Pick a different partition."
-    fi
-    mapfile -t contents < <(find "$probe" -mindepth 1 -maxdepth 1 ! -name 'System Volume Information' ! -name '$RECYCLE.BIN' -printf '%f\n' | head -n 15)
-    used=$(df -h --output=used "$probe" | tail -1 | tr -d ' ')
-    umount "$probe"
-    if [[ ${#contents[@]} -gt 0 ]]; then
-      warn "$TARGET is NOT empty ($used used). These will be destroyed:"
-      printf '      %s\n' "${contents[@]}"
-    else
-      good "$TARGET is empty"
-    fi
-  elif [[ -n $fstype ]]; then
-    rmdir "$probe"
-    die "$TARGET has a $fstype file system that DecKoOS can't open to check what's on it, so it won't erase it. If it's a Windows drive, start Windows and run 'powercfg /h off' as administrator (hibernation keeps it locked), or delete the partition in Disk Management to leave it empty."
+  TARGET=$(choose_space "  Place                     Size     FS     Label      Disk") || die "No suitable place found."
+  EXTRA=""
+  if gum confirm "Add a second drive, so DecKoOS spans both as one bigger system? (If either drive fails, both are lost.)" --default=false; then
+    EXTRA=$(choose_space "  The second drive: on a different disk" "$(choice_disk "$TARGET")") || { warn "No usable place on another disk"; EXTRA=""; }
   fi
-  rmdir "$probe" 2>/dev/null || true
-
-  TARGET_DISK=/dev/$(lsblk -no PKNAME "$TARGET")
-  TARGET_PARTNO=$(cat "/sys/class/block/$(basename "$TARGET")/partition")
 fi
+
+MAIN_KIND=$(kind_of "$TARGET")
+TARGET_DISK=$(choice_disk "$TARGET")
+[[ -b $TARGET_DISK ]] || die "No disk $TARGET_DISK."
+EXTRA_KIND="" EXTRA_DISK=""
+if [[ -n $EXTRA ]]; then
+  EXTRA_KIND=$(kind_of "$EXTRA")
+  EXTRA_DISK=$(choice_disk "$EXTRA")
+  [[ -b $EXTRA_DISK ]] || die "No disk $EXTRA_DISK."
+  [[ $EXTRA_DISK != "$TARGET_DISK" ]] || die "The second drive has to be a different disk."
+fi
+
+# describe_choice CHOICE: what happens to it, checked (partitions are looked inside; nothing is changed yet)
+describe_choice() {
+  local c=$1 disk
+  disk=$(choice_disk "$c")
+  case $(kind_of "$c") in
+    disk) good "$disk is empty: DecKoOS gets the whole disk" ;;
+    gap) good "Free space on $disk: DecKoOS adds a partition there; nothing on the disk is erased" ;;
+    erase)
+      warn "$disk will be ERASED completely. On it now:"
+      disk_contents "$disk" | while IFS=$'\t' read -r part size fs label what; do
+        note "    $part  $size  $fs  $label  ($what)"
+      done ;;
+    partition) check_partition "$c" ;;
+  esac
+}
+describe_choice "$TARGET"
+[[ -z $EXTRA ]] || describe_choice "$EXTRA"
+[[ $MAIN_KIND == partition ]] && TARGET_PARTNO=$(cat "/sys/class/block/$(basename "$TARGET")/partition")
+# Disks that get erased whole: their EFI partitions and Windows go with them
+ERASED=()
+[[ $MAIN_KIND == erase ]] && ERASED+=("$TARGET_DISK")
+[[ $EXTRA_KIND == erase ]] && ERASED+=("$EXTRA_DISK")
+erased() { [[ " ${ERASED[*]} " == *" $1 "* ]]; }
 
 # ------------------------------------------------------------------ EFI partition
 
 mapfile -t esps < <(lsblk -rpno PATH,PARTTYPE,PKNAME | awk -v g="$ESP_GUID" '$2==g {print $1" "$3}')
-if [[ $FREE == *:disk ]]; then
+if [[ $MAIN_KIND == disk || $MAIN_KIND == erase ]]; then
   ESP="" WIN_BOOT=no  # made with the disk's partitions, after you confirm
   good "EFI partition: a new one on $TARGET_DISK, so it starts without any other disk"
 else
-  [[ ${#esps[@]} -gt 0 ]] || die "No EFI system partition found. (Windows normally has one; an empty disk gets its own.)"
+  # An EFI partition on a disk being erased goes with it
+  kept=()
+  for e in "${esps[@]}"; do erased "/dev/${e#* }" || erased "${e#* }" || kept+=("$e"); done
+  [[ ${#kept[@]} -gt 0 ]] || die "No EFI system partition left to use. (Windows normally has one; a disk you erase or an empty disk gets its own.)"
   ESP=""
-  for e in "${esps[@]}"; do [[ /dev/${e#* } == "$TARGET_DISK" || ${e#* } == "$TARGET_DISK" ]] && ESP=${e%% *}; done
+  for e in "${kept[@]}"; do [[ /dev/${e#* } == "$TARGET_DISK" || ${e#* } == "$TARGET_DISK" ]] && ESP=${e%% *}; done
   if [[ -z $ESP && -n $GUI ]]; then
-    ESP=${DECKOS_ESP:-${esps[0]%% *}}
+    ESP=${DECKOS_ESP:-${kept[0]%% *}}
   elif [[ -z $ESP ]]; then
-    ESP=$(printf '%s\n' "${esps[@]%% *}" | gum choose --header "  Which EFI partition should hold the boot menu?")
+    ESP=$(printf '%s\n' "${kept[@]%% *}" | gum choose --header "  Which EFI partition should hold the boot menu?")
   fi
   espprobe=$(mktemp -d)
   mount -o ro "$ESP" "$espprobe"
@@ -510,12 +642,13 @@ else
     || die "EFI partition $ESP is formatted in a way the PC's firmware can't read (FAT32 with only $esp_clusters clusters), so DecKoOS wouldn't start from it. Nothing was changed."
   good "EFI partition $ESP (shared, not formatted)$( [[ $WIN_BOOT == yes ]] && echo ' - Windows Boot Manager found')"
 fi
-# Windows may boot from its own EFI partition on another disk; any Windows decides the clock below.
+# Windows may boot from its own EFI partition on another disk; any Windows left decides the clock below.
 WINDOWS=$WIN_BOOT
-for e in "${esps[@]%% *}"; do
-  [[ $WINDOWS == no && $e != "$ESP" ]] || continue
+for e in "${esps[@]}"; do
+  [[ $WINDOWS == no && ${e%% *} != "$ESP" ]] || continue
+  erased "/dev/${e#* }" || erased "${e#* }" && continue
   espprobe=$(mktemp -d)
-  if mount -o ro "$e" "$espprobe" 2>/dev/null; then
+  if mount -o ro "${e%% *}" "$espprobe" 2>/dev/null; then
     [[ -d $espprobe/EFI/Microsoft ]] && WINDOWS=yes
     umount "$espprobe"
   fi
@@ -587,19 +720,23 @@ for g in "${CHOSEN[@]}"; do software+=", ${GROUP_DESC[$g]%%:*}"; done
 # ------------------------------------------------------------------ confirm
 
 section "Ready"
-if [[ -z $FREE ]]; then
-  what_line="ERASE      $(style --foreground '#FF6B6B' --bold "$TARGET") -> btrfs (snapshots on)"
-  boot_line="Boot menu  $ESP (kept; DecKoOS + Windows)"
-elif [[ $FREE == *:disk ]]; then
-  what_line="NEW        $TARGET_DISK (empty) -> GPT: a 1 GB EFI partition + DecKoOS on btrfs"
-  boot_line="Boot menu  the new EFI partition on $TARGET_DISK"
-else
-  what_line="NEW        a partition in the free space on $TARGET_DISK -> btrfs (nothing erased)"
-  boot_line="Boot menu  $ESP (kept; DecKoOS + Windows)"
-fi
+# what_line CHOICE: one line of the summary for a place
+what_line() {
+  local c=$1 disk
+  disk=$(choice_disk "$c")
+  case $(kind_of "$c") in
+    partition) echo "ERASE      $(style --foreground '#FF6B6B' --bold "$c") -> DecKoOS" ;;
+    erase) echo "ERASE      $(style --foreground '#FF6B6B' --bold "ALL of $disk") ($(lsblk -dno MODEL "$disk" | xargs)) -> DecKoOS" ;;
+    disk) echo "NEW        $disk (empty) -> DecKoOS" ;;
+    gap) echo "NEW        a partition in the free space on $disk -> DecKoOS (nothing erased)" ;;
+  esac
+}
+lines=("$(what_line "$TARGET")")
+[[ -z $EXTRA ]] || lines+=("$(what_line "$EXTRA")" "Spanning  both as one btrfs file system (if either drive fails, both are lost)")
+if [[ $MAIN_KIND == disk || $MAIN_KIND == erase ]]; then lines+=("Boot menu  a new EFI partition on $TARGET_DISK")
+else lines+=("Boot menu  $ESP (kept$( [[ $WIN_BOOT == yes ]] && echo '; DecKoOS + Windows'))"); fi
 style --border rounded --border-foreground "#262B36" --padding "1 2" --margin "0 2" \
-  "$what_line" \
-  "$boot_line" \
+  "${lines[@]}" \
   "Keep       every other partition and drive" \
   "Display    blackout fix level $DISPLAY_LEVEL ($display_why)" \
   "User       $USERNAME_ @ $HOSTNAME_   |   $TZ_" \
@@ -610,21 +747,51 @@ echo
 if [[ -n $GUI ]]; then confirm=${DECKOS_CONFIRM:-}
 else confirm=$(gum input --prompt "Type ERASE to install > " --placeholder "ERASE"); fi
 [[ $confirm == ERASE ]] || die "Cancelled - nothing was changed."
+# A whole disk is only erased once its own name is typed too (the window asks for each, and passes them on)
+for d in "${ERASED[@]}"; do
+  if [[ -n $GUI ]]; then typed=$( [[ " ${DECKOS_ERASE_DISKS:-} " == *" ${d#/dev/} "* ]] && echo "${d#/dev/}" || true)
+  else typed=$(gum input --prompt "Type ${d#/dev/} to erase that whole disk > " --placeholder "${d#/dev/}"); fi
+  [[ $typed == "${d#/dev/}" ]] || die "Cancelled - $d wasn't confirmed, so nothing was changed."
+done
 
 # ------------------------------------------------------------------ disk
 
 umount -R "$MNT" 2>/dev/null || true
-[[ -z $FREE ]] || make_partition
-section "Preparing $TARGET"
+if [[ $MAIN_KIND != partition ]]; then
+  make_space "$TARGET" "$( [[ $MAIN_KIND == disk || $MAIN_KIND == erase ]] && echo yes || echo no)"
+  TARGET=$MADE_PART TARGET_PARTNO=$MADE_PARTNO
+  [[ -z $MADE_ESP ]] || ESP=$MADE_ESP
+fi
+DEVICES=("$TARGET")
+if [[ -n $EXTRA ]]; then
+  if [[ $EXTRA_KIND == partition ]]; then
+    EXTRA_PART=$EXTRA EXTRA_PARTNO=$(cat "/sys/class/block/$(basename "$EXTRA")/partition")
+  else
+    make_space "$EXTRA" no
+    EXTRA_PART=$MADE_PART EXTRA_PARTNO=$MADE_PARTNO
+  fi
+  DEVICES+=("$EXTRA_PART")
+fi
+section "Preparing ${DEVICES[*]}"
 CHANGED=partition
-spin "Wiping $TARGET" wipefs -af "$TARGET"
-# Mark it as a Linux partition so Windows stops offering to "format" it.
+for dev in "${DEVICES[@]}"; do
+  spin "Wiping $dev" wipefs -af "$dev"
+done
+# Mark them as Linux partitions so Windows stops offering to "format" them.
 spin "Setting partition type" sfdisk --part-type "$TARGET_DISK" "$TARGET_PARTNO" "$LINUX_FS_GUID"
-spin "Creating btrfs" mkfs.btrfs -f -L DecKoOS "$TARGET"
+[[ -z $EXTRA ]] || spin "Setting partition type" sfdisk --part-type "$EXTRA_DISK" "$EXTRA_PARTNO" "$LINUX_FS_GUID"
+if [[ -z $EXTRA ]]; then
+  spin "Creating btrfs" mkfs.btrfs -f -L DecKoOS "$TARGET"
+else
+  # One file system over both: data spread over them (single, so their sizes add up), the file system's own
+  # records (metadata) kept twice, once on each
+  spin "Creating btrfs over both drives" mkfs.btrfs -f -L DecKoOS -d single -m raid1 "${DEVICES[@]}"
+fi
 # The new file system's /dev/disk/by-uuid link only appears once udev re-reads the partition; grub-btrfs
 # mounts by that link when the boot menu is written (a fresh empty disk failed there without this)
-udevadm trigger --action=change "$TARGET" 2>/dev/null || true
+for dev in "${DEVICES[@]}"; do udevadm trigger --action=change "$dev" 2>/dev/null || true; done
 udevadm settle || true
+[[ -z $EXTRA ]] || btrfs device scan >>"$LOG" 2>&1 || true
 mount "$TARGET" "$MNT"
 for sv in @ @home @snapshots @log @pkg; do btrfs -q subvolume create "$MNT/$sv"; done
 umount "$MNT"
@@ -635,6 +802,7 @@ mount -o "$BTRFS_OPTS,subvol=@snapshots" "$TARGET" "$MNT/.snapshots"
 mount -o "$BTRFS_OPTS,subvol=@log" "$TARGET" "$MNT/var/log"
 mount -o "$BTRFS_OPTS,subvol=@pkg" "$TARGET" "$MNT/var/cache/pacman/pkg"
 mount "$ESP" "$MNT/boot/efi"
+[[ -z $EXTRA ]] || good "btrfs over ${DEVICES[*]}: $(btrfs filesystem usage -b "$MNT" 2>/dev/null | awk '/Device size:/ {printf "%d GB", $3 / 1e9}')"
 good "btrfs subvolumes: @ @home @snapshots @log @pkg"
 
 # ------------------------------------------------------------------ base system
@@ -858,7 +1026,9 @@ section "Boot"
 # load from the root file system (chwd's mkinitcpio.conf.d drop-in drops kms for them).
 if gpu_has amd; then modules=amdgpu; else modules=""; fi
 sed -i -E "s/^MODULES=.*/MODULES=($modules)/" "$MNT/etc/mkinitcpio.conf"
-sed -i -E 's/^HOOKS=.*/HOOKS=(base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block filesystems grub-btrfs-overlayfs)/' "$MNT/etc/mkinitcpio.conf"
+# btrfs: a file system over two drives needs both found before it mounts (the hook scans for them)
+hooks="base udev plymouth autodetect microcode modconf kms keyboard keymap consolefont block$( [[ -n $EXTRA ]] && echo ' btrfs') filesystems grub-btrfs-overlayfs"
+sed -i -E "s/^HOOKS=.*/HOOKS=($hooks)/" "$MNT/etc/mkinitcpio.conf"
 inchroot plymouth-set-default-theme deckos >>"$LOG" 2>&1 || warn "plymouth theme not set"
 spin "Building initramfs" arch-chroot "$MNT" mkinitcpio -P
 
