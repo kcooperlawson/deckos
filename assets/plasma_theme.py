@@ -1,4 +1,5 @@
-"""DecKoOS Plasma style: the panel, popups, tooltips and widget backgrounds as "bolted plates".
+"""DecKoOS Plasma style: the panel, popups, tooltips and widget backgrounds as notched plates: the wordmark's cut
+corner at the top right and bottom left, and the accent lighting the other two corners' edges.
 
 Writes a Plasma desktop theme (pkg/deckos-settings/.../plasma/desktoptheme/deckos). Each frame is
 a 9-slice SVG with Plasma's element names (topleft, top, ..., center, hint-*-margin, shadow-*).
@@ -43,12 +44,39 @@ def corner(name, ox, oy, r, fill, border, bolt):
     return f'<g id="{name}">{body}</g>'
 
 
-def frame(r, fill, border, bolts=False, margins=None, shadow=None):
-    """All pieces of one frame. margins: content insets (t, b, l, r); shadow: sizes (t, b, l, r)."""
+def notch_corner(name, ox, oy, r, fill, border, lit):
+    """A corner piece r x r of a notched plate: topright and bottomleft are cut on the diagonal, the other two are
+    square with their edges lit in the accent (ColorScheme-Highlight) at `lit`."""
+    fx, fy = name in ("topright", "bottomright"), name in ("bottomleft", "bottomright")
+
+    def p(x, y):
+        return f"{ox + (r - x if fx else x):g},{oy + (r - y if fy else y):g}"
+
+    bg, fg, hi = "ColorScheme-Background", "ColorScheme-Text", "ColorScheme-Highlight"
+    if name in ("topright", "bottomleft"):  # the cut: a diagonal from (0, r) to (r, 0) in the piece's own frame
+        d = 1.42
+        body = (f'<path d="M{p(r, d)} L{p(r, r)} L{p(d, r)} Z" class="{bg}" style="fill:currentColor;fill-opacity:{fill}"/>'
+                f'<path d="M{p(0, r)} L{p(r, 0)} L{p(r, d)} L{p(d, r)} Z" class="{fg}" '
+                f'style="fill:currentColor;fill-opacity:{border}"/>')
+    else:
+        body = (f'<path d="M{p(1, 1)} L{p(r, 1)} L{p(r, r)} L{p(1, r)} Z" class="{bg}" '
+                f'style="fill:currentColor;fill-opacity:{fill}"/>'
+                f'<path d="M{p(0, 0)} L{p(r, 0)} L{p(r, 1)} L{p(1, 1)} L{p(1, r)} L{p(0, r)} Z" class="{hi}" '
+                f'style="fill:currentColor;fill-opacity:{lit}"/>')
+    return f'<g id="{name}">{body}</g>'
+
+
+def frame(r, fill, border, bolts=False, margins=None, shadow=None, notch=False, lit=0.85):
+    """All pieces of one frame. margins: content insets (t, b, l, r); shadow: sizes (t, b, l, r); notch: the
+    DecKoOS cut corners instead of round ones (bolts don't apply)."""
     m = margins or (r, r, r, r)
     a, b, c = 0, r + GAP, r + W + 2 * GAP  # columns / rows of the 3x3 grid
-    out = [corner("topleft", a, a, r, fill, border, bolts), corner("topright", c, a, r, fill, border, bolts),
-           corner("bottomleft", a, c, r, fill, border, bolts), corner("bottomright", c, c, r, fill, border, bolts)]
+    if notch:
+        out = [notch_corner(n, x, y, r, fill, border, lit) for n, x, y in
+               (("topleft", a, a), ("topright", c, a), ("bottomleft", a, c), ("bottomright", c, c))]
+    else:
+        out = [corner("topleft", a, a, r, fill, border, bolts), corner("topright", c, a, r, fill, border, bolts),
+               corner("bottomleft", a, c, r, fill, border, bolts), corner("bottomright", c, c, r, fill, border, bolts)]
     bg, fg = "ColorScheme-Background", "ColorScheme-Text"
     out.append(f'<g id="top">{rect(b, a, W, 1, fg, border)}{rect(b, a + 1, W, r - 1, bg, fill)}</g>')
     out.append(f'<g id="bottom">{rect(b, c, W, r - 1, bg, fill)}{rect(b, c + r - 1, W, 1, fg, border)}</g>')
@@ -102,21 +130,21 @@ def svg(pieces):
 
 
 FRAMES = {
-    # the floating dock: a bolted plate
-    "widgets/panel-background.svg": frame(12, 0.90, 0.10, bolts=True, margins=(6, 6, 10, 10),
-                                         shadow=(10, 22, 16, 16)),
-    # Kickoff, tray popups, menus
-    "dialogs/background.svg": frame(10, 0.96, 0.10, bolts=True, margins=(12, 12, 12, 12), shadow=(14, 28, 22, 22)),
-    "widgets/tooltip.svg": frame(8, 0.97, 0.10, margins=(8, 8, 10, 10), shadow=(8, 16, 12, 12)),
+    # the floating dock
+    "widgets/panel-background.svg": frame(14, 0.90, 0.12, margins=(6, 6, 12, 12), shadow=(10, 22, 16, 16),
+                                         notch=True),
+    # the Start menu, Quick Settings, tray popups, menus
+    "dialogs/background.svg": frame(16, 0.95, 0.12, margins=(12, 12, 12, 12), shadow=(14, 28, 22, 22), notch=True),
+    "widgets/tooltip.svg": frame(8, 0.97, 0.12, margins=(8, 8, 10, 10), shadow=(8, 16, 12, 12), notch=True, lit=0.6),
     # desktop widgets
-    "widgets/background.svg": frame(10, 0.86, 0.10, bolts=True, margins=(12, 12, 12, 12), shadow=(10, 20, 16, 16)),
+    "widgets/background.svg": frame(14, 0.84, 0.12, margins=(12, 12, 12, 12), shadow=(10, 20, 16, 16), notch=True),
 }
 
 METADATA = {
     "KPlugin": {
         "Authors": [{"Name": "DecKoOS"}],
         "Category": "",
-        "Description": "DecKoOS: slate plates with a 1px edge and screw heads, following your colour scheme",
+        "Description": "DecKoOS: notched plates with accent-lit edges, following your colour scheme and accent",
         "Id": "deckos",
         "License": "MIT",
         "Name": "DecKoOS",

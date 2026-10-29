@@ -105,7 +105,7 @@ through Claude Code) and ChatGPT, then tested on real hardware and in CI. Commit
 | | |
 |---|---|
 | **Base** | Arch Linux + CachyOS repos built for your CPU (x86-64-v3, v4 or Zen 4), `linux-cachyos` (BORE) + `linux-cachyos-lts` fallback |
-| **Desktop** | KDE Plasma 6 (Wayland) with the DecKoOS look: its own Plasma style, login screen and icons (Papirus with DecKoOS-blue folders), Inter + JetBrains Mono. An optional TMpikes theme comes along |
+| **Desktop** | KDE Plasma 6 (Wayland) with the DecKoOS look: its own Plasma style, login screen and icons (Papirus with DecKoOS-blue folders), Inter, Chakra Petch (the DecKo notched look) and JetBrains Mono. An optional TMpikes theme comes along |
 | **DecKoOS Hub** | one app for live stats, the display fix, Gaming Mode, drives, AI and dev tools, updates, snapshots, the firewall, adding software and changing the look |
 | **DecKoOS Store** | one app store for the Arch and CachyOS repos, Flathub and the AUR: browse, search and install with a click |
 | **Gaming** (optional) | Steam, **Gaming Mode** (gamescope session, SteamOS-style switching), Proton-CachyOS, MangoHud, GameMode, LACT, Lutris, Heroic, `xone` for the Xbox Wireless Adapter, NTSync, Discord, OBS |

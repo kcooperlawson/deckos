@@ -1,4 +1,4 @@
-// Text in the Vibe's type, readable over any wallpaper: a soft shadow, or a glow in the Vibe's colour for Neon
+// Text readable over any wallpaper (a soft shadow): what floats on the scene, like the clock
 import QtQuick
 import QtQuick.Effects
 

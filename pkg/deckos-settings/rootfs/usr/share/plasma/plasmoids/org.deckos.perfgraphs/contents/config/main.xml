@@ -4,6 +4,10 @@
       xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
   <kcfgfile name=""/>
   <group name="General">
+    <!-- The Vibe's look (deckos vibe writes these) -->
+    <entry name="style" type="String"><default>deckos</default></entry>
+    <entry name="colorA" type="Color"><default>#4C8DFF</default></entry>
+    <entry name="colorB" type="Color"><default>#7A5CFF</default></entry>
     <entry name="gpu" type="String">
       <label>Graphics card sensor (gpu/gpu0…), or "auto" for the one with the most video memory</label>
       <default>auto</default>

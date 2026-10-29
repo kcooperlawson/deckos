@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.extras as PlasmaExtras
+import org.deckos.vibes as Vibes
 import org.kde.kirigami as Kirigami
 import org.kde.taskmanager as TaskManager
 
@@ -74,16 +75,21 @@ Item {
 
     // ---- the look
 
-    Rectangle {
+    Item {
         id: plate
         anchors.fill: parent
         anchors.margins: 3
-        radius: 10
-        color: task.active ? Qt.rgba(deckTasks.accent.r, deckTasks.accent.g, deckTasks.accent.b, 0.16)
-            : mouse.containsMouse || task.dragging ? deckTasks.raised : "transparent"
-        border.width: task.active || mouse.containsMouse ? 1 : 0
-        border.color: task.active ? Qt.rgba(deckTasks.accent.r, deckTasks.accent.g, deckTasks.accent.b, 0.45) : deckTasks.border
-        Behavior on color { ColorAnimation { duration: 120 } }
+        // The DecKo notch: the active app's tile lit in the colours, a pointed-at one a faint plate
+        Vibes.Notch {
+            anchors.fill: parent
+            look: deckTasks.look
+            cut: 8
+            lit: task.active
+            fill: task.active ? Qt.rgba(deckTasks.accent.r, deckTasks.accent.g, deckTasks.accent.b, 0.14)
+                              : Qt.rgba(1, 1, 1, 0.06)
+            opacity: task.active || mouse.containsMouse || task.dragging ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 120 } }
+        }
 
         RowLayout {
             anchors.fill: parent
@@ -123,15 +129,15 @@ Item {
         }
     }
 
-    // Playing sound: a ring in the colours around the tile, pulsing gently (still, when motion is off)
-    Rectangle {
+    // Playing sound: a notched outline in the colours around the tile, pulsing gently (still, when motion is off)
+    Vibes.Notch {
         anchors.fill: parent
         anchors.margins: 2
-        radius: 11
+        look: deckTasks.look
+        cut: 9
+        edge: 2
         visible: task.playing
-        color: "transparent"
-        border.width: 2
-        border.color: deckTasks.accentB
+        fill: "transparent"
         opacity: 0.55
         SequentialAnimation on opacity {
             running: task.playing && deckTasks.motion
@@ -150,7 +156,6 @@ Item {
         anchors.bottom: parent.bottom
         width: 30
         height: 7
-        radius: 3.5
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop { position: 0; color: deckTasks.accent }
@@ -179,7 +184,6 @@ Item {
         anchors.leftMargin: 1
         width: deckTasks.vertical ? 3 : (task.active ? 18 : 4)
         height: deckTasks.vertical ? (task.active ? 18 : 4) : 3
-        radius: 1.5
         Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
         gradient: Gradient {

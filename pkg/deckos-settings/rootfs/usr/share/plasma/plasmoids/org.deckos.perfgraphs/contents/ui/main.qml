@@ -1,40 +1,31 @@
-// DecKoOS Performance: live graphs of the processor, graphics card, memory and network on the desktop,
-// in the DecKoOS look (a bolted slate plate, accent area charts). Values come from ksystemstats through
-// Plasma's sensor module, the same source as Plasma's System Monitor widgets, at one update a second;
-// the widget runs nothing of its own. Each graph has its own scale: no shared or second axis.
+// DecKoOS Performance: the processor, graphics card, memory and network on a DecKo card. The processor and
+// graphics card are gauges shaped like the logo's stick eye (the ring fills with load, the cap leans toward it);
+// memory, video memory and network are lit segments. Values come from ksystemstats through Plasma's sensor module,
+// the same source as Plasma's System Monitor widgets, at one update a second; the widget runs nothing of its own.
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.ksysguard.sensors as Sensors
-import org.kde.kirigami as Kirigami
+import org.deckos.vibes as Vibes
 
 PlasmoidItem {
     id: deckPerf
 
-    // Colours from the active colour scheme and accent, so themes and the Hub's accent reach this widget;
-    // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
-    readonly property color text: Kirigami.Theme.textColor
-    readonly property color subtext: Kirigami.Theme.disabledTextColor
-    readonly property color accent: Kirigami.Theme.highlightColor
-    // The gradient partner: the accent shifted towards violet, like the brand tile
-    readonly property color accentB: Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04),
-                                             accent.hsvValue, 1)
-    readonly property color plate: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.035))
-    readonly property color raised: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.07))
-    readonly property color border: Qt.tint(Kirigami.Theme.backgroundColor, Qt.rgba(text.r, text.g, text.b, 0.12))
-    readonly property color muted: Qt.tint(subtext, Qt.rgba(plate.r, plate.g, plate.b, 0.35))
-    readonly property color upload: "#0EA08E"  // validated against the plate with the accent (dataviz)
-
-    readonly property int samples: Plasmoid.configuration.seconds
+    Vibes.Look {
+        id: look
+        style: Plasmoid.configuration.style
+        colorA: Plasmoid.configuration.colorA
+        colorB: Plasmoid.configuration.colorB
+    }
     readonly property int rate: 1000
 
     preferredRepresentation: fullRepresentation
-    Layout.minimumWidth: 260
-    Layout.minimumHeight: column.implicitHeight + 32
-    Layout.preferredWidth: 320
-    Layout.preferredHeight: column.implicitHeight + 32
-    // The plate below is the background (assigned here rather than attached, so the preview's stand-ins work)
+    Layout.minimumWidth: 340
+    Layout.preferredWidth: 404
+    Layout.minimumHeight: column.implicitHeight + 40
+    Layout.preferredHeight: column.implicitHeight + 40
+    // The card below is the background (assigned here rather than attached, so the preview's stand-ins work)
     Component.onCompleted: Plasmoid.backgroundHints = PlasmaCore.Types.NoBackground
 
     // ---- which graphics card: the configured one, else the one with the most video memory, so a
@@ -60,13 +51,14 @@ PlasmoidItem {
             bestGpu = "gpu/gpu" + best;
     }
 
-    // One clock for every graph, so they share a timeline; only while the widget is shown
-    signal tick()
+    // The network's scale: the busiest second of the last minute (so a download fills the meter, idle doesn't)
+    property var netSeen: []
+    readonly property real netPeak: Math.max(1e5, ...netSeen)
     Timer {
         interval: deckPerf.rate
         repeat: true
-        running: deckPerf.visible
-        onTriggered: deckPerf.tick()
+        running: deckPerf.visible && Plasmoid.configuration.showNetwork
+        onTriggered: deckPerf.netSeen = deckPerf.netSeen.concat([(down.value || 0) + (up.value || 0)]).slice(-60)
     }
 
     function gib(bytes) {
@@ -92,92 +84,62 @@ PlasmoidItem {
     Sensors.Sensor { id: up; sensorId: "network/all/upload"; updateRateLimit: deckPerf.rate
                      enabled: Plasmoid.configuration.showNetwork }
 
-    // ---- the plate
+    Vibes.Notch {  // hugs the content, whatever size the widget's box
+        width: parent.width
+        height: column.implicitHeight + 40
+        look: look
+    }
 
-    Rectangle {
-        anchors.fill: parent
-        radius: 14
-        color: Qt.rgba(deckPerf.plate.r, deckPerf.plate.g, deckPerf.plate.b, 0.92)
-        border.color: deckPerf.border
+    ColumnLayout {
+        id: column
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 20
+        spacing: 14
 
-        // Bolted plates: a screw head in each corner (the DecKoOS motif)
-        Repeater {
-            model: 4
-            Rectangle {
-                required property int index
-                width: 6; height: 6; radius: 3
-                x: index % 2 ? parent.width - 13 : 7
-                y: index < 2 ? 7 : parent.height - 13
-                color: deckPerf.raised
-                border.color: deckPerf.border
-                Rectangle { anchors.centerIn: parent; width: 4; height: 1; color: deckPerf.muted; rotation: 45 + index * 20 }
+        Vibes.Hud { look: look; text: "Performance" }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Stick {
+                look: look
+                Layout.fillWidth: true
+                label: "CPU"
+                value: (cpuUsage.value || 0) / 100
+                temp: cpuTemp.value > 0 ? Math.round(cpuTemp.value) + "°" : ""
+            }
+            Stick {
+                look: look
+                Layout.fillWidth: true
+                visible: gpuUsage.status === Sensors.Sensor.Ready || gpuUsage.value > 0
+                label: "GPU"
+                value: (gpuUsage.value || 0) / 100
+                temp: gpuTemp.value > 0 ? Math.round(gpuTemp.value) + "°" : ""
             }
         }
-
-        ColumnLayout {
-            id: column
-            anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
-
-            RowLayout {
-                Layout.fillWidth: true
-                Text {
-                    text: "PERFORMANCE"
-                    color: deckPerf.muted
-                    font.family: "Inter"
-                    font.pixelSize: 10
-                    font.weight: Font.Bold
-                    font.letterSpacing: 1.4
-                }
-                Item { Layout.fillWidth: true }
-                Text {
-                    text: "last " + deckPerf.samples + " s"
-                    color: deckPerf.muted
-                    font.family: "Inter"
-                    font.pixelSize: 10
-                }
-            }
-
-            Graph {
-                title: "Processor"
-                value: cpuUsage.value || 0
-                valueText: Math.round(cpuUsage.value || 0) + "%"
-                detail: cpuTemp.value > 0 ? Math.round(cpuTemp.value) + " °C" : ""
-                maximum: 100
-            }
-            Graph {
-                title: "Graphics card"
-                value: gpuUsage.value || 0
-                valueText: Math.round(gpuUsage.value || 0) + "%"
-                detail: gpuTemp.value > 0 ? Math.round(gpuTemp.value) + " °C" : ""
-                maximum: 100
-                visible: gpuUsage.status === Sensors.Sensor.Ready || gpuUsage.value > 0
-            }
-            Graph {
-                title: "Video memory"
-                value: gpuMem.value || 0
-                valueText: deckPerf.gib(gpuMem.value || 0) + " GB"
-                detail: gpuMemTotal.value > 0 ? "of " + deckPerf.gib(gpuMemTotal.value) + " GB" : ""
-                maximum: gpuMemTotal.value || 1
-                visible: gpuMemTotal.value > 0
-            }
-            Graph {
-                title: "Memory"
-                value: ram.value || 0
-                valueText: deckPerf.gib(ram.value || 0) + " GB"
-                detail: ramTotal.value > 0 ? "of " + deckPerf.gib(ramTotal.value) + " GB" : ""
-                maximum: ramTotal.value || 1
-            }
-            Graph {
-                title: "Network"
-                visible: Plasmoid.configuration.showNetwork
-                value: down.value || 0
-                second: up.value || 0
-                valueText: "↓ " + deckPerf.rate_(down.value || 0)
-                detail: "↑ " + deckPerf.rate_(up.value || 0)
-                maximum: -1  // scales to the busiest moment shown
-            }
+        Meter {
+            look: look
+            Layout.fillWidth: true
+            visible: gpuMemTotal.value > 0
+            label: "VRAM"
+            value: (gpuMem.value || 0) / (gpuMemTotal.value || 1)
+            valueText: deckPerf.gib(gpuMem.value || 0) + " / " + deckPerf.gib(gpuMemTotal.value || 0) + " GB"
+        }
+        Meter {
+            look: look
+            Layout.fillWidth: true
+            label: "MEM"
+            value: (ram.value || 0) / (ramTotal.value || 1)
+            valueText: deckPerf.gib(ram.value || 0) + " / " + deckPerf.gib(ramTotal.value || 0) + " GB"
+        }
+        Meter {
+            look: look
+            Layout.fillWidth: true
+            visible: Plasmoid.configuration.showNetwork
+            label: "NET"
+            value: ((down.value || 0) + (up.value || 0)) / deckPerf.netPeak
+            valueText: "↓ " + deckPerf.rate_(down.value || 0)
         }
     }
 }

@@ -41,6 +41,7 @@ def main():
     clock = Clock()
     view = QQuickView()
     view.engine().addImportPath(str(Path(__file__).resolve().parent / "preview_perfgraphs"))
+    view.engine().addImportPath(str(SHARE.parent / "lib/qt6/qml"))  # DecKoOS's own look module, as it is here
     view.rootContext().setContextProperty("previewClock", clock)
     view.setColor(Qt.transparent)
     view.setResizeMode(QQuickView.SizeRootObjectToView)
@@ -50,11 +51,10 @@ def main():
             print(e.toString())
         sys.exit(1)
     root = view.rootObject()
-    view.resize(QSize(340, int(root.property("Layout.preferredHeight") or 470)))
+    view.resize(QSize(404, int(root.property("Layout.preferredHeight") or 300)))
     view.show()
-    for i in range(60):  # a minute of samples
+    for i in range(30):  # half a minute in: the game is running
         clock.t = float(i)
-        root.tick.emit()
         QGuiApplication.processEvents()
     widget = view.grabWindow()
 

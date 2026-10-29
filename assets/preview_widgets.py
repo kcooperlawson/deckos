@@ -21,8 +21,8 @@ import vibes  # noqa: E402
 
 # id: (extra settings, size)
 WIDGET = {
-    "org.deckos.bigclock": ({"name": "Keagan", "seconds": False}, (460, 230)),
-    "org.deckos.nowplaying": ({}, (420, 132)),
+    "org.deckos.bigclock": ({"name": "Keagan", "seconds": False}, (460, 250)),
+    "org.deckos.nowplaying": ({}, (404, 216)),
     "org.deckos.weather": ({"place": "Lisbon", "latitude": 38.72, "longitude": -9.14, "fahrenheit": False},
                            (300, 128)),
     "org.deckos.focus": ({"workMinutes": 25, "breakMinutes": 5}, (220, 240)),

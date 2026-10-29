@@ -1,5 +1,5 @@
-// DecKoOS Taskbar: pinned apps and open windows in the DecKoOS look (slate tiles, accent gradient
-// pill under the active app, dots for open windows). Windows, launchers, grouping and ordering
+// DecKoOS Taskbar: pinned apps and open windows in the DecKo look (notched tiles, the gradient bar under the
+// active app, dots for open windows). Windows, launchers, grouping and ordering
 // all come from Plasma's own TasksModel, as the stock task managers get them; this file only
 // decides how they look and what a click does. Event-driven: no timers, nothing polled.
 // The other files reach the model and palette through the `deckTasks` id.
@@ -13,6 +13,7 @@ import org.kde.plasma.plasma5support as P5Support
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.volume as PlasmaPa
+import org.deckos.vibes as Vibes
 
 PlasmoidItem {
     id: deckTasks
@@ -29,6 +30,8 @@ PlasmoidItem {
         ? Qt.hsva((accent.hsvHue + 32 / 360) % 1, Math.min(1, accent.hsvSaturation + 0.04), accent.hsvValue, 1)
         : Plasmoid.configuration.colorB
     readonly property bool motion: Plasmoid.configuration.motion !== false
+    Vibes.Look { id: deckLook; colorA: deckTasks.accent; colorB: deckTasks.accentB }
+    readonly property var look: deckLook
 
     // Apps playing sound right now (Plasma's audio streams, as the stock task manager reads them; events, not
     // polling). A tile pulses while its app plays: matched by process, or by name, since browsers and Spotify
@@ -316,19 +319,6 @@ PlasmoidItem {
         }
     }
 
-    // Following a Vibe (or the person's own colours): a faint wash of its two colours behind the apps
-    Rectangle {
-        visible: deckTasks.colorMode !== "accent"
-        anchors.fill: strip
-        anchors.margins: -2
-        radius: 12
-        opacity: 0.12
-        gradient: Gradient {
-            orientation: deckTasks.vertical ? Gradient.Vertical : Gradient.Horizontal
-            GradientStop { position: 0; color: deckTasks.accent }
-            GradientStop { position: 1; color: deckTasks.accentB }
-        }
-    }
     Grid {
         id: strip
         anchors.left: deckTasks.vertical ? undefined : parent.left

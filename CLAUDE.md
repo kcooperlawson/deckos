@@ -190,7 +190,14 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
 - **Design language**: slate `#0F1115` / `#171A21`, borders `#262B36`, text `#E8EAF0` / `#8C94A6`,
   accent `#4C8DFF` with a violet gradient partner, 10px radii, Inter / Inter Display, the DeckOS line
   icons (24px, 1.75 stroke, drawn in `#000` and recoloured; add new ones in `assets/icons.py`).
-  "Bolted plates" (screw heads) is the brand motif.
+- **The DecKo look (the desktop: panel, widgets, taskbar, Vibe mode)**: built from the brand itself. The notch
+  (the wordmark's cut corners, top right and bottom left) is the shape of every card; a 1px edge lit by the
+  Vibe's two colours; Chakra Petch (OFL, `usr/share/fonts/deckos`) for numbers, labels and buttons, Inter for
+  names and sentences; segmented meters (like the Spectrum look's LEDs); gauges shaped like the logo's stick eye.
+  Shared QML in `usr/lib/qt6/qml/org/deckos/vibes` (Look, Notch, Segments, Hud, Levels); the Plasma style's
+  frames are notched too (`assets/plasma_theme.py`, accent-lit corners). Widgets get the Vibe through their
+  style/colorA/colorB settings (`deckos vibe`). `assets/preview_widgets.py` renders with the software renderer,
+  which can't draw Shapes or effects: check the look in Plasma (local copies in `~/.local/share/plasma`).
 - **User-facing text**: plain, friendly, specific ("Windows Fast Startup is probably on"), sentence
   case, no jargon where a word will do.
 - **Changing the system**: UIs never write system files directly. They call `deckos …` (through

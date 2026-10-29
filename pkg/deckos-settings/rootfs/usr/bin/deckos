@@ -1578,7 +1578,7 @@ layout_cmd() {
       qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript '
         var d = desktops()[0], g = screenGeometry(d.screen);
         if (d.widgets("org.deckos.perfgraphs").length == 0)
-            d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);' >/dev/null
+            d.addWidget("org.deckos.perfgraphs", g.width - 444, 40, 404, 300);' >/dev/null
       ok "performance graphs are on your desktop" ;;
     *) err "usage: deckos layout [list|set NAME|graphs]"; exit 2 ;;
   esac
@@ -1741,7 +1741,7 @@ VIBE_WIDGETS+=" org.deckos.calendar org.deckos.countdown org.deckos.photos"
 vibe_widgets_style() {  # STYLE COLOR_A COLOR_B: every DecKoOS desktop widget takes the look
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
     desktops().forEach(function (d) { d.widgets().forEach(function (w) {
-      if (w.type.indexOf('org.deckos.') !== 0 || w.type === 'org.deckos.perfgraphs') return;
+      if (w.type.indexOf('org.deckos.') !== 0) return;
       w.currentConfigGroup = ['General']; w.writeConfig('style', '$1'); w.writeConfig('colorA', '$2');
       w.writeConfig('colorB', '$3'); w.reloadConfig(); }); });" >/dev/null 2>&1 || true
 }
