@@ -267,6 +267,7 @@ class Installer(QWidget):
         main.addLayout(nav)
         outer.addLayout(main, 1)
 
+        self.built = False  # pages ask update_nav while they're built; it waits until all of them exist
         self.build_welcome()
         self.build_disk()
         self.build_you()
@@ -274,6 +275,7 @@ class Installer(QWidget):
         self.build_confirm()
         self.build_install()
         self.build_done()
+        self.built = True
         self.go(WELCOME)
         QTimer.singleShot(150, self.check_system)
 
@@ -305,6 +307,10 @@ class Installer(QWidget):
                  "Pick a partition, free space or an empty disk, or erase a whole disk. Only what you pick is "
                  "erased; free space and empty disks get a new partition and nothing is erased. Add a second "
                  "drive below to make one bigger system.")
+        # First: the second-drive card below asks which place is picked as soon as it's built
+        self.disk_group = QButtonGroup(self)
+        self.disk_group.buttonToggled.connect(self.disk_picked)
+        self.disk_cards = {}
         self.disk_area = QScrollArea()
         self.disk_area.setWidgetResizable(True)
         self.disk_box = QWidget()
@@ -330,9 +336,6 @@ class Installer(QWidget):
         row.addWidget(button("Refresh", slot=self.load_disks))
         row.addStretch(1)
         p.lay.addLayout(row)
-        self.disk_group = QButtonGroup(self)
-        self.disk_group.buttonToggled.connect(self.disk_picked)
-        self.disk_cards = {}
         self.stack.addWidget(p)
 
     def build_you(self):
@@ -513,6 +516,8 @@ class Installer(QWidget):
         self.update_nav()
 
     def update_nav(self):
+        if not self.built:
+            return
         i = self.stack.currentIndex()
         self.back_btn.setVisible(i in (WHERE, YOU, SOFTWARE, CONFIRM))
         self.next_btn.setVisible(i != INSTALL)

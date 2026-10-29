@@ -130,7 +130,7 @@ EOF
 # The second disk, for span and erase: the second drive DecKoOS spans (serial deckos-autotest2)
 second=()
 [[ ! -f $W/disk2.img ]] || second=(-drive "file=$W/disk2.img,format=raw,if=none,id=disk2,cache=unsafe"
-                                   -device virtio-blk-pci,drive=disk2,serial=deckos-autotest2)
+                                   -device "virtio-blk-pci,drive=disk2,serial=deckos-autotest2")
 
 # vm LOG MINUTES DONE_REGEX [qemu args...] - runs the VM with its serial console in LOG (shown live)
 # until it powers off, LOG matches DONE_REGEX, or MINUTES pass. Returns 0, or 124 on timeout.
