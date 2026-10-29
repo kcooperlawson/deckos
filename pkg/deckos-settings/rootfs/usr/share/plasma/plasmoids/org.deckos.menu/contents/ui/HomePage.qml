@@ -1,5 +1,6 @@
 // What the menu opens on: pinned apps, then recently used apps and files side by side.
 import QtQuick
+import org.deckos.vibes as Vibes
 
 Item {
     id: home
@@ -26,15 +27,19 @@ Item {
         text: "Pinned"
     }
 
-    Rectangle {
+    Item {
         id: allButton
         anchors.right: parent.right
         y: 0
-        width: allRow.width + 22
-        height: 26
-        radius: 7
-        color: allMouse.containsMouse ? deckMenu.border : deckMenu.raised
-        border.color: deckMenu.border
+        width: allRow.width + 24
+        height: 28
+        Vibes.Notch {
+            anchors.fill: parent
+            look: deckMenu.look
+            cut: 7
+            lit: false
+            fill: allMouse.containsMouse ? deckMenu.border : deckMenu.raised
+        }
 
         Row {
             id: allRow
@@ -43,7 +48,11 @@ Item {
             Text {
                 text: "All apps"
                 color: deckMenu.text
+                font.family: deckMenu.hud
                 font.pixelSize: 12
+                font.weight: Font.Medium
+                font.letterSpacing: 2
+                font.capitalization: Font.AllUppercase
                 anchors.verticalCenter: parent.verticalCenter
             }
             LineIcon {

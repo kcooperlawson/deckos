@@ -1,10 +1,11 @@
-// DecKoOS Menu: DecKoOS's app launcher, in the DecKoOS look (slate surfaces, 1px borders, accent
-// gradient, DecKoOS line icons). Apps, favourites, recent items and power actions come from Plasma's
+// DecKoOS Menu: DecKoOS's app launcher, in the DecKo look (notched tiles and buttons, Chakra Petch labels, the
+// accent gradient, DecKoOS line icons). Apps, favourites, recent items and power actions come from Plasma's
 // own kicker backend and search from KRunner, exactly as Kickoff gets them; the DecKoOS Store is
 // asked (lazily, off the first frame) for apps a search matches that aren't installed.
 // Plain QtQuick, no Controls: fewer objects to build, so the popup is ready the moment it opens.
 // The other files reach the models and palette through the `deckMenu` id, like Kickoff's `kickoff`.
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.private.kicker as Kicker
@@ -28,6 +29,10 @@ PlasmoidItem {
     readonly property color border: Qt.tint(base, Qt.rgba(text.r, text.g, text.b, 0.12))
     readonly property color hot: Qt.rgba(accent.r, accent.g, accent.b, 0.16)
     readonly property color hotBorder: Qt.rgba(accent.r, accent.g, accent.b, 0.45)
+    readonly property string hud: "Chakra Petch"  // labels, numbers, buttons
+    readonly property color ink: "#0B0D16"        // text and icons on the gradient
+    Vibes.Look { id: menuLook; colorA: deckMenu.accent; colorB: deckMenu.accentB }
+    readonly property var look: menuLook
     // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
     readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")

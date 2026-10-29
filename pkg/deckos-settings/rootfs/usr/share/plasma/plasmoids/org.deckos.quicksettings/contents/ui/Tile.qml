@@ -1,9 +1,10 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
-// A toggle tile: icon chip, title and status. Clicking toggles; the chevron (when `hasMore`)
+// A toggle tile (a DecKo notch, lit when on): icon chip, title and status. Clicking toggles; the chevron (when `hasMore`)
 // opens the matching settings page instead.
-Rectangle {
+Item {
     id: tile
     property string icon
     property string title
@@ -15,12 +16,15 @@ Rectangle {
     signal more()
 
     Layout.fillWidth: true
-    implicitHeight: 58
-    radius: Deck.radius
-    color: main.pressed ? Deck.pressed : main.containsMouse ? Deck.hover : checked ? Deck.tint : Deck.raised
-    border.width: 1
-    border.color: checked ? Qt.rgba(Deck.accent.r, Deck.accent.g, Deck.accent.b, 0.55) : Deck.border
-    Behavior on color { ColorAnimation { duration: 120 } }
+    implicitHeight: 64
+
+    Vibes.Notch {
+        anchors.fill: parent
+        look: Deck.look
+        cut: 10
+        lit: tile.checked
+        fill: main.pressed ? Deck.pressed : main.containsMouse ? Deck.hover : tile.checked ? Deck.tint : Deck.raised
+    }
 
     Accessible.role: Accessible.CheckBox
     Accessible.name: title
@@ -44,24 +48,21 @@ Rectangle {
         anchors.leftMargin: 10
         anchors.rightMargin: tile.hasMore ? 4 : 10
         spacing: 10
-        Rectangle {
-            implicitWidth: 34
-            implicitHeight: 34
-            radius: 9
-            color: Deck.surface
-            gradient: tile.checked ? chipGrad : null
-            Gradient {
-                id: chipGrad
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: Deck.accent }
-                GradientStop { position: 1; color: Deck.accentB }
-            }
+        Vibes.Notch {
+            implicitWidth: 38
+            implicitHeight: 38
+            look: Deck.look
+            cut: 8
+            lit: false
+            edge: 0
+            fill: Deck.surface
+            gradientFill: tile.checked
             DeckIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 name: tile.icon
-                color: tile.checked ? "white" : Deck.subtext
+                color: tile.checked ? Deck.ink : Deck.subtext
                 opacity: tile.busy ? 0.4 : 1
             }
         }
@@ -86,7 +87,6 @@ Rectangle {
             Layout.fillHeight: true
             Layout.topMargin: 6
             Layout.bottomMargin: 6
-            radius: 7
             color: moreMouse.containsMouse ? Deck.pressed : "transparent"
             DeckIcon {
                 anchors.centerIn: parent
@@ -104,10 +104,9 @@ Rectangle {
             }
         }
     }
-    Rectangle {
+    Rectangle {  // keyboard focus
         anchors.fill: parent
         anchors.margins: -2
-        radius: parent.radius + 2
         color: "transparent"
         border.color: Deck.accent
         border.width: 2

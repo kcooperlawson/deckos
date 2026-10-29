@@ -39,7 +39,6 @@ MouseArea {
         anchors.bottomMargin: 2
         height: 15
         width: Math.max(height, badgeText.implicitWidth + 8)
-        radius: height / 2
         color: Deck.accent
         border.width: 2
         border.color: Deck.bg
@@ -47,9 +46,9 @@ MouseArea {
             id: badgeText
             anchors.centerIn: parent
             text: compact.backend.updateCount > 99 ? "99+" : compact.backend.updateCount
-            color: "white"
-            font.family: Deck.font
-            font.pixelSize: 9
+            color: Deck.ink
+            font.family: Deck.hud
+            font.pixelSize: 10
             font.weight: Font.Bold
         }
     }

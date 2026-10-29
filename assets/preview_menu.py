@@ -283,7 +283,9 @@ def main():
     qInstallMessageHandler(log)
     mode = next((a for a in sys.argv[1:] if a in ("home", "search", "apps", "all")), "all")
     out = next((a for a in sys.argv[1:] if a.endswith(".png")), None)
-    QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.Software)
+    # Software only without a screen: it can't draw Shapes or effects, which the DecKo look is made of
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.Software)
     app = QGuiApplication(sys.argv)
     for f in (SHARE / "fonts/deckos").glob("*.otf"):
         QFontDatabase.addApplicationFont(str(f))
@@ -298,6 +300,7 @@ def main():
         view = QQuickView()
         engine = view.engine()
         engine.addImportPath(str(Path(__file__).resolve().parent / "preview_menu"))
+        engine.addImportPath(str(SHARE.parent / "lib/qt6/qml"))  # DecKoOS's own look module, as it is here
         engine.addImageProvider("ic", Icons())
         ctx = view.rootContext()
         ctx.setContextProperty("previewShell", shell)

@@ -1,4 +1,5 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 import org.kde.plasma.private.battery
 import org.kde.plasma.private.batterymonitor
@@ -47,9 +48,8 @@ RowLayout {
     Rectangle {  // segmented profile switch
         visible: row.hasProfiles
         implicitWidth: segments.implicitWidth + 4
-        implicitHeight: 30
-        radius: 8
-        color: Deck.bg
+        implicitHeight: 32
+        color: "transparent"
         border.width: 1
         border.color: Deck.border
         Row {
@@ -58,20 +58,20 @@ RowLayout {
             spacing: 2
             Repeater {
                 model: ["power-saver", "balanced", "performance"].filter(p => row.profileList.includes(p))
-                delegate: Rectangle {
+                delegate: Item {
                     id: seg
                     required property string modelData
                     readonly property bool current: profiles.activeProfile === modelData
-                    width: label.implicitWidth + 18
+                    width: label.implicitWidth + 14
                     height: 26
-                    radius: 6
-                    color: segMouse.containsMouse && !current ? Deck.hover : "transparent"
-                    gradient: current ? segGrad : null
-                    Gradient {
-                        id: segGrad
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0; color: Deck.accent }
-                        GradientStop { position: 1; color: Deck.accentB }
+                    Vibes.Notch {  // the chosen one notched and filled with the gradient
+                        anchors.fill: parent
+                        look: Deck.look
+                        cut: 7
+                        lit: false
+                        edge: 0
+                        fill: segMouse.containsMouse && !seg.current ? Deck.hover : "transparent"
+                        gradientFill: seg.current
                     }
                     Accessible.role: Accessible.RadioButton
                     Accessible.name: label.text
@@ -80,9 +80,12 @@ RowLayout {
                         id: label
                         anchors.centerIn: parent
                         text: row.names[seg.modelData]
-                        font.pixelSize: 12
-                        font.weight: seg.current ? Font.DemiBold : Font.Normal
-                        color: seg.current ? "white" : Deck.subtext
+                        font.family: Deck.hud
+                        font.pixelSize: 11
+                        font.letterSpacing: 1
+                        font.capitalization: Font.AllUppercase
+                        font.weight: seg.current ? Font.DemiBold : Font.Medium
+                        color: seg.current ? Deck.ink : Deck.subtext
                     }
                     MouseArea {
                         id: segMouse

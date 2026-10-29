@@ -1,7 +1,8 @@
-// Square outlined button with a line icon (power actions). `tip` shows in the footer on hover.
+// Notched outlined button with a line icon (power actions). `tip` shows in the footer on hover.
 import QtQuick
+import org.deckos.vibes as Vibes
 
-Rectangle {
+Item {
     id: root
 
     property string icon
@@ -11,9 +12,13 @@ Rectangle {
 
     width: 36
     height: 36
-    radius: 9
-    color: mouse.pressed ? deckMenu.border : hovered || activeFocus ? deckMenu.raised : "transparent"
-    border.color: activeFocus ? deckMenu.accent : deckMenu.border
+    Vibes.Notch {
+        anchors.fill: parent
+        look: deckMenu.look
+        cut: 8
+        lit: root.activeFocus
+        fill: mouse.pressed ? deckMenu.border : root.hovered || root.activeFocus ? deckMenu.raised : "transparent"
+    }
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: tip

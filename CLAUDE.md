@@ -196,8 +196,13 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   names and sentences; segmented meters (like the Spectrum look's LEDs); gauges shaped like the logo's stick eye.
   Shared QML in `usr/lib/qt6/qml/org/deckos/vibes` (Look, Notch, Segments, Hud, Levels); the Plasma style's
   frames are notched too (`assets/plasma_theme.py`, accent-lit corners). Widgets get the Vibe through their
-  style/colorA/colorB settings (`deckos vibe`). `assets/preview_widgets.py` renders with the software renderer,
-  which can't draw Shapes or effects: check the look in Plasma (local copies in `~/.local/share/plasma`).
+  style/colorA/colorB settings (`deckos vibe`); Quick Settings (`Deck.look`), the menu (`deckMenu.look`) and Vibe
+  mode build a Look from the accent. The previewers (`assets/preview_*.py`) use the GPU when there's a screen (the
+  software renderer can't draw Shapes or effects) and still break some layouts: check the look in Plasma too
+  (local copies in `~/.local/share/plasma`). Qt pitfalls met here: a MultiEffect mask needs
+  `maskThresholdMin: 0.5` (at 0 nothing is masked) and is ignored when the same effect has a shadow (shadow a
+  wrapper's layer instead); a property named `on…` is taken for a signal handler; inline components can't see the
+  file's ids (pass `look` in, or give them their own file).
 - **User-facing text**: plain, friendly, specific ("Windows Fast Startup is probably on"), sentence
   case, no jargon where a word will do.
 - **Changing the system**: UIs never write system files directly. They call `deckos …` (through

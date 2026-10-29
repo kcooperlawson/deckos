@@ -1,4 +1,5 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
 // Workload modes from `deckos quick-status`: what deckos-modes.service freed for the game running now.
@@ -8,24 +9,21 @@ RowLayout {
     readonly property bool gaming: backend.modeAuto && backend.mode === "gaming"
     spacing: 10
 
-    Rectangle {
-        implicitWidth: 34
-        implicitHeight: 34
-        radius: 9
-        color: Deck.raised
-        gradient: row.gaming ? grad : null
-        Gradient {
-            id: grad
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: Deck.accent }
-            GradientStop { position: 1; color: Deck.accentB }
-        }
+    Vibes.Notch {  // the DecKo icon chip, filled with the gradient when it's on
+        implicitWidth: 38
+        implicitHeight: 38
+        look: Deck.look
+        cut: 8
+        lit: false
+        edge: 0
+        fill: Deck.raised
+        gradientFill: row.gaming
         DeckIcon {
             anchors.centerIn: parent
             width: 18
             height: 18
             name: "gaming"
-            color: row.gaming ? "white" : Deck.subtext
+            color: row.gaming ? Deck.ink : Deck.subtext
         }
     }
     ColumnLayout {

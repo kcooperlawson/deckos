@@ -1,6 +1,7 @@
 // Every app: Plasma's menu categories on the left, the chosen category's apps on the right
 // (A–Z headings under "All Applications").
 import QtQuick
+import org.deckos.vibes as Vibes
 import org.kde.kirigami as Kirigami
 
 Item {
@@ -31,13 +32,17 @@ Item {
         }
     }
 
-    Rectangle {
+    Item {
         id: backButton
         width: backRow.width + 20
-        height: 26
-        radius: 7
-        color: backMouse.containsMouse ? deckMenu.border : deckMenu.raised
-        border.color: deckMenu.border
+        height: 28
+        Vibes.Notch {
+            anchors.fill: parent
+            look: deckMenu.look
+            cut: 7
+            lit: false
+            fill: backMouse.containsMouse ? deckMenu.border : deckMenu.raised
+        }
 
         Row {
             id: backRow
@@ -92,13 +97,15 @@ Item {
             height: group ? 36 : 0
             visible: group
 
-            Rectangle {
+            Vibes.Notch {
                 anchors.fill: parent
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1
-                radius: 8
-                color: cat.current ? deckMenu.raised : catMouse.containsMouse ? deckMenu.hot : "transparent"
-                border.color: cat.current && categories.activeFocus ? deckMenu.hotBorder : "transparent"
+                visible: cat.current || catMouse.containsMouse
+                look: deckMenu.look
+                cut: 8
+                lit: cat.current && categories.activeFocus
+                fill: cat.current ? deckMenu.raised : deckMenu.hot
             }
             LineIcon {
                 visible: !!page.lineIcons[cat.model.display]

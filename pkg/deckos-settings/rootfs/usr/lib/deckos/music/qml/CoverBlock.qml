@@ -2,6 +2,8 @@
 // beat, and the song and artist under it. It grows out of nothing on the way in and shrinks back on the way out.
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Shapes
+import org.deckos.vibes as Vibes
 
 Item {
     id: block
@@ -11,6 +13,7 @@ Item {
     property real t: 0
     property bool ring: true  // the stages that draw their own sound around it turn this off
     property bool quiet: false  // the title steps back while the look picker is over it
+    readonly property var look: Vibes.Look { colorA: engine.accent; colorB: engine.second }
     readonly property real size: screenHeight * 0.34
 
     x: engine.cover.x
@@ -48,33 +51,58 @@ Item {
             sourceSize: Qt.size(1024, 1024)
             visible: false
         }
-        Rectangle {
+        Vibes.Notch {  // the cover's lit edge, just outside it
+            x: art.x - 2
+            y: art.y - 2
+            width: art.width + 4
+            height: art.height + 4
+            look: block.look
+            cut: block.size * 0.08 + 1
+            edge: 2
+            fill: "transparent"
+        }
+        Shape {  // the cover notched like the DecKo cards
             id: roundMask
             width: art.width
             height: art.height
-            radius: 22
             visible: false
             layer.enabled: true
+            layer.samples: 4
+            readonly property real c: block.size * 0.08
+            ShapePath {
+                strokeColor: "transparent"
+                fillColor: "white"
+                PathPolyline { path: [Qt.point(0, 0), Qt.point(roundMask.width - roundMask.c, 0), Qt.point(roundMask.width, roundMask.c),
+                                      Qt.point(roundMask.width, roundMask.height), Qt.point(roundMask.c, roundMask.height),
+                                      Qt.point(0, roundMask.height - roundMask.c)] }
+            }
         }
-        MultiEffect {
-            source: art
-            anchors.fill: art
-            maskEnabled: true
-            maskSource: roundMask
-            shadowEnabled: true
-            shadowBlur: 0.8
-            shadowOpacity: 0.6
-            shadowVerticalOffset: 12
+        Item {  // the shadow goes on the notched cover: one effect can't mask and shadow at once (the shadow wins)
+            x: art.x
+            y: art.y
+            width: art.width
+            height: art.height
+            layer.enabled: true
+            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.8; shadowOpacity: 0.6; shadowVerticalOffset: 12 }
+            MultiEffect {
+                source: art
+                anchors.fill: parent
+                maskEnabled: true
+                maskThresholdMin: 0.5  // without a threshold every pixel passes and nothing is masked
+                maskSpreadAtMin: 1.0
+                maskSource: roundMask
+            }
         }
     }
 
-    Rectangle {  // without the ring, the title sits closer, on a soft plate so bars and trails don't run through it
+    Vibes.Notch {  // without the ring, the title sits closer, on a notched plate so bars and trails don't run through it
         visible: engine.style === "spectrum" || engine.style === "trails"
         anchors.centerIn: info
-        width: Math.min(info.width, Math.max(titleText.contentWidth, artistText.contentWidth) + 56)
-        height: info.height + 28
-        radius: height / 2
-        color: Qt.rgba(engine.base.r * 0.5, engine.base.g * 0.5, engine.base.b * 0.5, 0.72)
+        width: Math.min(info.width, Math.max(titleText.contentWidth, artistText.contentWidth) + 64)
+        height: info.height + 30
+        look: block.look
+        cut: 14
+        fill: Qt.rgba(engine.base.r * 0.5, engine.base.g * 0.5, engine.base.b * 0.5, 0.82)
         opacity: info.opacity
     }
     Column {
@@ -91,9 +119,9 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             text: engine.title || "Nothing playing"
             color: "white"
-            font.family: "Inter Display"
-            font.weight: Font.Bold
-            font.pixelSize: block.screenHeight * 0.042
+            font.family: "Chakra Petch"
+            font.weight: Font.DemiBold
+            font.pixelSize: block.screenHeight * 0.044
             elide: Text.ElideRight
         }
         Text {

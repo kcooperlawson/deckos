@@ -5,6 +5,7 @@ can't load shows nothing at all on the desktop. Then it draws each Vibe's set ov
 assets/widgets-preview-VIBE.png.
     python assets/preview_widgets.py [--check]
 """
+import os
 import sys
 from pathlib import Path
 
@@ -67,7 +68,9 @@ class Player(QObject):
 
 
 def main():
-    QQuickWindow.setGraphicsApi(QSGRendererInterface.Software)
+    # Software only without a screen: it can't draw Shapes or effects, which the DecKo look is made of
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        QQuickWindow.setGraphicsApi(QSGRendererInterface.Software)
     qInstallMessageHandler(lambda mode, ctx, msg: errors.append(msg) if "rror" in msg or "is not a type" in msg
                            or "not installed" in msg or "ReferenceError" in msg or "TypeError" in msg else None)
     app = QGuiApplication(sys.argv)

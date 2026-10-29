@@ -1,31 +1,21 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
-// A bolted plate: surface card with a screw head in each corner (the DecKoOS motif) and an
-// optional kicker title.
-Rectangle {
+// A section card: a DecKo notch (faint edge) with an optional kicker title in spaced Chakra Petch capitals.
+Item {
     id: plate
     property string kicker
     default property alias content: body.data
 
     Layout.fillWidth: true
     implicitHeight: body.implicitHeight + (kicker ? 38 : 24)
-    radius: Deck.radius + 2
-    color: Deck.surface
-    border.width: 1
-    border.color: Deck.border
-
-    Repeater {
-        model: 4
-        delegate: Rectangle {
-            required property int index
-            x: index % 2 ? plate.width - 9 : 5
-            y: index < 2 ? 5 : plate.height - 9
-            width: 4
-            height: 4
-            radius: 2
-            color: Deck.pressed
-        }
+    Vibes.Notch {
+        anchors.fill: parent
+        look: Deck.look
+        cut: 12
+        lit: false
+        fill: Deck.surface
     }
     DeckText {
         visible: !!plate.kicker
@@ -33,9 +23,11 @@ Rectangle {
         y: 10
         text: plate.kicker
         sub: true
-        font.pixelSize: 10
-        font.weight: Font.Bold
-        font.letterSpacing: 1.2
+        font.family: Deck.hud
+        font.pixelSize: 11
+        font.weight: Font.Medium
+        font.letterSpacing: 2.6
+        font.capitalization: Font.AllUppercase
         color: Deck.muted
     }
     ColumnLayout {

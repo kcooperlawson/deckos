@@ -655,7 +655,7 @@ def main():
     app.setApplicationName("DecKoOS Music")
     app.setDesktopFileName("deckos-music")
     fonts = HERE.parent.parent.parent / "share/fonts/deckos"
-    for f in fonts.glob("*.otf"):
+    for f in [*fonts.glob("*.otf"), *fonts.glob("*.ttf")]:  # Inter Display, Chakra Petch
         QFontDatabase.addApplicationFont(str(f))
     app.setFont(QFont("Inter", 10))
 
@@ -676,6 +676,7 @@ def main():
         server.newConnection.connect(message)
 
     qml = QQmlApplicationEngine()
+    qml.addImportPath(str(HERE.parent.parent / "qt6/qml"))  # the DecKo look (org.deckos.vibes), next to this app
     qml.addImageProvider("deckos", Pictures(engine))
     qml.rootContext().setContextProperty("engine", engine)
     qml.load(QUrl.fromLocalFile(str(HERE / "qml/Main.qml")))

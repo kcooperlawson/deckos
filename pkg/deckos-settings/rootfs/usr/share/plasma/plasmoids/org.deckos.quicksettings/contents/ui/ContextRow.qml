@@ -1,4 +1,5 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
 // DecKoOS Context (deckos-context.service): what DecKoOS thinks you're doing and why, and a quick way to correct it.
@@ -14,21 +15,21 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         spacing: 10
-        Rectangle {
-            implicitWidth: 34
-            implicitHeight: 34
-            radius: 9
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: Deck.accent }
-                GradientStop { position: 1; color: Deck.accentB }
-            }
+        Vibes.Notch {  // the DecKo icon chip, filled with the gradient when it's on
+            implicitWidth: 38
+            implicitHeight: 38
+            look: Deck.look
+            cut: 8
+            lit: false
+            edge: 0
+            fill: Deck.raised
+            gradientFill: true
             DeckIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 name: ctx.backend.activityIcon || "appearance"
-                color: "white"
+                color: Deck.ink
             }
         }
         ColumnLayout {

@@ -82,7 +82,7 @@ PlasmoidItem {
                     anchors.fill: parent
                     visible: false
                     layer.enabled: true
-                    preferredRendererType: Shape.CurveRenderer
+                    layer.samples: 4
                     ShapePath {
                         strokeColor: "transparent"
                         fillColor: "white"
@@ -94,6 +94,8 @@ PlasmoidItem {
                     anchors.fill: parent
                     source: cover
                     maskEnabled: true
+                    maskThresholdMin: 0.5  // without a threshold every pixel passes and nothing is masked
+                    maskSpreadAtMin: 1.0
                     maskSource: coverMask
                     visible: cover.status === Image.Ready
                 }

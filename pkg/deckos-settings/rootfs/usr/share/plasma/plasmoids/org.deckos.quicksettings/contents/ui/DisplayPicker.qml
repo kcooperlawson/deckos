@@ -1,4 +1,5 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
 // The display fix ladder (`deckos display`), opened from the Display fix tile. A new level needs a
@@ -41,22 +42,19 @@ ColumnLayout {
         spacing: 6
         Repeater {
             model: 5
-            delegate: Rectangle {
+            delegate: Item {
                 id: chip
                 required property int index
                 readonly property bool current: picker.shownLevel === index
                 Layout.fillWidth: true
                 implicitHeight: 30
-                radius: 8
-                color: chipMouse.containsMouse && !current ? Deck.hover : Deck.raised
-                border.width: 1
-                border.color: current ? Deck.accent : Deck.border
-                gradient: current ? chipGrad : null
-                Gradient {
-                    id: chipGrad
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: Deck.accent }
-                    GradientStop { position: 1; color: Deck.accentB }
+                Vibes.Notch {
+                    anchors.fill: parent
+                    look: Deck.look
+                    cut: 7
+                    lit: false
+                    fill: chipMouse.containsMouse && !chip.current ? Deck.hover : Deck.raised
+                    gradientFill: chip.current
                 }
                 opacity: picker.pending >= 0 && !current ? 0.5 : 1
                 Accessible.role: Accessible.RadioButton
@@ -66,7 +64,8 @@ ColumnLayout {
                     anchors.centerIn: parent
                     text: chip.index
                     font.weight: Font.DemiBold
-                    color: chip.current ? "white" : Deck.text
+                    font.family: Deck.hud
+                    color: chip.current ? Deck.ink : Deck.text
                 }
                 MouseArea {
                     id: chipMouse

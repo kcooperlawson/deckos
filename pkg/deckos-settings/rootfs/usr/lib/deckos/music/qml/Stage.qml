@@ -3,6 +3,7 @@
 // comes from the shared clock, never from this window, so all of them move together.
 import QtQuick
 import QtQuick.Window
+import org.deckos.vibes as Vibes
 
 Window {
     id: win
@@ -166,6 +167,28 @@ Window {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: win.height * 0.07 + 150
+    }
+    Row {  // where you are: the DecKoOS eyes and the Vibe, quietly in the corner
+        visible: win.home
+        x: 44
+        y: 36
+        spacing: 16
+        opacity: 0.85 * win.reveal
+        Vibes.Eyes {
+            look: Vibes.Look { colorA: engine.accent; colorB: engine.second }
+            implicitWidth: 54
+            anchors.verticalCenter: parent.verticalCenter
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Vibe mode" + (engine.vibeName ? " · " + engine.vibeName : "")
+            color: Qt.rgba(1, 1, 1, 0.62)
+            font.family: "Chakra Petch"
+            font.weight: Font.Medium
+            font.pixelSize: 14
+            font.letterSpacing: 4
+            font.capitalization: Font.AllUppercase
+        }
     }
     IconButton {  // out of the stage
         icon: "close"

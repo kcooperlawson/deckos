@@ -1,6 +1,7 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 
-// A slim slider in the DecKoOS look. `value` is bound from outside (the volume, the brightness);
+// A slider in the DecKo look: a segmented meter (a marker shows while you point at it). `value` is bound from outside (the volume, the brightness);
 // dragging shows its own value until release, so slow round trips through PipeWire or DDC don't
 // make the handle jump back.
 Item {
@@ -32,33 +33,22 @@ Item {
         set(value + n * stepSize * 5);
     }
 
-    Rectangle {
+    Vibes.Segments {  // the DecKo meter: lit segments through the accent's gradient
         id: track
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width
-        height: 6
-        radius: 3
-        color: Deck.border
-        Rectangle {
-            width: Math.max(height, slider.ratio * parent.width)
-            height: parent.height
-            radius: 3
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: Deck.accent }
-                GradientStop { position: 1; color: Deck.accentB }
-            }
-        }
+        look: Deck.look
+        value: slider.ratio
+        count: 24
+        segmentHeight: 12
     }
-    Rectangle {
-        x: slider.ratio * (slider.width - width)
+    Rectangle {  // where it is: a thin bar, taller while held
+        x: Math.max(0, slider.ratio * slider.width - width / 2)
         anchors.verticalCenter: parent.verticalCenter
-        width: slider.pressed || mouse.containsMouse || slider.activeFocus ? 16 : 14
-        height: width
-        radius: width / 2
-        color: Deck.text
-        border.color: slider.activeFocus ? Deck.accent : Deck.bg
-        border.width: 2
+        width: 3
+        height: slider.pressed || mouse.containsMouse || slider.activeFocus ? 20 : 16
+        color: slider.activeFocus ? Deck.accent : Deck.text
+        visible: slider.pressed || mouse.containsMouse || slider.activeFocus
     }
     MouseArea {
         id: mouse

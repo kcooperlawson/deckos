@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import QtQuick.Effects
 import QtQuick.Layouts
 import org.kde.plasma.private.mpris as Mpris
@@ -64,7 +65,6 @@ Section {
                 .replace("https://open.spotify.com/image/", "https://i.scdn.co/image/") : ""
             Rectangle {
                 anchors.fill: parent
-                radius: 8
                 color: Deck.raised
                 visible: artImage.status !== Image.Ready
                 DeckIcon {
@@ -84,17 +84,26 @@ Section {
                 asynchronous: true
                 visible: false
             }
-            Rectangle {
+            Shape {  // the cover notched like the DecKo cards
                 id: artMask
                 anchors.fill: parent
-                radius: 8
                 visible: false
                 layer.enabled: true
+                layer.samples: 4
+                ShapePath {
+                    strokeColor: "transparent"
+                    fillColor: "white"
+                    PathPolyline { path: [Qt.point(0, 0), Qt.point(artMask.width - 8, 0), Qt.point(artMask.width, 8),
+                                          Qt.point(artMask.width, artMask.height), Qt.point(8, artMask.height),
+                                          Qt.point(0, artMask.height - 8)] }
+                }
             }
             MultiEffect {
                 anchors.fill: parent
                 source: artImage
                 maskEnabled: true
+                maskThresholdMin: 0.5  // without a threshold every pixel passes and nothing is masked
+                maskSpreadAtMin: 1.0
                 maskSource: artMask
                 visible: artImage.status === Image.Ready
             }

@@ -1,4 +1,5 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
@@ -39,16 +40,15 @@ Item {
             Layout.fillWidth: true
             Layout.leftMargin: 4
             spacing: 8
-            Kirigami.Icon {
-                source: Deck.share + "branding/logo.svg"
-                Layout.preferredWidth: 22
-                Layout.preferredHeight: 22
-            }
+            Vibes.Eyes { look: Deck.look; implicitWidth: 40 }
             DeckText {
                 Layout.fillWidth: true
                 text: "Quick settings"
-                font.pixelSize: 15
-                font.weight: Font.Bold
+                font.family: Deck.hud
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                font.letterSpacing: 2.6
+                font.capitalization: Font.AllUppercase
             }
             DeckButton {
                 round: true

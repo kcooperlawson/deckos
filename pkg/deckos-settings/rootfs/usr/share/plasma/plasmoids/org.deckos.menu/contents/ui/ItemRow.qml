@@ -2,6 +2,7 @@
 // line. A view with `keepCurrent: true` (search) lights its current row while the search field
 // keeps the keyboard.
 import QtQuick
+import org.deckos.vibes as Vibes
 import org.kde.kirigami as Kirigami
 
 Item {
@@ -19,13 +20,15 @@ Item {
     Accessible.role: Accessible.ListItem
     Accessible.name: model.display
 
-    Rectangle {
+    Vibes.Notch {
         anchors.fill: parent
         anchors.topMargin: 1
         anchors.bottomMargin: 1
-        radius: 9
-        color: row.lit ? deckMenu.hot : "transparent"
-        border.color: row.cursor ? deckMenu.hotBorder : "transparent"
+        visible: row.lit || row.cursor
+        look: deckMenu.look
+        cut: 8
+        lit: row.cursor
+        fill: row.lit ? deckMenu.hot : "transparent"
     }
 
     Kirigami.Icon {

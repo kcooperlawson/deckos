@@ -3,6 +3,7 @@ modules it imports (assets/qml-stubs: Wi-Fi, Bluetooth, sound, brightness, media
 over the DecKoOS wallpaper with the panel button below the popup. Also catches QML errors.
     python assets/preview_quicksettings.py [out.png]
 """
+import os
 import sys
 from enum import IntEnum
 from pathlib import Path
@@ -181,7 +182,9 @@ def main():
     # QML warnings (a missing stand-in, a typo) go to stdout, not the Windows debugger.
     qInstallMessageHandler(lambda _type, _ctx, msg: print(msg))
     out = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "assets/quicksettings-preview.png")
-    QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.Software)
+    # Software only without a screen: it can't draw Shapes or effects, which the DecKo look is made of
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.Software)
     app = QGuiApplication(sys.argv)
     qmlRegisterType(PulseObjectFilterModel, "org.kde.plasma.private.volume", 1, 0, "PulseObjectFilterModel")
     qmlRegisterType(SinkModel, "org.kde.plasma.private.volume", 1, 0, "SinkModel")
@@ -190,6 +193,7 @@ def main():
     view = QQuickView()
     engine = view.engine()
     engine.addImportPath(str(STUBS))
+    engine.addImportPath(str(SHARE.parent / "lib/qt6/qml"))  # DecKoOS's own look module, as it is here
     engine.addImageProvider("deck", DeckIcons())
     ctx = view.rootContext()
     ctx.setContextProperty("demoCommands", DEMO_COMMANDS)

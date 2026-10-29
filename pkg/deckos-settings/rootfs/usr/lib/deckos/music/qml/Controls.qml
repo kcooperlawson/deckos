@@ -1,11 +1,13 @@
 // Play, skip, how far in, and the library: fade in when the mouse moves, out after a few seconds.
 import QtQuick
+import org.deckos.vibes as Vibes
 
 Column {
     id: controls
     property bool shown: false
     signal library()
     signal look()
+    Vibes.Look { id: dlook; colorA: engine.accent; colorB: engine.second }
 
     spacing: 18
     opacity: shown ? 1 : 0
@@ -14,7 +16,7 @@ Column {
 
     Row {
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: 22
+        spacing: 14
         IconButton { icon: "music"; anchors.verticalCenter: parent.verticalCenter; onClicked: controls.library() }
         IconButton { icon: "previous"; anchors.verticalCenter: parent.verticalCenter; onClicked: engine.previous() }
         IconButton {
@@ -29,7 +31,7 @@ Column {
 
     Item {  // how far in; click to jump
         id: seek
-        width: 520
+        width: 560
         height: 22
         anchors.horizontalCenter: parent.horizontalCenter
         visible: engine.length > 0
@@ -39,22 +41,15 @@ Column {
             running: controls.shown && seek.visible
             onTriggered: seek.pos = engine.position()
         }
-        Rectangle {
+        Vibes.Segments {  // how far in, in lit segments like the Spectrum look
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width
-            height: 4
-            radius: 2
-            color: Qt.rgba(1, 1, 1, 0.18)
-            Rectangle {
-                height: parent.height
-                radius: 2
-                width: parent.width * Math.min(1, seek.pos / Math.max(1, engine.length))
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: engine.accent }
-                    GradientStop { position: 1; color: engine.second }
-                }
-            }
+            look: dlook
+            plain: true
+            count: 60
+            spacing: 2
+            segmentHeight: 6
+            value: seek.pos / Math.max(1, engine.length)
         }
         TapHandler {
             onTapped: point => {

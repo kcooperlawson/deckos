@@ -2,6 +2,7 @@
 // down from Plasma's session model (actions this PC can't do are left out). Hovering a button names
 // it under your name.
 import QtQuick
+import org.deckos.vibes as Vibes
 import org.kde.plasma.private.kicker as Kicker
 import org.kde.coreaddons as KCoreAddons
 import org.kde.kirigami as Kirigami
@@ -63,10 +64,13 @@ Item {
         hoverEnabled: true
         onClicked: deckMenu.launch("systemsettings kcm_users")
 
-        Rectangle {
+        Vibes.Notch {
             anchors.fill: parent
-            radius: 9
-            color: userArea.containsMouse ? deckMenu.raised : "transparent"
+            visible: userArea.containsMouse
+            look: deckMenu.look
+            cut: 8
+            lit: false
+            fill: deckMenu.raised
         }
 
         Row {
@@ -75,25 +79,26 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 10
 
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 16
+            Vibes.Notch {  // your initial on a notched gradient chip (or your picture)
+                width: 36
+                height: 36
                 anchors.verticalCenter: parent.verticalCenter
-                gradient: Gradient {
-                    GradientStop { position: 0; color: deckMenu.accent }
-                    GradientStop { position: 1; color: deckMenu.accentB }
-                }
+                look: deckMenu.look
+                cut: 8
+                lit: false
+                edge: 0
+                gradientFill: true
                 Text {
                     anchors.centerIn: parent
                     text: (user.fullName || user.loginName || "?").charAt(0).toUpperCase()
-                    color: "white"
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
+                    color: deckMenu.ink
+                    font.family: deckMenu.hud
+                    font.pixelSize: 17
+                    font.weight: Font.Bold
                 }
                 Kirigami.ShadowedImage {
                     anchors.fill: parent
-                    radius: 16
+                    radius: 0
                     source: user.faceIconUrl
                     visible: status === Image.Ready
                     asynchronous: true
@@ -122,19 +127,21 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6
 
-        Rectangle {
+        Item {
             id: gaming
             visible: deckMenu.gamingAvailable
             width: gamingRow.width + 32
-            height: 36
-            radius: 9
+            height: 38
             activeFocusOnTab: visible
-            border.color: activeFocus ? "white" : "transparent"
-            opacity: gamingMouse.pressed ? 0.85 : 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: gamingMouse.containsMouse ? Qt.lighter(deckMenu.accent, 1.12) : deckMenu.accent }
-                GradientStop { position: 1; color: gamingMouse.containsMouse ? Qt.lighter(deckMenu.accentB, 1.12) : deckMenu.accentB }
+            opacity: gamingMouse.pressed ? 0.85 : gamingMouse.containsMouse ? 0.92 : 1
+            Vibes.Notch {  // the one filled button: notched, the accent gradient
+                anchors.fill: parent
+                look: deckMenu.look
+                cut: 9
+                lit: false
+                edge: gaming.activeFocus ? 2 : 0
+                fill: "white"
+                gradientFill: true
             }
             Accessible.role: Accessible.Button
             Accessible.name: "Switch to Gaming Mode"
@@ -147,14 +154,17 @@ Item {
                 spacing: 8
                 LineIcon {
                     name: "gaming"
-                    tint: "white"
+                    tint: deckMenu.ink
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
                     text: "Gaming Mode"
-                    color: "white"
-                    font.pixelSize: 13
-                    font.weight: Font.DemiBold
+                    color: deckMenu.ink
+                    font.family: deckMenu.hud
+                    font.pixelSize: 14
+                    font.weight: Font.Bold
+                    font.letterSpacing: 2
+                    font.capitalization: Font.AllUppercase
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }

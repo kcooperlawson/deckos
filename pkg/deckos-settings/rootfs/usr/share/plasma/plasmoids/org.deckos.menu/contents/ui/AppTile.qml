@@ -1,5 +1,6 @@
 // One app in the pinned grid: icon over its name, lit when hovered or picked with the keyboard.
 import QtQuick
+import org.deckos.vibes as Vibes
 import org.kde.kirigami as Kirigami
 
 Item {
@@ -15,12 +16,13 @@ Item {
     Accessible.role: Accessible.ListItem
     Accessible.name: model.display
 
-    Rectangle {
+    Vibes.Notch {  // lit: a notched tile with the gradient edge
         anchors.fill: parent
         anchors.margins: 2
-        radius: 10
-        color: tile.lit ? deckMenu.hot : "transparent"
-        border.color: tile.lit ? deckMenu.hotBorder : "transparent"
+        visible: tile.lit
+        look: deckMenu.look
+        cut: 10
+        fill: deckMenu.hot
     }
 
     Kirigami.Icon {

@@ -1,8 +1,9 @@
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
 // The DecKoOS row's tiles: icon on top, name, status. `tone` colours the status (ok/warn/bad).
-Rectangle {
+Item {
     id: tile
     property string icon
     property string title
@@ -15,10 +16,13 @@ Rectangle {
     Layout.fillWidth: true
     Layout.preferredWidth: 1  // equal widths in the row
     implicitHeight: 76
-    radius: Deck.radius
-    color: mouse.pressed ? Deck.pressed : mouse.containsMouse ? Deck.hover : active ? Deck.tint : Deck.raised
-    border.width: 1
-    border.color: active ? Qt.rgba(Deck.accent.r, Deck.accent.g, Deck.accent.b, 0.55) : Deck.border
+    Vibes.Notch {
+        anchors.fill: parent
+        look: Deck.look
+        cut: 9
+        lit: tile.active
+        fill: mouse.pressed ? Deck.pressed : mouse.containsMouse ? Deck.hover : tile.active ? Deck.tint : Deck.raised
+    }
     readonly property color toneColor: tone === "ok" ? Deck.success : tone === "warn" ? Deck.warning
                                      : tone === "bad" ? Deck.danger : Deck.subtext
 
@@ -61,10 +65,9 @@ Rectangle {
             color: tile.toneColor
         }
     }
-    Rectangle {
+    Rectangle {  // keyboard focus
         anchors.fill: parent
         anchors.margins: -2
-        radius: parent.radius + 2
         color: "transparent"
         border.color: Deck.accent
         border.width: 2

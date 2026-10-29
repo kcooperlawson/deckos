@@ -2,6 +2,7 @@
 // results, and the footer. Keyboard first: it opens with the search field focused, typing anywhere
 // lands there, arrows move, Enter opens, Escape clears / goes back / closes.
 import QtQuick
+import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 
 Item {
@@ -79,15 +80,19 @@ Item {
         }
     }
 
-    Rectangle {
+    Item {
         id: searchBox
         x: 6
         y: 6
         width: parent.width - 12
-        height: 42
-        radius: 10
-        color: deckMenu.base
-        border.color: search.activeFocus ? deckMenu.accent : deckMenu.border
+        height: 46
+        Vibes.Notch {  // notched, its edge lit while you type
+            anchors.fill: parent
+            look: deckMenu.look
+            cut: 11
+            lit: search.activeFocus
+            fill: deckMenu.base
+        }
 
         LineIcon {
             x: 13
