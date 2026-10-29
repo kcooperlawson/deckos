@@ -142,6 +142,22 @@ class GameDoctorTests(unittest.TestCase):
         self.assertTrue((compat / '42/pfx').is_dir())
         self.assertEqual(self.gd.applied('42'), [])
 
+    def test_a_drive_without_links_is_left_alone(self):
+        self.gd.PREFIXES = self.root / 'home-prefixes'
+        compat = self.root / 'steamapps/compatdata'
+        real = Path.symlink_to
+        def refuse(path, *a, **k):
+            raise OSError(22, 'Invalid argument')
+        Path.symlink_to = refuse
+        try:
+            with self.assertRaises(RuntimeError):
+                self.gd.apply('prefix-home', '42')
+        finally:
+            Path.symlink_to = real
+        self.assertTrue((compat / '42/pfx').is_dir())  # nothing moved
+        self.assertFalse(compat.is_symlink())
+        self.assertEqual(self.gd.applied('42'), [])
+
     def test_writes_keep_a_backup(self):
         self.gd.apply('wined3d', '42')
         self.assertTrue((self.root / 'userdata/1/config/localconfig.vdf.deckos-bak').exists())

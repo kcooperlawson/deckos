@@ -303,6 +303,15 @@ def _prefixes_home(appid, compat):
     """A library's compatdata folder moved to PREFIXES (a Linux filesystem) and linked back in its place."""
     if compat.is_symlink():
         raise RuntimeError("this library's Proton files are already on another drive")
+    # The link back has to work before anything moves: some NTFS drives take no links at all
+    probe = compat.parent / ".deckos-link-test"
+    try:
+        probe.unlink(missing_ok=True)
+        probe.symlink_to(PREFIXES, target_is_directory=True)
+        probe.unlink()
+    except OSError:
+        raise RuntimeError("this drive doesn't take links, so the Proton files can't be linked from another "
+                           "drive; nothing was moved") from None
     target = PREFIXES / (re.sub(r"[^A-Za-z0-9]+", "-", str(compat.parent.parent)).strip("-") or "library")
     target.mkdir(parents=True, exist_ok=True)
     if compat.exists():
