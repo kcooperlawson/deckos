@@ -36,9 +36,13 @@ elif marked "$disk"; then
   target="erase:$disk"
 elif [[ -n $part2 && -n $(blkid -o value -s TYPE "$part2" || true) ]]; then
   # The installer's own list of free space, so the test takes the gap exactly as a person would
-  target=$(/usr/local/bin/deckos-install --list-targets 2>/dev/null \
-    | awk -F'\t' -v d="free:$disk:" 'index($1, d) == 1 && $1 != d "disk" && $7 == "" {print $1; exit}')
-  [[ -n $target ]] || refuse "the installer offers no usable free space on $disk"
+  say "asking the installer for free space on $disk"
+  # Bounded and with its errors kept: a listing that stops would otherwise hang the test with nothing on the console
+  listing=$(mktemp) errors=$(mktemp)
+  timeout 120 /usr/local/bin/deckos-install --list-targets >"$listing" 2>"$errors" </dev/null \
+    || { say "listing failed (exit $?):"; sed 's/^/  | /' "$errors"; }
+  target=$(awk -F'\t' -v d="free:$disk:" 'index($1, d) == 1 && $1 != d "disk" && $7 == "" {print $1; exit}' "$listing")
+  [[ -n $target ]] || { sed 's/^/  | /' "$listing"; refuse "the installer offers no usable free space on $disk"; }
 else
   target=$(lsblk -lnpo PATH,TYPE "$disk" | awk '$2 == "part" {n++} n == 2 {print $1; exit}')
   [[ -b $target ]] || refuse "the test disk $disk has no second partition"
