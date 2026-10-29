@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -25,7 +26,8 @@ except ImportError:
 QUICK = 45  # seconds: a game gone sooner than this didn't really start
 LOGS = sf.STEAM / "logs"
 STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "deckos/gamedoctor"
-# Where a library on a Windows (NTFS) drive keeps its Proton prefixes instead ("prefix-home")
+# Where a library on a Windows (NTFS) drive keeps its Proton prefixes instead ("prefix-home"). A drive that takes no
+# links gets a mount instead, which needs root: `deckos drives prefixes` through pkexec (the system asks)
 PREFIXES = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "deckos/proton-prefixes"
 
 EVENT = re.compile(r"^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] Game process (added|removed)\s*: AppID (\d+)")
@@ -303,15 +305,20 @@ def _prefixes_home(appid, compat):
     """A library's compatdata folder moved to PREFIXES (a Linux filesystem) and linked back in its place."""
     if compat.is_symlink():
         raise RuntimeError("this library's Proton files are already on another drive")
-    # The link back has to work before anything moves: some NTFS drives take no links at all
+    # The link back has to work before anything moves: some NTFS drives take no links at all, and those get a
+    # mount instead (deckos moves the files and mounts them back; nothing moves unless it's allowed)
     probe = compat.parent / ".deckos-link-test"
     try:
         probe.unlink(missing_ok=True)
         probe.symlink_to(PREFIXES, target_is_directory=True)
         probe.unlink()
     except OSError:
-        raise RuntimeError("this drive doesn't take links, so the Proton files can't be linked from another "
-                           "drive; nothing was moved") from None
+        library = compat.parent.parent
+        if admin(["drives", "prefixes", str(library), "on"]) != 0:
+            raise RuntimeError("this drive takes no links, and the mount that works instead wasn't set up "
+                               "(it needs your password); nothing was moved") from None
+        _record(appid, {"fix": "prefix-home", "library": str(compat), "mount": str(library)})
+        return "This library's Proton files are on your Linux drive now (mounted in place); start the game again."
     target = PREFIXES / (re.sub(r"[^A-Za-z0-9]+", "-", str(compat.parent.parent)).strip("-") or "library")
     target.mkdir(parents=True, exist_ok=True)
     if compat.exists():
@@ -323,7 +330,19 @@ def _prefixes_home(appid, compat):
     return "This library's Proton files are on your Linux drive now; start the game again."
 
 
+def admin(args):
+    """`deckos ARGS` as root: the system asks for the password. The exit code (126/127: refused or no pkexec)."""
+    try:
+        return subprocess.run(["pkexec", "deckos", *args]).returncode
+    except OSError:
+        return 127
+
+
 def _prefixes_back(entry):
+    if entry.get("mount"):
+        if admin(["drives", "prefixes", entry["mount"], "off"]) != 0:
+            raise RuntimeError("the mount wasn't taken down (it needs your password)")
+        return
     compat, target = Path(entry["library"]), Path(entry["target"])
     if compat.is_symlink():
         compat.unlink()

@@ -148,6 +148,8 @@ class GameDoctorTests(unittest.TestCase):
         real = Path.symlink_to
         def refuse(path, *a, **k):
             raise OSError(22, 'Invalid argument')
+        asked = []
+        self.gd.admin = lambda args: asked.append(args) or 126  # the password prompt was dismissed
         Path.symlink_to = refuse
         try:
             with self.assertRaises(RuntimeError):
@@ -156,6 +158,23 @@ class GameDoctorTests(unittest.TestCase):
             Path.symlink_to = real
         self.assertTrue((compat / '42/pfx').is_dir())  # nothing moved
         self.assertFalse(compat.is_symlink())
+        self.assertEqual(self.gd.applied('42'), [])
+        self.assertEqual(asked, [['drives', 'prefixes', str(self.root), 'on']])  # the mount was offered
+
+    def test_a_drive_without_links_gets_the_mount_and_it_comes_off(self):
+        asked = []
+        self.gd.admin = lambda args: asked.append(args) or 0
+        real = Path.symlink_to
+        def refuse(path, *a, **k):
+            raise OSError(22, 'Invalid argument')
+        Path.symlink_to = refuse
+        try:
+            self.gd.apply('prefix-home', '42')
+        finally:
+            Path.symlink_to = real
+        self.assertEqual(self.gd.applied('42')[0]['mount'], str(self.root))
+        self.gd.undo('prefix-home', '42')
+        self.assertEqual(asked[-1], ['drives', 'prefixes', str(self.root), 'off'])
         self.assertEqual(self.gd.applied('42'), [])
 
     def test_writes_keep_a_backup(self):

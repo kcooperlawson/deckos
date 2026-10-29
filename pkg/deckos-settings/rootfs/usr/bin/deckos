@@ -10,6 +10,8 @@ DISPLAY_CONF=$CONF_DIR/display.conf
 GRUB_DEFAULT=/etc/default/grub
 FSTAB_BEGIN="# >>> DeckOS drives (managed by 'deckos drives rescan') >>>"
 FSTAB_END="# <<< DeckOS drives <<<"
+PREFIX_BEGIN="# >>> DecKoOS Proton prefixes (managed by 'deckos drives prefixes') >>>"
+PREFIX_END="# <<< DecKoOS Proton prefixes <<<"
 # RX 9070 / 9070 XT (Navi 48). Anything else falls back to the boot VGA AMD card.
 DGPU_IDS="0x7550"
 
@@ -411,6 +413,69 @@ drives_repair() {
   (( n == 0 )) || say "Run chkdsk /f on them next time you're in Windows: clearing the mark doesn't check the files."
 }
 
+# A Steam library on a drive that can't hold a Proton prefix (an NTFS drive mounted with windows_names refuses the
+# name c:, and some take no links at all) keeps its prefixes on the Linux drive instead: they move to
+# ~/.local/share/deckos/proton-prefixes/LIBRARY and a bind mount shows them at the library's compatdata, so Steam and
+# Proton find them where they always look. Game Doctor offers it; fstab keeps it (its own block, which rescan keeps).
+prefix_lines() { awk -v b="$PREFIX_BEGIN" -v e="$PREFIX_END" '$0==b{f=1;next} $0==e{f=0} f' "${DECKOS_FSTAB:-/etc/fstab}"; }
+
+prefix_fstab_write() {  # LINES: the block's new body (empty: the block goes)
+  cp /etc/fstab /etc/fstab.deckos-bak
+  awk -v b="$PREFIX_BEGIN" -v e="$PREFIX_END" '$0==b{skip=1} !skip{print} $0==e{skip=0}' /etc/fstab.deckos-bak > /etc/fstab
+  [[ -z $1 ]] || printf '\n%s\n%s\n%s\n' "$PREFIX_BEGIN" "$1" "$PREFIX_END" >> /etc/fstab
+  systemctl daemon-reload
+}
+
+drives_prefixes() {  # LIBRARY on|off
+  local lib=${1:-} want=${2:-on}
+  [[ -n $lib && ($want == on || $want == off) ]] || { err "usage: deckos drives prefixes LIBRARY on|off"; exit 2; }
+  need_root drives prefixes "$lib" "$want"
+  lib=$(realpath -m "$lib"); lib=${lib%/}
+  [[ $lib == */steamapps ]] && lib=${lib%/steamapps}
+  [[ -d $lib/steamapps ]] || { err "$lib isn't a Steam library (no steamapps folder)"; exit 1; }
+  local user=${SUDO_USER:-}
+  [[ -z $user && -n ${PKEXEC_UID:-} ]] && user=$(id -nu "$PKEXEC_UID")
+  [[ -n $user && $user != root ]] || { err "run it as yourself through sudo or pkexec, so the files go to your home"; exit 1; }
+  local home compat slug target lines kept item name left=0
+  home=$(getent passwd "$user" | cut -d: -f6)
+  compat=$lib/steamapps/compatdata
+  slug=$(sed 's/[^A-Za-z0-9]\+/-/g; s/^-//; s/-$//' <<<"$lib")
+  target=$home/.local/share/deckos/proton-prefixes/${slug:-library}
+  lines=$(prefix_lines)
+  kept=$(grep -vF "  $compat  " <<<"$lines" || true)
+  if [[ $want == on ]]; then
+    if findmnt -n "$compat" >/dev/null 2>&1; then ok "$lib already keeps its Proton files at $target"; return; fi
+    [[ -L $compat ]] && { err "$compat is a link to another drive already"; exit 1; }
+    install -d -o "$user" -g "$(id -g "$user")" "$target"
+    mkdir -p "$compat"
+    for item in "$compat"/* "$compat"/.[!.]*; do  # what's there moves home; a name already home keeps both
+      [[ -e $item || -L $item ]] || continue
+      name=${item##*/}
+      [[ -e $target/$name ]] && name="$name.deckos-$(date +%Y%m%d-%H%M%S)"
+      mv "$item" "$target/$name" || { err "couldn't move $item: nothing else changes"; exit 1; }
+    done
+    chown -R "$user:$(id -g "$user")" "$target"
+    lines=$(printf '%s\n%s  %s  none  bind,nofail,x-systemd.requires-mounts-for=%s,x-systemd.requires-mounts-for=%s  0 0' \
+      "$kept" "$target" "$compat" "$(findmnt -nT "$lib" -o TARGET | tail -1)" "$home" | sed '/^$/d')
+    prefix_fstab_write "$lines"
+    mount "$compat" || { err "the mount didn't start: journalctl -b | grep compatdata"; exit 1; }
+    ok "$lib keeps its Proton files on your Linux drive now ($target)"
+    pulse drives "Proton files for $lib moved to your Linux drive" --app Drives
+  else
+    findmnt -n "$compat" >/dev/null 2>&1 && umount "$compat"
+    prefix_fstab_write "$kept"
+    if [[ -d $target ]]; then
+      for item in "$target"/* "$target"/.[!.]*; do
+        [[ -e $item || -L $item ]] || continue
+        mv "$item" "$compat/" 2>/dev/null || left=1
+      done
+      [[ $left == 1 ]] || rmdir "$target" 2>/dev/null || true
+    fi
+    if [[ $left == 1 ]]; then warn "this drive refused some of them: those stay in $target"; else ok "$lib keeps its Proton files on its own drive again"; fi
+    pulse drives "Proton files for $lib back on its drive" --app Drives
+  fi
+}
+
 drives_cmd() {
   case ${1:-list} in
     list) drives_list ;;
@@ -419,7 +484,8 @@ drives_cmd() {
     doctor) drives_doctor ;;
     repair) drives_repair ;;
     dirty) drives_dirty ;;
-    *) err "usage: deckos drives [list|rescan|doctor|repair|fstab]"; exit 2 ;;
+    prefixes) shift; drives_prefixes "$@" ;;
+    *) err "usage: deckos drives [list|rescan|doctor|repair|fstab|prefixes LIBRARY on|off]"; exit 2 ;;
   esac
 }
 
