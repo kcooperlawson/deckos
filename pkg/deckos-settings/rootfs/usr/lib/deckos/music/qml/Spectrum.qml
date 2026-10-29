@@ -8,11 +8,12 @@ ShaderEffect {
     required property real kick
     required property real stageT
     required property real stageReveal
+    required property size viewSize  // this screen's part of the world, in world units
     fragmentShader: "spectrum.frag.qsb"
     readonly property Bars data: Bars {}
     property size world: Qt.size(engine.worldWidth, engine.worldHeight)
     property point origin: Qt.point(originX, originY)
-    property size view: Qt.size(width, height)
+    property size view: viewSize
     property point cover: engine.cover
     property real t: stageT
     property real bass: engine.bass

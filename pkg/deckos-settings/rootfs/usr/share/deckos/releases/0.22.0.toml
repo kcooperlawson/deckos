@@ -1,0 +1,36 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.22.0"
+name = "Sing along"
+tagline = "Live lyrics in Vibe mode, three new looks, and screens laid out the way your desk is."
+
+fixes = [
+    "Vibe mode follows Spotify's position to the moment, not the half second.",
+]
+
+[[highlights]]
+title = "Live lyrics"
+image = "0.22.0/lyrics-and-grid.png"
+text = """Vibe mode shows the words as they're sung: the line you're on fills with colour as it goes and pulses with \
+the beat, the next one waiting below. With two or more monitors the lyrics get a screen of their own, beside the \
+cover; on one, they run under it. They come from LRCLIB, a free lyrics library (it's sent the song's title and \
+artist), or from an .lrc file next to your own music. Lyrics can be turned off in Vibe mode, or with Y."""
+icon = "music"
+try = "Start Vibe mode"
+run = ["deckos-music"]
+
+[[highlights]]
+title = "Three new looks"
+image = "0.22.0/kaleido.png"
+text = """Grid races a neon floor toward a striped sun behind the cover, with mountains made of the music. Scope draws \
+the song as one glowing line through every screen. Kaleido turns a kaleidoscope round the cover that opens with the \
+bass. Pick one with the palette button, or press V to flip through all seven."""
+icon = "appearance"
+try = "Start Vibe mode"
+run = ["deckos-music"]
+
+[[highlights]]
+title = "As your desk is"
+text = """Vibe mode lays your screens out as they really are: a smaller monitor shows the stage smaller, and the space \
+between them is there too. Set it under "Space between screens" in Vibe mode's look picker."""
+icon = "display"

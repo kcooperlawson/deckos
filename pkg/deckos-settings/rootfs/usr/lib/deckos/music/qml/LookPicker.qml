@@ -80,12 +80,54 @@ Item {
                 }
             }
         }
+        Row {
+            spacing: 8
+            Repeater {
+                model: [["grid", "Grid"], ["scope", "Scope"], ["kaleido", "Kaleido"]]
+                Chip {
+                    required property var modelData
+                    label: modelData[1]
+                    on: engine.styleChoice === modelData[0]
+                    onPicked: engine.setStyle(modelData[0])
+                }
+            }
+        }
         Label { text: "Colours"; visible: engine.vibeName !== "" }
         Row {
             spacing: 8
             visible: engine.vibeName !== ""
             Chip { label: engine.vibeName; on: engine.colourChoice === "vibe"; onPicked: engine.setColours("vibe") }
             Chip { label: "Album cover"; on: engine.colourChoice === "cover"; onPicked: engine.setColours("cover") }
+        }
+        Label { text: "Lyrics" }
+        Row {
+            spacing: 8
+            Chip { label: "On"; on: engine.lyricsOn; onPicked: engine.setLyrics(true) }
+            Chip { label: "Off"; on: !engine.lyricsOn; onPicked: engine.setLyrics(false) }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 6
+                text: "From LRCLIB: it's sent the song's title and artist"
+                color: Qt.rgba(1, 1, 1, 0.45)
+                font.pixelSize: 12
+            }
+        }
+        // The space between the monitors on the desk: shapes cross it as they would in real life
+        Label { text: "Space between screens"; visible: engine.screens.length > 1 }
+        Row {
+            spacing: 8
+            visible: engine.screens.length > 1
+            Chip { label: "−"; onPicked: engine.setGap(engine.gapMm - 13) }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 150
+                horizontalAlignment: Text.AlignHCenter
+                text: (engine.gapMm / 25.4).toFixed(1) + " in · " + Math.round(engine.gapMm / 10) + " cm"
+                color: "white"
+                font.family: "Chakra Petch"
+                font.pixelSize: 15
+            }
+            Chip { label: "+"; onPicked: engine.setGap(engine.gapMm + 13) }
         }
     }
 }

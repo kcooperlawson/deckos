@@ -137,14 +137,24 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   `intensity`), `sources.py` (MPRIS through `playerctl --follow`, `players="spotify,%any"`: no sign-in, no streaming of its
   own; local files with Qt Multimedia), `world.py` (no Qt: monitors laid out into one world, the cover on the middle
   screen, of two the one KDE ranks first: `kscreen-doctor -o` priority 1, since Qt's primaryScreen on Wayland is
-  just the first), `deckos_music.py` (the `Engine` QObject every window reads, image provider, one instance over a
+  just the first; with real sizes (QScreen.physicalSize, trusted only when shaped like the pixels) and screens in a
+  row, laid out as the desk is: real widths, the `gap` from music.conf between them, in units of the cover screen's
+  pixels; each screen gets `pw`/`ph` (its window) and `scale` (px per world unit); `lyrics_screen()` picks the cover's
+  neighbour), `lyrics.py` (no Qt: LRC parsing with offsets and word times, `at()`, an .lrc beside a local file, else
+  LRCLIB with a cache in ~/.cache/deckos/music/lyrics that remembers misses for 3 days; the Lyrics switch in Vibe mode
+  stops lookups), `deckos_music.py` (the `Engine` QObject every window reads, image provider, one instance over a
   QLocalSocket: a second launch toggles the stage; `--offer` is the notification Context sends when listening starts).
   QML in `qml/`: one `Stage` window per monitor, each drawing its slice of the world at -origin from the shared clock
-  (`engine.startMs`; never per-window animations, or the screens drift apart). Four looks (`looks.py`, no Qt; the
+  (`engine.startMs`; never per-window animations, or the screens drift apart). Shaders get `view` in world units and
+  `worldItem` is scaled by the screen's `scale`. Lyrics: `LyricsView.qml`, big on the lyrics screen, a band under the
+  cover on one screen; the engine follows them 30 times a second only while shown, from `Source.position_now()`
+  (Spotify: counted from playerctl's last report on the clock, `resync()` every 2 s). Seven looks (`looks.py`, no Qt; the
   `stage` of each Vibe in vibes.py picks one unless you do, in the look picker or with V; `~/.config/deckos/music.conf`):
   aurora (`stage.frag`: aurora, stars, beat shockwaves, plus Horizon/Comets/marquee), spectrum (`spectrum.frag`, the
   2000s analyzer), trails (`Trails.qml`: a recursive ShaderEffectSource feeding `trails.frag` back into itself,
-  Milkdrop-style, shown by `trails_show.frag`) and glow (`glow.frag`, calm). Bars reach shaders as 16 vec4 uniforms
+  Milkdrop-style, shown by `trails_show.frag`), glow (`glow.frag`, calm), and grid/scope/kaleido (`grid.frag`,
+  `scope.frag`, `kaleido.frag` on `Sky.qml`, one ShaderEffect with every uniform; a shader takes what it declares;
+  `half` is a reserved word in GLSL 440). Bars reach shaders as 16 vec4 uniforms
   (`Bars.qml`). Each `.frag` is compiled to `.frag.qsb` (commit both; `tests/test_music.py` checks they're current).
   Esc leaves; your own files keep playing in `Mini`. Steps aside when workload modes says a game runs.
   `--demo [--demo-screens N] [--style S] --screenshot DIR` stitches every screen's grab into one picture (offscreen renders without

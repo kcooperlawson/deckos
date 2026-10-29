@@ -39,7 +39,7 @@ SCENES = ["lofi", "neon", "midnight", "cozy", "photo"]
 THEMES = ["org.deckos.ember", "org.deckos.midnight", "org.deckos.graphite", "org.deckos.aurora", "org.deckos.crimson",
           "org.deckos.paper", "org.deckos.desktop"]
 CORNERS = ["round", "default", "sharp"]
-STAGES = ["aurora", "spectrum", "trails", "glow"]  # music/looks.py draws them
+STAGES = ["aurora", "spectrum", "trails", "glow", "grid", "scope", "kaleido"]  # music/looks.py draws them
 PARTS = ["bass", "mid", "high"]  # what a light in a photo answers to
 USER = Path.home() / ".config/deckos/vibes"
 PHOTOS = Path.home() / ".local/share/deckos/vibes"

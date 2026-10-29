@@ -96,7 +96,7 @@ Item {
     }
 
     Vibes.Notch {  // without the ring, the title sits closer, on a notched plate so bars and trails don't run through it
-        visible: engine.style === "spectrum" || engine.style === "trails"
+        visible: engine.style !== "aurora" && engine.style !== "glow"  // the busy looks
         anchors.centerIn: info
         width: Math.min(info.width, Math.max(titleText.contentWidth, artistText.contentWidth) + 64)
         height: info.height + 30

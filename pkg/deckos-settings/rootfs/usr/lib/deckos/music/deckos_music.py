@@ -20,6 +20,7 @@ import os
 import random
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -37,6 +38,7 @@ import analysis  # noqa: E402
 import hub_style as S  # noqa: E402
 import library  # noqa: E402
 import looks  # noqa: E402
+import lyrics  # noqa: E402
 import sources  # noqa: E402
 import world  # noqa: E402
 
@@ -48,6 +50,14 @@ MODE_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "deckos-mode"
 # drawing ~16-25) by more than the speakers do (20-45 ms on a 1024-sample PipeWire quantum). Worked out, not measured
 # with a microphone.
 BEAT_LEAD = 0.03
+# Lyrics show a touch early: a line read just as it's sung feels late
+LYRIC_LEAD = 0.25
+# The demo song's lyrics (made up, like the song), so the demo shows them anywhere
+DEMO_LRC = "\n".join(f"[{m:02d}:{sec:05.2f}]{text}" for m, sec, text in [
+    (1, 20.0, "Neon on the water"), (1, 24.0, "the city hums in blue"), (1, 28.0, "every light a heartbeat"),
+    (1, 32.0, "every beat for you"), (1, 36.0, "Turn it up, turn it up"), (1, 40.0, "till the night lets go"),
+    (1, 44.0, "Afterglow, afterglow"), (1, 48.0, "carry me home"), (1, 52.0, ""), (1, 56.0, "Neon on the water"),
+    (2, 0.0, "the city hums in blue"), (2, 4.0, "Afterglow, afterglow"), (2, 8.0, "carry me home")])
 
 
 # ------------------------------------------------------------------ colours from a cover
@@ -181,6 +191,9 @@ class Engine(QObject):
     libraryChanged = Signal()
     lookChanged = Signal()
     poked = Signal()
+    lyricsChanged = Signal()
+    lyricFrame = Signal()
+    lyricsReady = Signal(str, object)  # the song's key, its parsed lines (from the lookup thread)
 
     def __init__(self, fake_screens=0):
         super().__init__()
@@ -210,6 +223,12 @@ class Engine(QObject):
         # `deckos vibe` rewrites the file: watch its folder, so a new Vibe changes the stage while it's up
         self.vibe_watch = QFileSystemWatcher([str(looks.VIBE_FILE.parent)], self)
         self.vibe_watch.directoryChanged.connect(self.reload_vibe)
+        # Lyrics: looked up when the song changes (off this thread), followed 30 times a second while shown
+        self._lyrics, self._plain, self._lyric_state, self._lyric_key = [], "", "none", ""
+        self._lyric_i, self._lyric_through = -1, 0.0
+        self.lyricsReady.connect(self.got_lyrics)
+        self.lyric_clock = QTimer(self, interval=33, timeout=self.lyric_tick)
+        self.resync_clock = QTimer(self, interval=2000, timeout=lambda: self.active.resync())
 
         self.spotify.changed.connect(lambda n: self.source_changed(self.spotify, n))
         self.relayout()
@@ -241,7 +260,10 @@ class Engine(QObject):
                      for s in screens]
             main = main_screen() or QGuiApplication.primaryScreen().name()
             primary = next((i for i, s in enumerate(screens) if s.name() == main), 0)
-        self.lay = world.layout(rects, primary)
+        # each monitor's real size (EDID, through Qt), so the world is laid out as the desk is, with the gap
+        physical = ([(0, 0)] * len(rects) if self.fake_screens else
+                    [(s.physicalSize().width(), s.physicalSize().height()) for s in QGuiApplication.screens()])
+        self.lay = world.layout(rects, primary, physical, int(self.choices.get("gap", 0)))
         self.worldChanged.emit()
 
     @Property("QVariantList", notify=worldChanged)
@@ -342,6 +364,8 @@ class Engine(QObject):
             self._bars = [0.0] * 64
             self._peaks = [0.0] * 64
             self.frame.emit()
+        if hasattr(self, "lyric_clock"):
+            self.follow_lyrics()
 
     def tick(self):
         now = time.time()
@@ -412,6 +436,7 @@ class Engine(QObject):
         self.load_art(self.active.now.art)
         self.trackChanged.emit()
         self.running()
+        self.find_lyrics()
 
     def ensure_local(self):
         if self.local is None:
@@ -577,6 +602,110 @@ class Engine(QObject):
             looks.save(self.choices)
         self.lookChanged.emit()
         self.artChanged.emit()
+
+    # ---- lyrics (lyrics.py)
+
+    def find_lyrics(self):
+        now = self.active.now
+        key = f"{now.source}|{now.artist}|{now.title}"
+        if key == self._lyric_key:
+            return
+        self._lyric_key = key
+        self._lyrics, self._plain, self._lyric_i = [], "", -1
+        if not now.title or self.choices.get("lyrics") == "off":
+            self._lyric_state = "off" if now.title else "none"
+            self.lyricsChanged.emit()
+            self.follow_lyrics()
+            return
+        self._lyric_state = "loading"
+        self.lyricsChanged.emit()
+        if DEMO:
+            QTimer.singleShot(300, lambda: self.lyricsReady.emit(key, {"synced": DEMO_LRC, "plain": ""}))
+            return
+        path = (now.extra or {}).get("track", {}).get("path", "")
+        artist, title, album, length = now.artist, now.title, now.album, now.length
+
+        def look():  # a thread: lyrics.fetch waits on the network
+            own = lyrics.local_lrc(path) if path else ""
+            self.lyricsReady.emit(key, {"synced": own, "plain": ""} if own else
+                                  lyrics.fetch(artist, title, album, length))
+        threading.Thread(target=look, daemon=True).start()
+
+    def got_lyrics(self, key, answer):
+        if key != self._lyric_key:
+            return  # a song that's already gone
+        self._lyrics = lyrics.parse_lrc(answer.get("synced", ""))
+        self._plain = answer.get("plain", "")
+        self._lyric_state = "synced" if self._lyrics else "plain" if self._plain else "none"
+        self._lyric_i = -1
+        self.lyricsChanged.emit()
+        self.follow_lyrics()
+
+    def follow_lyrics(self):
+        """The lyric clock (and asking the player where it is) only while synced lyrics are on screen."""
+        on = bool(self._lyrics) and self._mode == "stage" and self.active.now.playing
+        for clock in (self.lyric_clock, self.resync_clock):
+            if on and not clock.isActive():
+                clock.start()
+            elif not on:
+                clock.stop()
+        if on:
+            self.active.resync()
+
+    def lyric_tick(self):
+        i, through = lyrics.at(self._lyrics, self.active.position_now() + LYRIC_LEAD)
+        self._lyric_i, self._lyric_through = i, through
+        self.lyricFrame.emit()
+
+    @Property("QVariantList", notify=lyricsChanged)
+    def lyricLines(self):
+        return [{"t": line["t"], "text": line["text"]} for line in self._lyrics]
+
+    @Property(str, notify=lyricsChanged)
+    def lyricsPlain(self):
+        return self._plain
+
+    @Property(str, notify=lyricsChanged)
+    def lyricsState(self):
+        """loading, synced, plain (no times: shown as text), none (not found) or off"""
+        return self._lyric_state
+
+    @Property(int, notify=lyricFrame)
+    def lyricIndex(self):
+        return self._lyric_i
+
+    @Property(float, notify=lyricFrame)
+    def lyricThrough(self):
+        return self._lyric_through
+
+    @Property(bool, notify=lookChanged)
+    def lyricsOn(self):
+        return self.choices.get("lyrics") != "off"
+
+    @Slot(bool)
+    def setLyrics(self, on):
+        self.choices["lyrics"] = "on" if on else "off"
+        self.remember()
+        self._lyric_key = ""  # look again (or stop)
+        self.find_lyrics()
+
+    @Property(int, notify=worldChanged)
+    def lyricsScreen(self):
+        """The screen lyrics fill when there are two or more (-1: one screen, lyrics go under the cover)."""
+        i = world.lyrics_screen(self.lay)
+        return -1 if i is None else i
+
+    # ---- the gap between the monitors
+
+    @Property(int, notify=lookChanged)
+    def gapMm(self):
+        return int(self.choices.get("gap", 0))
+
+    @Slot(int)
+    def setGap(self, mm):
+        self.choices["gap"] = str(max(0, min(looks.GAP_MAX, int(mm))))
+        self.remember()
+        self.relayout()
 
     # ---- your library
 

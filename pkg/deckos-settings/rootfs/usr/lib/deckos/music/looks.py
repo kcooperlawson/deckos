@@ -1,37 +1,46 @@
 """How Vibe mode looks: which stage it draws, and in whose colours. No Qt; tests/test_music.py checks it.
 
-Four stages, all spanning every monitor as one world:
+Seven stages, all spanning every monitor as one world:
   aurora    curtains of light, stars and a shockwave on every beat (the full show)
   spectrum  a 2000s spectrum analyzer: chunky lit-up bars with falling peaks, across all the screens
   trails    a 2000s feedback visualizer (the Milkdrop kind): a ring of sound around the cover leaves trails that
             zoom and swirl outward with the bass
   glow      calm: the colours drift and breathe slowly behind the cover
+  grid      80s neon: a grid floor racing to a striped sun behind the cover, mountains made of the spectrum
+  scope     an oscilloscope: the music drawn as one glowing line through every screen, with echoes
+  kaleido   a kaleidoscope turning around the cover, its mirrors cut by the beat
 
 By default the stage follows your Vibe (each Vibe names one: vibes.py "stage"), and so do the colours; you can pick
-another stage, or the album cover's colours, in Vibe mode (V cycles the stages). Kept in ~/.config/deckos/music.conf.
+another stage, or the album cover's colours, in Vibe mode (V cycles the stages). Also kept: lyrics on or off, and the
+gap between the monitors on the desk (gap, in mm; world.py lays the screens out with it).
+Kept in ~/.config/deckos/music.conf.
 """
 import sys
 from pathlib import Path
 
-STYLES = ["aurora", "spectrum", "trails", "glow"]
-NAMES = {"aurora": "Aurora", "spectrum": "Spectrum", "trails": "Trails", "glow": "Glow"}
+STYLES = ["aurora", "spectrum", "trails", "glow", "grid", "scope", "kaleido"]
+NAMES = {"aurora": "Aurora", "spectrum": "Spectrum", "trails": "Trails", "glow": "Glow", "grid": "Grid",
+         "scope": "Scope", "kaleido": "Kaleido"}
 COLOURS = ["vibe", "cover"]
 CONF = Path.home() / ".config/deckos/music.conf"
 VIBE_FILE = Path.home() / ".config/deckos/vibe"
-DEFAULT = {"style": "auto", "colours": "vibe"}
+DEFAULT = {"style": "auto", "colours": "vibe", "lyrics": "on", "gap": "0"}
+GAP_MAX = 1000  # mm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "vibes"))
 import vibes  # noqa: E402
 
 
 def load(path=None):
-    """Your choices: style (auto: the Vibe's, or one of STYLES) and colours (vibe or cover)."""
+    """Your choices: style (auto: the Vibe's, or one of STYLES), colours (vibe or cover), lyrics (on or off) and gap
+    (the space between monitors, in whole mm)."""
     out = dict(DEFAULT)
     try:
         for line in Path(path or CONF).read_text().splitlines():
             k, _, v = line.partition("=")
             k, v = k.strip(), v.strip()
-            if (k == "style" and v in ["auto", *STYLES]) or (k == "colours" and v in COLOURS):
+            if ((k == "style" and v in ["auto", *STYLES]) or (k == "colours" and v in COLOURS)
+                    or (k == "lyrics" and v in ("on", "off")) or (k == "gap" and v.isdigit() and int(v) <= GAP_MAX)):
                 out[k] = v
     except OSError:
         pass
@@ -41,8 +50,9 @@ def load(path=None):
 def save(choices, path=None):
     path = Path(path or CONF)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("# Vibe mode's look (DecKoOS Music): style auto|" + "|".join(STYLES) + ", colours vibe|cover\n"
-                    + "".join(f"{k}={choices[k]}\n" for k in DEFAULT))
+    path.write_text("# Vibe mode's look (DecKoOS Music): style auto|" + "|".join(STYLES) + ", colours vibe|cover, "
+                    "lyrics on|off, gap MM\n"
+                    + "".join(f"{k}={choices.get(k, DEFAULT[k])}\n" for k in DEFAULT))
 
 
 def current_vibe(vibe_file=None, folder=None):

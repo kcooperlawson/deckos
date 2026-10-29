@@ -10,6 +10,7 @@ Item {
     required property real t
     required property real kick
     required property real reveal
+    required property size viewSize  // this screen's part of the world, in world units
     Bars { id: bars }
 
     Item {
@@ -21,7 +22,7 @@ Item {
             property var last: feedback
             property size world: Qt.size(engine.worldWidth, engine.worldHeight)
             property point origin: Qt.point(trails.originX, trails.originY)
-            property size view: Qt.size(trails.width, trails.height)
+            property size view: trails.viewSize
             property point cover: engine.cover
             property real t: trails.t
             property real bass: engine.bass
@@ -63,7 +64,7 @@ Item {
         property var picture: feedback
         property size world: Qt.size(engine.worldWidth, engine.worldHeight)
         property point origin: Qt.point(trails.originX, trails.originY)
-        property size view: Qt.size(trails.width, trails.height)
+        property size view: trails.viewSize
         property point cover: engine.cover
         property real reveal: trails.reveal
         property color base: engine.base

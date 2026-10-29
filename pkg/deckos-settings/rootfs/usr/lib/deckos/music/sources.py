@@ -4,6 +4,7 @@ played here with Qt Multimedia. The window shows whichever is playing; both repo
 """
 import random
 import re
+import time
 from dataclasses import dataclass, field
 
 from PySide6.QtCore import QObject, QProcess, QTimer, QUrl, Signal
@@ -67,6 +68,13 @@ class Source(QObject):
     def seek(self, seconds):
         pass
 
+    def position_now(self):
+        """Where the song is now, in seconds (for lyrics: finer than the half-second clock)."""
+        return float(self.now.position)
+
+    def resync(self):
+        pass
+
 
 class Spotify(Source):
     """The Spotify app, through playerctl: --follow reports each change (no polling); the position between changes
@@ -79,9 +87,13 @@ class Spotify(Source):
         self.demo = demo
         self.players = players
         self.proc = None
+        self.asked = None  # a `playerctl position` on its way
+        # where the song was when last heard (base, at monotonic time stamp): the position counts on from there
+        self.base, self.stamp = self.now.position, time.monotonic()
         self.clock = QTimer(self, interval=500, timeout=self.advance)
         if demo:
             self.now = demo
+            self.base = demo.position
             QTimer.singleShot(0, lambda: self.changed.emit(self.now))
         else:
             self.follow()
@@ -98,14 +110,36 @@ class Spotify(Source):
             now = parse_playerctl(line)
             if now:
                 self.now = now
+                self.base, self.stamp = now.position, time.monotonic()
                 self.changed.emit(now)
             elif not line.strip():  # an empty line: Spotify went away
                 self.now = Now("spotify")
                 self.changed.emit(self.now)
 
     def advance(self):
-        if self.now.playing:
-            self.now.position = min(self.now.length or 1e9, self.now.position + 0.5)
+        self.now.position = self.position_now()
+
+    def position_now(self):
+        if not self.now.playing:
+            return float(self.base)
+        return min(self.now.length or 1e9, self.base + time.monotonic() - self.stamp)
+
+    def resync(self):
+        """Asks the player where it really is (seeking in Spotify, or a slow clock, moves it): playerctl answers in
+        a moment, without holding anything up."""
+        if self.demo or (self.asked and self.asked.state() != QProcess.NotRunning):
+            return
+        self.asked = QProcess(self)
+        sent = time.monotonic()
+
+        def heard(*_):
+            try:
+                pos = float(bytes(self.asked.readAllStandardOutput()).decode().strip())
+            except ValueError:
+                return
+            self.base, self.stamp = pos, (sent + time.monotonic()) / 2  # halfway through the ask
+        self.asked.finished.connect(heard)
+        self.asked.start("playerctl", [f"--player={self.players}", "position"])
 
     def _ctl(self, *args):
         if not self.demo:
@@ -124,7 +158,8 @@ class Spotify(Source):
         self._ctl("previous")
 
     def seek(self, seconds):
-        self.now.position = seconds
+        self.now.position = self.base = seconds
+        self.stamp = time.monotonic()
         self._ctl("position", f"{seconds:.1f}")
 
 
@@ -167,6 +202,9 @@ class Local(Source):
                 self.go(self.index + 1)
             elif self.repeat and self.queue:
                 self.go(0)
+
+    def position_now(self):
+        return self.player.position() / 1000
 
     def moved(self, ms):
         self.now.position = ms / 1000

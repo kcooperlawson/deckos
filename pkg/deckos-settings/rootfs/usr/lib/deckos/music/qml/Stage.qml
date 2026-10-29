@@ -1,5 +1,6 @@
-// One monitor's view of the stage. The world (every monitor, laid out as the desktop has them) is drawn at
-// -origin, so whatever lives in it (waves, comets, the horizon, the title) runs on into the next screen. The time
+// One monitor's view of the stage. The world (every monitor, laid out as the desk has them: real sizes, the gap
+// between them; world.py) is drawn at -origin, scaled to this screen's pixels, so whatever lives in it (waves,
+// comets, the horizon, the title) runs on into the next screen, the same size, passing behind the gap. The time
 // comes from the shared clock, never from this window, so all of them move together.
 import QtQuick
 import QtQuick.Window
@@ -12,6 +13,9 @@ Window {
     readonly property real originX: info.x
     readonly property real originY: info.y
     readonly property bool home: info.index === engine.home
+    readonly property size view: Qt.size(info.width, info.height)  // this screen's part of the world, in world units
+    readonly property real unit: info.scale  // this screen's pixels per world unit
+    readonly property bool lyricsHere: info.index === engine.lyricsScreen
 
     // ---- the shared clock, and the way in and out worked out from it
     property real t: (Date.now() - engine.startMs) / 1000
@@ -29,8 +33,8 @@ Window {
     screen: engine.fake ? Qt.application.screens[0] : (Qt.application.screens[info.index] ?? Qt.application.screens[0])
     x: engine.fake ? info.x : screen.virtualX
     y: engine.fake ? info.y : screen.virtualY
-    width: info.width
-    height: info.height
+    width: info.pw
+    height: info.ph
     visibility: engine.fake ? Window.Windowed : Window.FullScreen
     visible: engine.mode !== "mini"
     flags: Qt.FramelessWindowHint
@@ -38,11 +42,35 @@ Window {
     title: "DecKoOS Music"
 
     // ---- the sky: one shader in world coordinates, the one for the look (looks.py): aurora (stage.frag), the
-    // 2000s spectrum analyzer, 2000s feedback trails, or a calm glow
+    // 2000s spectrum analyzer, 2000s feedback trails, a calm glow, 80s grid, oscilloscope or kaleidoscope
     Loader {
         anchors.fill: parent
-        sourceComponent: ({ aurora: auroraSky, spectrum: spectrumSky, trails: trailsSky, glow: glowSky })[engine.style]
-                         ?? glowSky
+        sourceComponent: ({ aurora: auroraSky, spectrum: spectrumSky, trails: trailsSky, glow: glowSky,
+                            grid: gridSky, scope: scopeSky, kaleido: kaleidoSky })[engine.style] ?? glowSky
+    }
+    Component {
+        id: gridSky
+        Sky {
+            fragmentShader: "grid.frag.qsb"
+            originX: win.originX; originY: win.originY; viewSize: win.view
+            stageT: win.t; stageKick: win.kick; stageReveal: win.reveal
+        }
+    }
+    Component {
+        id: scopeSky
+        Sky {
+            fragmentShader: "scope.frag.qsb"
+            originX: win.originX; originY: win.originY; viewSize: win.view
+            stageT: win.t; stageKick: win.kick; stageReveal: win.reveal
+        }
+    }
+    Component {
+        id: kaleidoSky
+        Sky {
+            fragmentShader: "kaleido.frag.qsb"
+            originX: win.originX; originY: win.originY; viewSize: win.view
+            stageT: win.t; stageKick: win.kick; stageReveal: win.reveal
+        }
     }
     Component {
         id: auroraSky
@@ -51,7 +79,7 @@ Window {
             fragmentShader: "stage.frag.qsb"
             property size world: Qt.size(engine.worldWidth, engine.worldHeight)
             property point origin: Qt.point(win.originX, win.originY)
-            property size view: Qt.size(win.width, win.height)
+            property size view: win.view
             property point cover: engine.cover
             property real t: win.t
             property real travel: engine.travel
@@ -71,11 +99,11 @@ Window {
     }
     Component {
         id: spectrumSky
-        Spectrum { originX: win.originX; originY: win.originY; kick: win.kick; stageT: win.t; stageReveal: win.reveal }
+        Spectrum { originX: win.originX; originY: win.originY; viewSize: win.view; kick: win.kick; stageT: win.t; stageReveal: win.reveal }
     }
     Component {
         id: trailsSky
-        Trails { originX: win.originX; originY: win.originY; t: win.t; kick: win.kick; reveal: win.reveal }
+        Trails { originX: win.originX; originY: win.originY; viewSize: win.view; t: win.t; kick: win.kick; reveal: win.reveal }
     }
     Component {
         id: glowSky
@@ -83,7 +111,7 @@ Window {
             fragmentShader: "glow.frag.qsb"
             property size world: Qt.size(engine.worldWidth, engine.worldHeight)
             property point origin: Qt.point(win.originX, win.originY)
-            property size view: Qt.size(win.width, win.height)
+            property size view: win.view
             property point cover: engine.cover
             property real t: win.t
             property real bass: engine.bass
@@ -98,8 +126,10 @@ Window {
     // ---- everything that lives in the world
     Item {
         id: worldItem
-        x: -win.originX
-        y: -win.originY
+        x: -win.originX * win.unit
+        y: -win.originY * win.unit
+        scale: win.unit
+        transformOrigin: Item.TopLeft
         width: engine.worldWidth
         height: engine.worldHeight
         opacity: win.reveal
@@ -149,6 +179,26 @@ Window {
             ring: engine.style === "aurora"
             quiet: picker.open
         }
+    }
+
+    // ---- the lyrics: a screen of their own beside the cover when there are two or more; on one, a band under it
+    LyricsView {
+        visible: win.lyricsHere && engine.lyricsState !== "off"
+        anchors.fill: parent
+        big: true
+        kick: win.kick
+        reveal: win.reveal
+    }
+    LyricsView {
+        visible: win.home && engine.lyricsScreen < 0 && engine.lyricsState !== "off"
+        width: parent.width
+        height: parent.height * 0.24
+        y: parent.height * 0.68
+        big: false
+        kick: win.kick
+        reveal: win.reveal
+        opacity: win.controlsShown ? 0.25 : win.reveal  // out of the controls' way while they're shown
+        Behavior on opacity { NumberAnimation { duration: 300 } }
     }
 
     // ---- the controls, on the cover's screen, when the mouse moves
@@ -224,6 +274,7 @@ Window {
             else if (event.key === Qt.Key_Left) engine.previous();
             else if (event.key === Qt.Key_L) drawer.open = !drawer.open;
             else if (event.key === Qt.Key_V) engine.cycleStyle();
+            else if (event.key === Qt.Key_Y) engine.setLyrics(!engine.lyricsOn);
             else return;
             event.accepted = true;
         }
