@@ -1490,6 +1490,46 @@ game_colours() {  # APPID on | "" off
   fi
 }
 
+# A soundbar or receiver on the graphics card's HDMI shows up as a screen (the card only sends sound to an output
+# that's on): mirror it onto the main screen, so the sound flows and nothing else sees a screen there. screens.py
+# says which outputs are audio only (HDMI, sound, no physical size).
+soundbar_mirror() {
+  local out main info src
+  command -v kscreen-doctor >/dev/null || return 0
+  info=$(kscreen-doctor -o 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
+  main=$(awk '/^Output:/ {name=$3} /priority 1$/ {print name; exit}' <<<"$info")
+  while read -r out; do
+    [[ -n $out && -n $main && $out != "$main" ]] || continue
+    src=$(awk -v o="$out" '/^Output:/ {cur=$3} cur==o && /replication source:/ {print $NF; exit}' <<<"$info")
+    [[ ${src#source:} == 0 || -z $src ]] || continue  # already mirroring something
+    kscreen-doctor "output.$out.enable" "output.$out.mirror.$main" >/dev/null 2>&1 || true
+  done < <(python3 "${DECKOS_SCREENS_DIR:-/usr/lib/deckos/screens}/screens.py" audio-only 2>/dev/null || true)
+}
+
+soundbar_follow() {  # deckos-soundbar.service: now, and after every plug or change (once it settles)
+  soundbar_mirror
+  local line
+  while read -r line; do
+    [[ $line == *change* || $line == *add* ]] || continue
+    while read -r -t 4 _; do :; done
+    soundbar_mirror
+  done < <(udevadm monitor --kernel --subsystem-match=drm 2>/dev/null)
+}
+
+screens_cmd() {
+  [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+  case "${1:-} ${2:-}" in
+    "soundbar on") systemctl --user enable --now deckos-soundbar.service >/dev/null 2>&1 || true; soundbar_mirror
+      ok "a soundbar on HDMI mirrors the main screen" ;;
+    "soundbar off") systemctl --user disable --now deckos-soundbar.service >/dev/null 2>&1 || true
+      ok "soundbars are left as screens (Display settings can mirror or turn them off)" ;;
+    "soundbar follow") soundbar_follow ;;
+    "soundbar now"|"soundbar ") soundbar_mirror ;;
+    "audio-only "*) python3 "${DECKOS_SCREENS_DIR:-/usr/lib/deckos/screens}/screens.py" audio-only ;;
+    *) err "usage: deckos screens soundbar on|off|now | audio-only"; exit 2 ;;
+  esac
+}
+
 game_time() {  # SECONDS as "1 h 12 min", "25 min" or "under a minute"
   local s=$(( $1 > 0 ? $1 : 0 )) h m
   h=$(( s / 3600 )) m=$(( s % 3600 / 60 ))
@@ -2441,6 +2481,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
   deckos disks [list|verify|startup add|remove UUID|repair UUID|health|format|create|resize|delete]  disks, partitions, start-up
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
+  deckos screens soundbar on|off|now                   a soundbar on HDMI mirrors the main screen, not a screen of its own
   deckos vibe react on|off                            the dock and DecKoOS apps pulse with the music playing
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
@@ -2504,6 +2545,7 @@ case ${1:-} in
   disks) shift; exec python3 "${DECKOS_DISKS_DIR:-/usr/lib/deckos/disks}/disks.py" "$@" ;;
   vibe) shift; vibe_cmd "$@" ;;
   taskbar) shift; taskbar_cmd "$@" ;;
+  screens) shift; screens_cmd "$@" ;;
   kids) shift; kids_cmd "$@" ;;
   download) shift; download_cmd "$@" ;;
   report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps

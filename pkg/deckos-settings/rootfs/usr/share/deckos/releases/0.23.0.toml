@@ -4,7 +4,9 @@ version = "0.23.0"
 name = "In time"
 tagline = "Your desktop moves with the music: the dock and DecKoOS's apps pulse on the beat."
 
-fixes = []
+fixes = [
+    "A soundbar or receiver on the graphics card's HDMI no longer becomes an invisible extra screen: it mirrors the main screen, and the sound keeps flowing.",
+]
 
 [[highlights]]
 title = "The desktop reacts to music"

@@ -1,0 +1,12 @@
+[Unit]
+Description=DecKoOS: a soundbar on HDMI mirrors the main screen instead of being a screen of its own
+After=plasma-plasmashell.service
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/deckos screens soundbar follow
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

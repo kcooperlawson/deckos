@@ -394,6 +394,12 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   taskbar its two colours while it runs (`vibes/gamecolours.py`, `game_colours`; a taskbar on custom colours keeps
   them; off restores the Vibe's and the taskbar's mode from `$XDG_RUNTIME_DIR/deckos-game-colours`). The game-stop
   timeline entry says what was played and for how long (`game_time`). Tests: `tests/test_game_colours.py`.
+- **Soundbars on HDMI** (`usr/lib/deckos/screens/screens.py`, no Qt; `deckos screens soundbar on|off|now`, user unit
+  `deckos-soundbar.service`, global from the .install): a graphics card only sends HDMI sound to an output that's on,
+  so a soundbar becomes an invisible screen (and Plasma once turned the real main screen off for it). An HDMI output
+  whose EDID gives 0 x 0 cm and whose name is a present ELD sink is mirrored onto the main screen (kscreen priority
+  1) after every drm plug/change; mirrored outputs aren't QScreens, so Vibe mode and the rest never see it.
+  Tests: `tests/test_screens.py`.
 - **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
   a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.

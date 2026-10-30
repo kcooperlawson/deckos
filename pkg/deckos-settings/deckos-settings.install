@@ -9,6 +9,8 @@ _setup() {
   systemctl --global enable deckos-context.service >/dev/null 2>&1 || true
   # Game Doctor's watcher: offers help when a game closes right after starting
   systemctl --global enable deckos-gamedoctor.service >/dev/null 2>&1 || true
+  # A soundbar on HDMI mirrors the main screen instead of being an extra screen (deckos screens soundbar off)
+  systemctl --global enable deckos-soundbar.service >/dev/null 2>&1 || true
   # DecKoOS Care: System Doctor's checks after a crash or an update, said once in a while
   systemctl --global enable deckos-care.service >/dev/null 2>&1 || true
   # Kid mode: a child's desktop is written before Plasma starts (ConditionGroup: children only)
