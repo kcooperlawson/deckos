@@ -111,6 +111,8 @@ class Meter(QWidget):
         w = (r.width() - gap * (n - 1)) / n
         lit = round(self.value * n)
         a, b = QColor(S.P.accent), QColor(S.P.grad_b)
+        S.react_watch(self)
+        glow = 100 + round(S.react_pulse() * 45)  # lit segments flare on the music's beat
         for i in range(n):
             x = round(i * (w + gap))
             if i < lit:
@@ -118,6 +120,7 @@ class Meter(QWidget):
                 c = QColor(self.color) if self.color else QColor(
                     round(a.red() + (b.red() - a.red()) * t), round(a.green() + (b.green() - a.green()) * t),
                     round(a.blue() + (b.blue() - a.blue()) * t))
+                c = c.lighter(glow)
             else:
                 c = QColor(S.BORDER)
             p.fillRect(x, 0, max(1, round(w)), r.height(), c)

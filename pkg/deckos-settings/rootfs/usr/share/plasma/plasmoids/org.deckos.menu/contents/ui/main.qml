@@ -9,6 +9,7 @@ import org.deckos.vibes as Vibes
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.private.kicker as Kicker
+import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
 
@@ -32,6 +33,14 @@ PlasmoidItem {
     readonly property string hud: "Chakra Petch"  // labels, numbers, buttons
     readonly property color ink: "#0B0D16"        // text and icons on the gradient
     Vibes.Look { id: menuLook; colorA: deckMenu.accent; colorB: deckMenu.accentB }
+    // The system reacting to music (deckos vibe react on): the button's island and the logo's eyes move on the beat,
+    // only while a player plays (nothing listens otherwise)
+    Mpris.Mpris2Model { id: players }
+    Vibes.Levels {
+        id: beat
+        active: Plasmoid.configuration.react && !!players.currentPlayer
+                && players.currentPlayer.playbackStatus === Mpris.PlaybackStatus.Playing
+    }
     readonly property var look: menuLook
     // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
@@ -235,13 +244,14 @@ PlasmoidItem {
             look: deckMenu.look
             cut: 9
             fill: deckMenu.expanded ? deckMenu.hot : button.containsMouse ? deckMenu.raised : deckMenu.look.glass
+            pulse: beat.pulse
         }
         Vibes.Eyes {
             visible: button.own
             anchors.centerIn: parent
             implicitWidth: Math.round(button.height * 0.66)
             look: deckMenu.look
-            scale: button.pressed ? 0.92 : 1
+            scale: (button.pressed ? 0.92 : 1) + beat.pulse * 0.08  // a little hop on the music's beat
             Behavior on scale { NumberAnimation { duration: 90 } }
         }
         Kirigami.Icon {

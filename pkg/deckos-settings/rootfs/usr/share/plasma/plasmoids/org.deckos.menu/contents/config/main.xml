@@ -20,5 +20,9 @@
       <label>Suggest apps from the DecKoOS Store when a search matches apps you don't have</label>
       <default>true</default>
     </entry>
+    <entry name="react" type="Bool">
+      <!-- the island's edge pulses with the music playing (deckos vibe react on|off) -->
+      <default>false</default>
+    </entry>
   </group>
 </kcfg>

@@ -138,9 +138,11 @@ class ScoreRing(QWidget):
             grad = QLinearGradient(r.topLeft(), r.bottomRight())
             grad.setColorAt(0, QColor(S.P.accent))
             grad.setColorAt(1, QColor(S.P.grad_b))
+            S.react_watch(self)
+            beat = S.react_pulse()  # the glow swells on the music's beat (deckos vibe react on)
             glow = QColor(S.P.accent)
-            glow.setAlpha(45)
-            p.setPen(QPen(glow, 26, Qt.SolidLine, Qt.RoundCap))
+            glow.setAlpha(45 + round(beat * 110))
+            p.setPen(QPen(glow, 26 + beat * 10, Qt.SolidLine, Qt.RoundCap))
             p.drawArc(r, start, int(span * frac))
             p.setPen(QPen(grad, 14, Qt.SolidLine, Qt.RoundCap))
             p.drawArc(r, start, int(span * frac))
@@ -177,9 +179,11 @@ class Bar(QWidget):
         p.setBrush(QColor(S.BORDER))
         p.drawRoundedRect(QRectF(0, 2, w, h - 4), 3, 3)
         if self.value:
+            S.react_watch(self)
+            glow = 100 + round(S.react_pulse() * 45)  # flares on the music's beat
             grad = QLinearGradient(0, 0, w, 0)
-            grad.setColorAt(0, QColor(S.P.accent))
-            grad.setColorAt(1, QColor(S.P.grad_b))
+            grad.setColorAt(0, QColor(S.P.accent).lighter(glow))
+            grad.setColorAt(1, QColor(S.P.grad_b).lighter(glow))
             p.setBrush(grad)
             p.drawRoundedRect(QRectF(0, 2, max(6, w * min(1, self.value / full)), h - 4), 3, 3)
         x = w * SC.BASE / full

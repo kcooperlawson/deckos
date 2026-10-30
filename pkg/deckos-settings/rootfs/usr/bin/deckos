@@ -1795,6 +1795,20 @@ vibe_visualizer_service() {  # on|off: the audio side only runs while a visualiz
   else systemctl --user disable --now deckos-visualizer.service >/dev/null 2>&1 || true; fi
 }
 
+# The system reacting to music: the dock's islands pulse on the beat and DecKoOS's apps' lit edges and meters breathe
+# with it. Each part listens to deckos-visualizer only while something plays; games stop it (the service's own rule).
+vibe_react() {  # on|off
+  qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+    panels().forEach(function (p) { p.widgets().forEach(function (w) {
+      if (['org.deckos.taskbar', 'org.deckos.menu', 'org.deckos.quicksettings'].indexOf(w.type) === -1) return;
+      w.currentConfigGroup = ['General']; w.writeConfig('react', '$1' === 'on'); w.reloadConfig(); }); });" \
+    >/dev/null 2>&1 || true
+  local f=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/style.conf  # the apps read it (hub_style)
+  mkdir -p "${f%/*}"
+  { grep -sv '^react=' "$f" || true; echo "react=$1"; } > "$f.new" && mv "$f.new" "$f"
+  [[ $1 == off ]] || systemctl --user enable --now deckos-visualizer.service >/dev/null 2>&1 || true
+}
+
 vibe_style_corners() {  # DecKoOS apps' corners (hub_style's style.conf), keeping the other style keys
   local f=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/style.conf
   mkdir -p "${f%/*}"
@@ -1981,6 +1995,10 @@ vibe_cmd() {
         off) pkexec /usr/bin/deckos boot-look off ;;
         *) err "usage: deckos vibe boot on|off"; exit 2 ;;
       esac ;;
+    react)  # deckos vibe react on|off
+      [[ ${2:-} == on || ${2:-} == off ]] || { err "usage: deckos vibe react on|off"; exit 2; }
+      vibe_react "$2"
+      ok "DecKoOS reacting to music: $2 (apps pick it up when they next open)" ;;
     widget)  # deckos vibe widget ID on|off
       [[ ${3:-} == on || ${3:-} == off ]] || { err "usage: deckos vibe widget ID on|off"; exit 2; }
       vibe_widget_toggle "${2:-}" "$3"
@@ -2379,6 +2397,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
   deckos disks [list|verify|startup add|remove UUID|repair UUID|health|format|create|resize|delete]  disks, partitions, start-up
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
+  deckos vibe react on|off                            the dock and DecKoOS apps pulse with the music playing
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
   deckos download URL                                  a big file that won't give up: resumes and retries until done

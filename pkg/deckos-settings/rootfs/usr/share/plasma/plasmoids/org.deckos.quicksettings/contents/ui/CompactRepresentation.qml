@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.mpris as Mpris
+import org.kde.plasma.plasmoid
 import org.deckos.vibes as Vibes
 
 // The panel button: the sliders icon on a notched plate (when pointed at or open), a badge when updates are
@@ -61,6 +62,7 @@ MouseArea {
         look: Deck.look
         cut: 12
         fill: Deck.look.glass
+        pulse: Plasmoid.configuration.react ? levels.pulse : 0  // the music's beat (deckos vibe react on)
     }
     Vibes.Notch {  // pointed at or open: this button's own plate inside the island
         visible: compact.containsMouse || compact.expanded

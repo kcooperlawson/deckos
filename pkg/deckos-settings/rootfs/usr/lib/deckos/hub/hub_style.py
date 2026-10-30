@@ -9,9 +9,10 @@ first time an app asks for the stylesheet (`qss()`), so every DecKoOS app gets t
 """
 import os
 import re
+import time
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QEvent, QObject, QPointF, QRectF, Qt
+from PySide6.QtCore import QByteArray, QEvent, QObject, QPointF, QProcess, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import QApplication, QProxyStyle, QStyle
 from PySide6.QtSvg import QSvgRenderer
@@ -64,7 +65,7 @@ P = Palette(plasma_accent())
 # Appearance > Style: logo (gradient, flat), corners (sharp, default, round), text (small, normal, large).
 # Every DecKoOS app reads it through qss() and brand_svg(); `deckos`-free, since it's only the user's own file.
 STYLE_CONF = Path.home() / ".config/deckos/style.conf"
-STYLE_DEFAULTS = {"logo": "gradient", "corners": "default", "text": "normal"}
+STYLE_DEFAULTS = {"logo": "gradient", "corners": "default", "text": "normal", "react": "off"}
 CORNERS = {"sharp": 0.35, "default": 1.0, "round": 1.6}
 TEXT_SCALE = {"small": 0.9, "normal": 1.0, "large": 1.15}
 
@@ -192,14 +193,14 @@ def paint_plate(p, rect, fill, cut=12, lit=False, edge=None, gradient_fill=False
     else:
         p.fillPath(path, QColor(fill))
     if lit:
-        k = 1.0 if lit is True else float(lit)
+        k = min(1.0, (1.0 if lit is True else float(lit)) * (1 + react_pulse() * 0.8))  # brighter on the beat
         a, b = QColor(P.accent), QColor(P.grad_b)
         a.setAlphaF(k)
         b.setAlphaF(k)
         g = QLinearGradient(r.topLeft(), r.bottomRight())
         g.setColorAt(0, a)
-        g.setColorAt(0.35, QColor(255, 255, 255, 30))
-        g.setColorAt(0.65, QColor(255, 255, 255, 22))
+        g.setColorAt(0.35, QColor(255, 255, 255, 30 + round(react_pulse() * 70)))
+        g.setColorAt(0.65, QColor(255, 255, 255, 22 + round(react_pulse() * 70)))
         g.setColorAt(1, b)
         p.setPen(QPen(g, 1))
     else:
@@ -224,6 +225,8 @@ class _Plates(QObject):
             picked = bool(obj.property("picked")) or obj.hasFocus()
             hover = kind == "tile" and obj.underMouse() and not picked
             fill = RAISED if kind == "row" or hover else "#22262F" if kind == "toast" else SURFACE
+            if _react and (picked or kind in ("card", "toast")):
+                _react[0].watch.add(obj)  # lit plates brighten on the beat
             p = QPainter(obj)
             if kind == "hero":
                 paint_plate(p, obj.rect(), fill, cut, gradient_fill=True)
@@ -286,6 +289,73 @@ class DecoStyle(QProxyStyle):
 
 
 _installed = []
+_react = []
+
+
+class _React(QObject):
+    """DecKoOS reacting to music (style.conf react=on, `deckos vibe react on`): the beat of what's playing, from
+    deckos-visualizer's local WebSocket (one byte per bar), as `pulse` 0..1, up on a beat and fading in about half a
+    second. It listens only while a player plays (playerctl --follow: events, not polling), and repaints only the lit
+    plates and meters that asked (`watch`), only while the pulse moves. The same beat detection as Levels.qml."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        import weakref
+        self.watch = weakref.WeakSet()
+        self.pulse, self._avg, self._last, self._playing = 0.0, 0.0, 0.0, {}
+        self.socket = None
+        self.timer = QTimer(self, interval=33, timeout=self._tick)
+        self.players = QProcess(self)
+        self.players.readyReadStandardOutput.connect(self._status)
+        self.players.start("playerctl", ["-a", "-F", "status", "-f", "{{playerName}} {{status}}"])
+
+    def _status(self):
+        for line in bytes(self.players.readAllStandardOutput()).decode(errors="replace").splitlines():
+            name, _, status = line.strip().rpartition(" ")
+            self._playing[name] = status == "Playing"
+        on = any(self._playing.values())
+        if on and self.socket is None:
+            from PySide6.QtCore import QUrl
+            from PySide6.QtWebSockets import QWebSocket
+            self.socket = QWebSocket()
+            self.socket.binaryMessageReceived.connect(self._frame)
+            self.socket.open(QUrl("ws://127.0.0.1:47823"))
+        elif not on and self.socket is not None:
+            self.socket.close()
+            self.socket = None
+
+    def _frame(self, data):
+        bars = bytes(data)
+        if not bars:
+            return
+        low = bars[:max(1, len(bars) * 15 // 100)]
+        b = sum(low) / len(low) / 255
+        now = time.monotonic()
+        if b > self._avg * 1.35 + 0.06 and now - self._last > 0.22:
+            self._last = now
+            self.pulse = min(1.0, 0.45 + (b - self._avg) * 2.5)
+            self.timer.start()
+        self._avg += (b - self._avg) * 0.08
+
+    def _tick(self):
+        self.pulse *= 0.86
+        if self.pulse < 0.02:
+            self.pulse = 0.0
+            self.timer.stop()
+        for w in list(self.watch):
+            if w.isVisible():
+                w.update()
+
+
+def react_pulse():
+    """The music's beat, 0..1 (0 when DecKoOS isn't reacting to music, or nothing plays)."""
+    return _react[0].pulse if _react else 0.0
+
+
+def react_watch(widget):
+    """Repaint `widget` as the beat moves (a meter, a lit plate). Nothing happens when reacting is off."""
+    if _react:
+        _react[0].watch.add(widget)
 
 
 def _install():
@@ -294,6 +364,8 @@ def _install():
     if app is None or _installed:
         return
     _installed.append(_Plates(app))
+    if STYLE.get("react") == "on":
+        _react.append(_React(app))
     app.installEventFilter(_installed[0])
     if not isinstance(app.style(), DecoStyle):
         app.setStyle(DecoStyle())

@@ -378,6 +378,14 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   file contents are never markup) and adds browser partial downloads from Downloads. Plasma's job list (a download's
   percent) isn't reachable from a desktop widget: the Notifications model stays empty there. A link's tile is the
   link (trash moves the link, not its target). Tests: `tests/test_shelf.py`.
+- **Reacting to music** (`deckos vibe react on|off`, Hub > Appearance > React to music): the system pulses on the beat.
+  One source: deckos-visualizer's local WebSocket (it listens only while a client is connected and not in a game).
+  QML: `Vibes.Levels` gives `pulse` (beat detection; 0..1, fading) and `Notch.pulse` brightens and thickens the lit
+  edge; the taskbar (while a sink input plays), the menu button (MPRIS playing) and Quick Settings' island bind to it
+  through their `react` setting. Apps: `hub_style`'s `_React` (style.conf `react=on`) connects only while playerctl
+  reports a player Playing, and repaints only what asked (`react_watch`: lit plates, `Meter`, Bench's ring and bars),
+  only while the pulse moves; `react_pulse()` is the value. Testing the taskbar from `~/.local/share/plasma` loses its
+  icons (they're found relative to the installed package): test it installed, or via `QML_IMPORT_PATH` for the module.
 - **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
   a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.

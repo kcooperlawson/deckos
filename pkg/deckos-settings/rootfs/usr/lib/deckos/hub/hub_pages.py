@@ -1584,6 +1584,22 @@ class AppearancePage(Page):
         name = label("Music visualizer")
         name.setFixedWidth(140)
         vibes.body.addWidget(row(name, *buttons))
+        # The system itself reacting to music: the dock's islands and DecKoOS apps' lit edges and meters
+        react = []
+        group = QButtonGroup(self)
+        for value, text in (("on", "On"), ("off", "Off")):
+            b = QPushButton(text)
+            b.setObjectName("seg")
+            b.setCheckable(True)
+            b.setChecked(value == S.STYLE.get("react", "off"))
+            b.clicked.connect(lambda _c, v=value: self.apply(["deckos", "vibe", "react", v],
+                                                             "Reacting to music: " + v))
+            group.addButton(b)
+            react.append(b)
+        name = label("React to music")
+        name.setFixedWidth(140)
+        name.setToolTip("The taskbar, the menu button and DecKoOS apps pulse with what's playing")
+        vibes.body.addWidget(row(name, *react))
         # Desktop widgets in the Vibe's look: on and off one by one (deckos vibe widget ID on|off)
         shown = sysinfo.desktop_widgets()
         toggles = []

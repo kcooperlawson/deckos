@@ -89,6 +89,17 @@ PlasmoidItem {
         onObjectAdded: deckTasks.audioEpoch++
         onObjectRemoved: deckTasks.audioEpoch++
     }
+    // The system reacting to music (deckos vibe react on): the apps island pulses on the beat, only while something
+    // plays sound (nothing listens otherwise)
+    readonly property bool soundPlaying: {
+        deckTasks.audioEpoch;
+        for (let i = 0; i < playing.count; i++)
+            if (playing.objectAt(i) && !playing.objectAt(i).corked)
+                return true;
+        return false;
+    }
+    Vibes.Levels { id: beat; active: Plasmoid.configuration.react && deckTasks.soundPlaying }
+
     function plain(s) {
         return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     }
@@ -360,6 +371,7 @@ PlasmoidItem {
         look: deckTasks.look
         cut: 12
         fill: deckTasks.look.glass
+        pulse: beat.pulse
     }
     Grid {
         id: strip

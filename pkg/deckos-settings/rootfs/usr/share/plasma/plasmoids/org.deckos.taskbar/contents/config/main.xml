@@ -42,5 +42,9 @@
       <label>Only show windows on the screen this taskbar is on (off: one taskbar shows every screen's windows)</label>
       <default>false</default>
     </entry>
+    <entry name="react" type="Bool">
+      <!-- the island's edge pulses with the music playing (deckos vibe react on|off) -->
+      <default>false</default>
+    </entry>
   </group>
 </kcfg>

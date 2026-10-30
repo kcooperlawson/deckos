@@ -1,0 +1,24 @@
+# DecKoOS release notes: What's New reads these (deckos-whatsnew), once per feature release.
+
+version = "0.23.0"
+name = "In time"
+tagline = "Your desktop moves with the music: the dock and DecKoOS's apps pulse on the beat."
+
+fixes = []
+
+[[highlights]]
+title = "The desktop reacts to music"
+text = """Turn on Appearance › React to music in DecKoOS Hub and the system itself becomes part of the Vibe: the \
+taskbar's island flares on the beat, the menu button's eyes hop, Quick Settings' edge pulses, and in DecKoOS's apps \
+the lit card edges, LED meters and Bench's score ring glow with what's playing. It listens only while something \
+plays, never during games, and costs next to nothing otherwise."""
+icon = "music"
+try = "Turn it on"
+run = ["deckos", "vibe", "react", "on"]
+
+[[highlights]]
+title = "Download a link"
+text = """Copy a link and click + Download a link on the Desktop shelf (or run deckos download LINK): big files keep \
+going through dropped connections, resuming where they stopped and retrying until they're done, and show on the \
+shelf while they arrive."""
+icon = "download"

@@ -270,3 +270,19 @@ keywords = "spotify theme spicetify music"
 icon = "music"
 run = ["deckos", "spotify", "theme"]
 how = "terminal"
+
+[[action]]
+id = "react-on"
+title = "Make the desktop react to music"
+summary = "The taskbar, menu button and DecKoOS apps pulse with what's playing"
+keywords = "music react pulse beat vibe dance rhythm sound reactive"
+icon = "music"
+run = ["deckos", "vibe", "react", "on"]
+
+[[action]]
+id = "react-off"
+title = "Stop the desktop reacting to music"
+summary = "The taskbar, menu button and DecKoOS apps stay still"
+keywords = "music react pulse beat vibe still calm stop"
+icon = "music"
+run = ["deckos", "vibe", "react", "off"]

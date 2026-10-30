@@ -10,6 +10,7 @@ Item {
     property color fill: look ? look.glass : Qt.rgba(0.05, 0.06, 0.09, 0.84)
     property bool lit: true  // the gradient edge; off, a plain faint line
     property real edge: 1     // its width
+    property real pulse: 0    // 0..1, the music's beat (Levels.pulse): the lit edge brightens and thickens with it
     property bool gradientFill: false  // the inside in the Vibe's colours (an active chip, a primary button)
     property LinearGradient insideGradient: LinearGradient {
         x1: 0; y1: 0; x2: notch.width; y2: notch.height
@@ -30,12 +31,12 @@ Item {
             fillRule: ShapePath.OddEvenFill
             fillGradient: LinearGradient {
                 x1: 0; y1: 0; x2: notch.width; y2: notch.height
-                GradientStop { position: 0; color: notch.lit && notch.look ? notch.look.colorA : Qt.rgba(1, 1, 1, 0.14) }
-                GradientStop { position: 0.32; color: Qt.rgba(1, 1, 1, 0.13) }
-                GradientStop { position: 0.68; color: Qt.rgba(1, 1, 1, 0.09) }
-                GradientStop { position: 1; color: notch.lit && notch.look ? notch.look.colorB : Qt.rgba(1, 1, 1, 0.14) }
+                GradientStop { position: 0; color: notch.lit && notch.look ? Qt.lighter(notch.look.colorA, 1 + notch.pulse * 0.5) : Qt.rgba(1, 1, 1, 0.14) }
+                GradientStop { position: 0.32; color: Qt.rgba(1, 1, 1, 0.13 + notch.pulse * 0.3) }
+                GradientStop { position: 0.68; color: Qt.rgba(1, 1, 1, 0.09 + notch.pulse * 0.3) }
+                GradientStop { position: 1; color: notch.lit && notch.look ? Qt.lighter(notch.look.colorB, 1 + notch.pulse * 0.5) : Qt.rgba(1, 1, 1, 0.14) }
             }
-            PathMultiline { paths: [notch.outline(0), notch.outline(notch.edge)] }
+            PathMultiline { paths: [notch.outline(0), notch.outline(notch.edge + notch.pulse * 1.2)] }
         }
         ShapePath {
             strokeColor: "transparent"
