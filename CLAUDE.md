@@ -363,11 +363,21 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   a Vibe never overrides custom). `deckos layout set` saves pins to `~/.config/deckos/pins` before replacing panels.
   A tile pulses while its app plays sound: `org.kde.plasma.private.volume`'s SinkInputModel (not corked), matched by pid,
   else by name/binary (Flatpak Spotify plays from pid 4 in its sandbox; browsers from helper processes).
-- **Desktop widgets** (`plasmoids/org.deckos.{bigclock,nowplaying,weather,focus,note}`): share `org.deckos.vibes` (a QML
+- **Desktop widgets** (`plasmoids/org.deckos.{bigclock,nowplaying,weather,focus,note,shelf}`): share `org.deckos.vibes` (a QML
   module in `usr/lib/qt6/qml`: `Look`, `Plate`, `VibeText`); `deckos vibe apply` writes their style/colours, `deckos vibe
   widget ID on|off` places them, `deckos vibe weather TOWN` geocodes through Open-Meteo. `assets/preview_widgets.py
   --check` loads every one for real on stand-ins (it caught an infinite timer loop and names that clash with Item's own:
   `focus`, `left`, `running`). The real lint is `/usr/lib/qt6/bin/qmllint` (not on PATH).
+- **Desktop shelf** (`plasmoids/org.deckos.shelf`, helper `usr/lib/deckos/shelf/shelf.py`, no Qt): the Desktop folder
+  as live tiles in place of Plasma's icon grid. The grid is hidden by the folder view's filter (`filterMode` 1, a
+  pattern nothing matches), not by swapping the containment: the desktop stays the Desktop folder, so drops on the
+  wallpaper and Create New still land there, and no restart is needed. `deckos vibe widget org.deckos.shelf on|off`
+  adds it and hides the grid, or removes it and brings the grid back (`desktop_icons`); new layouts add it, and the
+  `deckos_shelf.js` Plasma update does once for existing users (not Kid mode). The helper reads Steam's art and
+  playtime (gamedoctor/steamfiles.py), peeks into folders (capped), shows text files' first lines (plain text in QML:
+  file contents are never markup) and adds browser partial downloads from Downloads. Plasma's job list (a download's
+  percent) isn't reachable from a desktop widget: the Notifications model stays empty there. A link's tile is the
+  link (trash moves the link, not its target). Tests: `tests/test_shelf.py`.
 - **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
   a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.

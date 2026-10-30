@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "kcooperlawson"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "Your Desktop folder as live tiles: games with their art, folders, pictures, notes and downloads",
+        "EnabledByDefault": true,
+        "Icon": "deckos",
+        "Id": "org.deckos.shelf",
+        "License": "MIT",
+        "Name": "DecKoOS Shelf",
+        "Version": "1.0",
+        "Website": "https://github.com/kcooperlawson/deckos"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

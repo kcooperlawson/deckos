@@ -1,5 +1,5 @@
-"""Lines DecKoOS's desktop widgets up along the right edge of the screen (the left is where Plasma puts desktop
-icons), or the left if you'd rather. `deckos vibe widgets arrange` runs it.
+"""Lines DecKoOS's desktop widgets up along the right edge of the screen (the left is the Desktop shelf's, or where
+Plasma puts desktop icons), or the left if you'd rather: then they start past the shelf. The shelf stays put. `deckos vibe widgets arrange` runs it.
 
 Plasma 6 keeps a desktop's widget positions in its ItemGeometries settings ("Applet-ID:x,y,w,h,rotation;" per screen
 size) and ignores positions set from a script while it runs, so this edits plasma-org.kde.plasma.desktop-appletsrc
@@ -47,9 +47,13 @@ def parse(value):
 
 def lay_out(items, kinds, width, height, side="right"):
     """New positions for DecKoOS's widgets (stacked down one edge, column after column toward the middle); other
-    applets keep theirs."""
+    applets keep theirs. A Desktop shelf on that side is kept clear of."""
     ours = sorted((i for i in items if kinds.get(i[0]) in ORDER), key=lambda i: ORDER.index(kinds[i[0]]))
-    placed, edge, y, colw = {}, MARGIN, MARGIN, 0  # edge: distance of this column from the screen's side
+    edge = MARGIN  # edge: distance of this column from the screen's side
+    for aid, (x, _y, w, _h, _r) in items:
+        if kinds.get(aid) == "org.deckos.shelf" and (x + w / 2 < width / 2) == (side == "left"):
+            edge = max(edge, (x + w if side == "left" else width - x) + GAP)
+    placed, y, colw = {}, MARGIN, 0
     for aid, (_x, _y, w, h, r) in ours:
         if y + h > height - BOTTOM and y > MARGIN:
             edge, y, colw = edge + colw + GAP, MARGIN, 0

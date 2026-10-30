@@ -113,6 +113,18 @@ class ArrangeTests(unittest.TestCase):
         self.assertEqual([geo[k][:2] for k in "012"], [[40, 40], [40, 464], [464, 40]])
 
 
+    def test_widgets_on_the_shelfs_side_start_past_it(self):
+        sys.path.insert(0, str(RFS / "usr/lib/deckos/vibes"))
+        import arrange
+        items = [("9", [40, 40, 420, 760, 0]), ("1", [0, 0, 400, 400, 0])]
+        kinds = {"9": "org.deckos.shelf", "1": "org.deckos.note"}
+        left = dict(arrange.lay_out(items, kinds, 1920, 1080, "left"))
+        self.assertEqual(left["9"][:2], [40, 40])  # the shelf stays put
+        self.assertEqual(left["1"][0], 40 + 420 + 24)
+        right = dict(arrange.lay_out(items, kinds, 1920, 1080))
+        self.assertEqual(right["1"][0], 1920 - 40 - 400)
+
+
 class MomentsTests(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/vibes"))

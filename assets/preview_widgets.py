@@ -31,6 +31,7 @@ WIDGET = {
     "org.deckos.calendar": ({"mondayFirst": True}, (300, 280)),
     "org.deckos.countdown": ({"title": "Holiday", "date": "2026-12-24"}, (260, 170)),
     "org.deckos.photos": ({"folder": str(WALL), "minutes": 5}, (360, 240)),
+    "org.deckos.shelf": ({}, (420, 700)),
 }
 errors = []
 
@@ -67,6 +68,22 @@ class Player(QObject):
         pass
 
 
+def demo_shelf():
+    """The Desktop shelf's helper run on a made-up Desktop: notes, a folder of pictures, a picture, a download."""
+    sys.path.insert(0, str(RFS / "usr/lib/deckos/shelf"))
+    import json
+    import shelf
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="deckos-shelf-preview-"))
+    (d / "Screenshots").mkdir()
+    for i, name in enumerate(("neon", "midnight", "lofi")):
+        (d / "Screenshots" / f"{i}.jpg").write_bytes((WALL / f"{name}.jpg").read_bytes())
+    (d / "poster-draft.jpg").write_bytes((WALL / "cozy.jpg").read_bytes())
+    (d / "plans.txt").write_text("- set up the lyrics screen\n- try the Grid look\n- back up Steam saves\n")
+    (d / "cachyos-desktop.iso.part").write_bytes(b"x" * 4096)
+    return json.dumps({"folder": str(d), "url": d.as_uri(), "items": shelf.items(d)})
+
+
 def main():
     # Software only without a screen: it can't draw Shapes or effects, which the DecKo look is made of
     if os.environ.get("QT_QPA_PLATFORM") == "offscreen":
@@ -79,6 +96,7 @@ def main():
     art = QUrl.fromLocalFile(str(WALL / "cozy.jpg")).toString()  # any picture will do as album art
     views = []
     player = Player(art)
+    shelf_json = demo_shelf()
     for style in styles:
         v = vibes.VIBES.get(style, {"colorA": "#4C8DFF", "colorB": "#7A5CFF"})
         for wid, (extra, size) in WIDGET.items():
@@ -90,6 +108,7 @@ def main():
             view.rootContext().setContextProperty("previewConfig", {"style": style, "colorA": v["colorA"],
                                                                      "colorB": v["colorB"], **extra})
             view.rootContext().setContextProperty("previewPlayer", player)
+            view.rootContext().setContextProperty("previewShelf", shelf_json)
             view.setSource(QUrl.fromLocalFile(str(WIDGETS / wid / "contents/ui/main.qml")))
             if view.status() == QQuickView.Error:
                 errors.extend(f"{wid}: {e.toString()}" for e in view.errors())
@@ -125,7 +144,8 @@ def compose(shots):
             p.fillRect(canvas.rect(), QColor(0, 0, 0, 60))
         spots = {"org.deckos.bigclock": (80, 70), "org.deckos.nowplaying": (1420, 860),
                  "org.deckos.weather": (1540, 80), "org.deckos.focus": (1600, 560), "org.deckos.note": (90, 820),
-                 "org.deckos.calendar": (620, 80), "org.deckos.countdown": (980, 80), "org.deckos.photos": (620, 420)}
+                 "org.deckos.calendar": (620, 80), "org.deckos.countdown": (980, 80), "org.deckos.photos": (620, 420),
+                 "org.deckos.shelf": (1000, 330)}
         for wid, img in imgs.items():
             p.drawImage(*spots[wid], img)
         p.end()

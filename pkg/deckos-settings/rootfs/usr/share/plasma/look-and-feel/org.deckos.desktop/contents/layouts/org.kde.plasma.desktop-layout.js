@@ -55,8 +55,13 @@ for (var i = 0; i < all.length; i++) {
     d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
     d.writeConfig("Image", "file:///usr/share/wallpapers/DeckOS/");
     if (i == 0) {
-        // DecKoOS Performance in the top right of the first screen, clear of the desktop icons
+        // DecKoOS Performance in the top right of the first screen; the Desktop shelf down the left, in place of
+        // Plasma's icon grid (hidden by a filter nothing matches: the desktop is still the Desktop folder)
         var g = screenGeometry(d.screen);
         d.addWidget("org.deckos.perfgraphs", g.width - 360, 40, 320, 470);
+        d.addWidget("org.deckos.shelf", 40, 40, 420, Math.min(760, g.height - 190));
+        d.currentConfigGroup = ["General"];
+        d.writeConfig("filterMode", 1);
+        d.writeConfig("filterPattern", "deckos-shelf-shows-these");
     }
 }

@@ -1590,7 +1590,8 @@ class AppearancePage(Page):
         for wid, text in (("org.deckos.bigclock", "Clock"), ("org.deckos.nowplaying", "Now Playing"),
                           ("org.deckos.weather", "Weather"), ("org.deckos.calendar", "Calendar"),
                           ("org.deckos.countdown", "Countdown"), ("org.deckos.photos", "Photos"),
-                          ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note")):
+                          ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note"),
+                          ("org.deckos.shelf", "Desktop shelf")):
             b = QPushButton(text)
             b.setObjectName("seg")
             b.setCheckable(True)

@@ -652,12 +652,12 @@ def ai_setting(key, default=""):
 def desktop_widgets():
     """Which DecKoOS desktop widgets are on the desktop (from Plasma's own file)."""
     if DEMO:
-        return {"org.deckos.bigclock", "org.deckos.nowplaying"}
+        return {"org.deckos.bigclock", "org.deckos.nowplaying", "org.deckos.shelf"}
     try:
         text = (Path.home() / ".config/plasma-org.kde.plasma.desktop-appletsrc").read_text()
     except OSError:
         return set()
-    return set(re.findall(r"^plugin=(org\.deckos\.(?:bigclock|nowplaying|weather|calendar|countdown|photos|focus|note))$",
+    return set(re.findall(r"^plugin=(org\.deckos\.(?:bigclock|nowplaying|weather|calendar|countdown|photos|focus|note|shelf))$",
                           text, re.M))
 
 
