@@ -42,6 +42,7 @@ MouseArea {
         container = it && it.parent ? it : null;
     }
     Component.onCompleted: Qt.callLater(findContainer)
+    readonly property real endPad: 10
     readonly property real islandWidth: {
         if (vertical || !container || !container.parent)
             return width;
@@ -49,7 +50,8 @@ MouseArea {
         for (const c of container.parent.children)
             if (c.visible && c.width > 0 && String(c).startsWith("AppletContainer"))
                 right = Math.max(right, c.x + c.width);
-        return Math.max(width, right - container.x);
+        // past the last one a little: the clock's digits run to its very edge, and the notch cuts in there
+        return right > container.x + width ? right - container.x + endPad : width;
     }
     Vibes.Notch {
         x: 0
