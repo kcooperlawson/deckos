@@ -196,6 +196,38 @@ PlasmoidItem {
         font.weight: Font.DemiBold
         font.letterSpacing: 1.6
     }
+    // Download a link: the one on the clipboard, through `deckos download` (resumes and retries until it's done, and
+    // shows here while it arrives). A hidden TextEdit is how QML reads the clipboard.
+    TextEdit { id: clip; visible: false }
+    Text {
+        id: linkButton
+        anchors.right: parent.right
+        anchors.rightMargin: shelf.pad + 110
+        anchors.verticalCenter: title.verticalCenter
+        text: "+ DOWNLOAD A LINK"
+        color: linkMouse.containsMouse ? vibe.text : vibe.colorA
+        font.family: vibe.hud
+        font.pixelSize: 11
+        font.weight: Font.Bold
+        font.letterSpacing: 1.2
+        MouseArea {
+            id: linkMouse
+            anchors.fill: parent
+            anchors.margins: -6
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                clip.text = "";
+                clip.paste();
+                const url = clip.text.trim();
+                if (/^(https?|ftp):\/\/\S+$/.test(url))
+                    shelf.exec("deckos download " + shelf.sh(url));
+                else
+                    linkButton.text = "COPY A LINK FIRST";
+            }
+            onExited: linkButton.text = "+ DOWNLOAD A LINK"
+        }
+    }
     Text {
         id: where
         x: shelf.pad

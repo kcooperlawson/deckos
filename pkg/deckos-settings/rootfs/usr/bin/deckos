@@ -1893,6 +1893,27 @@ desktop_icons() {  # on|off
       d.reloadConfig(); });" >/dev/null 2>&1 || true
 }
 
+# A download that survives a flaky connection (browsers give up on big files): wget resumes where it stopped and
+# retries forever. It arrives in Downloads as NAME.part (the Desktop shelf shows it coming), becomes NAME when done,
+# and says so in a notification. Runs on in the background; running it again with the same link resumes it.
+download_cmd() {
+  local url=${1:-} dir name
+  [[ $url =~ ^(https?|ftp)://[^[:space:]]+$ ]] || { err "usage: deckos download URL (http, https or ftp)"; exit 2; }
+  dir=$(xdg-user-dir DOWNLOAD 2>/dev/null || echo "$HOME/Downloads"); mkdir -p "$dir"
+  name=$(python3 -c 'import sys, urllib.parse as u; p = u.urlparse(sys.argv[1]); n = u.unquote(p.path.rsplit("/", 1)[-1]); print("".join(c for c in n if c not in "/\\\0") or "download")' "$url")
+  [[ $name == .* ]] && name="download$name"
+  ok "downloading $name into $dir (resumes and retries until it's done)"
+  setsid bash -c '
+    url=$1 part=$2/$3.part final=$2/$3
+    if wget -q -c --tries=0 --retry-connrefused --retry-on-http-error=429,500,502,503,504 --waitretry=10 \
+         --timeout=30 --read-timeout=60 -O "$part" -- "$url" && [[ -s $part ]]; then
+      mv -n -- "$part" "$final"
+      notify-send -a DecKoOS -i download "Downloaded" "$3" 2>/dev/null
+    else
+      notify-send -a DecKoOS -i dialog-warning "Download stopped" "$3: run the same deckos download again to resume" 2>/dev/null
+    fi' _ "$url" "$dir" "$name" </dev/null >/dev/null 2>&1 &
+}
+
 vibe_cmd() {
   [[ $EUID -ne 0 || ${1:-} == list ]] || { err "run this as your user"; exit 1; }
   case ${1:-current} in
@@ -2360,6 +2381,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
+  deckos download URL                                  a big file that won't give up: resumes and retries until done
   deckos report [--out FILE|--print]                    one file of hardware, drivers and errors for whoever helps
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos context [now|set ACTIVITY [MIN]|auto|on|off]  what you're doing now, and DecKoOS adapting to it
@@ -2420,6 +2442,7 @@ case ${1:-} in
   vibe) shift; vibe_cmd "$@" ;;
   taskbar) shift; taskbar_cmd "$@" ;;
   kids) shift; kids_cmd "$@" ;;
+  download) shift; download_cmd "$@" ;;
   report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps
   undo) shift; undo_cmd "$@" ;;
   restore) shift; restore_cmd "$@" ;;
