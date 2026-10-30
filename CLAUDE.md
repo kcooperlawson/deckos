@@ -386,6 +386,14 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   reports a player Playing, and repaints only what asked (`react_watch`: lit plates, `Meter`, Bench's ring and bars),
   only while the pulse moves; `react_pulse()` is the value. Testing the taskbar from `~/.local/share/plasma` loses its
   icons (they're found relative to the installed package): test it installed, or via `QML_IMPORT_PATH` for the module.
+- **One motion** (`Vibes.Unfold` in QML, `hub_style.unfold()` in Python): how DecKo things arrive, a fade while
+  growing from their edge (popups from the panel). Quick Settings' and the menu's popups play it when opened, the
+  shelf deals tiles in once per path (not on every refresh: the model is a JS array and delegates are rebuilt), Hub
+  pages on switch (the opacity effect is removed when done). Use these rather than new animations.
+- **Game colours and sessions** (`deckos mode watch`): with react on, a Steam game's art lends the widgets and
+  taskbar its two colours while it runs (`vibes/gamecolours.py`, `game_colours`; a taskbar on custom colours keeps
+  them; off restores the Vibe's and the taskbar's mode from `$XDG_RUNTIME_DIR/deckos-game-colours`). The game-stop
+  timeline entry says what was played and for how long (`game_time`). Tests: `tests/test_game_colours.py`.
 - **Fixes / self-healing** (`usr/lib/deckos/heal/heal.py`, no Qt; design and rules in `docs/self-healing.md`): AI picks
   a vetted recipe and fills its blanks, never writes commands. Blanks are allow-listed (repo packages via `pacman -Si`,
   unit lists, int ranges), a DENY regex is the second wall, root fixes take a snapper pre snapshot and record Undo.

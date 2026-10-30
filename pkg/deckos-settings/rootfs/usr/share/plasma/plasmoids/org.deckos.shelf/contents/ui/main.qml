@@ -24,6 +24,7 @@ PlasmoidItem {
 
     readonly property string helper: "/usr/lib/deckos/shelf/shelf.py"
     property var items: []
+    property var seen: ({})  // paths whose tile has been dealt in already
     property string folder: ""     // the Desktop, as a path (from shelf.py)
     property string folderUrl: ""
     readonly property real pad: 18
@@ -259,13 +260,21 @@ PlasmoidItem {
             Repeater {
                 model: shelf.packed
                 Tile {
+                    id: tileItem
                     required property var modelData
+                    required property int index
                     item: modelData
                     look: vibe
                     owner: shelf
                     readonly property bool wide: modelData.kind === "game" || modelData.kind === "partial"
                     width: wide || shelf.half < 150 ? tiles.width : shelf.half
                     height: modelData.kind === "game" ? 176 : modelData.kind === "partial" ? 80 : 108
+                    // Dealt in, one after another, the first time each thing shows (not on every refresh)
+                    Vibes.Unfold { id: deal; target: tileItem; origin: Item.Top; delay: Math.min(8, tileItem.index) * 40 }
+                    Component.onCompleted: if (!shelf.seen[modelData.path]) {
+                        shelf.seen[modelData.path] = true;
+                        deal.play();
+                    }
                 }
             }
 

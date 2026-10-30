@@ -7,6 +7,7 @@ import QtQuick.Layouts
 
 Item {
     id: popup
+    Vibes.Unfold { target: popup; open: deckMenu.expanded }  // DecKoOS's one motion: it unfolds from the panel
 
     property int page: 0  // 0 home, 1 all apps
     readonly property bool searching: deckMenu.query.length > 0

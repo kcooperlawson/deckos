@@ -27,5 +27,6 @@ PlasmoidItem {
     }
     fullRepresentation: FullRepresentation {
         backend: deckBackend
+        open: root.expanded
     }
 }

@@ -252,7 +252,11 @@ class Hub(QWidget):
         b, _ = self.nav[key]
         b.setChecked(True)
         page = self.page(key)
-        self.stack.setCurrentWidget(page)
+        if self.stack.currentWidget() is not page and self.isVisible():
+            self.stack.setCurrentWidget(page)
+            S.unfold(page)  # DecKoOS's one motion
+        else:
+            self.stack.setCurrentWidget(page)
         page.refresh()
         if action == "update" and key == "system":
             page.check_updates()

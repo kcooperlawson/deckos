@@ -1463,9 +1463,42 @@ mode_leave() {  # put back what mode_enter paused (Ollama loads models again on 
   mode_announce normal
 }
 
+# While a game runs, the desktop wears its colours (from its Steam art: vibes/gamecolours.py): the widgets and the
+# taskbar, on whatever screen the game isn't on. Only when DecKoOS reacts (style.conf react=on); a taskbar with
+# colours the person picked keeps them. Off puts the Vibe's colours back (or DecKoOS's own), and the taskbar's mode.
+GAME_COLOURS=${XDG_RUNTIME_DIR:-/tmp}/deckos-game-colours
+game_colours() {  # APPID on | "" off
+  local a b mode
+  if [[ $2 == on ]]; then
+    grep -qs '^react=on' "${XDG_CONFIG_HOME:-$HOME/.config}/deckos/style.conf" || return 0
+    [[ $1 =~ ^[0-9]+$ ]] || return 0
+    read -r a b < <(QT_QPA_PLATFORM=offscreen python3 "${DECKOS_VIBES_DIR:-/usr/lib/deckos/vibes}/gamecolours.py" "$1" 2>/dev/null || true)
+    [[ $a =~ ^#[0-9A-F]{6}$ && $b =~ ^#[0-9A-F]{6}$ ]] || return 0
+    mode=$(qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+      var m = 'accent'; panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach(function (w) {
+        w.currentConfigGroup = ['General']; m = w.readConfig('colorMode', 'accent'); }); }); print(m);" 2>/dev/null || true)
+    echo "${mode:-accent}" > "$GAME_COLOURS"
+    vibe_widgets_style "$(cat "$VIBE_STATE" 2>/dev/null || echo deckos)" "$a" "$b"
+    [[ $mode == custom ]] || taskbar_script "w.writeConfig('colorA', '$a'); w.writeConfig('colorB', '$b'); w.writeConfig('colorMode', 'vibe')" 2>/dev/null || true
+  elif [[ -f $GAME_COLOURS ]]; then
+    mode=$(cat "$GAME_COLOURS"); rm -f "$GAME_COLOURS"
+    a=$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorA=//p' || true)
+    b=$(python3 "$VIBES" get "$(cat "$VIBE_STATE" 2>/dev/null)" 2>/dev/null | sed -n 's/^colorB=//p' || true)
+    vibe_widgets_style "$(cat "$VIBE_STATE" 2>/dev/null || echo deckos)" "${a:-#4C8DFF}" "${b:-#7A5CFF}"
+    [[ $mode == custom ]] || taskbar_script "w.writeConfig('colorA', '${a:-#4C8DFF}'); w.writeConfig('colorB', '${b:-#7A5CFF}');
+      w.writeConfig('colorMode', '$mode')" 2>/dev/null || true
+  fi
+}
+
+game_time() {  # SECONDS as "1 h 12 min", "25 min" or "under a minute"
+  local s=$(( $1 > 0 ? $1 : 0 )) h m
+  h=$(( s / 3600 )) m=$(( s % 3600 / 60 ))
+  if (( h )); then echo "$h h $m min"; elif (( m )); then echo "$m min"; else echo "under a minute"; fi
+}
+
 mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, no polling of anything else)
   [[ $(mode_conf AUTO 1) == 1 ]] || exit 0
-  local game gid line misses=0 gaming=0
+  local game gid line misses=0 gaming=0 started=0 played=""
   [[ $(sed -n 's/^mode=//p' "$MODE_STATE" 2>/dev/null) == gaming ]] && gaming=1  # a watcher that didn't get to finish
   trap 'mode_leave; exit 0' TERM INT
   while :; do
@@ -1473,10 +1506,21 @@ mode_watch() {  # deckos-modes.service: a game check every few seconds (pgrep, n
     gid=${line%%$'\t'*} game=${line#*$'\t'}
     if [[ -n $line ]]; then
       misses=0
-      (( gaming )) || { mode_enter "$game" "$gid"; gaming=1; pulse game-start "Playing $game" --app "Workload modes"; }
+      if (( ! gaming )); then
+        mode_enter "$game" "$gid"; gaming=1; started=$(date +%s); played=$game
+        pulse game-start "Playing $game" --app "Workload modes"
+        game_colours "$gid" on
+      fi
     elif (( gaming )) && (( ++misses >= 2 )); then  # a launcher that restarts the game isn't the end of it
       mode_leave; gaming=0; misses=0
-      pulse game-stop "Stopped playing" --app "Workload modes"
+      game_colours "" off
+      # The session's card for the timeline: what, and for how long (the watcher's 10 s of noticing taken off)
+      if (( started )); then
+        pulse game-stop "Played ${played:-a game} for $(game_time $(( $(date +%s) - started - 10 )))" --app "Workload modes"
+      else
+        pulse game-stop "Stopped playing" --app "Workload modes"
+      fi
+      started=0
     fi
     sleep 5 & wait $!
   done

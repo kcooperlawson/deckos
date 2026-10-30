@@ -347,6 +347,37 @@ class _React(QObject):
                 w.update()
 
 
+def unfold(widget, duration=190):
+    """DecKoOS's one motion (Vibes.Unfold in QML): a page or card arrives by fading in while rising a few pixels,
+    quick and soft. The effect is taken off afterwards, so nothing is drawn through it for longer than that."""
+    from PySide6.QtCore import QEasingCurve, QParallelAnimationGroup, QPoint, QPropertyAnimation
+    from PySide6.QtWidgets import QGraphicsOpacityEffect
+    if getattr(widget, "_unfolding", None):
+        widget._unfolding.stop()
+    fx = QGraphicsOpacityEffect(widget)
+    widget.setGraphicsEffect(fx)
+    group = QParallelAnimationGroup(widget)
+    fade = QPropertyAnimation(fx, b"opacity", group)
+    fade.setStartValue(0.0)
+    fade.setEndValue(1.0)
+    fade.setDuration(duration)
+    fade.setEasingCurve(QEasingCurve.OutCubic)
+    end = widget.pos()
+    rise = QPropertyAnimation(widget, b"pos", group)
+    rise.setStartValue(end + QPoint(0, 10))
+    rise.setEndValue(end)
+    rise.setDuration(duration + 40)
+    rise.setEasingCurve(QEasingCurve.OutCubic)
+
+    def done():
+        widget.setGraphicsEffect(None)
+        widget.move(end)
+        widget._unfolding = None
+    group.finished.connect(done)
+    widget._unfolding = group
+    group.start()
+
+
 def react_pulse():
     """The music's beat, 0..1 (0 when DecKoOS isn't reacting to music, or nothing plays)."""
     return _react[0].pulse if _react else 0.0

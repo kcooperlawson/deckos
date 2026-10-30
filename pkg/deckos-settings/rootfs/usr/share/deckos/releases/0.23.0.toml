@@ -17,6 +17,19 @@ try = "Turn it on"
 run = ["deckos", "vibe", "react", "on"]
 
 [[highlights]]
+title = "Games colour the desktop"
+text = """With React to music on, the game you're playing lends the desktop its colours while it runs: the widgets and \
+the taskbar take the two strongest colours of its Steam art (what you see on a second screen beside the game), and \
+your Vibe comes back when you stop. The Timeline now says what you played and for how long."""
+icon = "gaming"
+
+[[highlights]]
+title = "One way of moving"
+text = """Quick Settings, the menu, the Hub's pages and the Desktop shelf's tiles all arrive the same way now: a quick, \
+soft unfold from where they come from."""
+icon = "appearance"
+
+[[highlights]]
 title = "Download a link"
 text = """Copy a link and click + Download a link on the Desktop shelf (or run deckos download LINK): big files keep \
 going through dropped connections, resuming where they stopped and retrying until they're done, and show on the \

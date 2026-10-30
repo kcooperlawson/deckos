@@ -7,6 +7,8 @@ import org.kde.kirigami as Kirigami
 // powerdevil, KWin) sits in its own Loader: if one is missing, only that piece disappears.
 Item {
     id: full
+    property bool open: false
+    Vibes.Unfold { target: full; open: full.open }  // DecKoOS's one motion: it unfolds from the panel
     property var backend
     property bool displayOpen: false
 
