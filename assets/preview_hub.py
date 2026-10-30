@@ -34,7 +34,8 @@ w = hub.Hub()
 w.show()
 for _ in range(30):  # some graph history
     w.tick()
-pages = [p[0] for p in hub.PAGES] if "--all" in sys.argv else ["home"]
+pages = ([p[0] for p in hub.PAGES] if "--all" in sys.argv
+         else [sys.argv[sys.argv.index("--page") + 1]] if "--page" in sys.argv else ["home"])
 for key in pages:
     w.navigate(key)
     wait(800)

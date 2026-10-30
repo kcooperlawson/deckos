@@ -156,7 +156,7 @@ HUD = "Chakra Petch"  # labels, numbers, buttons (the wordmark's cut corners as 
 # tile: lighter under the pointer; row: a raised row; toast: lit; hero: the accent's gradient. The apps' own frames
 # are here too (What's New, System Monitor, Disks), so every DecKoOS window has the same plates.
 PLATES = {"card": (14, "card"), "tile": (12, "tile"), "rowItem": (8, "row"), "toast": (10, "toast"),
-          "feature": (12, "card"), "hero": (14, "hero"), "device": (10, "tile"), "stat": (8, "row"),
+          "feature": (12, "card"), "finding": (12, "card"), "hero": (14, "hero"), "device": (10, "tile"), "stat": (8, "row"),
           "disk": (10, "tile"), "erase": (9, "row"), "banner": (12, "row")}
 
 
@@ -327,6 +327,8 @@ QLabel#brand {{ font-family: "Inter Display", "Inter"; font-size: 12pt; font-wei
 QLabel#sub, QLabel#value {{ color: {SUBTEXT}; }}
 QLabel#muted {{ color: {MUTED}; font-size: 9pt; }}
 QLabel#kicker {{ color: {SUBTEXT}; font-family: "{HUD}"; font-size: 9pt; font-weight: 600; }}
+QLabel#evidence {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace; font-size: 8.5pt;
+    color: {SUBTEXT}; background: {SIDEBAR}; border: 1px solid {BORDER}; border-radius: 2px; padding: 8px; }}
 QLabel#cardTitle {{ font-size: 10.5pt; font-weight: 600; }}
 QPushButton#seg {{ padding: 6px 14px; border-radius: 2px; background: transparent; border: 1px solid transparent; }}
 QPushButton#seg:hover {{ background: {RAISED}; }}

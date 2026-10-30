@@ -24,10 +24,8 @@ from hub_widgets import button, icon_label, label  # noqa: E402
 DEMO = "--demo" in sys.argv
 
 QSS = f"""
-#finding {{ background: {S.SURFACE}; border: 1px solid {S.BORDER}; border-radius: 12px; }}
+#finding {{ background: transparent; border: none; }}  /* a notched plate: hub_style */
 #finding QLabel {{ background: transparent; }}
-QLabel#evidence {{ font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace; font-size: 8.5pt;
-    color: {S.SUBTEXT}; background: {S.SIDEBAR}; border: 1px solid {S.BORDER}; border-radius: 8px; padding: 8px; }}
 QLabel#big {{ font-family: "Inter Display", "Inter"; font-size: 17pt; font-weight: 600; }}
 QLabel#header {{ border-radius: 10px; }}
 """

@@ -249,7 +249,7 @@ def main(argv):
         ask(argv[1], argv[2] if len(argv) > 2 else "")
         return 0
     if argv[:1] == ["report"] and not heal.is_on("reports"):
-        print("Fix reports are turned off (DecKoOS Hub > System > Fixes, or: deckos heal settings reports on).")
+        print("Fix reports are turned off (DecKoOS Hub > Health > Fixes, or: deckos heal settings reports on).")
         return 0
     if argv[:1] == ["history"]:
         for e in history()[-20:]:

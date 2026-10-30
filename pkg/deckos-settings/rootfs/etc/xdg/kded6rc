@@ -1,0 +1,4 @@
+# DecKoOS Welcome (and What's New after updates) replace KDE's Welcome Center, which Plasma 6 starts from this kded
+# module, not from autostart. A person's own ~/.config/kded6rc still wins.
+[Module-kded_plasma_welcome]
+autoload=false

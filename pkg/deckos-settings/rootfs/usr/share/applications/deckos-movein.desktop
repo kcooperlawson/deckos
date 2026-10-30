@@ -7,3 +7,4 @@ Icon=deckos-hub
 Type=Application
 Categories=System;Utility;
 Keywords=windows;migrate;import;move;switch;bookmarks;firefox;edge;steam;games;wallpaper;
+NoDisplay=true

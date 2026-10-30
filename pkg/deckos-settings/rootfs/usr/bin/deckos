@@ -2372,7 +2372,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos decky install                                  Decky Loader for Gaming Mode
   deckos decky plugin                                   DecKoOS's own panel in Gaming Mode's quick access menu
   deckos doctor                                         health check (the full report)
-  deckos sysdoctor                                     System Doctor: what's wrong, in plain words, with fixes
+  deckos sysdoctor                                     Hub > Health: what's wrong, in plain words, with fixes
   deckos hub                                            open DecKoOS Hub
 EOF
 }

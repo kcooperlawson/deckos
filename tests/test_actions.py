@@ -17,7 +17,7 @@ sys.path[:0] = [str(RootFS / 'usr/lib/deckos/actions'), str(RootFS / 'usr/lib/de
 import actions  # noqa: E402
 
 CATALOG = RootFS / 'usr/share/deckos/actions.toml'
-HUB_PAGES = {'home', 'timeline', 'games', 'display', 'gaming', 'drives', 'aidev', 'system', 'appearance'}
+HUB_PAGES = {'home', 'timeline', 'games', 'display', 'gaming', 'drives', 'aidev', 'system', 'appearance', 'health'}
 # What an action may start with: a DecKoOS command (checked below), or one of these system ones
 SYSTEM_COMMANDS = {'sudo', 'systemctl'}
 

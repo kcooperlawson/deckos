@@ -40,7 +40,7 @@ Feature ideas go through normal pull requests (DecKoOS Builder's Contribute), wh
 
 ## Your say
 
-Said up front, in Welcome's privacy step on first login and in DecKoOS Hub > System > Fixes, with a switch for each
+Said up front, in Welcome's privacy step on first login and in DecKoOS Hub > Health > Fixes, with a switch for each
 part (`~/.config/deckos/heal.conf`, or `deckos heal settings KEY on|off`):
 
 - **Suggest fixes**: the Assistant may offer the reviewed fixes. Off: it isn't given them at all.

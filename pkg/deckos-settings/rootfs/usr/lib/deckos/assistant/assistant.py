@@ -296,7 +296,7 @@ def _heal():
 
 
 def _fixes():
-    """DecKoOS's fixes for the model, unless the person turned suggestions off (Hub > System > Fixes)."""
+    """DecKoOS's fixes for the model, unless the person turned suggestions off (Hub > Health > Fixes)."""
     heal = _heal()
     return heal.RECIPES if heal and heal.is_on("suggest") else {}
 

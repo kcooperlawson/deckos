@@ -1,5 +1,6 @@
 """DecKoOS Hub: one window for what DecKoOS adds. A live overview, the display fix, Gaming Mode,
-drives, AI and dev tools, updates, snapshots, firewall, software and appearance.
+drives, AI and dev tools, updates, snapshots, firewall, software, health (checkup, games that won't start, fixes)
+and appearance.
 
 Same visual language as the installer: slate surfaces, 1px borders, 10px
 radii, Inter, DecKoOS line icons, and the accent gradient on primary actions.
@@ -7,6 +8,8 @@ radii, Inter, DecKoOS line icons, and the accent gradient on primary actions.
     deckos-hub --demo     canned data, for working on the UI anywhere (Windows included)
     deckos-hub --page system [--update]
                           open on a page (DecKoOS Quick Settings uses this), and start the update
+    deckos-hub --page health
+                          the checkup (what deckos-sysdoctor and Care's notifications open)
 """
 import os
 import platform
@@ -24,6 +27,7 @@ import hub_settings
 import hub_style as S
 import hub_system as sysinfo
 from hub_games import GamesPage
+from hub_health import HealthPage
 from hub_kids import make_page as kids_page
 from hub_more import MorePage, SearchPage, open_entry
 from hub_pages import AiDevPage, AppearancePage, DisplayPage, DrivesPage, GamingPage, HomePage, SystemPage
@@ -37,6 +41,7 @@ PAGES = [("home", "Home", "home", HomePage), ("timeline", "Timeline", "clock", T
          ("gaming", "Gaming", "gaming", GamingPage), ("sound", "Sound", "volume", SoundPage),
          ("drives", "Drives", "drives", DrivesPage),
          ("aidev", "AI & Dev", "ai", AiDevPage), ("system", "System", "system", SystemPage),
+         ("health", "Health", "check", HealthPage),
          ("appearance", "Appearance", "appearance", AppearancePage), ("more", "More settings", "sliders", MorePage)]
 USER_GAMING_CONF = Path.home() / ".config/deckos/gaming.conf"
 SELFTEST = Path(__file__).resolve().parent.parent / "selftest/selftest.py"

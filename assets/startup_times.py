@@ -17,7 +17,7 @@ LIB = ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos"
 APPS = {
     "hub": "hub/deckos_hub.py", "store": "store/deckos_store.py", "welcome": "welcome/deckos_welcome.py",
     "assistant": "assistant/deckos_assistant.py", "sysmon": "sysmon/deckos_sysmon.py",
-    "sysdoctor": "sysdoctor/deckos_sysdoctor.py", "gamedoctor": "gamedoctor/deckos_gamedoctor.py",
+    "gamedoctor": "gamedoctor/deckos_gamedoctor.py",
     "retro": "retro/deckos_retro.py", "movein": "movein/deckos_movein.py", "disks": "disks/deckos_disks.py",
     "bench": "bench/bench_app.py", "work": "work/work_app.py", "builder": "builder/deckos_builder.py",
     "kids": "kids/deckos_kids.py", "whatsnew": "whatsnew/deckos_whatsnew.py",

@@ -8,3 +8,4 @@ Icon=deckos
 Terminal=false
 Categories=Development;
 Keywords=deckos;iso;build;github;ventoy;usb;contribute;pull request;
+NoDisplay=true

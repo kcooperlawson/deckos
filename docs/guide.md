@@ -32,15 +32,17 @@ DecKoOS Assistant. Saved project chats, reversible edits, approved terminal comm
 outputs and Stable Diffusion image generation. No hosted-model credits; setup downloads models and
 an isolated creation runtime. See [usage, setup and current limits](work.md).
 
-## System Doctor
+## Health
 
-**System Doctor** (DecKoOS Hub's Health check, or `deckos sysdoctor`) says what's wrong with the PC right now,
+**Health** (DecKoOS Hub › Health, or `deckos sysdoctor`) is the one place for something wrong. Its checkup says what's wrong with the PC right now,
 worst first, in plain words: services that failed, programs that crashed (named by what ran, and a burst of
 desktop crashes recognised as one event), graphics card resets, programs a system rule needs but that
 aren't installed, a slow start-up, a full disk, a restart an update is waiting for. Each finding shows the
 log lines it's based on, offers its fix (asking for your password when it changes the system) or the
 DecKoOS app that handles it (Game Doctor, the Hub's display fix), and **Explain** asks the local AI what it
-means, on your graphics card, so nothing leaves the PC. `deckos doctor` is still the full report.
+means, on your graphics card, so nothing leaves the PC. Below the checkup: games that closed right after starting
+this week (each opens Game Doctor), DecKoOS's fixes and their switches, and **Make a report** for whoever helps.
+`deckos doctor` is still the full report.
 
 ## Move in from Windows
 

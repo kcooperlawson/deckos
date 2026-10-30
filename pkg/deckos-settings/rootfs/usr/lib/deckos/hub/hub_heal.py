@@ -1,4 +1,4 @@
-"""DecKoOS's fixes (self-healing), said plainly up front with a switch for each part: DecKoOS Hub > System and Welcome's
+"""DecKoOS's fixes (self-healing), said plainly up front with a switch for each part: DecKoOS Hub > Health and Welcome's
 privacy step show this same card. The switches run `deckos heal settings` (the person's own file); heal.py reads it."""
 import subprocess
 import sys

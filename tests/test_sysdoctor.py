@@ -151,14 +151,24 @@ class Checkup(unittest.TestCase):
 
 
 class Window(unittest.TestCase):
-    def test_demo_renders_and_exits_cleanly(self):
-        with tempfile.TemporaryDirectory() as out:
-            shot = Path(out) / 'doctor.png'
-            r = subprocess.run([sys.executable, str(ROOT / 'pkg/deckos-settings/rootfs/usr/lib/deckos/sysdoctor/deckos_sysdoctor.py'),
-                                '--demo', '--screenshot', str(shot)], capture_output=True, text=True, timeout=60,
-                               env=dict(os.environ, QT_QPA_PLATFORM='offscreen'))
-            self.assertEqual(r.returncode, 0, r.stderr[-2000:])
-            self.assertGreater(shot.stat().st_size, 10000)
+    """The checkup's window is DecKoOS Hub's Health page."""
+
+    def test_health_page_renders_the_demo_findings(self):
+        probe = (
+            "import sys; sys.argv += ['--demo']; sys.path.insert(0, sys.argv[1])\n"
+            "from PySide6.QtWidgets import QApplication, QLabel\n"
+            "from PySide6.QtCore import QTimer\n"
+            "app = QApplication([]); import deckos_hub, hub_style as S; app.setStyleSheet(S.qss())\n"
+            "w = deckos_hub.Hub(); w.navigate('health'); w.show()\n"
+            "def done():\n"
+            "    texts = [l.text() for l in w.page('health').findChildren(QLabel)]\n"
+            "    print('|'.join(texts)); app.exit(0)\n"
+            "QTimer.singleShot(800, done); app.exec()\n")
+        r = subprocess.run([sys.executable, '-c', probe, str(ROOT / 'pkg/deckos-settings/rootfs/usr/lib/deckos/hub')],
+                           capture_output=True, text=True, timeout=60, env=dict(os.environ, QT_QPA_PLATFORM='offscreen'))
+        self.assertEqual(r.returncode, 0, r.stderr[-2000:])
+        self.assertIn('hdparm is needed but not installed', r.stdout)
+        self.assertIn('Cyberpunk 2077', r.stdout)
 
 
 if __name__ == '__main__':

@@ -107,7 +107,8 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
 - System Doctor: `usr/lib/deckos/sysdoctor/`. `sysdoctor.py` (no Qt, read-only) runs `CHECKS` through `run()`
   (tests feed it canned output) into `Finding`s with evidence, `Fix`es (commands; root ones via pkexec) and
   `open` (a DeckOS app). `explain()` is deckos-local's `summarize` on one finding. Name crashes by command
-  line (`PROGRAMS`), not by `python3`. `deckos_sysdoctor.py` is the window (the Hub's Health check).
+  line (`PROGRAMS`), not by `python3`. Its window is the Hub's Health page (`hub/hub_health.py`, with recent Game
+  Doctor cases, the Fixes card and the report); `deckos-sysdoctor` is `deckos-hub --page health`.
 - Move In: `usr/lib/deckos/movein/`. `movein.py` (no Qt) scans Windows on the mounted NTFS drives
   (`DECKOS_MOVEIN_ROOTS` for tests) into `Item`s and `apply()`s them: Windows is only read; Linux-side files
   keep `.deckos-bak`; Steam's libraryfolders.vdf goes through Game Doctor's `steamfiles`. Drives first: if
@@ -392,8 +393,13 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   `rsync --update` (never over a newer file; tar's --keep-newer-files fails on existing folders). Plain `deckos backup
   DEST` is still the everyday rsync mirror. Hub > System > Before a reinstall; Welcome's first step finds a backup on
   the drives (`welcome_system.find_backups`) and offers it. Tests: `tests/test_backup.py`.
+- **The app menu stays short**: one entry per job. Hub (settings and Health), Store, Welcome (with Tour, Move in and
+  What's New as its right-click actions), Music, Retro, System Monitor, Disks, Bench, Assistant, Work, Gaming Mode.
+  Anything that's part of one of those, opened from a notification, or for developers (Builder: Hub > AI & Dev) gets
+  `NoDisplay=true` and a way in from where it belongs, not a menu entry of its own. KDE's Welcome Center is off
+  (`/etc/xdg/kded6rc`: Plasma 6 starts it from kded).
 - **Tour** (`welcome/deckos_tour.py`, `deckos-tour`): one picture per stop with a Try button; Welcome, the Hub's Home,
-  the menu and the live USB's installer open it. Pictures in `usr/share/deckos/tour/` come from `assets/tour_images.py`
+  Welcome's menu entry (right click) and the live USB's installer open it. Pictures in `usr/share/deckos/tour/` come from `assets/tour_images.py`
   (docs/screenshots plus Hub/Vibe/Vibe mode renders): re-run it after retaking screenshots.
 - **Boot menu**: GRUB theme in the DecKo look (`assets/generate.py`'s `grub_background`/`grub_select_pieces`: a notched
   plate round the menu, notched lit highlight, Chakra Petch via grub-mkfont in the PKGBUILD). `GRUB_MENU` must match

@@ -103,7 +103,7 @@ ID_RE = re.compile(r"^[a-z][a-z0-9-]{2,40}$")
 LITERAL_RE = re.compile(r"^[A-Za-z0-9@%+=:,./_-]+$")
 
 
-# The person's say over all of this (Hub > System > Fixes, and Welcome's privacy step): each one can be turned off.
+# The person's say over all of this (Hub > Health > Fixes, and Welcome's privacy step): each one can be turned off.
 #   suggest:  the Assistant may offer these fixes (it still asks every time)
 #   remember: fixes and how they went are kept on this PC (reports are made from it; nothing leaves by itself)
 #   reports:  DecKoOS may offer to make a report for GitHub, which the person reads and submits themselves
@@ -134,7 +134,7 @@ def set_setting(key, value, path=None):
     cur[key] = value
     f = Path(path or SETTINGS)
     f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text("# DecKoOS fixes: what you allow (DecKoOS Hub > System > Fixes)\n" +
+    f.write_text("# DecKoOS fixes: what you allow (DecKoOS Hub > Health > Fixes)\n" +
                  "".join(f"{k}={v}\n" for k, v in cur.items()))
 
 

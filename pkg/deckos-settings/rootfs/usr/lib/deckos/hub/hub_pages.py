@@ -143,8 +143,8 @@ class HomePage(Page):
                                         icon="store"),
                                  button("Update now", slot=lambda: self.hub.navigate("system", "update"), icon="update"),
                                  button("Terminal", slot=lambda: QProcess.startDetached("deckos-terminal", []), icon="terminal"),
-                                 button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
-                                        icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"),
+                                 button("Health check", slot=lambda: self.hub.navigate("health"),
+                                        icon="check", tip="What's wrong, in plain words, with fixes"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
                                  button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
                                         tip="DecKoOS Work: code, documents and images with your local AI"),
@@ -785,6 +785,8 @@ class AiDevPage(Page):
 
     def build(self):
         ai, dev = (sysinfo.installed(g[4]) for g in sysinfo.GROUPS[1:])
+        self.head_actions.addWidget(button("DecKoOS Builder", slot=lambda: QProcess.startDetached("deckos-builder", []),
+                                           icon="code", tip="Build DecKoOS itself: ISOs, USB sticks, changes for review"))
         claude = Card("Claude Code", "AI coding agent in your terminal", "terminal")
         claude.body.addWidget(label("Run <b>claude</b> in any project folder.", "sub"))
         claude.body.addWidget(row(button("Install / update", "primary", lambda: self.hub.terminal(
@@ -1017,8 +1019,6 @@ class SystemPage(Page):
             _setup_run(self, ["import", path], "Setup brought in: log out and back in to see all of it")
 
     def build(self):
-        self.head_actions.addWidget(button("Health check", slot=lambda: QProcess.startDetached("deckos-sysdoctor", []),
-                                           icon="check", tip="System Doctor: what's wrong, in plain words, with fixes"))
         self.head_actions.addWidget(button("System monitor", slot=lambda: QProcess.startDetached("deckos-sysmon", []),
                                            icon="list", tip="What's running and what it uses (Ctrl+Shift+Esc)"))
         self.head_actions.addWidget(button("Benchmarks", slot=lambda: QProcess.startDetached("deckos-bench", []),
@@ -1145,8 +1145,6 @@ class SystemPage(Page):
             "systemsettings", ["kcm_firewall"]), icon="external")))
         self.lay.addWidget(fw)
 
-        from hub_heal import HealCard  # self-healing, said up front with its switches
-        self.lay.addWidget(HealCard(self.hub.toast))
 
 
         sw = Card("Software", "Add what you skipped at install", "package")

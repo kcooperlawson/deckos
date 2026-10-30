@@ -1,6 +1,7 @@
 """DecKoOS System Doctor: what's wrong with this PC right now, in plain words, with fixes.
 
-Plain Python, no Qt (deckos_sysdoctor.py is the window). It only reads: the journal, systemd, disks.
+Plain Python, no Qt (DecKoOS Hub's Health page, hub_health.py, is the window). It only reads: the journal,
+systemd, disks.
 Fixes are commands the window runs when the person presses them (pkexec for root ones). Every check
 goes through run(), so tests feed it canned output.
 

@@ -7,3 +7,4 @@ Icon=deckos-hub
 Type=Application
 Categories=Game;System;
 Keywords=game;crash;fix;proton;steam;doctor;launch;won't start;
+NoDisplay=true

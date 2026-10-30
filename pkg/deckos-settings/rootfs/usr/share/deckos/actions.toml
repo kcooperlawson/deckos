@@ -18,10 +18,10 @@ run = ["deckos", "session", "gaming", "--ask"]
 [[action]]
 id = "checkup"
 title = "Run a checkup"
-summary = "System Doctor: what's wrong, in plain words, with fixes"
+summary = "DecKoOS Hub > Health: what's wrong, in plain words, with fixes"
 keywords = "health problem broken crash slow error fix doctor diagnose"
 icon = "check"
-run = ["deckos-sysdoctor"]
+run = ["deckos-hub", "--page", "health"]
 
 [[action]]
 id = "kid-mode"

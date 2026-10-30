@@ -7,3 +7,4 @@ Icon=deckos
 Type=Application
 Categories=System;
 Keywords=deckos;tour;help;introduction;guide;start;new;
+NoDisplay=true

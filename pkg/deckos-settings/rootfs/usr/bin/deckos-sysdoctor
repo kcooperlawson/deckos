@@ -1,2 +1,3 @@
 #!/bin/sh
-exec python3 /usr/lib/deckos/sysdoctor/deckos_sysdoctor.py "$@"
+# System Doctor is DecKoOS Hub's Health page now; this name stays for Care's notifications, the game panel and habit
+exec deckos-hub --page health "$@"

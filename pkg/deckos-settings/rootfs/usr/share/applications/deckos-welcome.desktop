@@ -6,4 +6,18 @@ Exec=deckos-welcome
 Icon=deckos
 Type=Application
 Categories=System;Settings;
-Keywords=deckos;welcome;tour;setup;first;start;theme;wallpaper;
+Keywords=deckos;welcome;tour;setup;first;start;theme;wallpaper;windows;migrate;move in;import;what's new;release notes;changelog;
+Actions=tour;movein;whatsnew;
+
+[Desktop Action tour]
+Name=Take the tour
+Exec=deckos-tour
+
+[Desktop Action movein]
+Name=Move in from Windows
+Exec=deckos-movein
+
+[Desktop Action whatsnew]
+Name=What's new in DecKoOS
+Exec=deckos-whatsnew
+

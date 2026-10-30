@@ -1,5 +1,6 @@
 [Desktop Entry]
-# DecKoOS Welcome replaces KDE's Welcome Center; keep Plasma's from starting at login.
+# DecKoOS Welcome replaces KDE's Welcome Center; keep Plasma's from starting at login (older builds; Plasma 6 starts
+# it from a kded module, turned off in /etc/xdg/kded6rc).
 Type=Application
 Name=Welcome Center
 Exec=plasma-welcome

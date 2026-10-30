@@ -1008,7 +1008,7 @@ class UpdatesStep(Step):
         priv.body.addWidget(row(button("KDE feedback settings…", slot=lambda: settings("kcm_feedback"),
                                        icon="external")))
         self.lay.addWidget(priv)
-        from hub_heal import HealCard  # the same card as Hub > System: what fixes do, each part switchable
+        from hub_heal import HealCard  # the same card as Hub > Health: what fixes do, each part switchable
         self.lay.addWidget(HealCard(self.win.toast))
         self.checked = False
 

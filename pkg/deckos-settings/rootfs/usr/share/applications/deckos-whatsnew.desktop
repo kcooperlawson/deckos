@@ -6,3 +6,4 @@ Icon=deckos
 Type=Application
 Categories=System;
 Keywords=deckos;release;notes;changelog;update;new;
+NoDisplay=true

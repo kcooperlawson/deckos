@@ -12,8 +12,8 @@ body:
   - type: textarea
     id: doctor
     attributes:
-      label: System Doctor
-      description: Open DecKoOS Hub › System › Health check, or run `deckos doctor` in a terminal, and paste what it says.
+      label: Health check
+      description: Open DecKoOS Hub › Health, or run `deckos doctor` in a terminal, and paste what it says.
       render: text
   - type: input
     id: version

@@ -6,4 +6,9 @@ Exec=deckos-hub
 Icon=deckos-hub
 Type=Application
 Categories=System;Settings;
-Keywords=deckos;settings;preferences;control panel;system settings;bluetooth;sound;wifi;display;flicker;monitor;drives;ntfs;gaming;steam;claude;ai;update;
+Keywords=deckos;settings;health;doctor;crash;error;fix;broken;problem;preferences;control panel;system settings;bluetooth;sound;wifi;display;flicker;monitor;drives;ntfs;gaming;steam;claude;ai;update;
+Actions=health;
+
+[Desktop Action health]
+Name=Health check
+Exec=deckos-hub --page health
