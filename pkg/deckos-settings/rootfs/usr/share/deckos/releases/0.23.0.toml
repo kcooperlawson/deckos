@@ -9,6 +9,17 @@ fixes = [
 ]
 
 [[highlights]]
+title = "Made for you"
+text = """DecKoOS now gets better at being yours. From what your PC already keeps (the apps you open, your Steam \
+library, your timeline) it shows what it has noticed, like when you usually play and your most-used apps, and suggests \
+small changes: pin an app you open every day, unpin one you never do, free space a game you stopped playing months \
+ago is taking. Each one is yours to take or leave. It's all worked out on this PC: nothing new is collected and \
+nothing is sent. It's on DecKoOS Hub's Home; deckos learn off turns it off."""
+icon = "star"
+try = "See it"
+run = ["deckos-hub", "--page", "home"]
+
+[[highlights]]
 title = "The desktop reacts to music"
 text = """Turn on Appearance › React to music in DecKoOS Hub and the system itself becomes part of the Vibe: the \
 taskbar's island flares on the beat, the menu button's eyes hop, Quick Settings' edge pulses, and in DecKoOS's apps \
@@ -39,6 +50,13 @@ text = """From the boot menu to the desktop it's one sequence now: the splash's 
 starts, the eyes open wide and it fades away, the dock's islands unfold in one after another, and DecKoOS's own \
 login sound plays (System Settings › Notifications turns it off)."""
 icon = "power"
+
+[[highlights]]
+title = "Into Gaming Mode in one move"
+text = """Switching to Gaming Mode now looks like the dock taking the desktop with it: a plate rises from the taskbar \
+with a lit edge, the DecKoOS splash appears on it, and Steam's startup movie carries on from there. Coming back, the \
+new start-up sequence plays in reverse: the splash, then the dock unfolding in."""
+icon = "gaming"
 
 [[highlights]]
 title = "One way of moving"

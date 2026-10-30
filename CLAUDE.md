@@ -327,6 +327,13 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Timeline's day strip** (`hub/hub_timeline.py` `DayStrip`): the last 14 days as LED columns, a segment per entry
   (up to ten) in its group's colour (`GROUP_COLOURS`); clicking a day sets `Timeline.day`. It counts every day in the
   group picked, whichever day is shown.
+- **Made for you** (`usr/lib/deckos/learn/learn.py`, no Qt; `deckos learn`; the Hub's Home card `hub/hub_learn.py`): the PC
+  learning its person, from what's already on it (kactivitymanagerd's ResourceScoreCache, Steam's manifests and
+  localconfig via steamfiles/shelf, Pulse's game-start entries). It collects nothing new and sends nothing; the only
+  file it writes is `~/.local/state/deckos/learn.json`, the suggestions turned down. `noticed()` says everything it
+  knows in plain words; `suggestions()` are pin/unpin (`deckos taskbar pin|unpin|pins`; unpin only once KDE has
+  counted for 30 days) and big idle games (`steam://uninstall/ID`). Suggest, never act on its own. The Hub reads it in
+  a QProcess (a sleeping game drive takes seconds). Tests: `tests/test_learn.py`.
 - **Settings** (`hub/hub_settings.py`, no Qt; `hub/hub_more.py`): the Hub is the one place for settings. One index of
   the Hub's pages, actions.toml and the Plasma panels DecKoOS uses as they are (`PLASMA`, plain names, hidden when the
   KCM isn't installed); the sidebar's search (Ctrl+F, Enter opens the first) and More settings read it. Plasma panels

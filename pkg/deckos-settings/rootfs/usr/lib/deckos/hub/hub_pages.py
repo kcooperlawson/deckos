@@ -146,13 +146,16 @@ class HomePage(Page):
                                  button("Health check", slot=lambda: self.hub.navigate("health"),
                                         icon="check", tip="What's wrong, in plain words, with fixes"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
-                                 button("AI workspace", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
+                                 button("Workspace", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
                                         tip="DecKoOS Assistant's workspace: code, documents and images, on this PC"),
-                                 button("Tour", slot=lambda: QProcess.startDetached("deckos-tour", []),
-                                        icon="play", tip="Two minutes with pictures: what's here and where it lives"),
                                  button("Welcome", slot=lambda: QProcess.startDetached("deckos-welcome", []),
-                                        icon="star", tip="DecKoOS Welcome: the first-login setup, again")))
+                                        icon="star", tip="DecKoOS Welcome: the first-login setup and the tour, again")))
         self.lay.addWidget(quick)
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "learn"))
+        import learn
+        if learn.enabled():  # deckos learn off hides it
+            from hub_learn import MadeForYouCard  # what DecKoOS has noticed, and what it suggests from that
+            self.lay.addWidget(MadeForYouCard(self.hub))
         from hub_timeline import RecentCard  # here: hub_timeline builds on this module's Page
         self.recent = RecentCard(self.hub)
         self.lay.addWidget(self.recent)

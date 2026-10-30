@@ -286,3 +286,11 @@ summary = "The taskbar, menu button and DecKoOS apps stay still"
 keywords = "music react pulse beat vibe still calm stop"
 icon = "music"
 run = ["deckos", "vibe", "react", "off"]
+
+[[action]]
+id = "made-for-you"
+title = "See what DecKoOS has learned"
+summary = "What it noticed about how you use this PC, and its ideas: all worked out here, nothing sent"
+keywords = "learn learned habits suggestions ideas improve personal made for you privacy local"
+icon = "star"
+run = ["deckos-hub", "--page", "home"]

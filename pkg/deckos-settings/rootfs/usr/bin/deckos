@@ -1516,6 +1516,20 @@ soundbar_follow() {  # deckos-soundbar.service: now, and after every plug or cha
   done < <(udevadm monitor --kernel --subsystem-match=drm 2>/dev/null)
 }
 
+# Made for you (learn/learn.py): what DecKoOS has noticed about how you use the PC, and the changes it suggests from
+# that. It reads what the PC already keeps; nothing new is collected, nothing is sent.
+learn_cmd() {
+  [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
+  local conf=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/learn.conf lib=${DECKOS_LEARN_DIR:-/usr/lib/deckos/learn}/learn.py
+  case ${1:-noticed} in
+    on|off) mkdir -p "${conf%/*}" && echo "on=$([[ $1 == on ]] && echo yes || echo no)" > "$conf"
+      ok "Made for you: $1" ;;
+    forget) python3 "$lib" forget; ok "forgotten: suggestions you turned down can come back" ;;
+    noticed|suggest) python3 "$lib" "$1" ;;
+    *) err "usage: deckos learn [noticed|suggest|on|off|forget]"; exit 2 ;;
+  esac
+}
+
 screens_cmd() {
   [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
   case "${1:-} ${2:-}" in
@@ -1748,6 +1762,24 @@ taskbar_script() {  # JS run for each DecKoOS taskbar `w` (and its panel `p`)
 taskbar_cmd() {
   [[ $EUID -ne 0 ]] || { err "run this as your user"; exit 1; }
   case ${1:-} in
+    pins)  # the pinned apps, one per line (applications:NAME.desktop)
+      qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
+        var all = [];
+        panels().forEach(function (p) { p.widgets('org.deckos.taskbar').forEach(function (w) {
+          w.currentConfigGroup = ['General'];
+          String(w.readConfig('launchers', '')).split(',').forEach(function (l) {
+            if (l && all.indexOf(l) < 0) all.push(l); }); }); });
+        print(all.join('\\n'));" 2>/dev/null || true ;;
+    pin|unpin)  # deckos taskbar pin|unpin NAME.desktop: on every DecKoOS taskbar (pinned ones go at the end)
+      local app=${2:-}
+      app=${app#applications:}
+      [[ $app =~ ^[A-Za-z0-9._@+-]+\.desktop$ ]] || { err "usage: deckos taskbar $1 NAME.desktop"; exit 2; }
+      taskbar_script "var l = String(w.readConfig('launchers', '')).split(',').filter(function (x) { return x; }),
+        id = 'applications:$app', i = l.indexOf(id);
+        if ('$1' === 'pin' && i < 0) l.push(id);
+        if ('$1' === 'unpin' && i >= 0) l.splice(i, 1);
+        w.writeConfig('launchers', l)"
+      ok "taskbar: $app ${1}ned" ;;
     height)
       local px
       case ${2:-} in small) px=40 ;; medium) px=48 ;; large) px=60 ;;
@@ -2481,8 +2513,10 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos heal list|plan ID|apply ID [KEY=VALUE...]     DecKoOS's vetted fixes (root ones: through sudo or pkexec)
   deckos disks [list|verify|startup add|remove UUID|repair UUID|health|format|create|resize|delete]  disks, partitions, start-up
   deckos vibe [list|apply NAME|visualizer STYLE|off]  Vibes: a whole mood in one go, music visualizer included
+  deckos learn [noticed|suggest|on|off|forget]        what DecKoOS has noticed about how you use it, and its ideas
   deckos screens soundbar on|off|now                   a soundbar on HDMI mirrors the main screen, not a screen of its own
   deckos vibe react on|off                            the dock and DecKoOS apps pulse with the music playing
+  deckos taskbar pin|unpin NAME.desktop | pins         put an app on the taskbar, take it off, list them
   deckos taskbar height|colors|motion ...               the taskbar's size, colours (yours win over a Vibe), motion
   deckos kids [list|add NAME|remove NAME|start|...]     Kid mode: an account per child, approved apps, limits
   deckos download URL                                  a big file that won't give up: resumes and retries until done
@@ -2546,6 +2580,7 @@ case ${1:-} in
   vibe) shift; vibe_cmd "$@" ;;
   taskbar) shift; taskbar_cmd "$@" ;;
   screens) shift; screens_cmd "$@" ;;
+  learn) shift; learn_cmd "$@" ;;
   kids) shift; kids_cmd "$@" ;;
   download) shift; download_cmd "$@" ;;
   report) shift; exec python3 "${DECKOS_REPORT_DIR:-/usr/lib/deckos/report}/deckos_report.py" "$@" ;;  # for whoever helps
