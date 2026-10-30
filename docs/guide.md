@@ -25,9 +25,9 @@ Fixes that change Steam's settings close Steam for a moment (it rewrites those f
 reopen it. Open it any time from Hub › Games › Game Doctor, or `deckos game doctor [APPID]`. Anti-cheat
 that blocks Linux is said plainly: no setting on the PC changes that.
 
-## DecKoOS Work (in development)
+## DecKoOS Assistant's workspace (in development)
 
-A dedicated local workspace for code, files, documents and images, using the models already in
+DecKoOS Assistant's big window (it was DecKoOS Work): a local workspace for code, files, documents and images, using the models already in
 DecKoOS Assistant. Saved project chats, reversible edits, approved terminal commands, office-format
 outputs and Stable Diffusion image generation. No hosted-model credits; setup downloads models and
 an isolated creation runtime. See [usage, setup and current limits](work.md).

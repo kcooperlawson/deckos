@@ -47,7 +47,7 @@ DOC_META = {
     "editor": ("DecKoOS Editor", "The text editor: syntax colours, find and replace, and safe saving of system files."),
     "disks": ("DecKoOS Disks", "Your drives and partitions, their health, and making sure they mount after a restart."),
     "bench": ("DecKoOS Bench", "Benchmarks with confidence ranges, history and comparisons, and what each test measures."),
-    "work": ("DecKoOS Work", "A local workspace for code, documents and images, on the models on your PC."),
+    "work": ("DecKoOS Assistant's workspace", "A local workspace for code, documents and images, on the models on your PC."),
     "assistant-models": ("Choosing an AI model", "Which local models were measured with Deck, and how they did."),
     "self-healing": ("How fixes stay safe", "How DecKoOS's fixes work, and the rules no AI can get around."),
     "gaming-session": ("Inside Gaming Mode", "How the Steam Gaming Mode session starts, runs and hands back to the desktop."),

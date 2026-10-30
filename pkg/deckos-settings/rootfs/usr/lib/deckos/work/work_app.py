@@ -1,4 +1,6 @@
-"""DecKoOS Work: a native, local workspace for code, documents and images."""
+"""DecKoOS Assistant's workspace (it was DecKoOS Work): the big window for bigger jobs, code, documents and images,
+with saved tasks per project folder. Deck in the Meta+Space chat box is for quick questions and the PC itself; each
+window opens the other. `deckos-work` opens this one."""
 import argparse
 import json
 import os
@@ -28,19 +30,19 @@ def text(value='',kind=None):
 
 def qss():
     return S.qss()+f'''
-QLineEdit,QSpinBox {{ background:{S.SURFACE};border:1px solid {S.BORDER};border-radius:7px;padding:8px; }}
+QLineEdit,QSpinBox {{ background:{S.SURFACE};border:1px solid {S.BORDER};border-radius:2px;padding:8px; }}
 QTextBrowser {{ background:{S.BG};color:{S.TEXT};border:none;padding:12px; }}
 QListWidget,QTreeView {{ background:transparent;border:none;outline:none; }}
-QListWidget::item {{ padding:11px 8px;border-radius:6px;color:{S.SUBTEXT}; }}
-QListWidget::item:selected {{ background:#1A2A43;color:{S.TEXT}; }}
+QListWidget::item {{ padding:11px 8px;border-radius:2px;color:{S.SUBTEXT}; }}
+QListWidget::item:selected {{ background:{S.P.tint};color:{S.TEXT}; }}
 QTreeView::item {{ padding:5px; }}
 QHeaderView::section {{ background:{S.SURFACE};color:{S.SUBTEXT};border:none;padding:6px; }}
-QTabWidget::pane {{ border:1px solid {S.BORDER};border-radius:8px; }}
-QTabBar::tab {{ background:transparent;color:{S.SUBTEXT};padding:10px 13px; }}
+QTabWidget::pane {{ border:1px solid {S.BORDER};border-radius:2px; }}
+QTabBar::tab {{ background:transparent;color:{S.SUBTEXT};padding:10px 13px;font-family:"Chakra Petch"; }}
 QTabBar::tab:selected {{ color:{S.TEXT};border-bottom:2px solid {S.P.accent}; }}
 QLabel#hero {{ font-size:27pt;font-weight:600; }}
-#approval {{ background:#282216;border:1px solid #735B2B;border-radius:9px; }}
-#composer {{ background:{S.SURFACE};border:1px solid {S.BORDER};border-radius:11px; }}
+#approval {{ background:#282216;border:1px solid #735B2B;border-radius:2px; }}
+#composer {{ background:{S.SURFACE};border:1px solid {S.BORDER};border-radius:2px; }}
 #composer QPlainTextEdit {{ background:transparent;border:none;font-family:Inter;font-size:11pt; }}
 #status {{ color:{S.SUBTEXT};font-size:9pt; }}
 QSplitter::handle {{ background:{S.BORDER};width:1px; }}
@@ -131,8 +133,8 @@ class Work(QWidget):
         app.setPalette(palette)
         self.setObjectName('root')
         self.setAttribute(Qt.WA_StyledBackground,True)
-        self.setWindowTitle('DecKoOS Work'+(' — Demo' if demo else ''))
-        self.setWindowIcon(QIcon.fromTheme('deckos-work', S.brand_icon('work-logo.svg')))
+        self.setWindowTitle('DecKoOS Assistant — Workspace'+(' — Demo' if demo else ''))
+        self.setWindowIcon(QIcon.fromTheme('deckos-assistant', S.brand_icon('work-logo.svg')))
         self.resize(1440,930)
         self.setMinimumSize(1120,740)
         outer=QHBoxLayout(self)
@@ -143,8 +145,8 @@ class Work(QWidget):
         side.setFixedWidth(225)
         sl=QVBoxLayout(side)
         sl.setContentsMargins(15,24,15,20)
-        sl.addWidget(row(icon_label('ai',S.P.accent,30),text('DecKoOS Work','brand'),stretch=False))
-        sl.addWidget(text('Your ideas. Your machine.','muted'))
+        sl.addWidget(row(icon_label('ai',S.P.accent,30),text('DecKoOS Assistant','brand'),stretch=False))
+        sl.addWidget(text('Workspace for bigger jobs','muted'))
         sl.addSpacing(24)
         self.new_button=button('New task','primary',self.new_task,icon='plus')
         sl.addWidget(self.new_button)
@@ -165,6 +167,8 @@ class Work(QWidget):
         sl.addWidget(button('Workspace','nav',lambda:self.stack.setCurrentIndex(0),icon='code'))
         sl.addWidget(button('Image studio','nav',lambda:self.stack.setCurrentIndex(1),icon='image'))
         sl.addWidget(button('Models && tools','nav',lambda:self.stack.setCurrentIndex(2),icon='sliders'))
+        sl.addWidget(button('Quick chat','nav',lambda:QProcess.startDetached('deckos-assistant',[]),icon='chat',
+            tip='Deck in a small window, for quick questions and the PC itself (Meta+Space, anywhere)'))
         sl.addSpacing(10)
         sl.addWidget(text('●  Local models · no API credits','muted'))
         if demo:
@@ -530,11 +534,11 @@ class Work(QWidget):
             if message.get('auto'):
                 content.append('### Quality check\n\n*'+message['content'].splitlines()[0][:300]+'*')
             elif message['role'] in ('user','assistant') and message.get('content'):
-                content.append(('### You\n\n' if message['role']=='user' else '### DecKoOS Work\n\n')+message['content'])
+                content.append(('### You\n\n' if message['role']=='user' else '### Deck\n\n')+message['content'])
         if self.pending_prompt:
             content.append('### You\n\n'+self.pending_prompt)
         if self.streaming:
-            content.append('### DecKoOS Work\n\n'+self.streaming)
+            content.append('### Deck\n\n'+self.streaming)
         self.chat.setMarkdown('\n\n---\n\n'.join(content))
         self.chat.verticalScrollBar().setValue(self.chat.verticalScrollBar().maximum())
 
@@ -812,7 +816,7 @@ class Work(QWidget):
         self.render_chat()
 
     def closeEvent(self,event):
-        if self.busy and QMessageBox.question(self,'Task running','Stop the current task and close DecKoOS Work?')!=QMessageBox.Yes:
+        if self.busy and QMessageBox.question(self,'Task running','Stop the current task and close the workspace?')!=QMessageBox.Yes:
             event.ignore()
             return
         self.closing=True
@@ -835,7 +839,7 @@ def main():
         args.demo=True
         os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
     app=QApplication(sys.argv)
-    app.setApplicationName('DecKoOS Work')
+    app.setApplicationName('DecKoOS Assistant')
     app.setDesktopFileName('deckos-work')
     for font in (HERE.parents[2]/'share/fonts/deckos').glob('*.otf'):
         QFontDatabase.addApplicationFont(str(font))

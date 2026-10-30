@@ -1,10 +1,11 @@
 [Desktop Entry]
-Name=DecKoOS Work
+Name=DecKoOS Assistant workspace
 GenericName=Local AI workspace
-Comment=Code, documents and image creation with your local models
+Comment=Code, documents and image creation with your local models (DecKoOS Assistant's big window)
 Exec=deckos-work
-Icon=deckos-work
+Icon=deckos-assistant
 Type=Application
 Categories=Development;
-Keywords=deckos;ai;local;coding;documents;images;assistant;work;
+Keywords=deckos;ai;local;coding;documents;images;assistant;work;workspace;
 StartupNotify=true
+NoDisplay=true

@@ -50,14 +50,14 @@ def create_document(data):
             table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#E7EFFC')),
                                        ('VALIGN',(0,0),(-1,-1),'TOP'),('GRID',(0,0),(-1,-1),.4,colors.lightgrey)]))
             story.append(table)
-        SimpleDocTemplate(str(path), title=title, author='DecKoOS Work').build(story)
+        SimpleDocTemplate(str(path), title=title, author='DecKoOS Assistant').build(story)
     elif suffix == '.pptx':
         from pptx import Presentation
         from pptx.util import Inches, Pt
         from pptx.dml.color import RGBColor
         prs = Presentation()
         prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
-        for i, section in enumerate([{'heading':title,'text':'Created locally with DecKoOS Work'}, *sections]):
+        for i, section in enumerate([{'heading':title,'text':'Created locally with DecKoOS Assistant'}, *sections]):
             slide = prs.slides.add_slide(prs.slide_layouts[6])
             slide.background.fill.solid()
             slide.background.fill.fore_color.rgb = RGBColor.from_string('0F1115')

@@ -93,7 +93,7 @@ The full walkthrough, including what to do in Windows first, is in **[Installing
 | [Installing DecKoOS](docs/install.md) | Requirements, building the ISO, preparing Windows, the installer and the first login |
 | [Using DecKoOS](docs/guide.md) | Hub, Store, Menu, Quick Settings, Gaming Mode, workload modes, the Assistant, Game Doctor and more |
 | [Undo and snapshots](docs/undo.md) | How updates and big changes can be undone |
-| [DecKoOS Bench](docs/bench.md), [Files](docs/files.md), [Terminal](docs/terminal.md), [Editor](docs/editor.md), [Work](docs/work.md) | How each app works, and its current limits |
+| [DecKoOS Bench](docs/bench.md), [Files](docs/files.md), [Terminal](docs/terminal.md), [Editor](docs/editor.md), [Assistant workspace](docs/work.md) | How each app works, and its current limits |
 | [Developing DecKoOS](docs/development.md) | Building from source, the reference machine, and how updates reach installed PCs |
 
 ## How it's made

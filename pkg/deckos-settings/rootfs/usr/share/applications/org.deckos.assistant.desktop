@@ -1,11 +1,16 @@
 [Desktop Entry]
 Name=DecKoOS Assistant
 GenericName=Local AI assistant
-Comment=Ask your PC to install or set up anything; runs on this PC
+Comment=Ask your PC to install or set up anything, or open the workspace for code, documents and images; runs on this PC
 Exec=deckos-assistant
 Icon=deckos-assistant
 Type=Application
 Categories=System;Utility;
-Keywords=ai;assistant;ask;chat;help;install;setup;local;ollama;
+Keywords=ai;assistant;ask;chat;help;install;setup;local;ollama;work;workspace;coding;code;documents;images;
 StartupWMClass=org.deckos.assistant
 X-KDE-Shortcuts=Meta+Space
+Actions=workspace;
+
+[Desktop Action workspace]
+Name=Open the workspace (code, documents, images)
+Exec=deckos-work

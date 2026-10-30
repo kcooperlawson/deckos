@@ -394,7 +394,7 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   DEST` is still the everyday rsync mirror. Hub > System > Before a reinstall; Welcome's first step finds a backup on
   the drives (`welcome_system.find_backups`) and offers it. Tests: `tests/test_backup.py`.
 - **The app menu stays short**: one entry per job. Hub (settings and Health), Store, Welcome (with Tour, Move in and
-  What's New as its right-click actions), Music, Retro, System Monitor, Disks, Bench, Assistant, Work, Gaming Mode.
+  What's New as its right-click actions), Music, Retro, System Monitor, Disks, Bench, Assistant (with its workspace as a right-click action), Gaming Mode.
   Anything that's part of one of those, opened from a notification, or for developers (Builder: Hub > AI & Dev) gets
   `NoDisplay=true` and a way in from where it belongs, not a menu entry of its own. KDE's Welcome Center is off
   (`/etc/xdg/kded6rc`: Plasma 6 starts it from kded).
@@ -457,7 +457,13 @@ weights: bump `VERSION` instead, since history and cross-PC comparisons depend o
 hardware validation are documented in `docs/bench.md`; do not present BeamNG, fio or vkmark as
 validated on hardware yet. Nothing in Bench should silently change system tuning settings.
 
-## DeckOS Work — active development
+## DecKoOS Assistant's workspace (was DecKoOS Work) — active development
+
+One app to the person: DecKoOS Assistant. Deck in the Meta+Space chat box (`assistant/`) is for quick questions
+and the PC itself; the workspace (`work/`, `deckos-work`, "DecKoOS Assistant — Workspace") is its big window for
+bigger jobs. Each opens the other, both answer as Deck, and only the Assistant is in the menu. Code still says
+"work" (modules, `deckos work`, `~/.local/share/deckos/work`): don't rename what people's data lives under.
+
 
 Read `docs/work-handoff.md` before continuing. The user redirected the pending 0.5.0 release work
 into a dedicated local coworking/coding/image application and is low on usage. Source is in
@@ -466,7 +472,7 @@ models; documents and images run in an isolated optional uv environment. No paid
 frontier-model parity, a shell sandbox, or finished hardware validation without evidence.
 Work's default model is the Assistant's `MODEL` (`/etc/deckos/ai.conf`, user override) until picked in
 Work. Entry points: the Hub's AI & Dev card and Home quick action, the Assistant header's code button,
-`deckos work`, the app menu. `work_app.py --demo --screenshot DIR` renders its three pages.
+`deckos work`, the Assistant's menu entry (right click). `work_app.py --demo --screenshot DIR` renders its three pages.
 Quality loop (docs/work.md): `work_agent.follow_up` sends the model back for unfinished plan items,
 unverified edits and self-review findings; `Tools._write` refuses edits that delete existing tests.
 Measured on gpt-oss:20b: without the test guard it deleted a failing test to get a pass.

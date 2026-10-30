@@ -20,7 +20,7 @@ makedepends=(librsvg grub papirus-icon-theme)
 optdepends=('gamescope-session-steam-git: Steam Gaming Mode session'
             'lact: GPU clock/fan control GUI'
             'gcc: DecKoOS Bench memory benchmark (compiled on first use)'
-            'uv: DecKoOS Work local document and image runtime setup')
+            'uv: DecKoOS Assistant workspace local document and image runtime setup')
 backup=(etc/deckos/display.conf
         etc/deckos/gaming.conf
         etc/pacman.d/deckos-repo

@@ -254,7 +254,7 @@ class ChatBox(QWidget):
         self.model_label = label("", "muted")
         names.addWidget(self.model_label)
         h.addLayout(names, 1)
-        for name, tip, slot in (("code", "Bigger job? Open DecKoOS Work for code, documents and images",
+        for name, tip, slot in (("code", "Bigger job? Open the workspace for code, documents and images",
                                  lambda: QProcess.startDetached("deckos-work", [])),
                                 ("refresh", "New chat", self.new_chat), ("close", "Hide (Esc). Meta+Space brings it back", self.hide)):
             b = QPushButton()

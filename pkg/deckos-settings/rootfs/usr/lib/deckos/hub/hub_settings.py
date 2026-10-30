@@ -34,7 +34,7 @@ HUB = [
      "ntfs windows disk drive mount read only fast startup move in"),
     ("aidev", "Local AI", "Ollama, choose a model, DecKoOS Assistant", "ai",
      "ai ollama model llm assistant gpt chat local claude code"),
-    ("aidev", "Development", "Claude Code, DecKoOS Work, dev tools", "code",
+    ("aidev", "Development", "Claude Code, DecKoOS Assistant, dev tools", "code",
      "code developer docker vscode work claude terminal"),
     ("system", "Updates", "Update DecKoOS and apps, automatic updates, test channel", "update",
      "update upgrade pacman automatic overnight channel testing"),

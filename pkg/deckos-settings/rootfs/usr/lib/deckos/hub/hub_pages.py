@@ -146,8 +146,8 @@ class HomePage(Page):
                                  button("Health check", slot=lambda: self.hub.navigate("health"),
                                         icon="check", tip="What's wrong, in plain words, with fixes"),
                                  button("Files", slot=lambda: QProcess.startDetached("deckos-files", []), icon="folder"),
-                                 button("Work", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
-                                        tip="DecKoOS Work: code, documents and images with your local AI"),
+                                 button("AI workspace", slot=lambda: QProcess.startDetached("deckos-work", []), icon="code",
+                                        tip="DecKoOS Assistant's workspace: code, documents and images, on this PC"),
                                  button("Tour", slot=lambda: QProcess.startDetached("deckos-tour", []),
                                         icon="play", tip="Two minutes with pictures: what's here and where it lives"),
                                  button("Welcome", slot=lambda: QProcess.startDetached("deckos-welcome", []),
@@ -853,12 +853,15 @@ class AiDevPage(Page):
                                                          icon="plus")))
         self.lay.addWidget(self.ollama_card)
 
-        work = Card("DecKoOS Work", "A local workspace for bigger jobs", "code")
-        work.body.addWidget(label("Saved project chats with your local models: read and change code, run approved "
+        work = Card("DecKoOS Assistant", "Deck, your local AI, for quick questions and bigger jobs", "ai")
+        work.body.addWidget(label("Meta+Space asks Deck anything about this PC: install, fix, set up. The workspace is "
+                                  "for bigger jobs, saved project chats with your local models: read and change code, run approved "
                                   "commands, make Word, PDF, PowerPoint and spreadsheet files, and create images on "
                                   "your graphics card. No API key, nothing leaves this PC.", "sub"))
-        work.body.addWidget(row(button("Open DecKoOS Work", "primary", lambda: QProcess.startDetached("deckos-work", []),
-                                       icon="code")))
+        work.body.addWidget(row(button("Open the workspace", "primary", lambda: QProcess.startDetached("deckos-work", []),
+                                       icon="code"),
+                                button("Quick chat", slot=lambda: QProcess.startDetached("deckos-assistant", []),
+                                       icon="chat", tip="Meta+Space, anywhere")))
         self.lay.addWidget(work)
         tools = Card("Tools", "What's installed", "code")
         grid = QGridLayout()

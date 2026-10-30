@@ -155,7 +155,7 @@ PROGRAMS = [
     (r"deckos_hub|hub_pages", "DecKoOS Hub", "deckos"),
     (r"deckos_store", "DecKoOS Store", "deckos"),
     (r"deckos_assistant", "DecKoOS Assistant", "deckos"),
-    (r"work_app", "DecKoOS Work", "deckos"),
+    (r"work_app", "DecKoOS Assistant's workspace", "deckos"),
     (r"bench_app|deckos_bench", "DecKoOS Bench", "deckos"),
     (r"deckos-terminal", "DecKoOS Terminal", "deckos"),
     (r"deckos-editor", "DecKoOS Editor", "deckos"),

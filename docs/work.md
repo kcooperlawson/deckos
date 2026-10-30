@@ -1,13 +1,14 @@
-# DecKoOS Work
+# DecKoOS Assistant's workspace
 
-DecKoOS Work is a native local workspace for coding, working with files and documents, and creating
+The workspace (it was called DecKoOS Work) is DecKoOS Assistant's big window: a native local workspace for coding, working with files and documents, and creating
 images. It uses Ollama models and local creation tools. There are no hosted-model API keys or
 per-request credits. Model quality and hardware limits still matter: it does not reproduce every
 Claude/Codex feature or their reasoning quality.
 
 ## Start
 
-Open `deckos-work`, or run `deckos work`. While developing from the checkout:
+Open it from the Assistant's chat box (the code button), right click DecKoOS Assistant in the menu, or run
+`deckos work`. While developing from the checkout:
 
 ```bash
 python3 pkg/deckos-settings/rootfs/usr/lib/deckos/work/work_app.py --workspace /path/to/project
