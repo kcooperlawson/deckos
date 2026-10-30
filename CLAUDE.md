@@ -324,6 +324,9 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Report** (`usr/lib/deckos/report/deckos_report.py`, `deckos report`): hardware, drivers, System Doctor, recent
   errors in one text file for whoever helps; `scrub()` takes out names, serials, UUIDs, ids and addresses (tested).
   Never sends it anywhere.
+- **Timeline's day strip** (`hub/hub_timeline.py` `DayStrip`): the last 14 days as LED columns, a segment per entry
+  (up to ten) in its group's colour (`GROUP_COLOURS`); clicking a day sets `Timeline.day`. It counts every day in the
+  group picked, whichever day is shown.
 - **Settings** (`hub/hub_settings.py`, no Qt; `hub/hub_more.py`): the Hub is the one place for settings. One index of
   the Hub's pages, actions.toml and the Plasma panels DecKoOS uses as they are (`PLASMA`, plain names, hidden when the
   KCM isn't installed); the sidebar's search (Ctrl+F, Enter opens the first) and More settings read it. Plasma panels

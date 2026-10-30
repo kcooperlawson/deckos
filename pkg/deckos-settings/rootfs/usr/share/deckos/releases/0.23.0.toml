@@ -26,6 +26,14 @@ your Vibe comes back when you stop. The Timeline now says what you played and fo
 icon = "gaming"
 
 [[highlights]]
+title = "Two weeks at a glance"
+text = """The Timeline opens with your last fourteen days as LED columns: one segment per thing that happened, coloured \
+by what it was (games, the look, apps, health, the system). Click a day to see just that day."""
+icon = "clock"
+try = "Open the Timeline"
+run = ["deckos-hub", "--page", "timeline"]
+
+[[highlights]]
 title = "One way of moving"
 text = """Quick Settings, the menu, the Hub's pages and the Desktop shelf's tiles all arrive the same way now: a quick, \
 soft unfold from where they come from."""

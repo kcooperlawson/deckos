@@ -5,7 +5,8 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QFileSystemWatcher, QProcess, Qt, QTimer
+from PySide6.QtCore import QFileSystemWatcher, QProcess, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QButtonGroup, QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pulse"))
@@ -49,6 +50,71 @@ def day_of(ts):
     return time.strftime("%A %d %B", t)
 
 
+# The colour of each group in the day strip: games green, the look violet, apps amber, health red, the system the accent
+GROUP_COLOURS = {"Games": "#3DD68C", "Look": "#A27BFF", "Apps": "#F5B84B", "Health": "#FF6B6B"}
+DAYS = 14
+
+
+def day_key(ts):
+    return time.strftime("%Y-%m-%d", time.localtime(ts))
+
+
+class DayStrip(QWidget):
+    """The last two weeks at a glance: a column of LED segments per day, one segment per thing that happened (up to
+    ten), coloured by what it was. Click a day to see only it; click it again for everything."""
+    picked = Signal(object)  # a day's key, or None
+
+    def __init__(self):
+        super().__init__()
+        self.setFixedHeight(104)
+        self.setCursor(Qt.PointingHandCursor)
+        self.counts, self.day = {}, None
+
+    def show_rows(self, rows):
+        self.counts = {}
+        for r in rows:
+            group = pulse.KINDS.get(r["kind"], ("", "System"))[1]
+            self.counts.setdefault(day_key(r["time"]), []).append(group)
+        self.update()
+
+    def days(self):
+        now = time.time()
+        return [now - (DAYS - 1 - i) * 86400 for i in range(DAYS)]
+
+    def mousePressEvent(self, e):
+        w = self.width() / DAYS
+        key = day_key(self.days()[min(DAYS - 1, int(e.position().x() // w))])
+        self.day = None if key == self.day else key
+        self.update()
+        self.picked.emit(self.day)
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        w = self.width() / DAYS
+        seg_h, gap = 5, 2
+        for i, ts in enumerate(self.days()):
+            key = day_key(ts)
+            x = i * w
+            if key == self.day:
+                S.paint_plate(p, QRectF(x + 2, 0, w - 4, self.height()), S.P.tint, 6, lit=True)
+            groups = self.counts.get(key, [])[:10]
+            for j, g in enumerate(groups):  # stacked from the bottom, like a level meter
+                c = QColor(GROUP_COLOURS.get(g, S.P.accent))
+                y = self.height() - 24 - (j + 1) * (seg_h + gap)
+                p.fillRect(QRectF(x + w * 0.22, y, w * 0.56, seg_h), c)
+            if not groups:
+                p.fillRect(QRectF(x + w * 0.22, self.height() - 24 - seg_h - gap, w * 0.56, seg_h), QColor(S.BORDER))
+            f = QFont(S.HUD, 8)
+            f.setWeight(QFont.DemiBold)
+            f.setLetterSpacing(QFont.AbsoluteSpacing, 0.8)
+            p.setFont(f)
+            today = key == day_key(time.time())
+            p.setPen(QColor(S.TEXT if key == self.day or today else S.SUBTEXT))
+            p.drawText(QRectF(x, self.height() - 20, w, 18), Qt.AlignCenter,
+                       "TODAY" if today else time.strftime("%a %d", time.localtime(ts)).upper())
+        p.end()
+
+
 class Timeline(QWidget):
     """The rows themselves, shared by the page and Home's card."""
 
@@ -56,6 +122,7 @@ class Timeline(QWidget):
         super().__init__()
         self.hub, self.limit, self.compact = hub, limit, compact
         self.group = "All"
+        self.day = None  # one day's key (the day strip), or None for all
         self.demo_rows = demo_entries() if sysinfo.DEMO else None
         self.box = QVBoxLayout(self)
         self.box.setContentsMargins(0, 0, 0, 0)
@@ -77,6 +144,8 @@ class Timeline(QWidget):
         rows = [r for r in rows if r["kind"] != "undo" or not self.compact]  # Home leaves out the undo notes
         if self.group != "All":
             rows = [r for r in rows if pulse.KINDS.get(r["kind"], ("", "System"))[1] == self.group]
+        if self.day:
+            rows = [r for r in rows if day_key(r["time"]) == self.day]
         return rows[:self.limit]
 
     def refresh(self):
@@ -141,7 +210,12 @@ class TimelinePage(Page):
             chips.addWidget(b)
         chips.addStretch(1)
         self.lay.addLayout(chips)
+        self.strip = DayStrip()
+        strip_card = Card("Two weeks", "What happened, day by day", "clock")
+        strip_card.body.addWidget(self.strip)
+        self.lay.addWidget(strip_card)
         self.timeline = Timeline(self.hub)
+        self.strip.picked.connect(self.pick_day)
         self.chip_group.idClicked.connect(self.pick)
         card = Card("", "", "")
         card.body.addWidget(self.timeline)
@@ -149,10 +223,19 @@ class TimelinePage(Page):
 
     def pick(self, i):
         self.timeline.group = GROUPS[i]
+        self.refresh()
+
+    def pick_day(self, key):
+        self.timeline.day = key
         self.timeline.refresh()
 
     def refresh(self):
         self.timeline.refresh()
+        day, self.timeline.day = self.timeline.day, None  # the strip counts every day, in the group picked
+        self.strip.show_rows(self.timeline.rows() if self.timeline.demo_rows is not None else
+                             [r for r in pulse.entries(2000) if self.timeline.group == "All"
+                              or pulse.KINDS.get(r["kind"], ("", "System"))[1] == self.timeline.group])
+        self.timeline.day = day
 
 
 class RecentCard(Card):
