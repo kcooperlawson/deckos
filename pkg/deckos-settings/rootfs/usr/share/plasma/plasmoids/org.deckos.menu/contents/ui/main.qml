@@ -225,6 +225,9 @@ PlasmoidItem {
 
     compactRepresentation: MouseArea {
         id: button
+        // The desktop arriving: the dock's islands unfold in one after another (menu, taskbar, Quick Settings)
+        Vibes.Unfold { id: arrive; target: button }
+        Component.onCompleted: arrive.play()
         property bool wasExpanded: false
         Layout.minimumWidth: height
         Layout.preferredWidth: height

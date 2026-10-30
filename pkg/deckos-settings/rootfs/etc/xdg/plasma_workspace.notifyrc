@@ -1,0 +1,5 @@
+# DecKoOS: the desktop arriving has a sound (the sound theme's desktop-login, DecKoOS's own unless you picked
+# another theme). KDE ships the event silent. Turn it off in System Settings > Notifications > Plasma Workspace >
+# "Login", which writes your own ~/.config/plasma_workspace.notifyrc over this.
+[Event/startkde]
+Action=Sound

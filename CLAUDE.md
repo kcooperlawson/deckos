@@ -436,6 +436,11 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Tour** (`welcome/deckos_tour.py`, `deckos-tour`): one picture per stop with a Try button; Welcome, the Hub's Home,
   Welcome's menu entry (right click) and the live USB's installer open it. Pictures in `usr/share/deckos/tour/` come from `assets/tour_images.py`
   (docs/screenshots plus Hub/Vibe/Vibe mode renders): re-run it after retaking screenshots.
+- **Start-up sequence**: GRUB, Plymouth (`deckos.script`), SDDM, then KSplash (`look-and-feel/.../splash/Splash.qml`:
+  LED segments per KSplash stage, 5 being the last Plasma reports; there the eyes widen and it fades), then the dock's
+  islands unfold in (`Vibes.Unfold` on start: menu, taskbar +120 ms, Quick Settings +240 ms) and the login sound plays
+  (`/etc/xdg/plasma_workspace.notifyrc` turns KDE's silent `startkde` event on). Preview the splash on its own with a
+  QQuickView set to SizeRootObjectToView (it has no size of its own) and the software backend offscreen.
 - **Boot menu**: GRUB theme in the DecKo look (`assets/generate.py`'s `grub_background`/`grub_select_pieces`: a notched
   plate round the menu, notched lit highlight, Chakra Petch via grub-mkfont in the PKGBUILD). `GRUB_MENU` must match
   theme.txt's boot_menu box. Check the look on a real boot: GRUB can't be rendered here.

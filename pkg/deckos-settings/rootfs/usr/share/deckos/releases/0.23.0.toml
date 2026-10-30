@@ -34,6 +34,13 @@ try = "Open the Timeline"
 run = ["deckos-hub", "--page", "timeline"]
 
 [[highlights]]
+title = "Starting up, all the way through"
+text = """From the boot menu to the desktop it's one sequence now: the splash's LED segments light as Plasma really \
+starts, the eyes open wide and it fades away, the dock's islands unfold in one after another, and DecKoOS's own \
+login sound plays (System Settings › Notifications turns it off)."""
+icon = "power"
+
+[[highlights]]
 title = "One way of moving"
 text = """Quick Settings, the menu, the Hub's pages and the Desktop shelf's tiles all arrive the same way now: a quick, \
 soft unfold from where they come from."""

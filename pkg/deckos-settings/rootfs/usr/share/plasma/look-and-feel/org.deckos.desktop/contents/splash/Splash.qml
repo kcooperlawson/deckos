@@ -1,13 +1,24 @@
 // DecKoOS login splash: the same wordmark as the Plymouth boot splash, its oO as a pair of eyes that
 // glance left, then right, then blink, so the animation carries on from boot into Plasma instead of a
 // plain KDE logo. The timing is shared with deckos.script and assets/boot_movie.py: change all three.
+// Under it, LED segments light as Plasma really starts (KSplash's stages); on the last the eyes open wide and the
+// splash fades into the desktop, where the dock's islands unfold in (Vibes.Unfold in each).
 import QtQuick
+import org.deckos.vibes as Vibes
 
 Rectangle {
     id: root
     color: "#0f1115"
 
     property int stage
+    readonly property bool done: stage >= 5  // Plasma's desktop is up: the last stage KSplash reports (Breeze fades there too)
+    onDoneChanged: if (done) leave.start()
+    SequentialAnimation {
+        id: leave
+        NumberAnimation { target: root; property: "wide"; to: 1; duration: 260; easing.type: Easing.OutBack }
+        NumberAnimation { target: root; property: "opacity"; to: 0; duration: 380; easing.type: Easing.InCubic }
+    }
+    property real wide: 0  // the eyes opening at the end: 0 .. 1
 
     readonly property string branding: "file:///usr/share/deckos/branding/"
     readonly property real s: Math.min(width * 0.4, 1008) / 1008
@@ -45,7 +56,25 @@ Rectangle {
             sourceSize.width: width
             x: word.x + (modelData[1] + 5 * root.look) * root.s - width / 2
             y: word.y + (modelData[2] + 2 * Math.abs(root.look)) * root.s - height / 2
-            transform: Scale { origin.x: width / 2; origin.y: height / 2; yScale: root.lid }
+            transform: Scale {
+                origin.x: width / 2; origin.y: height / 2
+                xScale: 1 + root.wide * 0.18
+                yScale: root.done ? 1 + root.wide * 0.18 : root.lid
+            }
         }
+    }
+
+    // How far Plasma has got: five segments, one per stage, in DecKoOS's blue and violet
+    Vibes.Look { id: brand }
+    Vibes.Segments {
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: word.y + word.height + 54 * root.s
+        width: 260 * root.s
+        look: brand
+        count: 5
+        spacing: 6 * root.s
+        segmentHeight: Math.max(3, 7 * root.s)
+        value: Math.min(5, root.stage) / 5
+        Behavior on value { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
     }
 }

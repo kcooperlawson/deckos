@@ -9,6 +9,8 @@ import org.deckos.vibes as Vibes
 // waiting, and while music plays a small live spectrum beside it (deckos-visualizer; it listens only then).
 MouseArea {
     id: compact
+    // The desktop arriving: the dock's islands unfold in one after another (menu, taskbar, Quick Settings)
+    Vibes.Unfold { id: arrive; target: compact; delay: 240 }
     property var backend
     property bool expanded: false
     property bool vertical: false
@@ -42,7 +44,10 @@ MouseArea {
             it = it.parent;
         container = it && it.parent ? it : null;
     }
-    Component.onCompleted: Qt.callLater(findContainer)
+    Component.onCompleted: {
+        Qt.callLater(findContainer);
+        arrive.play();
+    }
     readonly property real endPad: 10
     readonly property real islandWidth: {
         if (vertical || !container || !container.parent)

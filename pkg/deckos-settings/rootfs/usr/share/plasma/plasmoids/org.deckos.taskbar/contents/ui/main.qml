@@ -17,6 +17,8 @@ import org.deckos.vibes as Vibes
 
 PlasmoidItem {
     id: deckTasks
+    // The desktop arriving: the dock's islands unfold in one after another (menu, taskbar, Quick Settings)
+    Vibes.Unfold { id: arrive; target: deckTasks; delay: 120; duration: 240 }
 
     // Colours from the active colour scheme and accent, so themes and the Hub's accent reach this widget;
     // the surfaces are the scheme's background lifted towards its text, like the DecKoOS slate steps.
@@ -129,7 +131,10 @@ PlasmoidItem {
     readonly property real labelWidth: Math.max(tile * 3, Math.min(220, (width - 4 * repeater.count) / Math.max(1, repeater.count)))
 
     preferredRepresentation: fullRepresentation
-    Component.onCompleted: Plasmoid.constraintHints = Plasmoid.CanFillArea
+    Component.onCompleted: {
+        Plasmoid.constraintHints = Plasmoid.CanFillArea;
+        arrive.play();
+    }
     Layout.fillWidth: !vertical && labels
     Layout.fillHeight: vertical
     // The strip of apps, then the + tile
