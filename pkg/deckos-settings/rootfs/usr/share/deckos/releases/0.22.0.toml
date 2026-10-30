@@ -2,11 +2,37 @@
 
 version = "0.22.0"
 name = "Sing along"
-tagline = "Live lyrics in Vibe mode, three new looks, and screens laid out the way your desk is."
+tagline = "Live lyrics in Vibe mode, a Desktop shelf in place of icons, and fewer, clearer apps in the DecKo look."
 
 fixes = [
     "Vibe mode follows Spotify's position to the moment, not the half second.",
+    "The clock no longer runs past the edge of the tray's box on the taskbar.",
+    "KDE's own Welcome Center no longer opens after Plasma updates: DecKoOS Welcome and What's New cover it.",
 ]
+
+[[highlights]]
+title = "The Desktop shelf"
+text = """Desktop icons are now live tiles on one card, in your Vibe's colours: a Steam game shows its art, when you \
+last played and a Play button; a folder shows how much is in it and a peek at its pictures; a picture is the tile; \
+a text file shows its first lines; a download still arriving shows how much has come. Drop things on it to keep them \
+on the Desktop. It's still your Desktop folder, so nothing moves. Turn it off under Appearance › Desktop widgets to \
+get the icons back."""
+icon = "folder"
+
+[[highlights]]
+title = "Health, in one place"
+text = """DecKoOS Hub has a Health page: the checkup that was System Doctor, games that closed right after starting \
+(each opens Game Doctor), DecKoOS's fixes and their switches, and a report to send whoever helps you."""
+icon = "check"
+try = "Open Health"
+run = ["deckos-hub", "--page", "health"]
+
+[[highlights]]
+title = "Fewer, clearer apps"
+text = """DecKoOS's apps take on the desktop's look: notched cards and buttons, Chakra Petch labels, LED meters. And \
+the menu is down to one entry per job. DecKoOS Work is now DecKoOS Assistant's workspace (right click the Assistant), \
+Tour, Move in and What's New live in Welcome, and Builder moved to the Hub's AI & Dev page."""
+icon = "grid"
 
 [[highlights]]
 title = "Live lyrics"
