@@ -47,6 +47,16 @@ console-style Steam **Gaming Mode**, and a private AI that runs on your own grap
   with your games' art and play time, and fixes for real problems: NTFS game drives, soundbars on HDMI, RX 9000
   display blackouts.
 
+### Where the name comes from
+
+DecKo started as a clan name. My cousin and I played *Call of Duty: Modern Warfare 2* under it when I was twelve,
+and from then on everything we made together carried it. Even then we talked about building our own operating
+system one day, the kind of idea you never expect to follow through on. Years later, designing and building a
+manufacturing data-logging app for my job taught me how much good software comes down to the details people
+actually touch. DecKoOS is where I've put that to work: the OS we used to talk about, built properly this time.
+
+<sub>— kcooperlawson, who builds DecKoOS</sub>
+
 > **New in 0.23: "In time".** The desktop **reacts to music**, **Made for you** learns how you use your PC, starting
 > up and switching to Gaming Mode are one smooth sequence, games colour the desktop while you play, and the login
 > screen and every app share the DecKo look. [All releases →](CHANGELOG.md)

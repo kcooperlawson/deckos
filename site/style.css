@@ -118,6 +118,7 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
 }
 .hero-shot video { display: block; width: 100%; border-radius: 17px; background: #000;
   box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.9), 0 0 80px -20px rgba(92, 120, 255, 0.35); }
+.story-sign { margin-top: 18px !important; color: var(--sub); font-size: 14px; font-style: italic; }
 .hero-caption { margin: 14px 0 0; color: var(--sub); font-size: 14px; text-align: center; }
 .features.four { grid-template-columns: repeat(2, 1fr); }
 .hero-shot img { border-radius: 17px; box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.9), 0 0 80px -20px rgba(92, 120, 255, 0.35); }

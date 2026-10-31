@@ -505,6 +505,9 @@ class Site:
         intro = "DecKoOS is a Linux desktop for gaming PCs that moves with you. Put music on and the dock, the menu and " \
                 "every DecKoOS app pulse on the beat while Vibe mode spreads the song across your monitors. Start a " \
                 "game and the desktop takes on its colours and steps out of the way."
+        # README's "Where the name comes from": the maintainer's own words, as they are there
+        story = Markdown(self.doc_link).inline(" ".join(
+            line.strip() for line in md_section(self.readme, "Where the name comes from", "###").split("\n\n")[0].splitlines()))
         # README's "What makes it different": the four things to know first
         different = "".join(
             f'<div class="feature"><div class="tile">{icon(ic)}</div><h3>{html.escape(t)}</h3><p>{Markdown(self.doc_link).inline(d)}</p></div>'
@@ -623,6 +626,17 @@ class Site:
       <div class="trust-item">{icon('shield')}<div><h3>An installer that leaves Windows alone</h3><p>It installs beside Windows, refuses BitLocker and in-use partitions, and installs itself in a virtual machine before every release.</p></div></div>
       <div class="trust-item">{icon('lock')}<div><h3>Signed packages</h3><p>Every DecKoOS update is signed, and your PC checks the signature before installing. <a href="/security.html">How it works</a>.</p></div></div>
       <div class="trust-item">{icon('ai')}<div><h3>Your AI stays on your PC</h3><p>The assistant runs on your own graphics card. Web search is off until you turn it on, and nothing is sent anywhere by itself.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="story">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">Where the name comes from</span>
+      <h2>A clan name that became an OS</h2>
+      <p>{story}</p>
+      <p class="story-sign">kcooperlawson, who builds DecKoOS</p>
     </div>
   </div>
 </section>
