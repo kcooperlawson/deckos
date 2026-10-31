@@ -29,6 +29,8 @@ console-style Steam **Gaming Mode**, and a private AI that runs on your own grap
   <img src="docs/media/vibe-demo.webp" alt="Vibe mode on two monitors: live lyrics on one, the album cover and the music's light on the other, through three of its looks" width="100%">
   <br><sub>Vibe mode on two monitors: lyrics on one, the song's light on the other (aurora, grid and kaleidoscope looks;
   a made-up demo song).</sub>
+  <br><a href="docs/media/tour.mp4"><b>▶ Watch the 45-second tour</b></a>: the desktop on the beat, the menu, a game
+  colouring the desktop, the switch to Gaming Mode, Vibe mode and DecKoOS Hub.
 </p>
 
 ### What makes it different

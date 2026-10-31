@@ -326,7 +326,7 @@ class Site:
                     if src.exists():
                         h["_img"] = self.image(src, "release-" + src.stem)
         (self.out / "media").mkdir(exist_ok=True)  # the Vibe mode demo the home page plays
-        for f in ("vibe-demo.mp4", "vibe-demo-poster.jpg"):
+        for f in ("vibe-demo.mp4", "vibe-demo-poster.jpg", "tour.mp4", "tour-poster.jpg"):
             if (ROOT / "docs/media" / f).exists():
                 shutil.copy(ROOT / "docs/media" / f, self.out / "media" / f)
         keyring = ROOT / "pkg/deckos-settings/rootfs/usr/share/pacman/keyrings/deckos.gpg"
@@ -561,6 +561,19 @@ class Site:
       <p>Every piece, from the boot menu to the apps, is built around one look and one idea: the PC moves with you.</p>
     </div>
     <div class="features four">{different}</div>
+  </div>
+</section>
+
+<section id="tour-video" class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">See it move</span>
+      <h2>45 seconds of DecKoOS</h2>
+      <p>The desktop on the beat, the menu, a game lending the desktop its colours, the switch to Gaming Mode, Vibe
+      mode and DecKoOS Hub, recorded on one PC.</p>
+    </div>
+    <div class="hero-shot"><video src="/media/tour.mp4" poster="/media/tour-poster.jpg" controls muted playsinline
+      preload="metadata" aria-label="A 45-second tour of DecKoOS"></video></div>
   </div>
 </section>
 
