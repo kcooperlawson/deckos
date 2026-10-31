@@ -58,7 +58,8 @@ DOC_META = {
 FEATURE_ICONS = {"Workload modes": "gauge", "Game Doctor": "gaming", "DecKoOS Assistant": "ai", "DecKoOS Bench": "flask",
                  "Updates you can undo": "undo", "A safe installer": "shield", "Move in from Windows": "folder",
                  "Fixes for real hardware": "display", "Its own desktop apps": "grid", "Vibes": "music",
-                 "Kid mode": "user", "Every setting in one place": "search", "Make it yours": "appearance"}
+                 "Kid mode": "user", "Every setting in one place": "search", "Make it yours": "appearance",
+                 "Vibe mode": "play", "Made for you": "star", "React to music": "music"}
 
 # Left off the home page's grid (a fix for one card family, not a headline; it keeps the grid even)
 HOME_SKIP = {"Fixes for real hardware"}
@@ -240,9 +241,9 @@ class Markdown:
         return i
 
 
-def md_section(text, title):
-    """The part of a markdown file under '## title', up to the next heading of that level."""
-    m = re.search(rf"^##\s+{re.escape(title)}\s*$(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+def md_section(text, title, level="##"):
+    """The part of a markdown file under '## title' (or another `level`), up to the next heading of that level."""
+    m = re.search(rf"^{level}\s+{re.escape(title)}\s*$(.*?)(?=^#{{2,{len(level)}}}\s|\Z)", text, re.M | re.S)
     return m.group(1).strip() if m else ""
 
 
@@ -324,6 +325,10 @@ class Site:
                     src = SHARE / "releases" / h["image"]
                     if src.exists():
                         h["_img"] = self.image(src, "release-" + src.stem)
+        (self.out / "media").mkdir(exist_ok=True)  # the Vibe mode demo the home page plays
+        for f in ("vibe-demo.mp4", "vibe-demo-poster.jpg"):
+            if (ROOT / "docs/media" / f).exists():
+                shutil.copy(ROOT / "docs/media" / f, self.out / "media" / f)
         keyring = ROOT / "pkg/deckos-settings/rootfs/usr/share/pacman/keyrings/deckos.gpg"
         if keyring.exists():
             shutil.copy(keyring, self.out / "downloads/deckos.gpg")
@@ -416,7 +421,7 @@ class Site:
     def page(self, path, title, body, description, current=""):
         nav = [("Features", "/#features"), ("What's new", "/releases.html"), ("Docs", "/docs/"), ("Source", "/source.html")]
         links = "".join(f'<a href="{h}"{" aria-current=page" if current == h else ""}>{t}</a>' for t, h in nav)
-        full_title = f"{title} · {NAME}" if title != NAME else f"{NAME}: games, code and AI on one PC"
+        full_title = f"{title} · {NAME}" if title != NAME else f"{NAME}: the desktop that plays along"
         canonical = f'<link rel="canonical" href="{self.url}/{path.replace("index.html", "")}">' if self.url else ""
         og_image = f'<meta property="og:image" content="{self.url}/img/shot-desktop-1400.webp">' if self.url else ""
         year = datetime.date.today().year
@@ -497,9 +502,16 @@ class Site:
     # -- pages
 
     def home(self, iso):
-        intro = "DecKoOS is a desktop Linux distribution built on Arch and CachyOS. Play in a console-style Steam Gaming " \
-                "Mode, work on a polished KDE Plasma desktop, and ask a private AI that runs on your own graphics card. " \
-                "When a game starts, everything else steps aside."
+        intro = "DecKoOS is a Linux desktop for gaming PCs that moves with you. Put music on and the dock, the menu and " \
+                "every DecKoOS app pulse on the beat while Vibe mode spreads the song across your monitors. Start a " \
+                "game and the desktop takes on its colours and steps out of the way."
+        # README's "What makes it different": the four things to know first
+        different = "".join(
+            f'<div class="feature"><div class="tile">{icon(ic)}</div><h3>{html.escape(t)}</h3><p>{Markdown(self.doc_link).inline(d)}</p></div>'
+            for (t, d), ic in zip(re.findall(r"^- \*\*(.+?)\.\*\* (.+?)(?=\n- \*\*|\n\n)",
+                                             md_section(self.readme, "What makes it different", "###") + "\n\n",
+                                             re.M | re.S),
+                                  ("music", "star", "appearance", "gaming")))
         rows = [(t, d) for t, d in re.findall(r"^\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|\s*$", md_section(self.readme, "Why DecKoOS"), re.M)
                 if t not in HOME_SKIP]
         md = Markdown(self.doc_link)
@@ -522,20 +534,33 @@ class Site:
 <section class="hero">
   <div class="wrap">
     <a class="eyebrow" href="/releases.html"><span class="pill">New in {latest['version'].rsplit('.', 1)[0]}</span>{html.escape(latest['name'])} {icon('arrow-right')}</a>
-    <h1>One PC for <span class="gradient-text">games, code and AI</span></h1>
+    <h1>The desktop that <span class="gradient-text">plays along</span></h1>
     <p class="lede">{intro}</p>
     <div class="hero-actions">
       <a class="btn btn-primary btn-lg" href="/download.html">{icon('download')}Download DecKoOS</a>
       <a class="btn btn-lg" href="/docs/install.html">Read the install guide</a>
     </div>
     <p class="hero-meta">{dl_meta}</p>
-    <div class="hero-shot"><img src="{hero_img['src']}" data-zoom="{hero_img['full']}" alt="The DecKoOS desktop" fetchpriority="high"{hero_img['dims']}></div>
+    <div class="hero-shot"><video src="/media/vibe-demo.mp4" poster="/media/vibe-demo-poster.jpg" autoplay muted loop playsinline
+      aria-label="Vibe mode on two monitors: live lyrics on one, the song's light on the other, through three of its looks"></video>
+      <p class="hero-caption">Vibe mode on two monitors (a made-up demo song). Live lyrics on one screen, the music's light on the other.</p></div>
     <div class="stats">
-      <div class="stat"><b>Arch + CachyOS</b><span>A fast, optimised rolling base</span></div>
-      <div class="stat"><b>KDE Plasma 6</b><span>Plus a Steam Gaming Mode</span></div>
-      <div class="stat"><b>Private, local AI</b><span>No account, no subscription</span></div>
+      <div class="stat"><b>Plays along</b><span>The whole desktop on the beat</span></div>
+      <div class="stat"><b>Learns you, locally</b><span>Nothing collected, nothing sent</span></div>
+      <div class="stat"><b>Arch + CachyOS</b><span>KDE Plasma 6 and Steam Gaming Mode</span></div>
       <div class="stat"><b>Undo for updates</b><span>A snapshot before each one</span></div>
     </div>
+  </div>
+</section>
+
+<section id="different">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="kicker">What makes it different</span>
+      <h2>Not a theme on someone else's desktop</h2>
+      <p>Every piece, from the boot menu to the apps, is built around one look and one idea: the PC moves with you.</p>
+    </div>
+    <div class="features four">{different}</div>
   </div>
 </section>
 

@@ -18,16 +18,36 @@
   <a href="CONTRIBUTING.md"><b>Contribute</b></a>
 </p>
 
-DecKoOS is a desktop Linux distribution for people who play games and build things on the same PC. A fast,
-CPU-optimised Arch base and a polished KDE Plasma desktop that switches into a console-style Steam
-**Gaming Mode**, a private AI assistant that runs on your own graphics card, and a suite of first-party
-apps that make all of it work together. When a game starts, the AI steps out of video memory and
-background work pauses; when the game ends, everything comes back.
+<h3 align="center">The desktop that plays along.</h3>
 
-> **New in 0.13: "Make it yours".** One-click **Vibes** (Lo-fi, Neon, Midnight, Cozy) with animated wallpapers,
-> a music visualizer and desktop widgets; **Kid mode**, an account per child with only the apps you pick and a
-> filtered web; DecKoOS's own **sounds**; and **every setting in one place** in DecKoOS Hub.
-> [All releases →](CHANGELOG.md)
+DecKoOS is a Linux desktop for gaming PCs that moves with you. Put music on and the dock, the menu and every DecKoOS
+app pulse on the beat while Vibe mode spreads the song across your monitors with live lyrics. Start a game and the
+desktop takes on its colours and steps out of the way. Underneath it's a fast Arch and CachyOS base with KDE Plasma, a
+console-style Steam **Gaming Mode**, and a private AI that runs on your own graphics card.
+
+<p align="center">
+  <img src="docs/media/vibe-demo.webp" alt="Vibe mode on two monitors: live lyrics on one, the album cover and the music's light on the other, through three of its looks" width="100%">
+  <br><sub>Vibe mode on two monitors: lyrics on one, the song's light on the other (aurora, grid and kaleidoscope looks;
+  a made-up demo song).</sub>
+</p>
+
+### What makes it different
+
+- **It plays along.** With *React to music* on, the taskbar, the menu, Quick Settings and DecKoOS's apps flare on
+  every beat, all on the same one, found once from the sound and synced to your speakers (soundbars included). Vibe
+  mode turns every screen into one stage, laid out as your desk really is.
+- **It learns you, on your PC.** *Made for you* works out how you use the PC from what it already keeps (the apps
+  you open, your Steam library, when you play), says plainly what it noticed, and suggests small changes you can take
+  or leave. Nothing new is collected and nothing is sent.
+- **It's one system, built from its own logo.** The wordmark's cut corners shape every card from the boot menu and
+  login screen to the dock, the apps and Vibe mode; starting up is one sequence, and so is switching into Gaming Mode.
+- **Games without the fiddling.** Gaming Mode in one move, Game Doctor for games that won't start, the Desktop shelf
+  with your games' art and play time, and fixes for real problems: NTFS game drives, soundbars on HDMI, RX 9000
+  display blackouts.
+
+> **New in 0.23: "In time".** The desktop **reacts to music**, **Made for you** learns how you use your PC, starting
+> up and switching to Gaming Mode are one smooth sequence, games colour the desktop while you play, and the login
+> screen and every app share the DecKo look. [All releases →](CHANGELOG.md)
 
 <p align="center">
   <img src="docs/screenshots/desktop.png" alt="The DecKoOS desktop: taskbar with pinned apps and the performance widget" width="100%">
@@ -53,6 +73,8 @@ and AI, as one system, and ships its own tools to keep that system healthy.
 | **Vibe mode** | DecKoOS Music turns every screen into one stage for whatever's playing (Spotify, a browser, your own files), laid out as your desk is: real screen sizes, and the gap between them. Seven looks (aurora, a 2000s spectrum analyzer, feedback trails, glow, an 80s neon grid, an oscilloscope, a kaleidoscope); each Vibe picks one. Live, synced lyrics (from LRCLIB or your own .lrc files) fill a second screen, or run under the cover on one. Offered when music starts, or Meta+M |
 | **Kid mode** | An account per child: big tiles for only the apps you pick, a family-filtered web, Retro games, time limits and bedtimes a child can't switch off. Your session stays locked underneath |
 | **Every setting in one place** | DecKoOS Hub searches its own pages, DecKoOS's actions and Plasma's settings; More settings names Plasma's panels for what they do |
+| **Made for you** | DecKoOS learns how you use your PC from what's already on it (the apps you open, your Steam library, when you play) and suggests small changes: pin what you use, unpin what you don't, free space from games you stopped playing. It says what it noticed, sends nothing, and only remembers the suggestions you turned down |
+| **React to music** | The dock, the menu and DecKoOS's apps flare on the beat of whatever's playing, all on one beat found from the sound itself and delayed to match your speakers. While you play, the desktop takes on your game's colours |
 | **Make it yours** | Eight themes, 28 wallpapers, five layouts, your own accent colour, DecKoOS's own sounds, and the corners, text size and taskbar you like |
 
 ## A look around
