@@ -108,7 +108,10 @@ PlasmoidItem {
     // ------------------------------------------------------------------ doing things
 
     function open(item) {
-        Qt.openUrlExternally(item.kind === "game" ? item.launch : item.url);
+        if (item.kind === "app")  // an app starts as itself; a launcher file opened as a file lands in a text editor
+            exec(item.app ? "kstart --application " + sh(item.app) : "kioclient exec " + sh(item.path));
+        else
+            Qt.openUrlExternally(item.kind === "game" ? item.launch : item.url);
     }
     function trash(item) {
         exec("kioclient move " + sh(item.url) + " trash:/");

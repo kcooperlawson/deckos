@@ -170,6 +170,26 @@ def folder_facts(path):
     return len(top), total, bool(stack) or seen >= FOLDER_SCAN, [str(e.path) for e in pics]
 
 
+APP_DIRS = [Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "applications",
+            *(Path(d) / "applications" for d in (os.environ.get("XDG_DATA_DIRS")
+                                                 or "/usr/local/share:/usr/share").split(":")),
+            Path("/var/lib/flatpak/exports/share/applications"),
+            Path.home() / ".local/share/flatpak/exports/share/applications"]
+
+
+def installed_app(path):
+    """The app id (NAME, of NAME.desktop) when a Desktop launcher is an installed app (a link to one, or a copy with
+    its name), so the shelf starts the app itself; "" for a launcher of its own, which KDE asks about trusting first.
+    Opening the file instead hands it to a text editor: launchers outside the app folders aren't trusted."""
+    target = path.resolve()
+    for d in APP_DIRS:
+        if target.parent == d.resolve() if d.exists() else False:
+            return target.stem
+        if (d / path.name).is_file():
+            return path.stem
+    return ""
+
+
 def first_lines(path):
     try:
         with open(path, "rb") as f:
@@ -217,7 +237,7 @@ def describe(path, now, played=None):
             return {**base, "kind": "game", "title": title, "appid": appid, "art": Path(art).as_uri() if art else "",
                     "launch": f"steam://rungameid/{appid}", "detail": " · ".join(bits)}
         return {**base, "kind": "app", "title": title, "icon": entry.get("Icon", "application-x-executable"),
-                "detail": entry.get("Comment", "") or entry.get("GenericName", "")}
+                "detail": entry.get("Comment", "") or entry.get("GenericName", ""), "app": installed_app(path)}
     if ext in PARTIAL:
         return {**base, "kind": "partial", "title": path.stem, "size": st.st_size,
                 "detail": f"{size_text(st.st_size)} so far" + ("" if path.parent == desktop_dir() else

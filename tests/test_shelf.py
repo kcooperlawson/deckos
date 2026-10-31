@@ -67,6 +67,17 @@ class ShelfTests(unittest.TestCase):
         t = shelf.describe(self.d / 'Game.desktop', self.now, {})
         self.assertEqual(t['detail'], 'Not played yet')
 
+    def test_an_installed_app_starts_as_itself(self):
+        apps = Path(self.tmp.name) / 'applications'
+        apps.mkdir()
+        (apps / 'org.example.Game.desktop').write_text('[Desktop Entry]\nName=Game\nExec=game\n')
+        (self.d / 'org.example.Game.desktop').symlink_to(apps / 'org.example.Game.desktop')
+        self.put('mine.desktop', b'[Desktop Entry]\nName=Mine\nExec=mine\n')
+        with patch.object(shelf, 'APP_DIRS', [apps]):
+            tiles = {t['name']: t for t in shelf.items(self.d, self.now)}
+        self.assertEqual(tiles['org.example.Game.desktop']['app'], 'org.example.Game')  # kstart --application
+        self.assertEqual(tiles['mine.desktop']['app'], '')  # a launcher of its own: KDE asks about trusting it
+
     def test_a_link_stays_a_link(self):
         target = Path(self.tmp.name) / 'real.txt'
         target.write_text('hello\n')
