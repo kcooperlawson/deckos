@@ -11,7 +11,7 @@ The sound comes from analysis.py (what the PC actually plays). How it looks (aur
 2000s feedback trails or a calm glow, in your Vibe's colours or the cover's) is looks.py: it follows your Vibe. Everything that moves
 is drawn on the graphics card (qml/stage.frag and plain items), and it stops when a game starts.
 
-    deckos-music [--demo] [--demo-screens N] [--offer] [--screenshot DIR] [--style aurora|spectrum|trails|glow]
+    deckos-music [--demo] [--demo-screens N] [--offer] [--screenshot DIR [--record SECONDS]] [--style STYLE]
 
 --offer asks first ("Vibe mode?" as a notification): DecKoOS Context does that when music starts.
 """
@@ -817,6 +817,37 @@ def main():
     if shots:  # the stage once it's open, every screen's window side by side as one picture
         out = Path(shots)
         out.mkdir(parents=True, exist_ok=True)
+        record = float(sys.argv[sys.argv.index("--record") + 1]) if "--record" in sys.argv else 0
+
+        def whole_frame():
+            wins = sorted((w for w in app.topLevelWindows() if w.objectName() == "stage" and w.isVisible()),
+                          key=lambda w: w.property("originX"))
+            whole = QImage(QSize(int(engine.worldWidth), int(engine.worldHeight)), QImage.Format_RGB32)
+            whole.fill(Qt.black)
+            p = QPainter(whole)
+            for w in wins:
+                g = w.grabWindow().scaled(w.width(), w.height(), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                g.setDevicePixelRatio(1)
+                p.drawImage(int(w.property("originX")), int(w.property("originY")), g)
+            p.end()
+            return whole
+
+        def film():  # --record: a clip of the stage (for the website), frames as fast as the GPU hands them back
+            import subprocess
+            import time
+            frames = out / "frames"
+            frames.mkdir(exist_ok=True)
+            start, n = time.monotonic(), 0
+            while time.monotonic() - start < record:
+                whole_frame().scaledToWidth(1920, Qt.SmoothTransformation).save(str(frames / f"{n:05d}.jpg"), "JPG", 92)
+                n += 1
+                app.processEvents()
+            fps = n / (time.monotonic() - start)
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:.2f}", "-i", str(frames / "%05d.jpg"),
+                            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", "-r", "30",
+                            str(out / "music-vibe.mp4")], check=False)
+            print(f"{n} frames, {fps:.1f} a second -> {out / 'music-vibe.mp4'}")
+            app.exit(0)
 
         def take():
             wins = sorted((w for w in app.topLevelWindows() if w.objectName() == "stage" and w.isVisible()),
@@ -833,7 +864,7 @@ def main():
             p.end()
             whole.save(str(out / f"music-vibe-{len(grabs)}-screens.png"))
             app.exit(0)
-        QTimer.singleShot(4500, take)
+        QTimer.singleShot(4500, film if record else take)
     return app.exec()
 
 
