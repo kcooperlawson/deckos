@@ -649,6 +649,18 @@ def ai_setting(key, default=""):
     return default
 
 
+def react_delay():
+    """The speaker delay the visualizer holds the beat back by, in ms (react.conf delay=)."""
+    try:
+        for line in (Path.home() / ".config/deckos/react.conf").read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() == "delay" and v.strip().isdigit():
+                return min(400, int(v))
+    except OSError:
+        pass
+    return 0
+
+
 def desktop_widgets():
     """Which DecKoOS desktop widgets are on the desktop (from Plasma's own file)."""
     if DEMO:

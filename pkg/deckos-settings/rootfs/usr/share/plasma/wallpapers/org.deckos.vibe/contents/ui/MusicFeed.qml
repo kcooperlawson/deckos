@@ -16,8 +16,6 @@ QtObject {
     property int beats: 0  // goes up by one on each beat: scenes watch it (onBeatsChanged)
     property real beatStrength: 0
 
-    property real _avg: 0
-    property double _last: 0
 
     function take(next) {
         const n = next.length;
@@ -35,14 +33,6 @@ QtObject {
         mid = Math.max(m, mid * 0.85);
         high = Math.max(h, high * 0.8);
         energy += ((b + m + h) / 3 - energy) * 0.1;
-        // A beat: the low end jumping well above where it's been lately
-        const now = Date.now();
-        if (b > _avg * 1.35 + 0.06 && now - _last > 220) {
-            _last = now;
-            beatStrength = Math.min(1, (b - _avg) * 2.5);
-            beats++;
-        }
-        _avg += (b - _avg) * 0.08;
         levels = next;
     }
 
@@ -55,6 +45,13 @@ QtObject {
             for (let i = 0; i < bytes.length; i++)
                 next.push(bytes[i] / 255);
             feed.take(next);
+        }
+        // The beat, found once by the visualizer from the raw sound, the same one the dock and the apps move on
+        onTextMessageReceived: message => {
+            if (message.startsWith("beat ")) {
+                feed.beatStrength = Math.min(1, Number(message.slice(5)));
+                feed.beats++;
+            }
         }
     }
     // The service starts with the session; if the wallpaper was first (or the service restarted), connect again.

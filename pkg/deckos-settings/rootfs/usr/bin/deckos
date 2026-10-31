@@ -1864,7 +1864,7 @@ taskbar_screens() {
           p.lengthMode = main.lengthMode;  // the same dock on every screen
           var t = p.addWidget('org.deckos.taskbar');
           t.currentConfigGroup = ['General'];
-          ['colorMode', 'colorA', 'colorB', 'motion', 'lockedPins'].forEach(function (k) {
+          ['colorMode', 'colorA', 'colorB', 'motion', 'lockedPins', 'react'].forEach(function (k) {
             var v = mt.readConfig(k, ''); if (String(v) !== '') t.writeConfig(k, v); });
           if (String(pins) !== '') t.writeConfig('launchers', String(pins).split(','));  // a list, read as one string
           t.writeConfig('showLabels', 'false');  // icons only, whatever the main one shows
@@ -2111,8 +2111,17 @@ vibe_cmd() {
         off) pkexec /usr/bin/deckos boot-look off ;;
         *) err "usage: deckos vibe boot on|off"; exit 2 ;;
       esac ;;
-    react)  # deckos vibe react on|off
-      [[ ${2:-} == on || ${2:-} == off ]] || { err "usage: deckos vibe react on|off"; exit 2; }
+    react)  # deckos vibe react on|off | delay MS
+      if [[ ${2:-} == delay ]]; then
+        # How much later the speakers play than the PC hands the sound over (a soundbar: often 50-200 ms): the
+        # visualizer holds the beat and bars back by it, so the pulses land when you hear them
+        local ms=${3:-} f=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/react.conf
+        [[ $ms =~ ^[0-9]+$ && $ms -le 400 ]] || { err "usage: deckos vibe react delay MS (0-400)"; exit 2; }
+        mkdir -p "${f%/*}" && { grep -sv '^delay=' "$f" || true; echo "delay=$ms"; } > "$f.new" && mv "$f.new" "$f"
+        ok "speaker delay: $ms ms"
+        exit 0
+      fi
+      [[ ${2:-} == on || ${2:-} == off ]] || { err "usage: deckos vibe react on|off | delay MS"; exit 2; }
       vibe_react "$2"
       ok "DecKoOS reacting to music: $2 (apps pick it up when they next open)" ;;
     widget)  # deckos vibe widget ID on|off

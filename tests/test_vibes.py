@@ -125,6 +125,40 @@ class ArrangeTests(unittest.TestCase):
         self.assertEqual(right["1"][0], 1920 - 40 - 400)
 
 
+class BeatTests(unittest.TestCase):
+    """The visualizer finds the beat once, from the raw sound, for everything that moves with the music."""
+
+    def test_kicks_every_half_second(self):
+        rate = vis.RATE
+        t = np.arange(rate * 4) / rate
+        rng = np.random.default_rng(1)
+        sig = (0.02 * rng.standard_normal(len(t))).astype(np.float32)
+        for k in range(8):
+            i = int(k * 0.5 * rate)
+            sig[i:i + 3000] += (np.sin(2 * np.pi * 60 * t[:3000]) * np.exp(-t[:3000] * 30)).astype(np.float32)
+        b, hits = vis.Beats(), []
+        for j in range(0, len(sig), 735):
+            if b.feed(sig[j:j + 735]):
+                hits.append(round(j / rate, 2))
+        self.assertEqual(hits, [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+
+    def test_steady_sound_is_no_beat(self):
+        b = vis.Beats()
+        t = np.arange(735) / vis.RATE
+        tone = (0.3 * np.sin(2 * np.pi * 80 * t)).astype(np.float32)
+        self.assertFalse(any(b.feed(tone) for _ in range(120)))
+
+    def test_speaker_delay(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            conf = Path(d) / "react.conf"
+            self.assertEqual(vis.speaker_delay(conf), 0)
+            conf.write_text("delay=120\n")
+            self.assertEqual(vis.speaker_delay(conf), 120)
+            conf.write_text("delay=9000\n")
+            self.assertEqual(vis.speaker_delay(conf), 400)
+
+
 class MomentsTests(unittest.TestCase):
     def setUp(self):
         sys.path.insert(0, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/vibes"))

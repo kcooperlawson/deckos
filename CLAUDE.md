@@ -390,8 +390,10 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   link (trash moves the link, not its target). Tests: `tests/test_shelf.py`.
 - **Reacting to music** (`deckos vibe react on|off`, Hub > Appearance > React to music): the system pulses on the beat.
   One source: deckos-visualizer's local WebSocket (it listens only while a client is connected and not in a game).
-  QML: `Vibes.Levels` gives `pulse` (onsets: the bass rising well above its usual frame-to-frame rise, not its
-  level, which the visualizer evens out; 0..1, fading) and `Notch.pulse` brightens and thickens the lit
+  The beat is found once, in the visualizer (`Beats`: the raw sound's 40-150 Hz energy over its last second, rising, 60
+  looks a second), sent as a text message "beat STRENGTH", and held back with the bars by the speaker delay (react.conf
+  `delay=`, `deckos vibe react delay MS`, the Hub's Sync with speakers): a soundbar plays later than the PC hands over.
+  Clients never detect beats themselves. QML: `Vibes.Levels` gives `pulse` (0..1 on each beat, fading) and `Notch.pulse` brightens and thickens the lit
   edge; the taskbar (while a sink input plays), the menu button (MPRIS playing) and Quick Settings' island bind to it
   through their `react` setting. Apps: `hub_style`'s `_React` (style.conf `react=on`) connects only while playerctl
   reports a player Playing, and repaints only what asked (`react_watch`: every plate and button, `Meter`, Bench's ring and bars; the menu's

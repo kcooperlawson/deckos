@@ -1,6 +1,12 @@
 """The music visualizer's ears: what the PC is playing (PipeWire's monitor of the default output, through parec), as
 BARS levels 0..1, sent ~30 times a second to the DecKoOS Vibe wallpaper over a local-only WebSocket. No widgets.
 
+It also finds the beat, once, for everything that moves with the music (the dock, the menu, DecKoOS apps, the
+wallpaper's scenes): from the raw sound's low end (40-150 Hz, a 2048-sample window, 60 looks a second), a kick is
+energy well above the last second's and still rising. Each beat goes out as a text message, "beat STRENGTH", held back
+by the speaker delay you set (react.conf delay=MS: a soundbar plays the music later than the PC hands it over, so
+the beat would arrive early), and the bars are held back the same.
+
 It costs next to nothing when it isn't wanted: it only listens while the wallpaper is connected, sends nothing
 after a few seconds of silence, and stops listening while a game runs (workload modes' $XDG_RUNTIME_DIR/deckos-mode).
 
@@ -57,6 +63,48 @@ class Analyser:
         return float(np.sqrt(np.mean(x * x))) if len(x) else 0.0
 
 
+class Beats:
+    """Kicks in the raw sound: low-end energy over its last second, rising. feed(samples) -> strength 0..1, or 0."""
+
+    WINDOW, LOW, HIGH = 2048, 40.0, 150.0
+
+    def __init__(self, rate=RATE):
+        self.buf = np.zeros(self.WINDOW, dtype=np.float32)
+        self.win = np.hanning(self.WINDOW)
+        freqs = np.fft.rfftfreq(self.WINDOW, 1 / rate)
+        self.low = (freqs >= self.LOW) & (freqs <= self.HIGH)
+        self.hist, self.prev, self.since = [], 0.0, 99
+        self.rate = rate
+
+    def feed(self, samples):
+        x = np.asarray(samples, dtype=np.float32)
+        self.buf = np.concatenate([self.buf[len(x):], x])[-self.WINDOW:]
+        e = float((np.abs(np.fft.rfft(self.buf * self.win))[self.low] ** 2).sum())
+        self.hist = (self.hist + [e])[-int(self.rate / max(1, len(x))):]  # the last second
+        avg = float(np.mean(self.hist))
+        rising, self.prev = e > self.prev, e
+        self.since += len(x) / self.rate
+        if len(self.hist) > 20 and avg > 0 and e > avg * 1.5 and rising and self.since > 0.25:
+            self.since = 0
+            return float(min(1.0, (e / avg - 1.5) / 2 + 0.3))
+        return 0.0
+
+
+REACT_CONF = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "deckos/react.conf"
+
+
+def speaker_delay(conf=None):
+    """The delay to hold the beat and bars back by, in ms (0..400): how much later the speakers play than the PC."""
+    try:
+        for line in Path(conf or REACT_CONF).read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() == "delay" and v.strip().lstrip("-").isdigit():
+                return max(0, min(400, int(v)))
+    except OSError:
+        pass
+    return 0
+
+
 def gaming(mode_file=None):
     try:
         return "game=" in Path(mode_file or MODE_FILE).read_text()
@@ -81,13 +129,27 @@ def serve():
         return 1
     clients = []
     an = Analyser()
+    beats = Beats()
+    delay = {"ms": speaker_delay(), "read": 0.0}
     state = {"quiet": 0, "buf": b""}
     rec = QProcess()
 
+    def out(fn):  # now, or after the speaker delay
+        import time
+        if time.monotonic() - delay["read"] > 2:  # the delay is set in the Hub while music plays: look again now and then
+            delay["ms"], delay["read"] = speaker_delay(), time.monotonic()
+        if delay["ms"]:
+            QTimer.singleShot(delay["ms"], fn)
+        else:
+            fn()
+
     def send(levels):
         data = encode(levels)
-        for c in list(clients):
-            c.sendBinaryMessage(data)
+        out(lambda: [c.sendBinaryMessage(data) for c in list(clients)])
+
+    def beat(strength):
+        msg = f"beat {strength:.2f}"
+        out(lambda: [c.sendTextMessage(msg) for c in list(clients)])
 
     def listen():
         want = bool(clients) and not gaming()
@@ -117,6 +179,11 @@ def serve():
         while len(state["buf"]) >= size:
             chunk, state["buf"] = state["buf"][:size], state["buf"][size:]
             samples = np.frombuffer(chunk, dtype="<f4")
+            half = len(samples) // 2
+            for part in (samples[:half], samples[half:]):  # 60 looks a second for the beat's timing
+                hit = beats.feed(part)
+                if hit:
+                    beat(hit)
             if Analyser.rms(samples) < SILENT:
                 state["quiet"] += 1
                 if state["quiet"] == QUIET_FRAMES:

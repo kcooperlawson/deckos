@@ -1,7 +1,8 @@
 // The music's levels for a widget: deckos-visualizer's bars (a local WebSocket, one byte per bar, 0..1 here),
 // only while `active`, so nothing listens when no music plays. The service stops sending after a few seconds of
 // silence; the bars then fall back to rest. Boiled down too, for things that move with the music rather than draw
-// it: bass, mid, high, a beat counter (watch onBeatsChanged) and `pulse`, a kick on each beat that fades out (what
+// it: bass, mid, high, a beat counter (watch onBeatsChanged) and `pulse`, a kick on each of the visualizer's beats
+// that fades out (what
 // DecKoOS's islands and plates breathe with when the system reacts to music: `deckos vibe react on`).
 import QtQuick
 import QtWebSockets
@@ -16,9 +17,6 @@ QtObject {
     property int beats: 0
     property real pulse: 0  // 0..1: up on a beat, fading in about half a second
 
-    property real _prev: 0  // the low end a frame ago
-    property real _flux: 0.02  // how much it usually rises frame to frame
-    property double _last: 0
 
     function take(next) {
         const n = next.length;
@@ -36,18 +34,7 @@ QtObject {
         bass = Math.max(b, bass * 0.82);
         mid = Math.max(m, mid * 0.85);
         high = Math.max(h, high * 0.8);
-        // A beat is the low end rising (an onset), not it being loud: the visualizer evens loudness out, so a level
-        // threshold only caught the biggest peaks. A rise well above the usual frame-to-frame rise is a kick.
-        const now = Date.now(), rise = Math.max(0, b - _prev);
-        _prev = b;
-        if (rise > _flux * 2.2 + 0.02 && now - _last > 180) {
-            _last = now;
-            pulse = Math.min(1, 0.55 + rise * 6);
-            beats++;
-        } else {
-            pulse *= 0.84;  // ~30 frames a second: half gone in about 130 ms
-        }
-        _flux += (rise - _flux) * 0.1;
+        pulse *= 0.84;  // ~30 frames a second: half gone in about 130 ms
         levels = next;
     }
 
@@ -59,6 +46,14 @@ QtObject {
             for (let i = 0; i < bytes.length; i++)
                 next.push(bytes[i] / 255);
             feed.take(next);
+        }
+        // The beat, found once by the visualizer from the raw sound (and held back by the speaker delay, like the
+        // bars), so the dock, the menu, the apps and the wallpaper all move on the same one
+        onTextMessageReceived: message => {
+            if (message.startsWith("beat ")) {
+                feed.pulse = Math.min(1, 0.55 + 0.45 * Number(message.slice(5)));
+                feed.beats++;
+            }
         }
     }
     property Timer retry: Timer {  // the service may start after the desktop, or restart

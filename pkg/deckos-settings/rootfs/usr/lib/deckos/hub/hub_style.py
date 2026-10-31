@@ -310,14 +310,14 @@ _react = []
 class _React(QObject):
     """DecKoOS reacting to music (style.conf react=on, `deckos vibe react on`): the beat of what's playing, from
     deckos-visualizer's local WebSocket (one byte per bar), as `pulse` 0..1, up on a beat and fading in about half a
-    second. It listens only while a player plays (playerctl --follow: events, not polling), and repaints only the lit
-    plates and meters that asked (`watch`), only while the pulse moves. The same beat detection as Levels.qml."""
+    second. It listens only while a player plays (playerctl --follow: events, not polling), and repaints only the
+    plates, buttons and meters that asked (`watch`), only while the pulse moves. The beat itself is the visualizer's."""
 
     def __init__(self, app):
         super().__init__(app)
         import weakref
         self.watch = weakref.WeakSet()
-        self.pulse, self._prev, self._flux, self._last, self._playing = 0.0, 0.0, 0.02, 0.0, {}
+        self.pulse, self._playing = 0.0, {}
         self.socket = None
         self.timer = QTimer(self, interval=33, timeout=self._tick)
         self.players = QProcess(self)
@@ -334,25 +334,23 @@ class _React(QObject):
             from PySide6.QtWebSockets import QWebSocket
             self.socket = QWebSocket()
             self.socket.binaryMessageReceived.connect(self._frame)
+            self.socket.textMessageReceived.connect(self._beat)
             self.socket.open(QUrl("ws://127.0.0.1:47823"))
         elif not on and self.socket is not None:
             self.socket.close()
             self.socket = None
 
-    def _frame(self, data):
-        bars = bytes(data)
-        if not bars:
-            return
-        low = bars[:max(1, len(bars) * 15 // 100)]
-        b = sum(low) / len(low) / 255
-        # A beat is the low end rising (an onset), not it being loud: the same detection as Levels.qml
-        now, rise = time.monotonic(), max(0.0, b - self._prev)
-        self._prev = b
-        if rise > self._flux * 2.2 + 0.02 and now - self._last > 0.18:
-            self._last = now
-            self.pulse = min(1.0, 0.55 + rise * 6)
+    def _frame(self, _data):
+        pass  # the bars aren't needed here: only the beat
+
+    def _beat(self, message):
+        """The visualizer's beat ("beat STRENGTH"), found once from the raw sound for everything that moves with it."""
+        if message.startswith("beat "):
+            try:
+                self.pulse = min(1.0, 0.55 + 0.45 * float(message[5:]))
+            except ValueError:
+                return
             self.timer.start()
-        self._flux += (rise - self._flux) * 0.1
 
     def _tick(self):
         self.pulse *= 0.84

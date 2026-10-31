@@ -1602,7 +1602,17 @@ class AppearancePage(Page):
         name = label("React to music")
         name.setFixedWidth(140)
         name.setToolTip("The taskbar, the menu button and DecKoOS apps pulse with what's playing")
-        vibes.body.addWidget(row(name, *react))
+        # Speakers that play later than the PC (a soundbar, a receiver): hold the beat back to match, set by ear
+        self.react_delay = sysinfo.react_delay()
+        self.delay_label = label(f"{self.react_delay} ms", None, wrap=False)
+        self.delay_label.setMinimumWidth(56)
+        self.delay_label.setAlignment(Qt.AlignCenter)
+        sync = row(label("Sync with speakers", "muted", wrap=False),
+                   button("−", slot=lambda: self.nudge_delay(-20), tip="The pulses come late: show them sooner"),
+                   self.delay_label,
+                   button("+", slot=lambda: self.nudge_delay(20), tip="The pulses come early: hold them back"),
+                   stretch=False)
+        vibes.body.addWidget(row(name, *react, QWidget(), sync))
         # Desktop widgets in the Vibe's look: on and off one by one (deckos vibe widget ID on|off)
         shown = sysinfo.desktop_widgets()
         toggles = []
@@ -1610,7 +1620,7 @@ class AppearancePage(Page):
                           ("org.deckos.weather", "Weather"), ("org.deckos.calendar", "Calendar"),
                           ("org.deckos.countdown", "Countdown"), ("org.deckos.photos", "Photos"),
                           ("org.deckos.focus", "Focus"), ("org.deckos.note", "Note"),
-                          ("org.deckos.shelf", "Desktop shelf")):
+                          ("org.deckos.shelf", "Shelf")):
             b = QPushButton(text)
             b.setObjectName("seg")
             b.setCheckable(True)
@@ -1839,6 +1849,13 @@ class AppearancePage(Page):
         town, ok = QInputDialog.getText(self, "Weather", "Your town or city:", text=sysinfo.weather_place())
         if ok and town.strip():
             self.apply(["deckos", "vibe", "weather", town.strip()], f"Weather for {town.strip()}")
+
+    def nudge_delay(self, by):
+        """Twenty milliseconds at a time, while music plays, until the pulses land with the kick you hear."""
+        self.react_delay = max(0, min(400, self.react_delay + by))
+        self.delay_label.setText(f"{self.react_delay} ms")
+        if not sysinfo.DEMO:
+            QProcess.startDetached("deckos", ["vibe", "react", "delay", str(self.react_delay)])
 
     def edit_vibe(self, key):
         from hub_vibe_editor import VibeEditor
