@@ -5,7 +5,7 @@ After=pipewire-pulse.service graphical-session.target
 [Service]
 ExecStart=/usr/bin/python3 /usr/lib/deckos/vibes/visualizer.py serve
 Restart=on-failure
-RestartSec=10
+RestartSec=3
 Nice=10
 
 [Install]

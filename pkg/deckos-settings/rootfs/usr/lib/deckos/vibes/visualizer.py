@@ -199,6 +199,10 @@ def serve():
     # Games come and go: follow workload modes' file, no polling
     watch = QFileSystemWatcher([str(MODE_FILE.parent)])
     watch.directoryChanged.connect(lambda _p: listen())
+    # An update replaces this file while the old code keeps running (and the dock, menu and apps wait for beats the
+    # old one never sends): leave, and systemd starts the new one (Restart=on-failure, so not with 0)
+    me = QFileSystemWatcher([str(Path(__file__).resolve())])
+    me.fileChanged.connect(lambda _p: app.exit(3))
     QTimer.singleShot(0, listen)
     return app.exec()
 
