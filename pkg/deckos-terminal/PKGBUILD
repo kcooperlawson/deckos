@@ -7,7 +7,7 @@ pkgrel=1
 pkgdesc="DecKoOS Terminal: the DecKoOS terminal, with project-aware tabs and splits (Qt 6, qtermwidget)"
 arch=(x86_64)
 license=(MIT)
-depends=(qt6-base qt6-svg qtermwidget kconfig kcoreaddons kdbusaddons ttf-jetbrains-mono-nerd)
+depends=(qt6-base qt6-svg qt6-websockets qtermwidget kconfig kcoreaddons kdbusaddons ttf-jetbrains-mono-nerd)
 makedepends=(cmake extra-cmake-modules)
 
 build() {

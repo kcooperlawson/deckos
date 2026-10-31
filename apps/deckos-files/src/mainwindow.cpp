@@ -7,6 +7,7 @@
 #include "style.h"
 
 #include <memory>
+#include <QTimer>
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
@@ -61,6 +62,7 @@ KFilePlacesModel *MainWindow::places()
 MainWindow::MainWindow(const QList<QUrl> &urls, QWidget *parent)
     : QMainWindow(parent)
 {
+    QTimer::singleShot(0, this, [this] { Style::attachBeat(this); });  // a lit edge that catches the music's beat
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(QStringLiteral("DecKoOS Files"));
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-files"), QIcon::fromTheme(QStringLiteral("system-file-manager"))));

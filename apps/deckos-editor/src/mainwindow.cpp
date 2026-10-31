@@ -79,6 +79,7 @@ QPlainTextEdit { selection-background-color: #26385E; }
 MainWindow::MainWindow(KSyntaxHighlighting::Repository *repo, bool restore)
     : m_repo(repo)
 {
+    QTimer::singleShot(0, this, [this] { Style::attachBeat(this); });  // a lit edge that catches the music's beat
     setWindowTitle(QStringLiteral("DecKoOS Editor"));
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-editor")));
     setAcceptDrops(true);

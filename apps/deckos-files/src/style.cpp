@@ -1,7 +1,17 @@
 #include "style.h"
 
+#include <algorithm>
+
 #include <QApplication>
+#include <QDir>
+#include <QEvent>
 #include <QFile>
+#include <QLinearGradient>
+#include <QPointer>
+#include <QProcess>
+#include <QTimer>
+#include <QWebSocket>
+#include <QWidget>
 #include <QHash>
 #include <QPainter>
 #include <QPainterPath>
@@ -200,6 +210,133 @@ void drawScrew(QPainter &p, const QPointF &c, qreal r)
 QString kicker(const QString &text)
 {
     return text.toUpper();
+}
+
+namespace {
+
+// The beat: deckos-visualizer's "beat STRENGTH" text messages, listened for only while playerctl says a player plays
+class Beat : public QObject
+{
+public:
+    static Beat *get()
+    {
+        static Beat *beat = new Beat(qApp);
+        return beat;
+    }
+    qreal pulse = 0;
+    QList<QPointer<QWidget>> edges;
+
+private:
+    explicit Beat(QObject *parent) : QObject(parent)
+    {
+        decay.setInterval(33);
+        connect(&decay, &QTimer::timeout, this, [this] {
+            pulse *= 0.84;
+            if (pulse < 0.02) {
+                pulse = 0;
+                decay.stop();
+            }
+            for (const auto &e : std::as_const(edges))
+                if (e && e->isVisible())
+                    e->update();
+        });
+        connect(&players, &QProcess::readyReadStandardOutput, this, [this] {
+            for (const QByteArray &line : players.readAllStandardOutput().split('\n')) {
+                const int sp = line.lastIndexOf(' ');
+                if (sp > 0)
+                    playing[QString::fromUtf8(line.left(sp))] = line.mid(sp + 1).trimmed() == "Playing";
+            }
+            const bool on = std::any_of(playing.cbegin(), playing.cend(), [](bool p) { return p; });
+            if (on && !socket) {
+                socket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
+                connect(socket, &QWebSocket::textMessageReceived, this, [this](const QString &m) {
+                    if (!m.startsWith(QLatin1String("beat ")))
+                        return;
+                    pulse = std::min(1.0, 0.55 + 0.45 * m.mid(5).toDouble());
+                    decay.start();
+                });
+                socket->open(QUrl(QStringLiteral("ws://127.0.0.1:47823")));
+            } else if (!on && socket) {
+                socket->close();
+                socket->deleteLater();
+                socket = nullptr;
+            }
+        });
+        players.start(QStringLiteral("playerctl"),
+                      {QStringLiteral("-a"), QStringLiteral("-F"), QStringLiteral("status"), QStringLiteral("-f"),
+                       QStringLiteral("{{playerName}} {{status}}")});
+    }
+    QTimer decay;
+    QProcess players;
+    QHash<QString, bool> playing;
+    QWebSocket *socket = nullptr;
+};
+
+bool reacting()
+{
+    QFile f(QDir::homePath() + QStringLiteral("/.config/deckos/style.conf"));
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    for (const QByteArray &line : f.readAll().split('\n'))
+        if (line.trimmed() == "react=on")
+            return true;
+    return false;
+}
+
+// The edge itself: 2 px of the accent's gradient and a soft glow under it, as bright as the beat
+class BeatEdge : public QWidget
+{
+public:
+    explicit BeatEdge(QWidget *window) : QWidget(window)
+    {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        window->installEventFilter(this);
+        place();
+    }
+
+protected:
+    bool eventFilter(QObject *, QEvent *e) override
+    {
+        if (e->type() == QEvent::Resize || e->type() == QEvent::ChildAdded)
+            place();
+        return false;
+    }
+    void paintEvent(QPaintEvent *) override
+    {
+        const qreal k = Beat::get()->pulse;
+        if (k <= 0)
+            return;
+        QPainter p(this);
+        QColor a = accent(), b = accentPartner();
+        a.setAlphaF(k);
+        b.setAlphaF(k);
+        QLinearGradient line(0, 0, width(), 0);
+        line.setColorAt(0, a);
+        line.setColorAt(1, b);
+        p.fillRect(QRectF(0, 0, width(), 2), line);
+        QColor glow = accent();
+        for (int y = 2; y < height(); ++y) {  // the glow, fading downwards
+            glow.setAlphaF(k * 0.35 * (1.0 - qreal(y) / height()));
+            p.fillRect(QRectF(0, y, width(), 1), glow);
+        }
+    }
+
+private:
+    void place()
+    {
+        setGeometry(0, 0, parentWidget()->width(), 8);
+        raise();
+    }
+};
+
+} // namespace
+
+void attachBeat(QWidget *window)
+{
+    if (!window || !reacting())
+        return;
+    Beat::get()->edges.append(new BeatEdge(window));
 }
 
 } // namespace Style

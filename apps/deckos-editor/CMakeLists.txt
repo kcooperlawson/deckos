@@ -19,7 +19,7 @@ include(GNUInstallDirs)
 
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_FIND_MODULE_DIR})
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus WebSockets)
 find_package(KF6 6.0 REQUIRED COMPONENTS CoreAddons Config DBusAddons SyntaxHighlighting)
 
 # The DecKoOS look is DecKoOS Files' (palette, line icons, chrome QSS): one copy for every app.
@@ -40,7 +40,7 @@ target_compile_definitions(deckos-editor PRIVATE
   DECKOS_SOURCE_ICONS="${CMAKE_CURRENT_SOURCE_DIR}/../../pkg/deckos-settings/rootfs/usr/share/deckos/icons"
   DECKOS_SOURCE_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data"
   QT_NO_FOREACH QT_USE_QSTRINGBUILDER)
-set(EDITOR_LIBS Qt6::Widgets Qt6::Svg Qt6::DBus
+set(EDITOR_LIBS Qt6::Widgets Qt6::Svg Qt6::DBus Qt6::WebSockets
   KF6::CoreAddons KF6::ConfigCore KF6::ConfigGui KF6::DBusAddons KF6::SyntaxHighlighting)
 target_link_libraries(deckos-editor PRIVATE ${EDITOR_LIBS})
 if(HAVE_LTO)

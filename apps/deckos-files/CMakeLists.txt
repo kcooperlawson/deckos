@@ -20,7 +20,7 @@ include(GNUInstallDirs)
 # FindKF6 (the umbrella over the KF6 components) comes with extra-cmake-modules.
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_FIND_MODULE_DIR})
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus Concurrent)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Svg DBus Concurrent WebSockets)
 find_package(KF6 6.0 REQUIRED COMPONENTS CoreAddons Config KIO DBusAddons JobWidgets Solid)
 find_package(KF6Baloo 6.0)
 
@@ -41,7 +41,7 @@ target_compile_definitions(deckos-files PRIVATE
   DECKOS_SOURCE_ICONS="${CMAKE_CURRENT_SOURCE_DIR}/../../pkg/deckos-settings/rootfs/usr/share/deckos/icons"
   QT_NO_FOREACH QT_USE_QSTRINGBUILDER)
 target_link_libraries(deckos-files PRIVATE
-  Qt6::Widgets Qt6::Svg Qt6::DBus Qt6::Concurrent
+  Qt6::Widgets Qt6::Svg Qt6::DBus Qt6::Concurrent Qt6::WebSockets
   KF6::CoreAddons KF6::ConfigCore KF6::ConfigGui KF6::DBusAddons KF6::JobWidgets KF6::Solid
   KF6::KIOCore KF6::KIOGui KF6::KIOWidgets KF6::KIOFileWidgets)
 if(KF6Baloo_FOUND)

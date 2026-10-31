@@ -45,6 +45,7 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 MainWindow::MainWindow(ModeWatch *modes, const QString &dir, const QStringList &command, bool hold)
     : m_modes(modes)
 {
+    QTimer::singleShot(0, this, [this] { Style::attachBeat(this); });  // a lit edge that catches the music's beat
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowIcon(QIcon::fromTheme(QStringLiteral("deckos-terminal"), QIcon::fromTheme(QStringLiteral("utilities-terminal"))));
     setStyleSheet(Style::chromeQss() + tabQss());

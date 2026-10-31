@@ -10,6 +10,7 @@
 #include <QString>
 
 class QApplication;
+class QWidget;
 class QPainter;
 class QRectF;
 
@@ -51,4 +52,9 @@ QIcon themeIcon(const QString &name);
 void drawScrew(QPainter &p, const QPointF &center, qreal r = 2.2);
 
 QString kicker(const QString &text);  // "PLACES" style labels
+
+// DecKoOS reacting to music (style.conf react=on, `deckos vibe react on`): a lit edge along the top of `window`, in the
+// accent's gradient, that flares on each beat of what's playing and fades. The beat is deckos-visualizer's (one for
+// the whole desktop); it's only listened for while a player plays. Nothing happens when reacting is off.
+void attachBeat(QWidget *window);
 }
