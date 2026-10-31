@@ -335,10 +335,18 @@ class _React(QObject):
             self.socket = QWebSocket()
             self.socket.binaryMessageReceived.connect(self._frame)
             self.socket.textMessageReceived.connect(self._beat)
+            # The visualizer restarts (after an update, say): come back to it while music still plays
+            self.socket.disconnected.connect(lambda: QTimer.singleShot(3000, self._reconnect))
             self.socket.open(QUrl("ws://127.0.0.1:47823"))
         elif not on and self.socket is not None:
             self.socket.close()
             self.socket = None
+
+    def _reconnect(self):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtNetwork import QAbstractSocket
+        if self.socket is not None and self.socket.state() == QAbstractSocket.UnconnectedState:
+            self.socket.open(QUrl("ws://127.0.0.1:47823"))
 
     def _frame(self, _data):
         pass  # the bars aren't needed here: only the beat

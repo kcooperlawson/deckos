@@ -255,8 +255,16 @@ private:
                     pulse = std::min(1.0, 0.55 + 0.45 * m.mid(5).toDouble());
                     decay.start();
                 });
+                // The visualizer restarts (after an update, say): come back to it while music still plays
+                connect(socket, &QWebSocket::disconnected, this, [this] {
+                    QTimer::singleShot(3000, this, [this] {
+                        if (socket && socket->state() == QAbstractSocket::UnconnectedState)
+                            socket->open(QUrl(QStringLiteral("ws://127.0.0.1:47823")));
+                    });
+                });
                 socket->open(QUrl(QStringLiteral("ws://127.0.0.1:47823")));
             } else if (!on && socket) {
+                socket->disconnect(this);
                 socket->close();
                 socket->deleteLater();
                 socket = nullptr;
@@ -293,6 +301,7 @@ public:
         setAttribute(Qt::WA_NoSystemBackground);
         window->installEventFilter(this);
         place();
+        show();  // a child added to a window that's already showing stays hidden until told
     }
 
 protected:
