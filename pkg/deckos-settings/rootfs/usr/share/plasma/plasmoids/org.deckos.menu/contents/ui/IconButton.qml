@@ -13,6 +13,7 @@ Item {
     width: 36
     height: 36
     Vibes.Notch {
+        pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
         anchors.fill: parent
         look: deckMenu.look
         cut: 8

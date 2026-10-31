@@ -17,6 +17,8 @@ Item {
     Accessible.name: model.display
 
     Vibes.Notch {  // lit: a notched tile with the gradient edge
+
+        pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
         anchors.fill: parent
         anchors.margins: 2
         visible: tile.lit

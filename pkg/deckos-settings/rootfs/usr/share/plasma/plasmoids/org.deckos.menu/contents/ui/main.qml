@@ -42,6 +42,7 @@ PlasmoidItem {
                 && players.currentPlayer.playbackStatus === Mpris.PlaybackStatus.Playing
     }
     readonly property var look: menuLook
+    readonly property real pulse: beat.pulse  // every plate in the menu catches the music's beat
     // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
     readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")

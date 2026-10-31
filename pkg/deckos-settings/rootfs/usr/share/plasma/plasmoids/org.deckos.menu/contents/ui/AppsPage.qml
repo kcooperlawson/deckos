@@ -37,6 +37,7 @@ Item {
         width: backRow.width + 20
         height: 28
         Vibes.Notch {
+            pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
             anchors.fill: parent
             look: deckMenu.look
             cut: 7
@@ -98,6 +99,8 @@ Item {
             visible: group
 
             Vibes.Notch {
+
+                pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
                 anchors.fill: parent
                 anchors.topMargin: 1
                 anchors.bottomMargin: 1

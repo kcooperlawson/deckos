@@ -16,7 +16,8 @@ QtObject {
     property int beats: 0
     property real pulse: 0  // 0..1: up on a beat, fading in about half a second
 
-    property real _avg: 0
+    property real _prev: 0  // the low end a frame ago
+    property real _flux: 0.02  // how much it usually rises frame to frame
     property double _last: 0
 
     function take(next) {
@@ -35,15 +36,18 @@ QtObject {
         bass = Math.max(b, bass * 0.82);
         mid = Math.max(m, mid * 0.85);
         high = Math.max(h, high * 0.8);
-        const now = Date.now();
-        if (b > _avg * 1.35 + 0.06 && now - _last > 220) {  // the low end jumping well above where it's been
+        // A beat is the low end rising (an onset), not it being loud: the visualizer evens loudness out, so a level
+        // threshold only caught the biggest peaks. A rise well above the usual frame-to-frame rise is a kick.
+        const now = Date.now(), rise = Math.max(0, b - _prev);
+        _prev = b;
+        if (rise > _flux * 2.2 + 0.02 && now - _last > 180) {
             _last = now;
-            pulse = Math.min(1, 0.45 + (b - _avg) * 2.5);
+            pulse = Math.min(1, 0.55 + rise * 6);
             beats++;
         } else {
-            pulse *= 0.86;  // ~30 frames a second: half gone in about 150 ms, gone in half a second
+            pulse *= 0.84;  // ~30 frames a second: half gone in about 130 ms
         }
-        _avg += (b - _avg) * 0.08;
+        _flux += (rise - _flux) * 0.1;
         levels = next;
     }
 

@@ -21,6 +21,8 @@ Item {
     Accessible.name: model.display
 
     Vibes.Notch {
+
+        pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
         anchors.fill: parent
         anchors.topMargin: 1
         anchors.bottomMargin: 1

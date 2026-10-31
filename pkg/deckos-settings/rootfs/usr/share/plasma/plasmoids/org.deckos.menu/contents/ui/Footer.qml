@@ -65,6 +65,8 @@ Item {
         onClicked: deckMenu.launch("systemsettings kcm_users")
 
         Vibes.Notch {
+
+            pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
             anchors.fill: parent
             visible: userArea.containsMouse
             look: deckMenu.look
@@ -80,6 +82,8 @@ Item {
             spacing: 10
 
             Vibes.Notch {  // your initial on a notched gradient chip (or your picture)
+
+                pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
                 width: 36
                 height: 36
                 anchors.verticalCenter: parent.verticalCenter
@@ -135,6 +139,7 @@ Item {
             activeFocusOnTab: visible
             opacity: gamingMouse.pressed ? 0.85 : gamingMouse.containsMouse ? 0.92 : 1
             Vibes.Notch {  // the one filled button: notched, the accent gradient
+                pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
                 anchors.fill: parent
                 look: deckMenu.look
                 cut: 9

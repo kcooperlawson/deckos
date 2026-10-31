@@ -1,9 +1,12 @@
 // DecKoOS login screen (SDDM, Qt 6 greeter).
 // A clock over the DecKoOS wallpaper, one login card, and a bottom bar for the session, keyboard
 // layout and power. Plain QtQuick (no Controls styling), so it looks the same whatever style the
-// greeter runs with. Colours match DecKoOS Hub: slate surfaces, 1px borders, accent gradient.
+// greeter runs with. The DecKo look, like the desktop: notched plates (the wordmark's cut corners) with an edge lit
+// in the accent's gradient, Chakra Petch for the clock and labels, Inter for sentences; org.deckos.vibes' Notch is
+// the same one the dock and widgets draw.
 import QtQuick
 import QtQuick.Effects
+import org.deckos.vibes as Vibes
 
 Rectangle {
     id: root
@@ -19,6 +22,7 @@ Rectangle {
     readonly property color accentB: config.accentB || "#7A5CFF"
     readonly property color danger: "#FF6B6B"
     readonly property real s: Math.max(0.75, Math.min(width / 1920, height / 1080))  // UI scale
+    Vibes.Look { id: brand; colorA: root.accent; colorB: root.accentB }
     // Picked once the session list is in (pickSession): never Gaming Mode by default, since SDDM
     // lists it first and a Gaming Mode that fails to start would bounce you straight back here.
     property int sessionIndex: 0
@@ -81,31 +85,30 @@ Rectangle {
         Text {
             text: Qt.formatTime(clock.now, Qt.locale().timeFormat(Locale.ShortFormat))
             color: root.text
-            font.family: "Inter Display"
+            font.family: "Chakra Petch"
             font.weight: Font.DemiBold
-            font.pixelSize: 96 * root.s
+            font.pixelSize: 104 * root.s
         }
         Text {
-            text: Qt.formatDate(clock.now, "dddd, MMMM d")
+            text: Qt.formatDate(clock.now, "dddd · MMMM d").toUpperCase()
             color: root.subtext
-            font.family: "Inter"
-            font.pixelSize: 22 * root.s
+            font.family: "Chakra Petch"
+            font.weight: Font.DemiBold
+            font.letterSpacing: 3 * root.s
+            font.pixelSize: 18 * root.s
         }
     }
 
     // ---- login card
 
-    Rectangle {
+    Item {
         id: card
         x: 96 * root.s
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 40 * root.s
         width: 420 * root.s
         height: content.implicitHeight + 64 * root.s
-        radius: 14 * root.s
-        color: root.surface
-        border.color: root.border
-        border.width: 1
+        Vibes.Notch { anchors.fill: parent; look: brand; cut: 22 * root.s; fill: root.surface }
 
         SequentialAnimation {  // shake on a wrong password
             id: shake
@@ -204,15 +207,18 @@ Rectangle {
                 }
             }
 
-            Rectangle {  // password
+            Item {  // password
                 id: field
                 visible: !root.user || root.user.needsPassword
                 width: parent.width
                 height: 46 * root.s
-                radius: 9 * root.s
-                color: "#0F1115"
-                border.width: 1
-                border.color: password.activeFocus ? root.accent : root.border
+                Vibes.Notch {  // its edge lit while you type
+                    anchors.fill: parent
+                    look: brand
+                    cut: 10 * root.s
+                    lit: password.activeFocus
+                    fill: "#0F1115"
+                }
                 TextInput {
                     id: password
                     anchors.fill: parent
@@ -256,25 +262,34 @@ Rectangle {
                 }
             }
 
-            Rectangle {  // log in
+            Item {  // log in: the one filled button, notched, in the accent's gradient
                 width: parent.width
                 height: 46 * root.s
-                radius: 9 * root.s
                 opacity: loginArea.pressed ? 0.85 : 1
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0; color: loginArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent }
-                    GradientStop { position: 1; color: loginArea.containsMouse ? Qt.lighter(root.accentB, 1.15) : root.accentB }
+                Vibes.Notch {
+                    anchors.fill: parent
+                    look: brand
+                    cut: 10 * root.s
+                    gradientFill: true
+                    lit: false
+                    edge: 0
+                }
+                Rectangle {  // lighter under the pointer
+                    anchors.fill: parent
+                    color: "white"
+                    opacity: loginArea.containsMouse ? 0.1 : 0
+                    visible: opacity > 0
                 }
                 Row {
                     anchors.centerIn: parent
                     spacing: 8 * root.s
                     Text {
-                        text: "Log in"
-                        color: "white"
-                        font.family: "Inter"
-                        font.weight: Font.DemiBold
-                        font.pixelSize: 15 * root.s
+                        text: "LOG IN"
+                        color: "#0B0D16"
+                        font.family: "Chakra Petch"
+                        font.weight: Font.Bold
+                        font.letterSpacing: 1.5 * root.s
+                        font.pixelSize: 16 * root.s
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Image {
@@ -487,14 +502,19 @@ Rectangle {
 
     // ---- small parts
 
-    component IconButton: Rectangle {
+    component IconButton: Item {
         id: ib
         property string icon
         signal clicked
         width: 30 * root.s
         height: width
-        radius: 8 * root.s
-        color: ibArea.containsMouse ? "#2A2F3B" : "transparent"
+        Vibes.Notch {
+            anchors.fill: parent
+            visible: ibArea.containsMouse
+            cut: 7 * root.s
+            lit: false
+            fill: "#2A2F3B"
+        }
         Image {
             anchors.centerIn: parent
             source: "icons/" + ib.icon + ".svg"
@@ -505,7 +525,7 @@ Rectangle {
         MouseArea { id: ibArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ib.clicked() }
     }
 
-    component Pill: Rectangle {
+    component Pill: Item {
         id: pill
         property string icon
         property string label
@@ -513,10 +533,13 @@ Rectangle {
         signal clicked
         width: pillRow.implicitWidth + 28 * root.s
         height: 38 * root.s
-        radius: 9 * root.s
-        color: pillArea.containsMouse ? "#F2202530" : "#CC171A21"
-        border.color: root.border
-        border.width: 1
+        Vibes.Notch {
+            anchors.fill: parent
+            cut: 9 * root.s
+            lit: pillArea.containsMouse
+            look: brand
+            fill: pillArea.containsMouse ? "#F2202530" : "#CC171A21"
+        }
         Row {
             id: pillRow
             anchors.centerIn: parent
@@ -529,10 +552,12 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                text: pill.label
+                text: pill.label.toUpperCase()
                 color: root.text
-                font.family: "Inter"
-                font.pixelSize: 13 * root.s
+                font.family: "Chakra Petch"
+                font.weight: Font.DemiBold
+                font.letterSpacing: 1 * root.s
+                font.pixelSize: 12 * root.s
                 anchors.verticalCenter: parent.verticalCenter
             }
         }

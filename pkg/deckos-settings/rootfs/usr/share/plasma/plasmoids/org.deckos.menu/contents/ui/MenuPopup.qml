@@ -88,6 +88,7 @@ Item {
         width: parent.width - 12
         height: 46
         Vibes.Notch {  // notched, its edge lit while you type
+            pulse: deckMenu.pulse  // the music's beat (deckos vibe react on)
             anchors.fill: parent
             look: deckMenu.look
             cut: 11

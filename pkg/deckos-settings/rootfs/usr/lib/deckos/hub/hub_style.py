@@ -204,7 +204,14 @@ def paint_plate(p, rect, fill, cut=12, lit=False, edge=None, gradient_fill=False
         g.setColorAt(1, b)
         p.setPen(QPen(g, 1))
     else:
-        p.setPen(QPen(QColor(edge or BORDER), 1))
+        c = QColor(edge or BORDER)
+        beat = react_pulse()
+        if beat and c.alpha():  # every plate's edge catches the beat, not only the lit ones
+            a = QColor(P.accent)
+            c = QColor(round(c.red() + (a.red() - c.red()) * beat * 0.7),
+                       round(c.green() + (a.green() - c.green()) * beat * 0.7),
+                       round(c.blue() + (a.blue() - c.blue()) * beat * 0.7))
+        p.setPen(QPen(c, 1))
     if not gradient_fill:
         p.drawPath(path)
     p.restore()
@@ -225,8 +232,8 @@ class _Plates(QObject):
             picked = bool(obj.property("picked")) or obj.hasFocus()
             hover = kind == "tile" and obj.underMouse() and not picked
             fill = RAISED if kind == "row" or hover else "#22262F" if kind == "toast" else SURFACE
-            if _react and (picked or kind in ("card", "toast")):
-                _react[0].watch.add(obj)  # lit plates brighten on the beat
+            if _react:
+                _react[0].watch.add(obj)  # every plate catches the beat
             p = QPainter(obj)
             if kind == "hero":
                 paint_plate(p, obj.rect(), fill, cut, gradient_fill=True)
@@ -258,8 +265,16 @@ class DecoStyle(QProxyStyle):
         on = bool(st & QStyle.State_Enabled)
         down = bool(st & QStyle.State_Sunken)
         hover = bool(st & QStyle.State_MouseOver)
+        if _react and w is not None:
+            _react[0].watch.add(w)  # buttons catch the beat too
         if name == "primary" and on:
             paint_plate(p, r, "", cut, gradient_fill=True)
+            beat = react_pulse()
+            if beat:  # the gradient flares on the beat
+                p.save()
+                p.setRenderHint(QPainter.Antialiasing)
+                p.fillPath(_poly(QRectF(r), cut), QColor(255, 255, 255, round(beat * 70)))
+                p.restore()
             if hover or down:
                 p.save()
                 p.setRenderHint(QPainter.Antialiasing)
@@ -302,7 +317,7 @@ class _React(QObject):
         super().__init__(app)
         import weakref
         self.watch = weakref.WeakSet()
-        self.pulse, self._avg, self._last, self._playing = 0.0, 0.0, 0.0, {}
+        self.pulse, self._prev, self._flux, self._last, self._playing = 0.0, 0.0, 0.02, 0.0, {}
         self.socket = None
         self.timer = QTimer(self, interval=33, timeout=self._tick)
         self.players = QProcess(self)
@@ -330,15 +345,17 @@ class _React(QObject):
             return
         low = bars[:max(1, len(bars) * 15 // 100)]
         b = sum(low) / len(low) / 255
-        now = time.monotonic()
-        if b > self._avg * 1.35 + 0.06 and now - self._last > 0.22:
+        # A beat is the low end rising (an onset), not it being loud: the same detection as Levels.qml
+        now, rise = time.monotonic(), max(0.0, b - self._prev)
+        self._prev = b
+        if rise > self._flux * 2.2 + 0.02 and now - self._last > 0.18:
             self._last = now
-            self.pulse = min(1.0, 0.45 + (b - self._avg) * 2.5)
+            self.pulse = min(1.0, 0.55 + rise * 6)
             self.timer.start()
-        self._avg += (b - self._avg) * 0.08
+        self._flux += (rise - self._flux) * 0.1
 
     def _tick(self):
-        self.pulse *= 0.86
+        self.pulse *= 0.84
         if self.pulse < 0.02:
             self.pulse = 0.0
             self.timer.stop()
