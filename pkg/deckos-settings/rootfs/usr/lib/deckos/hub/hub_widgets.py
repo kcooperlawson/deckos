@@ -3,7 +3,8 @@ from collections import deque
 
 from PySide6.QtCore import QPointF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton, QStyle, QStyleOptionButton, QStylePainter,
+                               QVBoxLayout, QWidget)
 
 import hub_style as S
 
@@ -21,15 +22,47 @@ def label(text="", cls=None, wrap=True):
     return lab
 
 
+class DanceIcon(QLabel):
+    """An icon that dances with the music (hub_style.dance) when DecKoOS reacts to it; just the icon otherwise."""
+
+    def paintEvent(self, e):
+        if not S._react:
+            return super().paintEvent(e)
+        S.react_watch(self)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        S.dance_paint(p, self, self.rect(), height=2.5, tilt=6, swell=0.14)
+        pm = self.pixmap()
+        p.drawPixmap(round((self.width() - pm.deviceIndependentSize().width()) / 2),
+                     round((self.height() - pm.deviceIndependentSize().height()) / 2), pm)
+
+
 def icon_label(name, color=S.SUBTEXT, size=18):
-    lab = QLabel()
+    lab = DanceIcon()
     lab.setPixmap(S.pixmap(name, color, size))
-    lab.setFixedSize(size, size)
+    room = 6 if S._react else 0  # dancing: room to hop and swell in, not clipped at its edges
+    lab.setFixedSize(size + room, size + room)
     return lab
 
 
+class DanceButton(QPushButton):
+    """A button whose label dances with the music (hub_style.dance) while its plate stays put. Drawn in two steps,
+    since the stylesheet draws the label itself, past the DecKo style."""
+
+    def paintEvent(self, e):
+        if not S._react:
+            return super().paintEvent(e)
+        p = QStylePainter(self)
+        opt = QStyleOptionButton()
+        self.initStyleOption(opt)
+        p.drawControl(QStyle.CE_PushButtonBevel, opt)
+        opt.rect = self.style().subElementRect(QStyle.SE_PushButtonContents, opt, self)
+        S.dance_paint(p, self, opt.rect)
+        p.drawControl(QStyle.CE_PushButtonLabel, opt)
+
+
 def button(text, kind=None, slot=None, icon=None, tip=None):
-    b = QPushButton(text)
+    b = DanceButton(text)
     b.setCursor(Qt.PointingHandCursor)
     b.setFocusPolicy(Qt.NoFocus)
     if kind:

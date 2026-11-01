@@ -311,13 +311,16 @@ class _React(QObject):
     """DecKoOS reacting to music (style.conf react=on, `deckos vibe react on`): the beat of what's playing, from
     deckos-visualizer's local WebSocket (one byte per bar), as `pulse` 0..1, up on a beat and fading in about half a
     second. It listens only while a player plays (playerctl --follow: events, not polling), and repaints only the
-    plates, buttons and meters that asked (`watch`), only while the pulse moves. The beat itself is the visualizer's."""
+    plates, buttons and meters that asked (`watch`), only while the pulse moves. The beat itself is the visualizer's.
+    The bars, boiled down to bass, mid and high, are what things dance with (dance(): Vibes.Dance's three parts)."""
 
     def __init__(self, app):
         super().__init__(app)
         import weakref
         self.watch = weakref.WeakSet()
         self.pulse, self._playing = 0.0, {}
+        self.bass = self.mid = self.high = 0.0
+        self.beats, self.kick, self.beat_at, self.frame_at = 0, 0.0, 0.0, 0.0
         self.socket = None
         self.timer = QTimer(self, interval=33, timeout=self._tick)
         self.players = QProcess(self)
@@ -348,8 +351,23 @@ class _React(QObject):
         if self.socket is not None and self.socket.state() == QAbstractSocket.UnconnectedState:
             self.socket.open(QUrl("ws://127.0.0.1:47823"))
 
-    def _frame(self, _data):
-        pass  # the bars aren't needed here: only the beat
+    def _frame(self, data):
+        bars = bytes(data)
+        n = len(bars)
+        if not n:
+            return
+
+        def part(a, b):
+            i0 = int(a * n)
+            i1 = max(i0 + 1, int(b * n))
+            return sum(bars[i0:i1]) / (i1 - i0) / 255
+        # up at once, down gently, like Levels.qml
+        self.bass = max(part(0, 0.15), self.bass * 0.82)
+        self.mid = max(part(0.15, 0.6), self.mid * 0.85)
+        self.high = max(part(0.6, 1), self.high * 0.8)
+        self.frame_at = time.monotonic()
+        if not self.timer.isActive():
+            self.timer.start()
 
     def _beat(self, message):
         """The visualizer's beat ("beat STRENGTH"), found once from the raw sound for everything that moves with it."""
@@ -358,13 +376,22 @@ class _React(QObject):
                 self.pulse = min(1.0, 0.55 + 0.45 * float(message[5:]))
             except ValueError:
                 return
+            self.beats += 1
+            self.kick = max(0.35, min(1.0, self.bass * 1.2))
+            self.beat_at = time.monotonic()
             self.timer.start()
 
     def _tick(self):
         self.pulse *= 0.84
         if self.pulse < 0.02:
             self.pulse = 0.0
-            self.timer.stop()
+        if time.monotonic() - self.frame_at > 0.6:  # the music stopped: let everything settle, then rest
+            self.bass *= 0.8
+            self.mid *= 0.8
+            self.high *= 0.8
+            if self.pulse == 0 and max(self.bass, self.mid, self.high) < 0.01 and time.monotonic() - self.beat_at > 0.7:
+                self.bass = self.mid = self.high = 0.0
+                self.timer.stop()
         for w in list(self.watch):
             if w.isVisible():
                 w.update()
@@ -404,6 +431,58 @@ def unfold(widget, duration=190):
 def react_pulse():
     """The music's beat, 0..1 (0 when DecKoOS isn't reacting to music, or nothing plays)."""
     return _react[0].pulse if _react else 0.0
+
+
+def _bounce(t):
+    """Easing.OutBounce, 0..1 -> 0..1 (the kick's landing, like Vibes.Dance)."""
+    for d, (c, k) in ((1 / 2.75, (0, 0)), (2 / 2.75, (1.5, 0.75)), (2.5 / 2.75, (2.25, 0.9375)), (9, (2.625, 0.984375))):
+        if t < d:
+            t -= c / 2.75
+            return 7.5625 * t * t + k
+    return 1.0
+
+
+PARTS = ("kick", "groove", "sparkle")
+
+
+def dance(widget, part=None, height=3.0, tilt=4.0, swell=0.08):
+    """How `widget` moves with the music right now: (dy, angle, scale), what Vibes.Dance does in QML. Each widget
+    keeps one part (kick, groove or sparkle: picked for it if not given, so neighbours differ); the kick ripples
+    across the window from left to right. All zero when nothing's playing or reacting is off."""
+    if not _react:
+        return 0.0, 0.0, 1.0
+    r = _react[0]
+    if part is None:
+        part = getattr(widget, "_dance_part", None)
+        if part is None:
+            part = widget._dance_part = PARTS[(id(widget) >> 4) % 3]
+    side = 1 if (r.beats + (id(widget) >> 4)) % 2 else -1
+    if part == "groove":
+        m = min(1.0, r.mid * 1.4)
+        return -height * 0.8 * m, side * tilt * 0.7 * m, 1.0
+    if part == "sparkle":
+        return 0.0, 0.0, 1 + swell * min(1.0, r.high * 1.8)
+    try:
+        x = widget.mapTo(widget.window(), widget.rect().center()).x() / max(1, widget.window().width())
+    except RuntimeError:
+        x = 0
+    t = time.monotonic() - r.beat_at - 0.2 * x  # the wave
+    if t < 0 or t > 0.4:
+        return 0.0, 0.0, 1.0
+    k = t / 0.085 if t < 0.085 else 1 - _bounce((t - 0.085) / 0.315)
+    k = max(0.0, min(1.0, k)) * r.kick
+    return -height * k, side * tilt * k, 1.0
+
+
+def dance_paint(p, widget, rect, **kw):
+    """Turn painter `p` so what's drawn next in `rect` dances (tilting and swelling around its bottom middle)."""
+    dy, angle, scale = dance(widget, **kw)
+    if dy or angle or scale != 1:
+        c = QPointF(rect.center().x(), rect.bottom())
+        p.translate(c.x(), c.y() + dy)
+        p.rotate(angle)
+        p.scale(scale, scale)
+        p.translate(-c.x(), -c.y())
 
 
 def react_watch(widget):

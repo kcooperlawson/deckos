@@ -224,6 +224,7 @@ public:
         return beat;
     }
     qreal pulse = 0;
+    QList<qreal> bars;  // the music's bars, 0..1, bass to treble: the edge dances with them
     QList<QPointer<QWidget>> edges;
 
 private:
@@ -232,8 +233,15 @@ private:
         decay.setInterval(33);
         connect(&decay, &QTimer::timeout, this, [this] {
             pulse *= 0.84;
-            if (pulse < 0.02) {
+            if (pulse < 0.02)
                 pulse = 0;
+            bool moving = pulse > 0;
+            for (qreal &b : bars) {  // down gently between frames; up at once when one comes
+                b *= 0.85;
+                moving = moving || b > 0.01;
+            }
+            if (!moving) {
+                bars.clear();
                 decay.stop();
             }
             for (const auto &e : std::as_const(edges))
@@ -249,6 +257,14 @@ private:
             const bool on = std::any_of(playing.cbegin(), playing.cend(), [](bool p) { return p; });
             if (on && !socket) {
                 socket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
+                connect(socket, &QWebSocket::binaryMessageReceived, this, [this](const QByteArray &frame) {
+                    if (bars.size() != frame.size())
+                        bars = QList<qreal>(frame.size(), 0.0);
+                    for (int i = 0; i < frame.size(); ++i)
+                        bars[i] = std::max(bars[i], quint8(frame[i]) / 255.0);
+                    if (!decay.isActive())
+                        decay.start();
+                });
                 connect(socket, &QWebSocket::textMessageReceived, this, [this](const QString &m) {
                     if (!m.startsWith(QLatin1String("beat ")))
                         return;
@@ -291,7 +307,7 @@ bool reacting()
     return false;
 }
 
-// The edge itself: 2 px of the accent's gradient and a soft glow under it, as bright as the beat
+// The edge itself: the music's bars dancing along the window's top, and 2 px of the accent's gradient on the beat
 class BeatEdge : public QWidget
 {
 public:
@@ -313,28 +329,47 @@ protected:
     }
     void paintEvent(QPaintEvent *) override
     {
-        const qreal k = Beat::get()->pulse;
-        if (k <= 0)
+        const Beat *beat = Beat::get();
+        const qreal k = beat->pulse;
+        if (k <= 0 && beat->bars.isEmpty())
             return;
         QPainter p(this);
-        QColor a = accent(), b = accentPartner();
-        a.setAlphaF(k);
-        b.setAlphaF(k);
-        QLinearGradient line(0, 0, width(), 0);
-        line.setColorAt(0, a);
-        line.setColorAt(1, b);
-        p.fillRect(QRectF(0, 0, width(), 2), line);
-        QColor glow = accent();
-        for (int y = 2; y < height(); ++y) {  // the glow, fading downwards
-            glow.setAlphaF(k * 0.35 * (1.0 - qreal(y) / height()));
-            p.fillRect(QRectF(0, y, width(), 1), glow);
+        // The music along the top, dancing: one short notched segment per bar (bass on the left, treble on the
+        // right) in the accent's gradient, as tall as its band is loud, all jumping a little higher on the beat
+        const auto &bars = beat->bars;
+        if (!bars.isEmpty()) {
+            const qreal w = qreal(width()) / bars.size();
+            for (int i = 0; i < bars.size(); ++i) {
+                const qreal level = std::min(1.0, bars[i] * (1.0 + 0.6 * k));
+                if (level < 0.03)
+                    continue;
+                QColor c = mix(qreal(i) / std::max<qsizetype>(1, bars.size() - 1));
+                c.setAlphaF(0.35 + 0.5 * level);
+                p.fillRect(QRectF(i * w + 1, 0, w - 2, 2 + level * (height() - 2)), c);
+            }
         }
+        if (k > 0) {  // and the line itself flares on the beat
+            QColor a = accent(), b = accentPartner();
+            a.setAlphaF(k);
+            b.setAlphaF(k);
+            QLinearGradient line(0, 0, width(), 0);
+            line.setColorAt(0, a);
+            line.setColorAt(1, b);
+            p.fillRect(QRectF(0, 0, width(), 2), line);
+        }
+    }
+
+    static QColor mix(qreal t)
+    {
+        const QColor a = accent(), b = accentPartner();
+        return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * t, a.greenF() + (b.greenF() - a.greenF()) * t,
+                                a.blueF() + (b.blueF() - a.blueF()) * t);
     }
 
 private:
     void place()
     {
-        setGeometry(0, 0, parentWidget()->width(), 8);
+        setGeometry(0, 0, parentWidget()->width(), 10);
         raise();
     }
 };

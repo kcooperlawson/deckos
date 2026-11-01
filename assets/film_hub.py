@@ -30,6 +30,8 @@ class Beat:
     def __init__(self):
         import weakref
         self.watch, self.pulse, self.t0 = weakref.WeakSet(), 0.0, time.monotonic()
+        self.bass = self.mid = self.high = 0.0  # what things dance with (hub_style.dance)
+        self.beats, self.kick, self.beat_at = 0, 0.0, 0.0
 
 
 beat = Beat()
@@ -54,6 +56,9 @@ def main():
         while todo and todo[0][0] <= now:
             todo.pop(0)[1]()
         beat.pulse = max(0.0, 1 - ((now % 0.5) / 0.5) * 2.2) * 0.9  # the kick, then its fade
+        if int(now / 0.5) != beat.beats:  # a new beat: the kick, and a groove and shimmer that swell with it
+            beat.beats, beat.kick, beat.beat_at = int(now / 0.5), 0.9, time.monotonic()
+        beat.bass, beat.mid, beat.high = beat.pulse, 0.35 + 0.3 * beat.pulse, 0.25 + 0.4 * ((now * 4) % 1 < 0.3)
         for x in list(beat.watch):
             if x.isVisible():
                 x.update()
