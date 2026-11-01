@@ -101,6 +101,7 @@ PlasmoidItem {
         return false;
     }
     Vibes.Levels { id: beat; active: Plasmoid.configuration.react && deckTasks.soundPlaying }
+    readonly property alias music: beat  // the tiles dance with it (Task.qml)
 
     function plain(s) {
         return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");

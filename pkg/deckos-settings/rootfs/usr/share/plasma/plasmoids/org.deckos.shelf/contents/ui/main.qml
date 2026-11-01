@@ -11,6 +11,7 @@ import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasma5support as P5Support
 import org.deckos.vibes as Vibes
+import org.kde.plasma.private.mpris as Mpris
 
 PlasmoidItem {
     id: shelf
@@ -20,6 +21,15 @@ PlasmoidItem {
         style: Plasmoid.configuration.style
         colorA: Plasmoid.configuration.colorA
         colorB: Plasmoid.configuration.colorB
+    }
+
+    // Reacting to music (deckos vibe react on): the plate's edge pulses and the tiles dance on the beat, only while a
+    // player plays (nothing listens otherwise)
+    Mpris.Mpris2Model { id: players }
+    Vibes.Levels {
+        id: beat
+        active: Plasmoid.configuration.react && !!players.currentPlayer
+                && players.currentPlayer.playbackStatus === Mpris.PlaybackStatus.Playing
     }
 
     readonly property string helper: "/usr/lib/deckos/shelf/shelf.py"
@@ -175,6 +185,7 @@ PlasmoidItem {
         look: vibe
         cut: 18
         lit: true
+        pulse: beat.pulse
     }
 
     Text {
@@ -274,6 +285,17 @@ PlasmoidItem {
                     height: modelData.kind === "game" ? 176 : modelData.kind === "partial" ? 80 : 108
                     // Dealt in, one after another, the first time each thing shows (not on every refresh)
                     Vibes.Unfold { id: deal; target: tileItem; origin: Item.Top; delay: Math.min(8, tileItem.index) * 40 }
+                    // With the music: a smaller hop than the dock's (they're bigger), one tile after another
+                    transform: [groove.hop, groove.sway]
+                    Vibes.Dance {
+                        id: groove
+                        levels: beat
+                        enabled: beat.active
+                        index: tileItem.index
+                        height: 5
+                        tilt: 2.5
+                        origin: Qt.point(tileItem.width / 2, tileItem.height)
+                    }
                     Component.onCompleted: if (!shelf.seen[modelData.path]) {
                         shelf.seen[modelData.path] = true;
                         deal.play();

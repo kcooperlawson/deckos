@@ -255,8 +255,18 @@ PlasmoidItem {
             anchors.centerIn: parent
             implicitWidth: Math.round(button.height * 0.66)
             look: deckMenu.look
-            scale: (button.pressed ? 0.92 : 1) + beat.pulse * 0.08  // a little hop on the music's beat
+            id: eyes
+            scale: (button.pressed ? 0.92 : 1) + beat.pulse * 0.08  // a little swell on the music's beat
             Behavior on scale { NumberAnimation { duration: 90 } }
+            transform: [logoDance.hop, logoDance.sway]  // and it dances first: the wave along the dock starts here
+            Vibes.Dance {
+                id: logoDance
+                levels: beat
+                enabled: beat.active
+                height: button.height * 0.1
+                tilt: 9
+                origin: Qt.point(eyes.width / 2, eyes.height)
+            }
         }
         Kirigami.Icon {
             visible: !button.own

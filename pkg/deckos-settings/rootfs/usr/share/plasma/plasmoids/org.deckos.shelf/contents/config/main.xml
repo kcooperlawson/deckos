@@ -8,5 +8,7 @@
     <entry name="style" type="String"><default>deckos</default></entry>
     <entry name="colorA" type="Color"><default>#4C8DFF</default></entry>
     <entry name="colorB" type="Color"><default>#7A5CFF</default></entry>
+    <!-- the plate's edge pulses and the tiles dance with the music playing (deckos vibe react on|off) -->
+    <entry name="react" type="Bool"><default>false</default></entry>
   </group>
 </kcfg>
