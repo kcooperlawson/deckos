@@ -34,6 +34,18 @@ Item {
         width: 44
         height: 44
         source: tile.model.decoration
+        // With the music, the grid takes turns: a hop on the beat, a ride on the mids, a sparkle with the highs
+        transform: [dance.hop, dance.lift, dance.sway, dance.lean, dance.pop]
+        Vibes.Dance {
+            id: dance
+            levels: deckMenu.music
+            enabled: deckMenu.music.active && tile.view.visible
+            part: ["kick", "groove", "sparkle"][tile.index % 3]
+            index: tile.index
+            height: 6
+            tilt: 5
+            origin: Qt.point(22, 44)
+        }
     }
 
     Text {

@@ -6,9 +6,19 @@ import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.deckos.vibes as Vibes
+import org.kde.plasma.private.mpris as Mpris
 
 PlasmoidItem {
     id: clock
+
+    // Reacting to music (deckos vibe react on), only while a player plays: the hours hop on the beat, the minutes
+    // ride the mids, the colon's dots sparkle with the highs
+    Mpris.Mpris2Model { id: players }
+    Vibes.Levels {
+        id: beat
+        active: Plasmoid.configuration.react && !!players.currentPlayer
+                && players.currentPlayer.playbackStatus === Mpris.PlaybackStatus.Playing
+    }
 
     Vibes.Look {
         id: look
@@ -79,7 +89,13 @@ PlasmoidItem {
                 font.letterSpacing: -2
                 renderType: Text.QtRendering
             }
-            Big { id: hoursText; text: clock.hours }
+            Big {
+                id: hoursText
+                text: clock.hours
+                transform: [kick.hop, kick.sway]
+                Vibes.Dance { id: kick; levels: beat; enabled: beat.active; height: 10; tilt: 3
+                              origin: Qt.point(hoursText.width / 2, hoursText.height) }
+            }
             Column {  // the colon: two notched dots in the Vibe's colours
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: 4
@@ -89,14 +105,24 @@ PlasmoidItem {
                 Repeater {
                     model: 2
                     Rectangle {
+                        id: dot
                         required property int index
                         width: 13
                         height: 13
+                        transform: sparkle.pop
+                        Vibes.Dance { id: sparkle; levels: beat; enabled: beat.active; part: "sparkle"; swell: 0.5
+                                      origin: Qt.point(6.5, 6.5) }
                         color: index ? look.colorB : look.colorA
                     }
                 }
             }
-            Big { text: clock.minutes }
+            Big {
+                id: minutesText
+                text: clock.minutes
+                transform: [groove.lift, groove.lean]
+                Vibes.Dance { id: groove; levels: beat; enabled: beat.active; part: "groove"; height: 8; tilt: 3; index: 1
+                              origin: Qt.point(minutesText.width / 2, minutesText.height) }
+            }
             Vibes.Hud {
                 visible: clock.twelve
                 look: look

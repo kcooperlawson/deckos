@@ -43,6 +43,7 @@ PlasmoidItem {
     }
     readonly property var look: menuLook
     readonly property real pulse: beat.pulse  // every plate in the menu catches the music's beat
+    readonly property alias music: beat  // and its apps dance with it (AppTile.qml)
     // DecKoOS line icons (/usr/share/deckos/icons), relative to contents/ui so the Windows preview
     // finds them in the repo the same way.
     readonly property string iconDir: Qt.resolvedUrl("../../../../../deckos/icons/")
@@ -258,7 +259,7 @@ PlasmoidItem {
             id: eyes
             scale: (button.pressed ? 0.92 : 1) + beat.pulse * 0.08  // a little swell on the music's beat
             Behavior on scale { NumberAnimation { duration: 90 } }
-            transform: [logoDance.hop, logoDance.sway]  // and it dances first: the wave along the dock starts here
+            transform: [logoDance.hop, logoDance.sway]  // (a kick only)  // and it dances first: the wave along the dock starts here
             Vibes.Dance {
                 id: logoDance
                 levels: beat

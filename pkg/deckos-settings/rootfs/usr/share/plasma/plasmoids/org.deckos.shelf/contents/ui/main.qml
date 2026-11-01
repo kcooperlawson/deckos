@@ -198,6 +198,9 @@ PlasmoidItem {
         font.pixelSize: 12
         font.weight: Font.Bold
         font.letterSpacing: 2.4
+        transform: titleDance.pop
+        Vibes.Dance { id: titleDance; levels: beat; enabled: beat.active; part: "sparkle"; swell: 0.12
+                      origin: Qt.point(0, title.height / 2) }
     }
     Text {
         anchors.right: parent.right
@@ -285,12 +288,14 @@ PlasmoidItem {
                     height: modelData.kind === "game" ? 176 : modelData.kind === "partial" ? 80 : 108
                     // Dealt in, one after another, the first time each thing shows (not on every refresh)
                     Vibes.Unfold { id: deal; target: tileItem; origin: Item.Top; delay: Math.min(8, tileItem.index) * 40 }
-                    // With the music: a smaller hop than the dock's (they're bigger), one tile after another
-                    transform: [groove.hop, groove.sway]
+                    // With the music: a smaller move than the dock's (they're bigger), a hop on the beat and a ride
+                    // on the mids, tile by tile
+                    transform: [groove.hop, groove.lift, groove.sway, groove.lean]
                     Vibes.Dance {
                         id: groove
                         levels: beat
                         enabled: beat.active
+                        part: tileItem.index % 2 ? "groove" : "kick"
                         index: tileItem.index
                         height: 5
                         tilt: 2.5

@@ -1911,14 +1911,14 @@ vibe_visualizer_service() {  # on|off: the audio side only runs while a visualiz
   else systemctl --user disable --now deckos-visualizer.service >/dev/null 2>&1 || true; fi
 }
 
-# The system reacting to music: the dock's islands pulse and its apps and the shelf's tiles dance on the beat and DecKoOS's apps' lit edges and meters breathe
+# The system reacting to music: the dock's islands pulse, and the dock, the menu, the shelf and the desktop clock dance to the music and DecKoOS's apps' lit edges and meters breathe
 # with it. Each part listens to deckos-visualizer only while something plays; games stop it (the service's own rule).
 vibe_react() {  # on|off
   qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "
     panels().forEach(function (p) { p.widgets().forEach(function (w) {
       if (['org.deckos.taskbar', 'org.deckos.menu', 'org.deckos.quicksettings'].indexOf(w.type) === -1) return;
       w.currentConfigGroup = ['General']; w.writeConfig('react', '$1' === 'on'); w.reloadConfig(); }); });
-    desktops().forEach(function (d) { d.widgets('org.deckos.shelf').forEach(function (w) {
+    desktops().forEach(function (d) { d.widgets().filter(function (w) { return ['org.deckos.shelf', 'org.deckos.bigclock'].indexOf(w.type) !== -1; }).forEach(function (w) {
       w.currentConfigGroup = ['General']; w.writeConfig('react', '$1' === 'on'); w.reloadConfig(); }); });" \
     >/dev/null 2>&1 || true
   local f=${XDG_CONFIG_HOME:-$HOME/.config}/deckos/style.conf  # the apps read it (hub_style)

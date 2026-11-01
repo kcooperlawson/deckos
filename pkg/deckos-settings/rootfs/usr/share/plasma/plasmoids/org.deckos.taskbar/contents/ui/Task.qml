@@ -127,14 +127,17 @@ Item {
                 // Pressed: a little in; hovered (with motion on): a little lift
                 scale: mouse.pressed ? 0.9 : deckTasks.motion && mouse.containsMouse ? 1.08 : 1
                 Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
-                // An app that's starting bounces gently until its window shows; with the music, every tile dances on
-                // the beat, one after another along the dock
-                transform: [bounce, dance.hop, dance.sway]
+                // An app that's starting bounces gently until its window shows. With the music, the tiles take turns:
+                // one hops on the beat (a wave along the dock), the next rides the mids, and the app playing it
+                // sparkles with the highs
+                transform: [bounce, dance.hop, dance.lift, dance.sway, dance.lean, dance.pop]
                 Translate { id: bounce }
                 Vibes.Dance {
                     id: dance
                     levels: deckTasks.music
                     enabled: deckTasks.motion && deckTasks.music.active
+                    part: task.playing ? "sparkle" : task.row % 2 ? "groove" : "kick"
+                    swell: 0.16
                     index: task.row
                     height: Math.max(4, deckTasks.tile * 0.14)
                     origin: Qt.point(icon.width / 2, icon.height)

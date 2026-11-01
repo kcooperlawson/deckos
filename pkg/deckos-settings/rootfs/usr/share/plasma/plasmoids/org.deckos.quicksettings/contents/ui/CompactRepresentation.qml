@@ -112,6 +112,16 @@ MouseArea {
         height: width
         name: "sliders"
         color: compact.containsMouse || compact.expanded ? Deck.accent : Kirigami.Theme.textColor
+        transform: [groove.lift, groove.lean]  // riding the mids with the music (deckos vibe react on)
+        Vibes.Dance {
+            id: groove
+            levels: levels
+            enabled: compact.playing && !!Plasmoid.configuration && Plasmoid.configuration.react
+            part: "groove"
+            height: 4
+            tilt: 8
+            origin: Qt.point(icon.width / 2, icon.height)
+        }
     }
     Rectangle {
         visible: compact.backend.updateCount > 0
