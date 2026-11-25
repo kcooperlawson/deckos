@@ -21,6 +21,10 @@ import uuid
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE.parent/'assistant'))
+import web  # noqa: E402
+
+DOWNLOAD_LIMIT=4<<30
 sys.path.insert(0, str(HERE.parent/'assistant'))
 from assistant import api, blocked_reason, conf
 from work_runtime import DATA, PYTHON, environment as runtime_environment
@@ -63,12 +67,18 @@ class Store:
             raise ValueError('Unsupported task file')
         return task
 
-    def create(self, workspace, mode='Work', title='New task'):
-        root = Path(workspace).resolve()
-        if not root.is_dir():
-            raise ValueError('Choose an existing project folder')
-        task = dict(id=uuid.uuid4().hex, title=title, workspace=str(root), mode=mode, created=time.time(),
-                    messages=[], events=[], artifacts=[], changes=[], status='ready')
+    def create(self, workspace=None, mode='Work', title='New task'):
+        """No folder: the task gets its own empty one, so Deck answers what was asked instead of exploring a folder."""
+        task_id = uuid.uuid4().hex
+        if workspace:
+            root = Path(workspace).resolve()
+            if not root.is_dir():
+                raise ValueError('Choose an existing project folder')
+        else:
+            root = self.root/'scratch'/task_id
+            root.mkdir(parents=True, exist_ok=True)
+        task = dict(id=task_id, title=title, workspace=str(root), mode=mode, created=time.time(),
+                    messages=[], events=[], artifacts=[], changes=[], status='ready', scratch=not workspace)
         self.save(task)
         return task
 
@@ -76,6 +86,7 @@ class Store:
         """Removes the conversation and its undo backups. Files it made in the project folder stay."""
         path = self.path(task_id)
         shutil.rmtree(self.root/'backups'/task_id, ignore_errors=True)
+        shutil.rmtree(self.root/'scratch'/task_id, ignore_errors=True)
         path.unlink(missing_ok=True)
 
     def list(self):
@@ -83,7 +94,7 @@ class Store:
         for path in (self.root/'tasks').glob('*.json'):
             try:
                 task=self.load(path.stem)
-                tasks.append({k:task.get(k) for k in ('id','title','workspace','mode','updated','status')})
+                tasks.append({k:task.get(k) for k in ('id','title','workspace','mode','updated','status','scratch')})
             except (OSError,ValueError,TypeError):
                 continue
         return sorted(tasks,key=lambda t:t.get('updated',0),reverse=True)
@@ -284,6 +295,8 @@ SCHEMAS=[
         {'command':S},()),
  schema('read_file','Read text, code, PDF, Word, PowerPoint or spreadsheet content from the project.',
         {'path':S,'start_line':{'type':'integer'},'line_count':{'type':'integer'}},('path',)),
+ schema('download_file','Download a file from the public web into the project folder (downloads/ unless a path is given). The user is asked first. Downloads are never run.',
+        {'url':S,'path':S},('url',)),
  schema('search_files','Search project file contents with ripgrep. Returns file names and line numbers.',{'query':S,'path':S},('query',)),
  schema('write_file','Create or replace a project text file. Existing content is backed up and a diff is recorded.',
         {'path':S,'content':S},('path','content')),
@@ -513,18 +526,43 @@ class Tools:
         text=re.sub('<[^>]+>',' ',text)
         return 'Source: '+url+'\n'+html.unescape(re.sub(r'\s+',' ',text))[:24000]
 
-    def t_web_search(self,query):
-        url='https://html.duckduckgo.com/html/?'+urllib.parse.urlencode({'q':query})
+    def t_download_file(self,url,path=''):
+        public_url(url)
+        name=Path(urllib.parse.unquote(urllib.parse.urlparse(url).path)).name or 'download'
+        target=scoped(self.root,path or 'downloads/'+name)
+        if target.is_dir():
+            target=target/name
+        # Always asked, whoever found the address: a download is the user's call, and nothing here runs it
+        if not self.confirm('Download this file?',f'{url}\n\nSaved to {target}. It will not be opened or run.'):
+            return 'The user declined the download. Continue without it.'
+        target.parent.mkdir(parents=True,exist_ok=True)
+        part=target.with_name(target.name+'.part')
         request=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 DeckOSWork'})
-        with urllib.request.urlopen(request,timeout=30) as response:
-            text=response.read(1_000_000).decode(errors='replace')
-        found=[]
-        for href,body in re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',text,re.S):
-            parsed=urllib.parse.urlparse(html.unescape(href))
-            target=urllib.parse.parse_qs(parsed.query).get('uddg',[href])[0]
-            found.append(html.unescape(re.sub('<[^>]+>','',body))+'\n'+target)
-            self.found_urls.add(target)
-        return '\n\n'.join(found[:8]) or 'The search service did not return usable results. Try a known source URL with fetch_url.'
+        size=0
+        try:
+            with urllib.request.build_opener(PublicRedirects).open(request,timeout=60) as response, open(part,'wb') as out:
+                while chunk:=response.read(1<<20):
+                    size+=len(chunk)
+                    if size>DOWNLOAD_LIMIT:
+                        raise ValueError(f'The file is over {DOWNLOAD_LIMIT>>30} GB, the download limit')
+                    if self.cancelled():
+                        raise InterruptedError('Task stopped')
+                    out.write(chunk)
+            part.chmod(0o644)
+            part.replace(target)
+        finally:
+            part.unlink(missing_ok=True)
+        self._artifact(target)
+        return f'Downloaded {size/1e6:.1f} MB to {target.relative_to(self.root)}'
+
+    def t_web_search(self,query):
+        # The Assistant's search (DuckDuckGo lite): the html page this used began answering with a bot check
+        page=web.fetch(web.SEARCH,data=urllib.parse.urlencode({'q':query}).encode())
+        results=web.parse_results(page,limit=8)
+        self.found_urls.update(url for _,url,_ in results)
+        if not results:
+            return f'No results for {query!r}. Try other words, or a known source URL with fetch_url.'
+        return web.UNTRUSTED+'\n\n'.join(f'{i}. {title}\n{url}\n{snippet}' for i,(title,url,snippet) in enumerate(results,1))
 
     def _helper(self,action,data,timeout=900):
         if not PYTHON.exists():

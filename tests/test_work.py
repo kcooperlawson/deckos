@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'pkg/deckos-settings/rootfs/usr/lib/deckos/work'))
@@ -34,6 +35,49 @@ class WorkTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 scoped(self.project,name)
         self.assertFalse((outside/'secret').exists())
+
+    def test_task_without_a_folder_gets_its_own_and_is_told_not_to_explore(self):
+        # With a remembered folder, Deck mapped /mnt/SSD/Games when asked why an app wouldn't connect
+        task=self.store.create(None)
+        folder=Path(task['workspace'])
+        self.assertTrue(task['scratch'] and folder.is_dir() and not any(folder.iterdir()))
+        prompt=work_agent.context(task,{'context':16384})[0]['content']
+        self.assertIn('No project folder is open',prompt)
+        self.assertNotIn('No project folder is open',work_agent.context(self.task,{'context':16384})[0]['content'])
+        self.store.delete(task['id'])
+        self.assertFalse(folder.exists())
+
+    def test_web_search_reads_duckduckgo_lite_and_trusts_its_links(self):
+        # The html endpoint started answering with a bot check, so every search came back empty
+        page=('<a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fguide" class="result-link">'
+              'Guide</a><td class="result-snippet">How to</td>')
+        with patch('work_core.web.fetch',return_value=page):
+            out=self.tools.t_web_search('guide')
+        self.assertIn('https://example.org/guide',out)
+        self.assertIn('https://example.org/guide',self.tools.found_urls)
+
+    def test_download_asks_first_and_saves_inside_the_project(self):
+        class Response:
+            def __init__(self):
+                self.chunks=[b'hello',b'']
+            def read(self,_):
+                return self.chunks.pop(0)
+            def __enter__(self):
+                return self
+            def __exit__(self,*_):
+                pass
+        opener=unittest.mock.Mock()
+        opener.open.return_value=Response()
+        with patch('work_core.public_url'), patch('work_core.urllib.request.build_opener',return_value=opener):
+            self.assertIn('declined',self.tools.t_download_file('https://example.org/a.zip'))  # confirm says no
+            self.assertFalse((self.project/'downloads').exists())
+            self.tools.confirm=lambda *_:True
+            self.tools.t_download_file('https://example.org/a.zip')
+            with self.assertRaises(ValueError):
+                self.tools.t_download_file('https://example.org/a.zip','../outside.zip')
+        saved=self.project/'downloads/a.zip'
+        self.assertEqual(saved.read_bytes(),b'hello')
+        self.assertFalse(os.access(saved,os.X_OK))
 
     def test_delete_removes_task_and_backups_but_not_project_files(self):
         save_edit(self.store,self.task,'notes.txt',b'one')

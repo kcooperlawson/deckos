@@ -152,8 +152,13 @@ class Work(QWidget):
         sl.addWidget(self.new_button)
         self.folder_button=button('Open project folder',slot=self.choose_workspace,icon='folder')
         sl.addWidget(self.folder_button)
-        self.folder_label=text('No folder selected','muted')
+        self.folder_label=text('No folder: Deck works on the PC','muted')
+        self.folder_label.setWordWrap(True)
         sl.addWidget(self.folder_label)
+        self.close_folder_button=button('Close folder',slot=self.close_workspace,icon='close',
+            tip='New tasks start without a project folder, so Deck works on what you ask instead of reading the folder')
+        self.close_folder_button.setVisible(False)
+        sl.addWidget(self.close_folder_button)
         sl.addSpacing(12)
         sl.addWidget(text('RECENT TASKS','kicker'))
         self.task_list=QListWidget()
@@ -189,6 +194,8 @@ class Work(QWidget):
             self.refresh_tasks()
             if self.workspace and Path(self.workspace).is_dir():
                 self.set_workspace(self.workspace)
+            else:
+                self.workspace=''
             self.render_chat()
             QTimer.singleShot(0,self.check_tools)
 
@@ -442,13 +449,22 @@ class Work(QWidget):
             self.set_workspace(folder)
             self.new_task()
 
-    def set_workspace(self,folder):
-        self.workspace=str(Path(folder).resolve())
-        self.folder_label.setText(Path(folder).name)
+    def close_workspace(self):
+        if self.busy:
+            return
+        self.set_workspace('')
+        self.new_task()
+
+    def set_workspace(self,folder,scratch=False):
+        """'' or a task's own scratch folder: no project folder is open."""
+        self.workspace='' if scratch or not folder else str(Path(folder).resolve())
+        self.folder_label.setText(Path(self.workspace).name or '/' if self.workspace else 'No folder: Deck works on the PC')
         self.folder_label.setToolTip(self.workspace)
+        self.close_folder_button.setVisible(bool(self.workspace))
+        folder=folder or str(Path.home())
         if not self.demo:
-            self.file_model.setRootPath(self.workspace)
-            self.files.setRootIndex(self.file_model.index(self.workspace))
+            self.file_model.setRootPath(folder)
+            self.files.setRootIndex(self.file_model.index(folder))
             self.save_settings()
 
     def new_task(self):
@@ -457,10 +473,9 @@ class Work(QWidget):
         if self.demo:
             self.status.setText('Demo mode · no files or models are changed.')
             return
-        if not self.workspace or not Path(self.workspace).is_dir():
-            self.choose_workspace()
-            return
-        self.task=self.store.create(self.workspace,self.mode.currentText())
+        if self.workspace and not Path(self.workspace).is_dir():
+            self.set_workspace('')
+        self.task=self.store.create(self.workspace or None,self.mode.currentText())
         self.streaming=''
         self.task_title.setText('New task')
         self.console.clear()
@@ -474,7 +489,7 @@ class Work(QWidget):
         for task in self.store.list():
             item=QListWidgetItem(task['title'])
             item.setData(Qt.UserRole,task['id'])
-            item.setToolTip(task['workspace'])
+            item.setToolTip(('No project folder' if task.get('scratch') else task['workspace'])+'\nRight-click or press Delete to remove')
             self.task_list.addItem(item)
 
     def task_menu(self,pos):
@@ -516,7 +531,7 @@ class Work(QWidget):
             return
         try:
             self.task=self.store.load(item.data(Qt.UserRole))
-            self.set_workspace(self.task['workspace'])
+            self.set_workspace(self.task['workspace'],self.task.get('scratch',False))
             self.task_title.setText(self.task['title'])
             self.streaming=''
             self.refresh_panels()
@@ -589,12 +604,16 @@ class Work(QWidget):
             except OSError as error:
                 self.file_preview.setPlainText(str(error))
 
+    def task_root(self):
+        """Where the open task's files are: its project folder, or its own folder when none is open."""
+        return (self.task or {}).get('workspace') or self.workspace
+
     def open_link(self,url):
         if url.scheme() in ('https','http'):
             QDesktopServices.openUrl(url)
-        elif url.isLocalFile() and self.workspace:
+        elif url.isLocalFile() and self.task_root():
             try:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(scoped(self.workspace,url.toLocalFile()))))
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(scoped(self.task_root(),url.toLocalFile()))))
             except ValueError as error:
                 self.status.setText(str(error))
 
@@ -602,7 +621,7 @@ class Work(QWidget):
         if self.demo:
             return
         try:
-            path=scoped(self.workspace,item.data(Qt.UserRole))
+            path=scoped(self.task_root(),item.data(Qt.UserRole))
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
         except ValueError as error:
             self.status.setText(str(error))
@@ -615,7 +634,7 @@ class Work(QWidget):
 
     def set_busy(self,value):
         self.busy=value
-        for control in (self.new_button,self.folder_button,self.send_button,self.attach_button,self.mode,
+        for control in (self.new_button,self.folder_button,self.close_folder_button,self.send_button,self.attach_button,self.mode,
                         self.model_combo,self.image_generate,self.docs_setup,self.images_setup):
             control.setEnabled(not value)
         self.stop_button.setEnabled(value)
@@ -791,6 +810,7 @@ class Work(QWidget):
 
     def demo_data(self):
         self.workspace='/home/demo/Projects/DeckOS'
+        self.close_folder_button.setVisible(True)
         self.folder_label.setText('DecKoOS')
         self.model_combo.addItems(['gpt-oss:20b','gemma4:12b'])
         self.task=dict(id='demo',title='Refine the benchmark report',workspace=self.workspace,changes=[],artifacts=[],messages=[

@@ -20,6 +20,7 @@ Use tools instead of describing imaginary work. Read existing files before editi
 instructions. Keep changes focused. Test code with the project's existing commands. Never invent test
 results. Workspace file writes have backups; terminal commands ask the user themselves, so call the tool
 instead of asking twice in chat. If a tool is declined, respect that decision.
+download_file saves files from the web (the user is asked each time); search first so the address is real.
 Create deliverables in outputs/ unless the user specifies another location. create_document handles
 .docx/.pdf/.pptx/.xlsx. write_file handles code, Markdown, CSV, HTML and SVG. generate_image creates
 actual bitmap images on the local GPU; use it for illustrations/photos rather than inventing a path.
@@ -30,8 +31,11 @@ model has hosted integrations or access it doesn't have. When finished, give a c
 important output paths, tests, and remaining limitations. You are in MODE mode.
 
 How to work (follow this; it is what makes the result correct):
-1. Understand. On code tasks call project_map first, then read_file the parts you will touch. Never edit a
-   file you have not read in this task.
+1. Understand. Do what the user asked, not something near it. Look only at what the request is about: a
+   question about this PC, an app or a game is answered with read-only terminal commands and its own files,
+   not by exploring the project folder. On code tasks in the project call project_map first, then read_file
+   the parts you will touch. Never edit a file you have not read in this task. If the request is unclear,
+   ask one short question instead of guessing.
 2. Plan. For anything with more than two steps call update_plan with a short checklist, then do one item
    at a time and mark it done as you finish it. Revise the plan when you learn something new.
 3. Change. Make small, focused edits: replace_lines with line numbers from a fresh read_file is the most
@@ -163,6 +167,9 @@ def streamed_chat(model,messages,settings,tools=True):
 
 def context(task,settings):
     prompt=PROMPT.replace('PROJECT',task['workspace']).replace('MODE',task.get('mode','Work'))
+    if task.get('scratch'):
+        prompt+=('\n\nNo project folder is open. '+task['workspace']+' is this task\'s own empty folder for anything you '
+                 'make: never explore it. Work on the PC itself and on paths the user names with terminal commands.')
     for name in ('AGENTS.md','CLAUDE.md'):
         path=Path(task['workspace'])/name
         if path.is_file():
