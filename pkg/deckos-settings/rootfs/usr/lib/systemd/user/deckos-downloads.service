@@ -9,7 +9,6 @@ ExecStart=/usr/bin/python3 /usr/lib/deckos/downloads/downloads.py serve
 Restart=on-failure
 RestartSec=10
 Nice=5
-IOSchedulingClass=idle
 
 [Install]
 WantedBy=default.target

@@ -11,6 +11,7 @@ tests/test_downloads.py.
     downloads.py add URL [FOLDER] | pause ID | resume ID | cancel ID | remove ID | clear | list | serve
 """
 import fcntl
+import http.client
 import json
 import os
 import re
@@ -29,7 +30,10 @@ from pathlib import Path
 STATE = Path(os.environ.get("DECKOS_DOWNLOADS_STATE") or Path.home() / ".local/state/deckos/downloads")
 QUEUE, LOCK = STATE / "queue.json", STATE / "queue.lock"
 AT_ONCE = 3  # downloads running together; the rest wait their turn
-CHUNK = 256 << 10
+CONNECTIONS = 8  # per big download: servers often cap each connection, not the whole
+SPLIT_MIN = 16 << 20  # smaller than this isn't worth splitting
+STEAL_MIN = 2 << 20  # a finished connection takes half of another's rest while that's at least twice this
+CHUNK = 1 << 20
 TICK = 0.5  # s between progress writes
 AGENT = "Mozilla/5.0 (X11; Linux x86_64) DecKoOS-Downloads/1"  # some servers turn away anything that looks like a script
 ACTIVE = ("queued", "downloading", "waiting")  # waiting: the connection dropped, trying again soon
@@ -161,11 +165,13 @@ def change(job_id, how):
         elif how == "resume" and j["state"] in ("paused", "failed", "waiting"):
             j.update(state="queued", error="", tries=0)
         elif how == "cancel" and j["state"] not in ("done", "cancelled"):
-            j.update(state="cancelled", speed=0, finished=time.time())
-            try:
-                (Path(j["folder"]) / (j["name"] + ".part")).unlink()
-            except OSError:
-                pass
+            running = j["state"] == "downloading"
+            j.update(state="cancelled", speed=0, finished=time.time(), segs=[])
+            if not running:  # a running one's .part goes once its worker has stopped (serve), or it'd write on
+                try:
+                    (Path(j["folder"]) / (j["name"] + ".part")).unlink()
+                except OSError:
+                    pass
         elif how == "remove" and j["state"] in FINISHED:
             jobs.remove(j)
         save(jobs)
@@ -230,12 +236,16 @@ class Stop(Exception):
 
 
 class Worker(threading.Thread):
-    """Downloads one job into NAME.part, resuming from what's there. Progress goes into `self.job` (the server writes
-    it out); `self.stop` ends it early (pause/cancel)."""
+    """Downloads one job into NAME.part, resuming from what's there. A big file from a server that takes ranges is
+    split across CONNECTIONS connections (servers often cap each one), each writing its own part of the file; one that
+    finishes takes half of the slowest one's rest, so the end doesn't crawl on a single connection. Where each part
+    has got to is kept in job["segs"] ([start, end, at]), so a resume carries on every part. Progress goes into
+    `self.job` (the server writes it out); `self.stop` ends it early (pause/cancel)."""
 
     def __init__(self, job):
         super().__init__(daemon=True)
         self.job, self.stop = dict(job), threading.Event()
+        self.job["segs"] = [list(x) for x in job.get("segs") or []]
         self.outcome, self.wait = None, 0  # outcome: done | retry | failed | stopped
 
     def part(self):
@@ -254,7 +264,7 @@ class Worker(threading.Thread):
                 self.outcome = "failed"
             else:
                 self.retry(f"The server is busy ({e.code})")
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as e:
             reason = getattr(e, "reason", e)
             if isinstance(e, OSError) and getattr(e, "errno", None) == 28:  # ENOSPC
                 self.job["error"] = "The drive is full"
@@ -268,21 +278,42 @@ class Worker(threading.Thread):
         self.job["error"] = f"{why}, trying again in {self.wait} s"
         self.outcome = "retry"
 
-    def fetch(self):
-        j, part = self.job, self.part()
-        have = part.stat().st_size if part.exists() else 0
+    def open(self, start=None, end=None, check=True):
         headers = {"User-Agent": AGENT, "Accept-Encoding": "identity"}
-        if have:
-            headers["Range"] = f"bytes={have}-"
-            if j.get("validator"):
-                headers["If-Range"] = j["validator"]  # changed on the server: it sends the whole new file instead
-        req = urllib.request.Request(j["url"], headers=headers)
+        if start is not None:
+            headers["Range"] = f"bytes={start}-" + ("" if end is None else str(end - 1))
+            if check and self.job.get("validator"):
+                headers["If-Range"] = self.job["validator"]  # changed on the server: it sends the whole new file
+        return urllib.request.urlopen(urllib.request.Request(self.job["url"], headers=headers), timeout=30)
+
+    def restart(self):
+        """From nothing: the file changed on the server, or what's here can't be trusted."""
+        self.job.update(segs=[], got=0, validator="")
         try:
-            resp = urllib.request.urlopen(req, timeout=30)
+            self.part().unlink()
+        except OSError:
+            pass
+
+    def fetch(self):
+        j = self.job
+        if j["segs"] and self.part().exists() and self.part().stat().st_size == j.get("size"):
+            return self.split()
+        if j["segs"]:  # the parts' file is gone or the wrong size: they can't be trusted
+            self.restart()
+        part = self.part()
+        have = part.stat().st_size if part.exists() else 0
+        try:
+            resp = self.open(have if have else 0, check=bool(have))
         except urllib.error.HTTPError as e:
-            if e.code == 416 and have:  # nothing after what we have: it was all there
-                j["got"] = j["size"] = have
-                return
+            if e.code == 416 and have:
+                # Nothing after what's here. That's only "done" if what's here is the whole known size; servers also
+                # say 416 when a link expired or the file shrank: then start over rather than keep a short file
+                e.close()
+                if j.get("size") and have == j["size"]:
+                    j["got"] = have
+                    return
+                self.restart()
+                raise urllib.error.URLError("the server didn't take the resume")
             raise
         with resp:
             if not j.get("named"):
@@ -293,15 +324,20 @@ class Worker(threading.Thread):
                 j["named"] = True
             j["validator"] = resp.headers.get("ETag") or resp.headers.get("Last-Modified") or ""
             length = int(resp.headers.get("Content-Length") or 0)
-            if resp.status == 206:
-                mode = "ab"
-            else:
-                have, mode = 0, "wb"  # the server can't resume, or the file changed: from the start
-            j["size"] = have + length if length else 0
-            j["got"] = have
-            j["tries"] = 0
-            j["error"] = ""
-            with open(part, mode) as f:
+            total = content_range_total(resp.headers.get("Content-Range", ""))
+            if resp.status != 206:
+                have = 0  # the server can't resume, or the file changed: from the start
+            j["size"] = total or (have + length if length else 0)
+            j["got"], j["tries"], j["error"] = have, 0, ""
+            if resp.status == 206 and total and total - have >= SPLIT_MIN and not os.environ.get("DECKOS_DOWNLOADS_ONE"):
+                resp.close()  # a big one from a server that takes ranges: share it out
+                with open(part, "ab") as f:
+                    f.truncate(total)  # sparse: the parts fill it in
+                j["segs"] = plan_segs(have, total)
+                if have:
+                    j["segs"].insert(0, [0, have, have])
+                return self.split()
+            with open(part, "ab" if resp.status == 206 else "wb") as f:
                 while True:
                     if self.stop.is_set():
                         raise Stop
@@ -310,13 +346,91 @@ class Worker(threading.Thread):
                         break
                     f.write(block)
                     j["got"] += len(block)
-        if j["size"] and j["got"] < j["size"]:
+        if j["size"] and j["got"] != j["size"]:
             raise urllib.error.URLError("the connection closed early")
+
+    def split(self):
+        j, segs = self.job, self.job["segs"]
+        errors, lock = [], threading.Lock()
+        fd = os.open(self.part(), os.O_RDWR)
+
+        def count():
+            j["got"] = sum(min(at, end) - start for start, end, at in segs)
+
+        def one(seg):
+            while not self.stop.is_set() and not errors:
+                if seg[2] >= seg[1]:
+                    with lock:  # done: help the part with the most left
+                        rest = max(segs, key=lambda x: x[1] - x[2])
+                        if rest[1] - rest[2] < 2 * STEAL_MIN:
+                            return
+                        cut = rest[2] + (rest[1] - rest[2]) // 2
+                        seg = [cut, rest[1], cut]
+                        rest[1] = cut
+                        segs.append(seg)
+                try:
+                    with self.open(seg[2], seg[1]) as resp:
+                        if resp.status != 206:  # changed on the server mid-way: none of it can be kept
+                            raise Changed
+                        while seg[2] < seg[1] and not self.stop.is_set() and not errors:
+                            block = resp.read(min(CHUNK, seg[1] - seg[2]))
+                            if not block:
+                                raise urllib.error.URLError("the connection closed early")
+                            os.pwrite(fd, block, seg[2])
+                            seg[2] += len(block)
+                            count()
+                except Exception as e:  # noqa: BLE001 the first failure ends them all; run() sorts out what it was
+                    errors.append(e)
+                    return
+
+        try:
+            threads = [threading.Thread(target=one, args=(seg,), daemon=True) for seg in list(segs) if seg[2] < seg[1]]
+            threads = threads or [threading.Thread(target=lambda: None)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        finally:
+            os.close(fd)
+            count()
+            segs.sort()
+        if self.stop.is_set():
+            raise Stop
+        if errors and isinstance(errors[0], Changed):
+            self.restart()
+            raise urllib.error.URLError("the file changed on the server")
+        if errors:
+            raise errors[0]
+        if j["got"] != j["size"]:
+            raise urllib.error.URLError("parts of the file are missing")
+
+
+class Changed(Exception):
+    pass
+
+
+def content_range_total(value):
+    m = re.search(r"/(\d+)\s*$", value or "")
+    return int(m.group(1)) if m else 0
+
+
+def plan_segs(start, total, n=None):
+    n = n or CONNECTIONS
+    step = max(SPLIT_MIN // 4, (total - start) // n)
+    out, at = [], start
+    while at < total:
+        end = total if total - at < step * 1.5 else at + step
+        out.append([at, end, at])
+        at = end
+    return out
 
 
 def finish(job):
     """NAME.part becomes NAME (never over a file that appeared meanwhile)."""
     folder = Path(job["folder"])
+    have = (folder / (job["name"] + ".part")).stat().st_size
+    if job.get("size") and have != job["size"]:
+        raise OSError(5, f"only {size_text(have)} of {size_text(job['size'])} arrived")
     final = free_name(folder, job["name"]) if (folder / job["name"]).exists() else job["name"]
     os.replace(folder / (job["name"] + ".part"), folder / final)
     job["name"] = final
@@ -359,6 +473,7 @@ def serve(idle_exit=True):
                 inst = (w.job["got"] - prev_got) / max(0.05, now - prev_t)
                 speeds[jid] = (w.job["got"], now)
                 j.update(name=w.job["name"], got=w.job["got"], size=w.job["size"], named=w.job.get("named", False),
+                         segs=[list(x) for x in w.job.get("segs", [])],
                          validator=w.job.get("validator", ""), error=w.job.get("error", ""),
                          speed=round(0.7 * j.get("speed", 0) + 0.3 * inst) if j.get("speed") else round(inst))
                 if w.is_alive():

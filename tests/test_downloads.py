@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "pkg/deckos-settings/rootfs/usr/lib/deckos/downloa
 os.environ["DECKOS_DOWNLOADS_NO_SERVICE"] = "1"
 import downloads as D  # noqa: E402
 
-BODY = bytes(range(256)) * 4096  # 1 MiB
+BODY = bytes(range(251)) * 16000  # about 4 MB; 251 so every part's bytes differ from its neighbours'
 
 
 class Server(http.server.BaseHTTPRequestHandler):
@@ -29,26 +29,35 @@ class Server(http.server.BaseHTTPRequestHandler):
         Server.seen.append((self.path, self.headers.get("Range"), self.headers.get("If-Range")))
         if self.path == "/missing":
             return self.send_error(404)
-        body, start = BODY, 0
+        body, start, end = BODY, 0, len(BODY)
         rng = self.headers.get("Range")
+        if self.path == "/expired" and rng and rng != "bytes=0-":
+            return self.send_error(416)  # what some servers say once a link has expired
         if rng and self.path != "/norange" and self.headers.get("If-Range", Server.etag) == Server.etag:
-            start = int(rng.split("=")[1].split("-")[0])
+            a, _, b = rng.split("=")[1].partition("-")
+            start, end = int(a), (int(b) + 1 if b else len(body))
             self.send_response(206)
-            self.send_header("Content-Range", f"bytes {start}-{len(body) - 1}/{len(body)}")
+            self.send_header("Content-Range", f"bytes {start}-{end - 1}/{len(body)}")
         else:
             self.send_response(200)
         if self.path == "/named":
             self.send_header("Content-Disposition", "attachment; filename*=UTF-8''Big%20Game.iso")
         self.send_header("ETag", Server.etag)
-        self.send_header("Content-Length", str(len(body) - start))
+        self.send_header("Content-Length", str(end - start))
         self.end_headers()
-        if self.path in Server.drop_once:
+        if self.path in Server.drop_once and end - start > 300_000:
             Server.drop_once.discard(self.path)
-            self.wfile.write(body[start:start + 300_000])
-            self.wfile.flush()
-            self.connection.shutdown(2)
+            self.wfile.write(body[start:start + 100_000])
+            try:
+                self.wfile.flush()
+                self.connection.shutdown(2)
+            except OSError:
+                pass
             return
-        self.wfile.write(body[start:])
+        try:
+            self.wfile.write(body[start:end])
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # a part handed half of its rest to another closes early
 
 
 class DownloadTests(unittest.TestCase):
@@ -120,6 +129,32 @@ class DownloadTests(unittest.TestCase):
         j = D.add(self.base + "/norange", self.dir)
         self.run_queue()
         self.assertEqual((self.dir / "norange").read_bytes(), BODY)
+
+    def test_a_big_file_comes_in_parts(self):
+        D.SPLIT_MIN, D.STEAL_MIN = 1 << 20, 64 << 10
+        Server.drop_once.add("/file.bin")  # one part's connection drops: it carries on alone
+        try:
+            j = D.add(self.base + "/file.bin", self.dir)
+            done = self.run_queue()[j["id"]]
+        finally:
+            D.SPLIT_MIN, D.STEAL_MIN = 16 << 20, 2 << 20
+        self.assertEqual(done["state"], "done")
+        self.assertEqual((self.dir / "file.bin").read_bytes(), BODY)
+        ranged = [r for _, r, _ in Server.seen if r and r != "bytes=0-"]
+        self.assertGreaterEqual(len(ranged), D.CONNECTIONS)
+
+    def test_a_short_file_is_never_done(self):
+        # The server says 416 to a resume (an expired link): what's there is only part of it, so start again
+        j = D.add(self.base + "/expired", self.dir, start=False)
+        self.dir.mkdir(exist_ok=True)
+        (self.dir / "expired.part").write_bytes(BODY[:200_000])
+        with D.locked():
+            jobs = D.load()
+            jobs[0]["size"] = len(BODY)
+            D.save(jobs)
+        done = self.run_queue()[j["id"]]
+        self.assertEqual(done["state"], "done")
+        self.assertEqual((self.dir / "expired").read_bytes(), BODY)
 
     def test_gives_up_on_404(self):
         j = D.add(self.base + "/missing", self.dir)

@@ -466,9 +466,10 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   theme.txt's boot_menu box. Check the look on a real boot: GRUB can't be rendered here.
 - **Downloads** (`usr/lib/deckos/downloads/`): `downloads.py` (no Qt) keeps the queue in
   `~/.local/state/deckos/downloads/queue.json` (every writer takes queue.lock; the file is replaced, never written in place)
-  and downloads with urllib: Range resume checked by If-Range (a changed file starts over, never spliced), names from
-  Content-Disposition, retries with a growing wait, gives up only on GIVE_UP codes, NAME.part until whole, never over a
-  file. `serve` is the user unit `deckos-downloads.service` (global; ConditionPathExists on the queue), started by
+  and downloads with urllib: big files from servers that take ranges split over `CONNECTIONS` (parts in `segs`, a finished
+  connection takes half of the slowest one's rest; measured 1.7x on an Arch mirror), Range resume checked by If-Range (a changed file starts over, never spliced), names from
+  Content-Disposition, retries with a growing wait, gives up only on GIVE_UP codes, NAME.part until whole (`finish` refuses a short
+  file; a 416 on resume restarts unless the size matches), never over a file. `serve` is the user unit `deckos-downloads.service` (global; ConditionPathExists on the queue), started by
   `wake()` and gone once nothing's left. `deckos download URL` queues; `deckos-downloads` (`deckos_downloads.py`, `--demo
   --screenshot DIR`) is the window (file watcher, no polling). The shelf's partial tiles read the queue for real progress.
   Tests: `tests/test_downloads.py` (a local Range server that drops connections).
