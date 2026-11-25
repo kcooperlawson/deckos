@@ -45,6 +45,26 @@ def downloads_dir():
     return Path(d if d and d != str(Path.home()) else Path.home() / "Downloads")
 
 
+CONF = Path.home() / ".config/deckos/downloads.conf"  # folder=PATH: where the window saves, when it isn't Downloads
+
+
+def saved_folder():
+    """The folder picked in the window last time, if it's still there (a drive that isn't plugged in: Downloads)."""
+    try:
+        for line in CONF.read_text().splitlines():
+            if line.startswith("folder="):
+                p = Path(line[7:].strip())
+                return p if p.is_dir() else None
+    except OSError:
+        pass
+    return None
+
+
+def save_folder(folder):
+    CONF.parent.mkdir(parents=True, exist_ok=True)
+    CONF.write_text(f"folder={folder}\n" if folder else "")
+
+
 @contextmanager
 def locked():
     STATE.mkdir(parents=True, exist_ok=True)

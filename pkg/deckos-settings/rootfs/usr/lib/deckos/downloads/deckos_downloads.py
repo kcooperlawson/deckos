@@ -279,7 +279,7 @@ class Downloads(QWidget):
         self.resize(980, 720)
         self.setMinimumSize(720, 520)
         self.items, self.jobs = {}, []
-        self.folder = Path("~/Downloads").expanduser() if DEMO else D.downloads_dir()
+        self.folder = Path("~/Downloads").expanduser() if DEMO else D.saved_folder() or D.downloads_dir()
 
         v = QVBoxLayout(self)
         v.setContentsMargins(28, 24, 28, 18)
@@ -488,6 +488,8 @@ class Downloads(QWidget):
         if d:
             self.folder = Path(d)
             self.set_where()
+            if not DEMO:
+                D.save_folder(self.folder if self.folder != D.downloads_dir() else None)
 
     def download(self, url=None):
         url = (url or self.link.text()).strip()
