@@ -38,6 +38,10 @@ TICK = 0.5  # s between progress writes
 AGENT = "Mozilla/5.0 (X11; Linux x86_64) DecKoOS-Downloads/1"  # some servers turn away anything that looks like a script
 ACTIVE = ("queued", "downloading", "waiting")  # waiting: the connection dropped, trying again soon
 FINISHED = ("done", "failed", "cancelled")
+# File systems where a file with a hole in it costs nothing; anything else (NTFS, exFAT, FAT) writes the hole out as
+# zeros first, which for a 50 GB file sat at 0 bytes for minutes, so those get one connection
+SPARSE_FS = {"ext4", "ext3", "btrfs", "xfs", "f2fs", "tmpfs", "zfs", "bcachefs"}
+MOUNTS = "/proc/self/mounts"
 GIVE_UP = {400, 401, 403, 404, 405, 410, 451}  # the server said no: retrying won't change it
 
 
@@ -196,6 +200,20 @@ def wake():
         pass
 
 
+def sparse_ok(folder):
+    """Whether FOLDER's file system takes holes for free (the longest mount point it's under decides)."""
+    folder, best, fs = str(Path(folder).resolve()), "", ""
+    try:
+        for line in open(MOUNTS):
+            parts = line.split()
+            point = parts[1].replace("\\040", " ")
+            if (folder == point or folder.startswith(point.rstrip("/") + "/")) and len(point) >= len(best):
+                best, fs = point, parts[2]
+    except OSError:
+        return False
+    return fs in SPARSE_FS
+
+
 def size_text(n):
     for unit, step in (("TB", 1e12), ("GB", 1e9), ("MB", 1e6), ("KB", 1e3)):
         if n >= step:
@@ -329,7 +347,7 @@ class Worker(threading.Thread):
                 have = 0  # the server can't resume, or the file changed: from the start
             j["size"] = total or (have + length if length else 0)
             j["got"], j["tries"], j["error"] = have, 0, ""
-            if resp.status == 206 and total and total - have >= SPLIT_MIN and not os.environ.get("DECKOS_DOWNLOADS_ONE"):
+            if resp.status == 206 and total and total - have >= SPLIT_MIN and not os.environ.get("DECKOS_DOWNLOADS_ONE") and sparse_ok(part.parent):
                 resp.close()  # a big one from a server that takes ranges: share it out
                 with open(part, "ab") as f:
                     f.truncate(total)  # sparse: the parts fill it in
@@ -337,6 +355,8 @@ class Worker(threading.Thread):
                 if have:
                     j["segs"].insert(0, [0, have, have])
                 return self.split()
+            if self.stop.is_set():  # cancelled meanwhile: don't make the .part again
+                raise Stop
             with open(part, "ab" if resp.status == 206 else "wb") as f:
                 while True:
                     if self.stop.is_set():
@@ -460,8 +480,7 @@ def serve(idle_exit=True):
             for jid, w in list(workers.items()):
                 j = by_id.get(jid)
                 if j is None or j["state"] != "downloading":  # paused, cancelled or removed in the window
-                    w.stop.set()
-                    w.join(5)
+                    w.stop.set()  # it ends on its own; never waited for here, with the queue locked
                     del workers[jid]
                     if j is not None and j["state"] == "cancelled":
                         try:

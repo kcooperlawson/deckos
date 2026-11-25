@@ -156,6 +156,41 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(done["state"], "done")
         self.assertEqual((self.dir / "expired").read_bytes(), BODY)
 
+    def test_one_connection_on_windows_drives(self):
+        mounts = Path(self.tmp.name) / "mounts"
+        mounts.write_text("/dev/nvme0n1p2 / btrfs rw 0 0\n/dev/sda1 /mnt/SSD ntfs3 rw 0 0\n"
+                          "/dev/sdc1 /mnt/My\\040Drive exfat rw 0 0\n")
+        old, D.MOUNTS = D.MOUNTS, str(mounts)
+        try:
+            self.assertTrue(D.sparse_ok("/home"))
+            self.assertFalse(D.sparse_ok("/mnt/SSD/Games"))
+            self.assertFalse(D.sparse_ok("/mnt/My Drive"))
+            self.assertTrue(D.sparse_ok("/mnt/SSDx"))  # not under /mnt/SSD
+        finally:
+            D.MOUNTS = old
+
+    def test_cancel_then_again_starts(self):
+        # Cancelling a running download and adding the same link straight away starts a new one at once
+        D.SPLIT_MIN, D.STEAL_MIN = 1 << 20, 64 << 10
+        t = threading.Thread(target=D.serve, daemon=True)
+        try:
+            a = D.add(self.base + "/file.bin", self.dir)
+            t.start()
+            for _ in range(100):
+                if D.load()[0]["state"] == "downloading":
+                    break
+                time.sleep(0.02)
+            D.change(a["id"], "cancel")
+            b = D.add(self.base + "/file.bin", self.dir)
+            self.assertNotEqual(a["id"], b["id"])
+            t.join(30)
+        finally:
+            D.SPLIT_MIN, D.STEAL_MIN = 16 << 20, 2 << 20
+        jobs = {j["id"]: j for j in D.load()}
+        self.assertEqual(jobs[b["id"]]["state"], "done")
+        self.assertEqual((self.dir / jobs[b["id"]]["name"]).read_bytes(), BODY)
+        self.assertEqual(sorted(p.name for p in self.dir.iterdir()), [jobs[b["id"]]["name"]])  # no stray .part
+
     def test_gives_up_on_404(self):
         j = D.add(self.base + "/missing", self.dir)
         done = self.run_queue()[j["id"]]
