@@ -214,6 +214,14 @@ icon = "snapshot"
 run = ["deckos-hub", "--page", "system"]
 
 [[action]]
+id = "vpn"
+title = "Browse privately through my own VPN"
+summary = "WireGuard through a server of yours, switched from Quick Settings"
+keywords = "vpn wireguard private privacy browsing hide ip provider isp public wifi tunnel server oracle"
+icon = "shield"
+run = ["deckos-hub", "--page", "system"]
+
+[[action]]
 id = "setup-export"
 title = "Take my setup with me"
 summary = "Saves your look, panel, pinned apps and DecKoOS settings to one file"

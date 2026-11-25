@@ -2535,6 +2535,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos mode    [status|on|off]                        workload modes: free the GPU and CPU while a game runs
   deckos context [now|set ACTIVITY [MIN]|auto|on|off]  what you're doing now, and DecKoOS adapting to it
   deckos backup make|verify|restore …  your whole home folder in one archive, for a reinstall
+  deckos vpn     [setup|connect HOST KEY|on|off|status|remove]  private browsing through your own server
   deckos ask     ["what you want"]                      DecKoOS Assistant: install and set things up, locally
   deckos ai      [status|setup|model NAME|claude-link]  the local model, and Claude Code's link to it
   deckos layout  [list|set NAME|graphs]                 desktop layout: dock, classic, topbar, minimal, big;
@@ -2578,6 +2579,7 @@ case ${1:-} in
       plan|make|verify|restore|list) exec python3 "${DECKOS_BACKUP_DIR:-/usr/lib/deckos/backup}/backup.py" "$@" ;;
       *) backup_cmd "$@" ;;
     esac ;;
+  vpn) shift; exec python3 "${DECKOS_VPN_DIR:-/usr/lib/deckos/vpn}/vpn.py" "$@" ;;
   dev-install) shift; dev_install "$@" ;;
   spotify) shift; spotify_cmd "$@" ;;
   scheduler) shift; scheduler_cmd "$@" ;;

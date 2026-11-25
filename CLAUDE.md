@@ -433,6 +433,10 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   unit `deckos-context.service` (global from the .install) runs the reactions, each a switch in `context.json`: power while
   building, quiet while developing, Welcome back after a game (from Pulse), Moments (`moments.for_activity`). Quick
   Settings' `ContextRow` shows it and why, and corrects it (`deckos context set|auto`). Tests: `tests/test_context.py`.
+- **Private browsing** (`usr/lib/deckos/vpn/vpn.py`, no Qt; `deckos vpn`; Hub > System): WireGuard through the person's
+  own server. The PC makes its key (pure-Python X25519; the private half never leaves it), `setup` writes a server script
+  carrying only the public key, the server prints `deckos vpn connect HOST:PORT KEY`, which imports into NetworkManager
+  (Quick Settings switches it). `::/0` is routed too so IPv6 can't go around it. Tests: `tests/test_vpn.py`.
 - **Before a reinstall** (`usr/lib/deckos/backup/backup.py`, no Qt): `deckos backup make|verify|restore|plan|list` packs the
   whole home into one `home.tar.zst` (a tar keeps links and permissions on NTFS, which refuses symlinks; caches, Trash
   and downloaded games left out) plus the setup export, package lists and fstab, in "DecKoOS backup DATE" with a

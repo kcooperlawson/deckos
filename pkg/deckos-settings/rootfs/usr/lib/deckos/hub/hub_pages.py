@@ -1017,6 +1017,39 @@ class SystemPage(Page):
         if folder:
             self.hub.terminal(f"deckos backup {what} {shlex.quote(folder)}")
 
+    def vpn_refresh(self):
+        sysinfo.Job(self, [DECKOS, "vpn", "status"], self.vpn_show, demo=("Set up, off. deckos vpn on", 0))
+
+    def vpn_show(self, out, _code):
+        out = out.strip().splitlines()[0] if out.strip() else ""
+        self.vpn_on = out.startswith("On")
+        self.vpn_state.setText(out.replace(" Run deckos vpn setup.", "").replace(" deckos vpn on", ""))
+        self.vpn_switch.setVisible(not out.startswith("Not set up"))
+        self.vpn_switch.setText("Turn off" if self.vpn_on else "Turn on")
+
+    def vpn_toggle(self):
+        sysinfo.Job(self, [DECKOS, "vpn", "off" if self.vpn_on else "on"], lambda *_: self.vpn_refresh(),
+                    demo=("On: your traffic goes through your server.", 0))
+
+    def vpn_connect(self):
+        from PySide6.QtWidgets import QInputDialog
+        line, ok = QInputDialog.getText(self, "Connect to your server",
+                                        "The line your server printed (deckos vpn connect ADDRESS KEY):")
+        parts = line.split()
+        if parts[:3] == ["deckos", "vpn", "connect"]:
+            parts = parts[3:]
+        if not ok or not parts:
+            return
+        if len(parts) != 2:
+            QMessageBox.warning(self, "Not the whole line", "Paste the whole deckos vpn connect line: the address and the key.")
+            return
+
+        def done(out, code):
+            if code:
+                QMessageBox.warning(self, "Couldn't connect", out.strip() or "nmcli refused the connection.")
+            self.vpn_refresh()
+        sysinfo.Job(self, [DECKOS, "vpn", "connect", *parts], done, demo=("Connected.", 0))
+
     def import_setup(self):
         path, _ = QFileDialog.getOpenFileName(self, "Bring in a setup", str(Path.home()), "DecKoOS setup (*.tar.gz)")
         if path and QMessageBox.question(self, "Bring in this setup?",
@@ -1095,6 +1128,22 @@ class SystemPage(Page):
             follow.body.addWidget(box)
         self.lay.addWidget(follow)
 
+        # Private browsing: WireGuard through a server of the person's own (deckos vpn, usr/lib/deckos/vpn)
+        vpn = Card("Private browsing", "A VPN through your own server", "shield")
+        vpn.body.addWidget(label("Your traffic goes through a server you rent (Oracle Cloud's free tier works), "
+                                 "so your internet provider and public Wi-Fi only see a connection to it. Sites see "
+                                 "the server's address. Set-up gives you one script to run on the server.", "sub"))
+        self.vpn_state = label("Checking…", "muted")
+        vpn.body.addWidget(self.vpn_state)
+        self.vpn_switch = button("Turn on", "primary", self.vpn_toggle, icon="shield")
+        self.vpn_switch.hide()
+        vpn.body.addWidget(row(self.vpn_switch,
+                               button("Set up a server…", slot=lambda: self.hub.terminal("deckos vpn setup"),
+                                      icon="terminal", tip="Makes this PC's key and the script for your server"),
+                               button("Connect…", slot=self.vpn_connect, icon="network",
+                                      tip="Paste the deckos vpn connect line your server printed")))
+        self.lay.addWidget(vpn)
+
         carry = Card("Take my setup with me", "For a new PC, or after a reinstall", "download")
         carry.body.addWidget(label("One file with your look, your panel and pinned apps, DecKoOS's settings, game "
                                    "profiles and Game Doctor's fixes. No passwords, games or system files.", "sub"))
@@ -1164,6 +1213,7 @@ class SystemPage(Page):
 
     def refresh(self):
         self.check_updates()
+        self.vpn_refresh()
         sysinfo.Job(self, [DECKOS, "auto-update", "status"], lambda out, _c: self.show_auto_update(sysinfo.kv(out)),
                     demo=(sysinfo.DEMO_AUTO_UPDATE, 0))
         sysinfo.Job(self, [DECKOS, "channel"], lambda out, _c: self.show_channel(sysinfo.kv(out).get("channel", "")),
