@@ -79,8 +79,9 @@ class HubData:
                 return
 
             def repo(out, code):
-                if code not in (0, 2):
-                    done([], [], "No connection to the package mirrors.")
+                if code not in (0, 2):  # deckos updates --why says which (a stale keyring or the network)
+                    sysinfo.Job(self.owner, ["deckos", "updates", "--why"], lambda o, _c: done(
+                        [], [], (o.strip() or "No connection to the package mirrors").rstrip(".") + "."))
                     return
                 pkgs = sysinfo.parse_updates(out)
                 if not sysinfo.have("paru"):

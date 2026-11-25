@@ -1,0 +1,11 @@
+[Unit]
+Description=DecKoOS: refresh pacman's keyring trust database daily (so update checks can verify DecKoOS updates)
+
+[Timer]
+OnBootSec=3min
+OnCalendar=daily
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

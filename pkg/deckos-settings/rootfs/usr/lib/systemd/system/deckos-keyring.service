@@ -1,0 +1,11 @@
+[Unit]
+Description=DecKoOS: refresh pacman's keyring trust database
+# Checking for updates runs as you (checkupdates), and gpg then has to refresh this root-owned
+# trust database before it can check the DecKoOS repo's signature. Refreshed here so it never has to.
+ConditionPathIsDirectory=/etc/pacman.d/gnupg
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pacman-key --updatedb
+Nice=10
+IOSchedulingClass=idle

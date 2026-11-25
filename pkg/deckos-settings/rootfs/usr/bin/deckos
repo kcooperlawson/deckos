@@ -527,6 +527,20 @@ updates_stale() {  # updates_stale MAX_AGE
   (( $(date +%s) - $(stat -c %Y "$UPDATES_CACHE") >= $1 ))
 }
 
+# Why checkupdates failed, in words. It hides pacman's errors, so this asks the likely causes itself.
+# pacman's keyring (root's) is due a trust-database refresh: gpg tries it while checking the DecKoOS
+# repo's signature, can't write it as the user, and pacman calls the signature "missing".
+KEYRING_STALE="pacman's keyring needs a refresh: run sudo pacman-key --updatedb"  # short: the panel shows it
+updates_why() {
+  local said  # gpg fails there too (it can't write the refresh), so its words count, not its exit code
+  said=$(LC_ALL=C gpg --homedir "${PACMAN_GNUPG:-/etc/pacman.d/gnupg}" --batch --list-keys 2>&1 >/dev/null || true)
+  if [[ $said == *"checking the trustdb"* ]]; then
+    echo "$KEYRING_STALE"
+  else
+    echo "No connection to the package mirrors"
+  fi
+}
+
 updates_check() {
   local repo=0 aur=0 out rc=0 error="" old
   if ! command -v checkupdates >/dev/null; then
@@ -536,7 +550,7 @@ updates_check() {
     case $rc in
       0) repo=$(grep -c . <<<"$out" || true) ;;
       2) ;;  # nothing to update
-      *) error="No connection to the package mirrors" ;;
+      *) error=$(updates_why) ;;
     esac
   fi
   if [[ -z $error ]] && command -v paru >/dev/null; then
@@ -558,8 +572,9 @@ updates_cmd() {
   case ${1:-} in
     "") ;;
     --cached) [[ -r $UPDATES_CACHE ]] && cat "$UPDATES_CACHE"; return 0 ;;
+    --why) updates_why; return 0 ;;  # after checkupdates failed elsewhere (the Hub): the reason
     --max-age) max_age=${2:-}; [[ $max_age =~ ^[0-9]+$ ]] || { err "--max-age takes seconds"; exit 2; } ;;
-    *) err "usage: deckos updates [--cached|--max-age SECONDS]"; exit 2 ;;
+    *) err "usage: deckos updates [--cached|--why|--max-age SECONDS]"; exit 2 ;;
   esac
   mkdir -p "${UPDATES_CACHE%/*}"
   exec 9>"$UPDATES_CACHE.lock"
@@ -2076,7 +2091,7 @@ ${C_ACC}${C_B}deckos${C_0} $VERSION — DecKoOS system tool
   deckos undo    [list|NUMBER|clean]                   go back to before an update (restart to finish)
   deckos restore NUMBER [PATH...]                       put back files from before a command (snapshot first)
   deckos snapshot-first [status|on|off]                 the terminal offers a snapshot before big deletes
-  deckos updates [--cached|--max-age S]                 how many updates are waiting (cached)
+  deckos updates [--cached|--why|--max-age S]           how many updates are waiting (cached)
   deckos software [list|add GROUP]                      add gaming, ai or dev after install
   deckos home    [status|enable]                        /home snapshots (hourly) and backup status
   deckos backup  [FOLDER]                               copy your home folder to another drive
