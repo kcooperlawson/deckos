@@ -83,11 +83,11 @@ as_builder() { sudo -u builder -H env PKGDEST="$REPO" "$@"; }
 
 # ------------------------------------------------------------------ packages
 step "DecKoOS packages"
-for p in deckos-files deckos-terminal deckos-editor deckos-settings deckos-theme-tmpikes deckos-installer; do
+for p in deckos-files deckos-terminal deckos-editor deckos-extract deckos-settings deckos-theme-tmpikes deckos-installer; do
   if [[ -n $PREBUILT ]] && pkgs=$(find "$PREBUILT" -name "$p-[0-9]*.pkg.tar.zst" -print -quit) && [[ -n $pkgs ]]; then
     cp "$pkgs" "$REPO/" && echo "$p: prebuilt ${pkgs##*/}"
-  elif [[ $p == deckos-files || $p == deckos-terminal || $p == deckos-editor ]]; then
-    # DecKoOS Files, Terminal and Editor are compiled (Qt/KDE): their build dependencies come from the repos.
+  elif [[ $p == deckos-files || $p == deckos-terminal || $p == deckos-editor || $p == deckos-extract ]]; then
+    # DecKoOS Files, Terminal, Editor and Extract are compiled (Qt/KDE): their build dependencies come from the repos.
     as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --syncdeps --noconfirm --clean --force"
   else
     as_builder bash -c "cd '$BUILD/pkg/$p' && makepkg --nodeps --noconfirm --clean --force"

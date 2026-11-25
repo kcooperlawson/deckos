@@ -78,6 +78,11 @@ limitations") rather than implying support that isn't there (untested NVIDIA/Int
   Its text defaults live in DeckOS Files' `mimeapps.list` (that package owns /etc/xdg/mimeapps.list). A new
   DeckOS app package goes in the same lists as deckos-terminal: build-iso.yml, build.sh, the installer's DeckOS
   layer, deckos-settings' depends, `deckos dev-install`, `hub_system.DECKOS_PKGS`. `unix` is a GCC macro.
+- `apps/deckos-extract/` + `pkg/deckos-extract/`: DecKoOS Extract, the archive queue (C++/Qt 6 over the `7z` program, Files'
+  `style.cpp`). `Archives::group` turns any part into its whole set (.partN.rar, .rar+.r00, .001, .zip+.z01) and finds
+  gaps; `ExtractJob` lists first (size, password, free space), extracts into a hidden `.NAME.extracting` beside the
+  destination and moves the result out (one folder inside is the result). Pause is SIGSTOP. "Extract here" in Files
+  is its KIO service menu. Tests: `-DDECKOS_EXTRACT_TESTS=ON`, `extract_test` (real 7-Zip on generated archives).
 - Local AI: `usr/lib/deckos/assistant/` (plain Python, no Qt). `assistant.py` has the Ollama client, the
   tools and their safety rules (`is_read_only`, `BLOCKED`: keep both tested), `Session` (the agent loop)
   and `summarize` (chunked, for deckos-local). `deckos_ask.py` is `deckos ask`; `deckos_assistant.py` is the chat box

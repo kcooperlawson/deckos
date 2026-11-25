@@ -1,0 +1,21 @@
+# Maintainer: kcooperlawson
+# DecKoOS Extract, the DecKoOS archive extractor. Built from ../../apps/deckos-extract in this repo.
+pkgname=deckos-extract
+pkgver=$(tr -d '[:space:]' < "$startdir/../../VERSION" 2>/dev/null)
+pkgver=${pkgver:-0.3.17}
+pkgrel=1
+pkgdesc="DecKoOS Extract: big and split archives (multi-part RAR, 7z, zip) in a queue (Qt 6, 7-Zip)"
+arch=(x86_64)
+license=(MIT)
+depends=(qt6-base qt6-svg qt6-websockets 7zip kconfig kcoreaddons kdbusaddons knotifications)
+makedepends=(cmake extra-cmake-modules)
+
+build() {
+  cmake -S "$startdir/../../apps/deckos-extract" -B build -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=Release -DDECKOS_VERSION="$pkgver"
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}

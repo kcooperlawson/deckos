@@ -1251,6 +1251,7 @@ class SystemPage(Page):
 
     DECKOS_PARTS = {"deckos-settings": "Hub, Menu, Quick Settings, deckos tool, themes",
                     "deckos-files": "DecKoOS Files", "deckos-terminal": "DecKoOS Terminal", "deckos-editor": "DecKoOS Editor",
+                    "deckos-extract": "DecKoOS Extract",
                     "deckos-theme-tmpikes": "TMpikes theme"}
 
     def show_updates(self, repo, aur, err):

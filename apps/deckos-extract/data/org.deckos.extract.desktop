@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=DecKoOS Extract
+GenericName=Archive extractor
+Comment=Extract big and split archives: multi-part RAR, 7z, zip and more
+Keywords=extract;unzip;unrar;archive;rar;7z;zip;part;split;
+Icon=deckos-extract
+Exec=deckos-extract %F
+MimeType=application/vnd.rar;application/x-rar;application/x-rar-compressed;application/x-7z-compressed;application/zip;application/x-tar;application/x-compressed-tar;application/x-xz-compressed-tar;application/x-zstd-compressed-tar;application/x-bzip2-compressed-tar;application/gzip;application/x-xz;application/zstd;application/x-bzip2;application/x-cd-image;application/vnd.ms-cab-compressed;application/x-arj;application/x-lha;application/x-cpio;application/x-split;
+Categories=Qt;KDE;Utility;Archiving;
+StartupNotify=true
+StartupWMClass=deckos-extract

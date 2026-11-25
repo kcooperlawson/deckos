@@ -10,7 +10,7 @@ arch=(any)
 license=(MIT)
 depends=(bash python pyside6 qt6-svg qt6-declarative jq util-linux sudo polkit kdialog konsole
          grub plymouth snapper btrfs-progs ntfs-3g pacman-contrib playerctl
-         papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal deckos-editor ripgrep
+         papirus-icon-theme inter-font ttf-jetbrains-mono-nerd deckos-files deckos-terminal deckos-editor deckos-extract ripgrep
          github-cli  # DecKoOS Builder
          7zip fio vkmark  # DecKoOS Bench's CPU, disk and graphics tests
          python-numpy qt6-websockets libpulse  # Vibes' music visualizer: the analysis, the wallpaper's feed, parec
