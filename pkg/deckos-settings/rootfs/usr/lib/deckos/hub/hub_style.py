@@ -158,7 +158,8 @@ HUD = "Chakra Petch"  # labels, numbers, buttons (the wordmark's cut corners as 
 # are here too (What's New, System Monitor, Disks), so every DecKoOS window has the same plates.
 PLATES = {"card": (14, "card"), "tile": (12, "tile"), "rowItem": (8, "row"), "toast": (10, "toast"),
           "feature": (12, "card"), "finding": (12, "card"), "hero": (14, "hero"), "device": (10, "tile"), "stat": (8, "row"),
-          "disk": (10, "tile"), "erase": (9, "row"), "banner": (12, "row")}
+          "disk": (10, "tile"), "erase": (9, "row"), "banner": (12, "row"),
+          "dlItem": (12, "tile"), "dlLink": (14, "card"), "dlSpeed": (14, "card")}
 
 
 def notch_path(rect, cut):

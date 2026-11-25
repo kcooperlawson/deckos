@@ -101,6 +101,14 @@ icon = "music"
 run = ["deckos-music"]
 
 [[action]]
+id = "downloads"
+title = "Download a big file"
+summary = "DecKoOS Downloads: resumes where it stopped, even after a restart"
+keywords = "download downloader manager link url iso resume pause wget file transfer"
+icon = "download"
+run = ["deckos-downloads"]
+
+[[action]]
 id = "retro"
 title = "Play retro games"
 summary = "DecKoOS Retro: your games, set up and in Steam"

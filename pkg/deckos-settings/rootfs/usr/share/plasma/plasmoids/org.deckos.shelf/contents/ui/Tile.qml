@@ -164,7 +164,10 @@ Item {
         }
     }
 
-    // ---- a download still arriving: its size is all there is to know, so the segments sweep while it grows
+    // ---- a download still arriving: DecKoOS Downloads' own say how far along (progress), a browser's only their
+    // size so far, so for those the segments sweep while it grows
+    property real sweepValue: 0
+    readonly property bool known: tile.kind === "partial" && !!tile.item && tile.item.progress !== undefined
     Vibes.Segments {
         id: sweep
         visible: tile.kind === "partial"
@@ -175,12 +178,13 @@ Item {
         count: 40
         segmentHeight: 6
         spacing: 2
-        SequentialAnimation on value {
-            running: tile.kind === "partial" && tile.visible
-            loops: Animation.Infinite
-            NumberAnimation { from: 0; to: 1; duration: 1600; easing.type: Easing.InOutSine }
-            NumberAnimation { from: 1; to: 0; duration: 1600; easing.type: Easing.InOutSine }
-        }
+        value: tile.known ? tile.item.progress : tile.sweepValue
+    }
+    SequentialAnimation on sweepValue {
+        running: tile.kind === "partial" && tile.visible && !tile.known
+        loops: Animation.Infinite
+        NumberAnimation { from: 0; to: 1; duration: 1600; easing.type: Easing.InOutSine }
+        NumberAnimation { from: 1; to: 0; duration: 1600; easing.type: Easing.InOutSine }
     }
 
     // ---- the bottom: the name over art, the facts in Chakra Petch

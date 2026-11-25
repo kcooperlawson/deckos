@@ -1,0 +1,15 @@
+[Unit]
+Description=DecKoOS Downloads: carries on with your downloads, and stops once they're all done
+After=network-online.target
+# Only once something has been downloaded with it (%S is ~/.local/state): unfinished ones carry on after a restart
+ConditionPathExists=%S/deckos/downloads/queue.json
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/lib/deckos/downloads/downloads.py serve
+Restart=on-failure
+RestartSec=10
+Nice=5
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

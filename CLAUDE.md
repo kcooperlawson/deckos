@@ -446,7 +446,7 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
   DEST` is still the everyday rsync mirror. Hub > System > Before a reinstall; Welcome's first step finds a backup on
   the drives (`welcome_system.find_backups`) and offers it. Tests: `tests/test_backup.py`.
 - **The app menu stays short**: one entry per job. Hub (settings and Health), Store, Welcome (with Tour, Move in and
-  What's New as its right-click actions), Music, Retro, System Monitor, Disks, Bench, Assistant (with its workspace as a right-click action), Gaming Mode.
+  What's New as its right-click actions), Music, Retro, System Monitor, Disks, Downloads, Bench, Assistant (with its workspace as a right-click action), Gaming Mode.
   Anything that's part of one of those, opened from a notification, or for developers (Builder: Hub > AI & Dev) gets
   `NoDisplay=true` and a way in from where it belongs, not a menu entry of its own. KDE's Welcome Center is off
   (`/etc/xdg/kded6rc`: Plasma 6 starts it from kded).
@@ -464,6 +464,14 @@ Contributions card lists open pull requests (checks, `CAREFUL` paths flagged), o
 - **Boot menu**: GRUB theme in the DecKo look (`assets/generate.py`'s `grub_background`/`grub_select_pieces`: a notched
   plate round the menu, notched lit highlight, Chakra Petch via grub-mkfont in the PKGBUILD). `GRUB_MENU` must match
   theme.txt's boot_menu box. Check the look on a real boot: GRUB can't be rendered here.
+- **Downloads** (`usr/lib/deckos/downloads/`): `downloads.py` (no Qt) keeps the queue in
+  `~/.local/state/deckos/downloads/queue.json` (every writer takes queue.lock; the file is replaced, never written in place)
+  and downloads with urllib: Range resume checked by If-Range (a changed file starts over, never spliced), names from
+  Content-Disposition, retries with a growing wait, gives up only on GIVE_UP codes, NAME.part until whole, never over a
+  file. `serve` is the user unit `deckos-downloads.service` (global; ConditionPathExists on the queue), started by
+  `wake()` and gone once nothing's left. `deckos download URL` queues; `deckos-downloads` (`deckos_downloads.py`, `--demo
+  --screenshot DIR`) is the window (file watcher, no polling). The shelf's partial tiles read the queue for real progress.
+  Tests: `tests/test_downloads.py` (a local Range server that drops connections).
 - **Setup** (`usr/lib/deckos/setup/`): `deckos setup export|import|undo`; imports only write `WHAT`'s places.
 - **Gaming Mode panel** (`usr/lib/deckos/gamepanel/`, `deckos-gamepanel`): in the Steam library as "DecKoOS" (added by
   gaming-session before Steam starts); reads gamepads from evdev itself (devices with BTN_SOUTH; LED controllers

@@ -7,6 +7,8 @@ _setup() {
   systemctl --global enable deckos-modes.service >/dev/null 2>&1 || true
   # Context: follows what you're doing and adapts (deckos context off turns it off for one)
   systemctl --global enable deckos-context.service >/dev/null 2>&1 || true
+  # DecKoOS Downloads: unfinished downloads carry on after a restart (it exits once they're done)
+  systemctl --global enable deckos-downloads.service >/dev/null 2>&1 || true
   # Game Doctor's watcher: offers help when a game closes right after starting
   systemctl --global enable deckos-gamedoctor.service >/dev/null 2>&1 || true
   # A soundbar on HDMI mirrors the main screen instead of being an extra screen (deckos screens soundbar off)

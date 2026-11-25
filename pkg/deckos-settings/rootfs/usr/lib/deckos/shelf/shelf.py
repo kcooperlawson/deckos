@@ -57,6 +57,12 @@ def desktop_dir():
 def arriving(folder, now):
     """Downloads still coming into `folder` (a browser's .part or .crdownload written to in the last ARRIVING s)."""
     out = []
+    try:  # DecKoOS Downloads knows how big each file will be
+        queue = json.loads((Path(os.environ.get("DECKOS_DOWNLOADS_STATE") or Path.home() / ".local/state/deckos/downloads")
+                            / "queue.json").read_text()).get("jobs", [])
+        known = {str(Path(j["folder"]) / (j["name"] + ".part")): j for j in queue if j.get("size")}
+    except (OSError, ValueError, KeyError, TypeError):
+        known = {}
     try:
         entries = list(os.scandir(folder))
     except OSError:
@@ -66,7 +72,12 @@ def arriving(folder, now):
         try:
             if p.suffix.lower() in PARTIAL and e.is_file() and now - e.stat().st_mtime < ARRIVING \
                     and e.stat().st_size > 0:
-                out.append({**describe(p, now), "arriving": True})
+                tile = {**describe(p, now), "arriving": True}
+                j = known.get(str(p))
+                if j:
+                    tile["progress"] = round(min(1.0, e.stat().st_size / j["size"]), 3)
+                    tile["detail"] = f"{size_text(e.stat().st_size)} of {size_text(j['size'])}"
+                out.append(tile)
         except OSError:
             continue
     return out

@@ -157,7 +157,7 @@ APPS = [
     (("system-log-out", "system-shutdown", "application-exit"), "power", "red"),
     (("org.kde.plasma-welcome", "plasma-welcome", "org.gnome.Tour"), "star", "violet"),
     (("org.kde.kdiskfree", "kdf", "drive-harddisk"), "drives", "graphite"),
-    (("org.kde.ktorrent", "ktorrent", "transmission", "transmission-qt", "transmission-gtk", "com.transmissionbt.Transmission",
+    (("deckos-downloads", "org.kde.ktorrent", "ktorrent", "transmission", "transmission-qt", "transmission-gtk", "com.transmissionbt.Transmission",
       "qbittorrent", "org.qbittorrent.qBittorrent", "fragments", "de.haeckerfelix.Fragments"), "download", "green"),
     (("org.kde.kdenlive", "kdenlive", "shotcut", "org.shotcut.Shotcut", "pitivi"), "film", "pink"),
     (("org.kde.kwave", "audacity", "org.audacityteam.Audacity", "tenacity"), "wave", "orange"),

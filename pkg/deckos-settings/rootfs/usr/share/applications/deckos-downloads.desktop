@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=DecKoOS Downloads
+GenericName=Download manager
+Comment=Big files that don't give up: they pick up where they stopped, even after a restart
+Exec=deckos-downloads %u
+Icon=deckos-downloads
+Type=Application
+Categories=Network;FileTransfer;
+Keywords=download;downloader;manager;resume;link;url;iso;big file;wget;queue;pause;
+StartupWMClass=deckos-downloads
