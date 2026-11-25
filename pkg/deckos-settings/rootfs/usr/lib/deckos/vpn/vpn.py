@@ -152,12 +152,54 @@ def present():
     return None
 
 
+KEEP = {"interface": {"privatekey", "address", "dns", "mtu"},
+        "peer": {"publickey", "presharedkey", "endpoint", "allowedips", "persistentkeepalive"}}
+
+
+def clean_config(text: str) -> str:
+    """A provider's WireGuard file (Proton, wgcf for WARP, Mullvad…) down to the settings a connection needs: no
+    PostUp/PreDown commands, which wg-quick would run as root, and nothing NetworkManager would trip over."""
+    out, section, seen = [], None, set()
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        head = re.fullmatch(r"\[(\w+)\]", line)
+        if head:
+            section = head.group(1).lower()
+            if section not in KEEP or (section == "interface" and section in seen):
+                raise ValueError(f"Not a WireGuard file: unexpected [{head.group(1)}]")
+            seen.add(section)
+            out.append(f"\n[{section.capitalize()}]")
+            continue
+        key, _, value = (x.strip() for x in line.partition("="))
+        if section in KEEP and key.lower() in KEEP[section] and value and not re.search(r"[\s;|&$`]", value.replace(", ", ",")):
+            out.append(f"{key} = {value}")
+    conf = "\n".join(out).strip() + "\n"
+    for need in ("PrivateKey", "PublicKey", "Endpoint", "AllowedIPs"):
+        if not re.search(rf"(?mi)^{need} = ", conf):
+            raise ValueError(f"That WireGuard file has no {need}: download it again from your VPN's site")
+    for key in re.findall(r"(?mi)^(?:PrivateKey|PublicKey|PresharedKey) = (.*)$", conf):
+        if not KEY_RE.fullmatch(key):
+            raise ValueError("That file's keys aren't WireGuard keys")
+    return conf
+
+
 def connect(server: str, server_key: str):
     private, _ = keys()
-    conf = client_config(private, server_key.strip(), server)
+    add(client_config(private, server_key.strip(), server))
+
+
+def import_file(path: str):
+    add(clean_config(Path(path).expanduser().read_text(errors="replace")))
+
+
+def add(conf: str):
+    """Hands NetworkManager the connection as DecKoOS VPN (replacing an earlier one) and turns it on."""
     if present():
         run("nmcli", "connection", "delete", NAME)
     # nmcli names the connection after the file; it's read once and removed
+    HOME.mkdir(parents=True, exist_ok=True)
     path = HOME / "deckos-vpn.conf"
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -190,6 +232,7 @@ def status() -> str:
 
 USAGE = """deckos vpn setup                      make this PC's key, print the server script
 deckos vpn connect HOST[:PORT] KEY    add the VPN (the line the server printed)
+deckos vpn import FILE                use a WireGuard file from a VPN service (Proton, WARP via wgcf…)
 deckos vpn on|off|status|remove"""
 
 
@@ -203,8 +246,8 @@ def main(argv):
             print(f"Saved {script}\n\nCopy it to your server and run it there as root:\n"
                   f"  scp {script} USER@SERVER:\n  ssh USER@SERVER sudo bash deckos-vpn-server.sh\n\n"
                   "It ends with a deckos vpn connect line: run that here.")
-        elif cmd == "connect" and len(argv) == 3:
-            connect(argv[1], argv[2])
+        elif cmd in ("connect", "import") and len(argv) == (3 if cmd == "connect" else 2):
+            connect(argv[1], argv[2]) if cmd == "connect" else import_file(argv[1])
             print("Connected. Switch it in Quick Settings' network list, or deckos vpn on|off.")
         elif cmd in ("on", "off"):
             switch(cmd == "on")
@@ -220,7 +263,7 @@ def main(argv):
         else:
             print(USAGE)
             return 2
-    except (ValueError, RuntimeError) as error:
+    except (ValueError, RuntimeError, OSError) as error:
         print(error)  # stdout: the Hub shows it
         return 1
     except subprocess.CalledProcessError as error:

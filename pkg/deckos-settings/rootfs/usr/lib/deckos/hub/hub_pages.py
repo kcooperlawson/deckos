@@ -1031,6 +1031,17 @@ class SystemPage(Page):
         sysinfo.Job(self, [DECKOS, "vpn", "off" if self.vpn_on else "on"], lambda *_: self.vpn_refresh(),
                     demo=("On: your traffic goes through your server.", 0))
 
+    def vpn_import(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Your VPN's WireGuard file", str(Path.home() / "Downloads"),
+                                              "WireGuard (*.conf)")
+        if path:
+            sysinfo.Job(self, [DECKOS, "vpn", "import", path], self.vpn_done, demo=("Connected.", 0))
+
+    def vpn_done(self, out, code):
+        if code:
+            QMessageBox.warning(self, "Couldn't connect", out.strip() or "NetworkManager refused the connection.")
+        self.vpn_refresh()
+
     def vpn_connect(self):
         from PySide6.QtWidgets import QInputDialog
         line, ok = QInputDialog.getText(self, "Connect to your server",
@@ -1043,12 +1054,7 @@ class SystemPage(Page):
         if len(parts) != 2:
             QMessageBox.warning(self, "Not the whole line", "Paste the whole deckos vpn connect line: the address and the key.")
             return
-
-        def done(out, code):
-            if code:
-                QMessageBox.warning(self, "Couldn't connect", out.strip() or "nmcli refused the connection.")
-            self.vpn_refresh()
-        sysinfo.Job(self, [DECKOS, "vpn", "connect", *parts], done, demo=("Connected.", 0))
+        sysinfo.Job(self, [DECKOS, "vpn", "connect", *parts], self.vpn_done, demo=("Connected.", 0))
 
     def import_setup(self):
         path, _ = QFileDialog.getOpenFileName(self, "Bring in a setup", str(Path.home()), "DecKoOS setup (*.tar.gz)")
@@ -1132,7 +1138,8 @@ class SystemPage(Page):
         vpn = Card("Private browsing", "A VPN through your own server", "shield")
         vpn.body.addWidget(label("Your traffic goes through a server you rent (Oracle Cloud's free tier works), "
                                  "so your internet provider and public Wi-Fi only see a connection to it. Sites see "
-                                 "the server's address. Set-up gives you one script to run on the server.", "sub"))
+                                 "the server's address. Set-up gives you one script to run on the server. No server? "
+                                 "Use a WireGuard file from a VPN service instead (Proton VPN's free plan needs no card).", "sub"))
         self.vpn_state = label("Checking…", "muted")
         vpn.body.addWidget(self.vpn_state)
         self.vpn_switch = button("Turn on", "primary", self.vpn_toggle, icon="shield")
@@ -1141,7 +1148,10 @@ class SystemPage(Page):
                                button("Set up a server…", slot=lambda: self.hub.terminal("deckos vpn setup"),
                                       icon="terminal", tip="Makes this PC's key and the script for your server"),
                                button("Connect…", slot=self.vpn_connect, icon="network",
-                                      tip="Paste the deckos vpn connect line your server printed")))
+                                      tip="Paste the deckos vpn connect line your server printed"),
+                               button("Use a VPN file…", slot=self.vpn_import, icon="folder",
+                                      tip="A WireGuard file from a VPN service: Proton VPN's free plan, "
+                                          "Cloudflare WARP through wgcf, Mullvad…")))
         self.lay.addWidget(vpn)
 
         carry = Card("Take my setup with me", "For a new PC, or after a reinstall", "download")
